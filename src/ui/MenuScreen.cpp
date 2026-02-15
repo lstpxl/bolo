@@ -5,29 +5,20 @@
 #include "raylib.h"
 
 namespace {
-constexpr int kMinMazeDensityPercent = 20;
-constexpr int kMaxMazeDensityPercent = 80;
-constexpr int kDensityStepPercent = 5;
-
-DifficultyLevel ToDifficulty(int selectedDifficulty) {
-    if (selectedDifficulty <= static_cast<int>(DifficultyLevel::Easy)) {
-        return DifficultyLevel::Easy;
-    }
-    if (selectedDifficulty >= static_cast<int>(DifficultyLevel::Hard)) {
-        return DifficultyLevel::Hard;
-    }
-    return DifficultyLevel::Normal;
-}
+constexpr int kMinLevelNumber = 1;
+constexpr int kMaxLevelNumber = 9;
+constexpr int kMinMazeDensity = 1;
+constexpr int kMaxMazeDensity = 5;
 
 MenuScreen::FocusedControl NextFocusedControl(MenuScreen::FocusedControl current) {
     if (current == MenuScreen::FocusedControl::Quit) {
-        return MenuScreen::FocusedControl::Easy;
+        return MenuScreen::FocusedControl::Level;
     }
     return static_cast<MenuScreen::FocusedControl>(static_cast<int>(current) + 1);
 }
 
 MenuScreen::FocusedControl PreviousFocusedControl(MenuScreen::FocusedControl current) {
-    if (current == MenuScreen::FocusedControl::Easy) {
+    if (current == MenuScreen::FocusedControl::Level) {
         return MenuScreen::FocusedControl::Quit;
     }
     return static_cast<MenuScreen::FocusedControl>(static_cast<int>(current) - 1);
@@ -53,8 +44,8 @@ MenuScreenResult MenuScreen::Render(
     const MenuSettings& currentSettings,
     const AppConfig& config,
     const FrameInput& input) {
-    selectedDifficulty_ = static_cast<int>(currentSettings.difficulty);
-    mazeDensityPercent_ = currentSettings.mazeDensityPercent;
+    levelNumber_ = std::clamp(currentSettings.levelNumber, kMinLevelNumber, kMaxLevelNumber);
+    mazeDensity_ = std::clamp(currentSettings.mazeDensity, kMinMazeDensity, kMaxMazeDensity);
     bool interactionOccurred = false;
 
     if (!quitConfirmationOpen_) {
@@ -70,9 +61,9 @@ MenuScreenResult MenuScreen::Render(
 
     const Rectangle panel = {
         .x = static_cast<float>(config.screenWidth) * 0.5F - 220.0F,
-        .y = static_cast<float>(config.screenHeight) * 0.5F - 195.0F,
+        .y = static_cast<float>(config.screenHeight) * 0.5F - 190.0F,
         .width = 440.0F,
-        .height = 390.0F,
+        .height = 380.0F,
     };
     const float panelCenterX = panel.x + panel.width * 0.5F;
 
@@ -88,7 +79,7 @@ MenuScreenResult MenuScreen::Render(
     const int previousTextSize = GuiGetStyle(DEFAULT, TEXT_SIZE);
     GuiSetStyle(DEFAULT, TEXT_SIZE, 20);
 
-    const char* subtitle = "Select difficulty and maze density";
+    const char* subtitle = "Select level (1-9) and density (1-5)";
     DrawText(
         subtitle,
         static_cast<int>(panelCenterX) - MeasureText(subtitle, 20) / 2,
@@ -96,72 +87,68 @@ MenuScreenResult MenuScreen::Render(
         20,
         LIGHTGRAY);
 
-    bool easyActive = selectedDifficulty_ == static_cast<int>(DifficultyLevel::Easy);
-    bool normalActive = selectedDifficulty_ == static_cast<int>(DifficultyLevel::Normal);
-    bool hardActive = selectedDifficulty_ == static_cast<int>(DifficultyLevel::Hard);
-    const bool wasEasyActive = easyActive;
-    const bool wasNormalActive = normalActive;
-    const bool wasHardActive = hardActive;
+    const Rectangle levelGauge = Rectangle{panelCenterX - 160.0F, panel.y + 138.0F, 320.0F, 28.0F};
+    const Rectangle densityGauge = Rectangle{panelCenterX - 160.0F, panel.y + 228.0F, 320.0F, 28.0F};
+    const Rectangle startButton = Rectangle{panelCenterX - 195.0F, panel.y + 292.0F, 390.0F, 30.0F};
+    const Rectangle quitButton = Rectangle{panelCenterX - 195.0F, panel.y + 338.0F, 390.0F, 30.0F};
 
-    const Rectangle easyButton = Rectangle{panelCenterX - 90.0F, panel.y + 108.0F, 180.0F, 30.0F};
-    const Rectangle normalButton = Rectangle{panelCenterX - 90.0F, panel.y + 146.0F, 180.0F, 30.0F};
-    const Rectangle hardButton = Rectangle{panelCenterX - 90.0F, panel.y + 184.0F, 180.0F, 30.0F};
-    const Rectangle densityGauge = Rectangle{panelCenterX - 160.0F, panel.y + 252.0F, 320.0F, 28.0F};
-    const Rectangle startButton = Rectangle{panelCenterX - 195.0F, panel.y + 300.0F, 390.0F, 30.0F};
-    const Rectangle quitButton = Rectangle{panelCenterX - 195.0F, panel.y + 350.0F, 390.0F, 30.0F};
-
-    GuiToggle(
-        easyButton,
-        "Easy",
-        &easyActive);
-    GuiToggle(
-        normalButton,
-        "Normal",
-        &normalActive);
-    GuiToggle(
-        hardButton,
-        "Hard",
-        &hardActive);
-
-    if (!wasEasyActive && easyActive) {
-        selectedDifficulty_ = static_cast<int>(DifficultyLevel::Easy);
-    } else if (!wasNormalActive && normalActive) {
-        selectedDifficulty_ = static_cast<int>(DifficultyLevel::Normal);
-    } else if (!wasHardActive && hardActive) {
-        selectedDifficulty_ = static_cast<int>(DifficultyLevel::Hard);
+    float levelValue = static_cast<float>(levelNumber_);
+    DrawText(
+        "Level",
+        static_cast<int>(panelCenterX) - MeasureText("Level", 20) / 2,
+        static_cast<int>(panel.y) + 110,
+        20,
+        LIGHTGRAY);
+    if (!quitConfirmationOpen_ && focusedControl_ == FocusedControl::Level) {
+        if (input.menuNavigateLeftPressed) {
+            levelValue = std::max(static_cast<float>(kMinLevelNumber), levelValue - 1.0F);
+            interactionOccurred = true;
+        }
+        if (input.menuNavigateRightPressed) {
+            levelValue = std::min(static_cast<float>(kMaxLevelNumber), levelValue + 1.0F);
+            interactionOccurred = true;
+        }
+    }
+    const int previousLevelNumber = levelNumber_;
+    GuiSliderBar(
+        levelGauge,
+        "",
+        TextFormat("%d", levelNumber_),
+        &levelValue,
+        static_cast<float>(kMinLevelNumber),
+        static_cast<float>(kMaxLevelNumber));
+    levelNumber_ = static_cast<int>(levelValue);
+    if (levelNumber_ != previousLevelNumber) {
+        interactionOccurred = true;
     }
 
-    float densityValue = static_cast<float>(mazeDensityPercent_);
+    float densityValue = static_cast<float>(mazeDensity_);
     DrawText(
-        "Maze Density",
-        static_cast<int>(panelCenterX) - MeasureText("Maze Density", 20) / 2,
-        static_cast<int>(panel.y) + 228,
+        "Density",
+        static_cast<int>(panelCenterX) - MeasureText("Density", 20) / 2,
+        static_cast<int>(panel.y) + 200,
         20,
         LIGHTGRAY);
     if (!quitConfirmationOpen_ && focusedControl_ == FocusedControl::Density) {
         if (input.menuNavigateLeftPressed) {
-            densityValue = std::max(
-                static_cast<float>(kMinMazeDensityPercent),
-                densityValue - static_cast<float>(kDensityStepPercent));
+            densityValue = std::max(static_cast<float>(kMinMazeDensity), densityValue - 1.0F);
             interactionOccurred = true;
         }
         if (input.menuNavigateRightPressed) {
-            densityValue = std::min(
-                static_cast<float>(kMaxMazeDensityPercent),
-                densityValue + static_cast<float>(kDensityStepPercent));
+            densityValue = std::min(static_cast<float>(kMaxMazeDensity), densityValue + 1.0F);
             interactionOccurred = true;
         }
     }
-    const int previousDensityPercent = mazeDensityPercent_;
+    const int previousDensity = mazeDensity_;
     GuiSliderBar(
         densityGauge,
         "",
-        TextFormat("%d%%", mazeDensityPercent_),
+        TextFormat("%d", mazeDensity_),
         &densityValue,
-        static_cast<float>(kMinMazeDensityPercent),
-        static_cast<float>(kMaxMazeDensityPercent));
-    mazeDensityPercent_ = static_cast<int>(densityValue);
-    if (mazeDensityPercent_ != previousDensityPercent) {
+        static_cast<float>(kMinMazeDensity),
+        static_cast<float>(kMaxMazeDensity));
+    mazeDensity_ = static_cast<int>(densityValue);
+    if (mazeDensity_ != previousDensity) {
         interactionOccurred = true;
     }
 
@@ -176,22 +163,14 @@ MenuScreenResult MenuScreen::Render(
 
     if (!quitConfirmationOpen_ && input.menuSelectPressed) {
         interactionOccurred = true;
-        if (focusedControl_ == FocusedControl::Easy) {
-            selectedDifficulty_ = static_cast<int>(DifficultyLevel::Easy);
-        } else if (focusedControl_ == FocusedControl::Normal) {
-            selectedDifficulty_ = static_cast<int>(DifficultyLevel::Normal);
-        } else if (focusedControl_ == FocusedControl::Hard) {
-            selectedDifficulty_ = static_cast<int>(DifficultyLevel::Hard);
-        } else if (focusedControl_ == FocusedControl::Start) {
+        if (focusedControl_ == FocusedControl::Start) {
             startPressed = true;
         } else if (focusedControl_ == FocusedControl::Quit) {
             quitPressed = true;
         }
     }
 
-    DrawFocus(easyButton, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Easy);
-    DrawFocus(normalButton, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Normal);
-    DrawFocus(hardButton, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Hard);
+    DrawFocus(levelGauge, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Level);
     DrawFocus(densityGauge, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Density);
     DrawFocus(startButton, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Start);
     DrawFocus(quitButton, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Quit);
@@ -279,8 +258,8 @@ MenuScreenResult MenuScreen::Render(
         .interactionOccurred = interactionOccurred,
         .menuSettings =
             MenuSettings{
-                .difficulty = ToDifficulty(selectedDifficulty_),
-                .mazeDensityPercent = mazeDensityPercent_,
+                .levelNumber = levelNumber_,
+                .mazeDensity = mazeDensity_,
             },
     };
 }

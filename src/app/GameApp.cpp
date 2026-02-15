@@ -80,11 +80,14 @@ int GameApp::Run() {
         }
         fixedStepTimer_.Accumulate(GetFrameTime());
 
-        while (fixedStepTimer_.ShouldStep()) {
+        int fixedStepsThisFrame = 0;
+        constexpr int kMaxFixedStepsPerFrame = 4;
+        while (fixedStepTimer_.ShouldStep() && fixedStepsThisFrame < kMaxFixedStepsPerFrame) {
             if (modeController_.Mode() == GameMode::Playing) {
                 UpdatePlaying(input, fixedStepTimer_.StepSeconds());
             }
             fixedStepTimer_.ConsumeStep();
+            ++fixedStepsThisFrame;
         }
 
         Render(input);
@@ -101,6 +104,11 @@ int GameApp::Run() {
 }
 
 void GameApp::UpdatePlaying(const FrameInput& input, float deltaSeconds) {
+    if (input.startPressed) {
+        modeController_.RequestMenu();
+        return;
+    }
+
     UpdatePlayerSystem(state_, input, deltaSeconds);
     UpdateEnemySystem(state_, deltaSeconds);
     UpdateProjectileSystem(state_, deltaSeconds);
@@ -121,12 +129,12 @@ void GameApp::Render(const FrameInput& input) {
             (result.interactionOccurred ||
              result.startGameRequested ||
              result.quitRequested ||
-             state_.menuSettings.difficulty != previousSettings.difficulty ||
-             state_.menuSettings.mazeDensityPercent != previousSettings.mazeDensityPercent)) {
+             state_.menuSettings.levelNumber != previousSettings.levelNumber ||
+             state_.menuSettings.mazeDensity != previousSettings.mazeDensity)) {
             PlaySound(menuClickSound_);
         }
         if (result.startGameRequested) {
-            modeController_.StartGame(state_, state_.menuSettings);
+            modeController_.StartGame(state_, state_.menuSettings, config_);
         }
         if (result.quitRequested) {
             exitRequested_ = true;

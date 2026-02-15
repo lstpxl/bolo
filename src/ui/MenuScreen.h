@@ -14,12 +14,10 @@ struct MenuScreenResult {
 class MenuScreen {
 public:
     enum class FocusedControl {
-        Easy = 0,
-        Normal = 1,
-        Hard = 2,
-        Density = 3,
-        Start = 4,
-        Quit = 5,
+        Level = 0,
+        Density = 1,
+        Start = 2,
+        Quit = 3,
     };
 
     MenuScreenResult Render(
@@ -33,9 +31,9 @@ private:
         Cancel = 1,
     };
 
-    int selectedDifficulty_ = static_cast<int>(DifficultyLevel::Normal);
-    int mazeDensityPercent_ = 45;
-    FocusedControl focusedControl_ = FocusedControl::Easy;
+    int levelNumber_ = 1;
+    int mazeDensity_ = 3;
+    FocusedControl focusedControl_ = FocusedControl::Level;
     bool quitConfirmationOpen_ = false;
     QuitDialogFocus quitDialogFocus_ = QuitDialogFocus::Cancel;
 };
