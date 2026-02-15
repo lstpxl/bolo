@@ -57,13 +57,28 @@ FrameInput PollFrameInput() {
         moveY = -1.0F;
     }
 
+    const bool gamepadStartPressed = IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_RIGHT) ||
+        IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE);
+    const bool gamepadSelectDown = IsGamepadButtonDown(0, GAMEPAD_BUTTON_MIDDLE_LEFT);
+    const bool gamepadStartDown = IsGamepadButtonDown(0, GAMEPAD_BUTTON_MIDDLE_RIGHT);
+    const bool gamepadMiddleDown = IsGamepadButtonDown(0, GAMEPAD_BUTTON_MIDDLE);
+    const bool gamepadQuitComboPressed =
+        (gamepadSelectDown && (gamepadStartDown || gamepadMiddleDown)) ||
+        (gamepadMiddleDown && gamepadStartDown);
+
     return FrameInput{
         .moveX = moveX,
         .moveY = moveY,
         .shootPressed = IsKeyPressed(KEY_SPACE) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN),
-        .startPressed = IsKeyPressed(KEY_ENTER) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_RIGHT),
-        .quitRequested = IsKeyPressed(KEY_ESCAPE) ||
-            (IsGamepadButtonDown(0, GAMEPAD_BUTTON_MIDDLE_LEFT) &&
-             IsGamepadButtonDown(0, GAMEPAD_BUTTON_MIDDLE_RIGHT)),
+        .startPressed = IsKeyPressed(KEY_ENTER) || gamepadStartPressed,
+        .quitRequested = IsKeyPressed(KEY_ESCAPE) || gamepadQuitComboPressed,
+        .menuDifficultyUpPressed =
+            IsKeyPressed(KEY_UP) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_UP),
+        .menuDifficultyDownPressed =
+            IsKeyPressed(KEY_DOWN) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_DOWN),
+        .menuDensityDecreasePressed =
+            IsKeyPressed(KEY_LEFT) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_LEFT),
+        .menuDensityIncreasePressed =
+            IsKeyPressed(KEY_RIGHT) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_RIGHT),
     };
 }

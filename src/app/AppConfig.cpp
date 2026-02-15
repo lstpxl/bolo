@@ -2,8 +2,8 @@
 
 AppConfig MakeDefaultAppConfig() {
     return AppConfig{
-        .screenWidth = 960,
-        .screenHeight = 540,
+        .screenWidth = 640,
+        .screenHeight = 480,
         .hudWidth = 260,
         .targetFps = 60,
         .fixedDeltaSeconds = 1.0F / 60.0F,

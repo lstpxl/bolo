@@ -29,4 +29,5 @@ private:
     Sound menuClickSound_{};
     bool audioReady_ = false;
     bool menuClickSoundLoaded_ = false;
+    bool exitRequested_ = false;
 };

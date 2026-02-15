@@ -6,6 +6,7 @@
 #include "game/systems/PlayerSystem.h"
 #include "game/systems/ProjectileSystem.h"
 #include "game/systems/SpawnerSystem.h"
+#include <algorithm>
 #include "raylib.h"
 #include "ui/RayguiContext.h"
 
@@ -20,8 +21,12 @@ int GameApp::Run() {
         menuClickSoundLoaded_ = menuClickSound_.frameCount > 0;
     }
 
-    while (!WindowShouldClose()) {
+    while (!exitRequested_ && !WindowShouldClose()) {
         const FrameInput input = PollFrameInput();
+        if (input.quitRequested) {
+            exitRequested_ = true;
+            continue;
+        }
         fixedStepTimer_.Accumulate(GetFrameTime());
 
         if (modeController_.Mode() == GameMode::Menu) {
@@ -49,8 +54,35 @@ int GameApp::Run() {
 }
 
 void GameApp::UpdateMenu(const FrameInput& input) {
-    if (input.quitRequested) {
-        modeController_.RequestMenu();
+    if (input.startPressed || input.shootPressed) {
+        modeController_.StartGame(state_, state_.menuSettings);
+        return;
+    }
+
+    MenuSettings nextSettings = state_.menuSettings;
+    if (input.menuDifficultyUpPressed && nextSettings.difficulty != DifficultyLevel::Easy) {
+        nextSettings.difficulty = static_cast<DifficultyLevel>(
+            static_cast<int>(nextSettings.difficulty) - 1);
+    }
+    if (input.menuDifficultyDownPressed && nextSettings.difficulty != DifficultyLevel::Hard) {
+        nextSettings.difficulty = static_cast<DifficultyLevel>(
+            static_cast<int>(nextSettings.difficulty) + 1);
+    }
+    if (input.menuDensityDecreasePressed) {
+        nextSettings.mazeDensityPercent =
+            std::max(20, nextSettings.mazeDensityPercent - 5);
+    }
+    if (input.menuDensityIncreasePressed) {
+        nextSettings.mazeDensityPercent =
+            std::min(80, nextSettings.mazeDensityPercent + 5);
+    }
+
+    if (nextSettings.difficulty != state_.menuSettings.difficulty ||
+        nextSettings.mazeDensityPercent != state_.menuSettings.mazeDensityPercent) {
+        state_.menuSettings = nextSettings;
+        if (menuClickSoundLoaded_) {
+            PlaySound(menuClickSound_);
+        }
     }
 }
 
