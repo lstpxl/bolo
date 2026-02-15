@@ -27,13 +27,18 @@ MenuScreenResult MenuScreen::Render(const MenuSettings& currentSettings, const A
     };
 
     DrawRectangleRounded(panel, 0.15F, 8, Color{38, 45, 58, 240});
-    DrawText("BOLO", static_cast<int>(panel.x) + 24, static_cast<int>(panel.y) + 20, 36, RAYWHITE);
-    DrawText("Select difficulty and maze density", static_cast<int>(panel.x) + 24, static_cast<int>(panel.y) + 66, 18, LIGHTGRAY);
+    DrawText("BOLO", static_cast<int>(panel.x) + 24, static_cast<int>(panel.y) + 20, 40, RAYWHITE);
+
+    const int previousTextSize = GuiGetStyle(DEFAULT, TEXT_SIZE);
+    GuiSetStyle(DEFAULT, TEXT_SIZE, 20);
+
+    DrawText("Select difficulty and maze density", static_cast<int>(panel.x) + 24, static_cast<int>(panel.y) + 66, 20, LIGHTGRAY);
 
     bool easyActive = selectedDifficulty_ == static_cast<int>(DifficultyLevel::Easy);
     bool normalActive = selectedDifficulty_ == static_cast<int>(DifficultyLevel::Normal);
     bool hardActive = selectedDifficulty_ == static_cast<int>(DifficultyLevel::Hard);
 
+   
     GuiToggle(
         Rectangle{panel.x + 24.0F, panel.y + 108.0F, 180.0F, 30.0F},
         "Easy",
@@ -46,6 +51,7 @@ MenuScreenResult MenuScreen::Render(const MenuSettings& currentSettings, const A
         Rectangle{panel.x + 24.0F, panel.y + 184.0F, 180.0F, 30.0F},
         "Hard",
         &hardActive);
+    
 
     if (easyActive) {
         selectedDifficulty_ = static_cast<int>(DifficultyLevel::Easy);
@@ -56,7 +62,7 @@ MenuScreenResult MenuScreen::Render(const MenuSettings& currentSettings, const A
     }
 
     float densityValue = static_cast<float>(mazeDensityPercent_);
-    DrawText("Maze Density", static_cast<int>(panel.x) + 24, static_cast<int>(panel.y) + 228, 18, LIGHTGRAY);
+    DrawText("Maze Density", static_cast<int>(panel.x) + 24, static_cast<int>(panel.y) + 228, 20, LIGHTGRAY);
     GuiSliderBar(
         Rectangle{panel.x + 24.0F, panel.y + 252.0F, 320.0F, 28.0F},
         "",
@@ -69,6 +75,8 @@ MenuScreenResult MenuScreen::Render(const MenuSettings& currentSettings, const A
     const bool startPressed = GuiButton(
         Rectangle{panel.x + 24.0F, panel.y + 288.0F, 390.0F, 28.0F},
         "Start");
+
+    GuiSetStyle(DEFAULT, TEXT_SIZE, previousTextSize);
 
     return MenuScreenResult{
         .startGameRequested = startPressed,

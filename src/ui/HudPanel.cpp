@@ -18,7 +18,7 @@ void HudPanel::Render(const GameState& state, const AppConfig& config) const {
         config.screenHeight,
         Color{58, 66, 80, 255});
 
-    DrawText("HUD", static_cast<int>(panel.x) + 16, 16, 26, RAYWHITE);
+    DrawText("HUD", static_cast<int>(panel.x) + 16, 16, 30, RAYWHITE);
     DrawText(
         TextFormat("Difficulty: %d", static_cast<int>(state.menuSettings.difficulty)),
         static_cast<int>(panel.x) + 16,
