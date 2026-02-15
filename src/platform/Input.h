@@ -1,15 +1,16 @@
 #pragma once
 
 struct FrameInput {
-    float moveX;
-    float moveY;
-    bool shootPressed;
-    bool startPressed;
-    bool quitRequested;
-    bool menuDifficultyUpPressed;
-    bool menuDifficultyDownPressed;
-    bool menuDensityDecreasePressed;
-    bool menuDensityIncreasePressed;
+    float moveX = 0.0F;
+    float moveY = 0.0F;
+    bool shootPressed = false;
+    bool startPressed = false;
+    bool quitRequested = false;
+    bool menuNavigateUpPressed = false;
+    bool menuNavigateDownPressed = false;
+    bool menuNavigateLeftPressed = false;
+    bool menuNavigateRightPressed = false;
+    bool menuSelectPressed = false;
 };
 
 FrameInput PollFrameInput();

@@ -88,7 +88,18 @@ source ~/.zshrc
 ## Deploy to device
 
 ```bash
-scp ./build/rg353v-final/bolo ark@<device-ip>:/roms2/ports/bolo/
+bash scripts/deploy-rg353v.sh final <device-ip>
+```
+
+Or with npm scripts (VS Code friendly):
+
+```bash
+# one-time project setup:
+cp .env.example .env
+# then edit .env with your device IP/user/path
+
+# build + deploy final:
+npm run ship:rg353v:final
 ```
 
 Example launcher (`/roms2/ports/bolo.sh`):

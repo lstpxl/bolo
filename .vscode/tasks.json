@@ -1,0 +1,55 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "BOLO: Build RG353V Final",
+      "type": "shell",
+      "command": "npm run build:rg353v:final",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "BOLO: Build RG353V Debug",
+      "type": "shell",
+      "command": "npm run build:rg353v:debug",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "BOLO: Deploy RG353V Final",
+      "type": "shell",
+      "command": "RG353V_DEVICE_IP=${input:rg353vDeviceIp} npm run deploy:rg353v:final",
+      "problemMatcher": []
+    },
+    {
+      "label": "BOLO: Deploy RG353V Debug",
+      "type": "shell",
+      "command": "RG353V_DEVICE_IP=${input:rg353vDeviceIp} npm run deploy:rg353v:debug",
+      "problemMatcher": []
+    },
+    {
+      "label": "BOLO: Ship RG353V Final",
+      "type": "shell",
+      "command": "RG353V_DEVICE_IP=${input:rg353vDeviceIp} npm run ship:rg353v:final",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "BOLO: Ship RG353V Debug",
+      "type": "shell",
+      "command": "RG353V_DEVICE_IP=${input:rg353vDeviceIp} npm run ship:rg353v:debug",
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "rg353vDeviceIp",
+      "type": "promptString",
+      "description": "RG353V device IP",
+      "default": "192.168.1.42"
+    }
+  ]
+}

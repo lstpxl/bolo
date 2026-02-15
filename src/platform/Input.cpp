@@ -65,20 +65,23 @@ FrameInput PollFrameInput() {
     const bool gamepadQuitComboPressed =
         (gamepadSelectDown && (gamepadStartDown || gamepadMiddleDown)) ||
         (gamepadMiddleDown && gamepadStartDown);
+    const bool gamepadSouthPressed = IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN);
+    const bool gamepadEastPressed = IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT);
 
     return FrameInput{
         .moveX = moveX,
         .moveY = moveY,
-        .shootPressed = IsKeyPressed(KEY_SPACE) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN),
+        .shootPressed = IsKeyPressed(KEY_SPACE) || gamepadSouthPressed,
         .startPressed = IsKeyPressed(KEY_ENTER) || gamepadStartPressed,
         .quitRequested = IsKeyPressed(KEY_ESCAPE) || gamepadQuitComboPressed,
-        .menuDifficultyUpPressed =
+        .menuNavigateUpPressed =
             IsKeyPressed(KEY_UP) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_UP),
-        .menuDifficultyDownPressed =
+        .menuNavigateDownPressed =
             IsKeyPressed(KEY_DOWN) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_DOWN),
-        .menuDensityDecreasePressed =
+        .menuNavigateLeftPressed =
             IsKeyPressed(KEY_LEFT) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_LEFT),
-        .menuDensityIncreasePressed =
+        .menuNavigateRightPressed =
             IsKeyPressed(KEY_RIGHT) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_RIGHT),
+        .menuSelectPressed = IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE) || gamepadSouthPressed || gamepadEastPressed,
     };
 }

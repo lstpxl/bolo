@@ -51,7 +51,13 @@ Binary:
 Deploy final build to device:
 
 ```bash
-scp ./build/rg353v-final/bolo ark@<device-ip>:/roms2/ports/bolo/
+# direct deploy script:
+bash scripts/deploy-rg353v.sh final <device-ip>
+
+# or npm script workflow:
+cp .env.example .env
+# edit .env once with RG353V_DEVICE_IP
+npm run ship:rg353v:final
 ```
 
 ## If configure fails due to missing tools, install prerequisites

@@ -15,9 +15,8 @@ public:
     int Run();
 
 private:
-    void UpdateMenu(const FrameInput& input);
     void UpdatePlaying(const FrameInput& input, float deltaSeconds);
-    void Render();
+    void Render(const FrameInput& input);
 
     AppConfig config_ = MakeDefaultAppConfig();
     FixedStepTimer fixedStepTimer_{config_.fixedDeltaSeconds};
