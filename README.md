@@ -75,7 +75,7 @@ Example:
 Set this in `~/.zshrc`:
 
 ```bash
-export RG353V_SYSROOT="/Users/ip/Projects/core_undo_redo/sysroot/rg353v"
+export RG353V_SYSROOT="/Users/ip/Projects/bolo/sysroot/rg353v"
 ```
 
 Reload shell:

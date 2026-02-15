@@ -1,5 +1,14 @@
 # Development Setup (macOS)
 
+## Submodule cloning
+
+```bash
+git clone --recurse-submodules <repo-url>
+# or, after clone:
+git submodule sync --recursive
+git submodule update --init --recursive
+```
+
 This guide reproduces the same development environment on another Mac.
 
 ## 1) Prerequisites
@@ -30,8 +39,8 @@ rsync --version
 ## 2) Clone project
 
 ```bash
-git clone --recurse-submodules <your-repo-url> core_undo_redo
-cd core_undo_redo
+git clone --recurse-submodules <your-repo-url> bolo
+cd bolo
 ```
 
 If you already cloned without submodules:
@@ -75,7 +84,7 @@ Example:
 Set environment variable in `~/.zshrc`:
 
 ```bash
-export RG353V_SYSROOT="/absolute/path/to/core_undo_redo/sysroot/rg353v"
+export RG353V_SYSROOT="/absolute/path/to/bolo/sysroot/rg353v"
 ```
 
 Reload shell:

@@ -3,7 +3,7 @@
 Run commands from project root:
 
 ```bash
-cd /Users/ip/Projects/core_undo_redo
+cd /Users/ip/Projects/bolo
 ```
 
 ## macOS Debug
