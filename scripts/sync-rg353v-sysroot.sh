@@ -10,7 +10,7 @@ fi
 
 HOST="$1"
 USER="${2:-root}"
-DEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/sysroot/rg353v"
+DEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/sysroot"
 REMOTE="${USER}@${HOST}"
 SSH_OPTS=(-o ConnectTimeout=5)
 

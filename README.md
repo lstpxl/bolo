@@ -1,4 +1,4 @@
-# RG353V raylib demo
+# BOLO (RG353V)
 
 Demo app for:
 
@@ -6,7 +6,7 @@ Demo app for:
 - Anbernic RG353V (dArkOS / PortMaster flow)
 
 The project vendors `raylib/` and uses SDL backend for RG353V builds.
-`raylib` is tracked as a git submodule (pinned to a specific commit).
+`raylib` and `raygui` are tracked as git submodules (pinned commits).
 
 ## Prerequisites (macOS)
 
@@ -21,7 +21,7 @@ brew install cmake zig rsync
 ```bash
 cmake --preset macos-debug
 cmake --build --preset macos-debug
-./build/macos-debug/rg353v-demo
+./build/macos-debug/bolo
 ```
 
 ### 2) `macos-release`
@@ -29,7 +29,7 @@ cmake --build --preset macos-debug
 ```bash
 cmake --preset macos-release
 cmake --build --preset macos-release
-./build/macos-release/rg353v-demo
+./build/macos-release/bolo
 ```
 
 ### 3) `rg353v-debug`
@@ -42,7 +42,7 @@ cmake --build --preset rg353v-debug
 Binary:
 
 ```bash
-./build/rg353v-debug/rg353v-demo
+./build/rg353v-debug/bolo
 ```
 
 ### 4) `rg353v-final`
@@ -55,7 +55,7 @@ cmake --build --preset rg353v-final
 Binary:
 
 ```bash
-./build/rg353v-final/rg353v-demo
+./build/rg353v-final/bolo
 ```
 
 ## One-time RG353V sysroot setup
@@ -72,10 +72,11 @@ Example:
 ./scripts/sync-rg353v-sysroot.sh 192.168.1.42 ark
 ```
 
-Set this in `~/.zshrc`:
+`rg353v-*` presets default `RG353V_SYSROOT` to `${sourceDir}/sysroot`.
+If you run manual CMake commands outside presets, set:
 
 ```bash
-export RG353V_SYSROOT="/Users/ip/Projects/bolo/sysroot/rg353v"
+export RG353V_SYSROOT="/Users/ip/Projects/bolo/sysroot"
 ```
 
 Reload shell:
@@ -87,15 +88,15 @@ source ~/.zshrc
 ## Deploy to device
 
 ```bash
-scp ./build/rg353v-final/rg353v-demo ark@<device-ip>:/roms2/ports/demo/
+scp ./build/rg353v-final/bolo ark@<device-ip>:/roms2/ports/bolo/
 ```
 
-Example launcher (`/roms2/ports/demo.sh`):
+Example launcher (`/roms2/ports/bolo.sh`):
 
 ```bash
 #!/bin/bash
-cd /roms2/ports/demo || exit 1
-exec ./rg353v-demo
+cd /roms2/ports/bolo || exit 1
+exec ./bolo
 ```
 
-App exit combo inside demo: `START + SELECT`.
+App exit combo: `START + SELECT`.

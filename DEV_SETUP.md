@@ -56,7 +56,7 @@ Debug:
 ```bash
 cmake --preset macos-debug
 cmake --build --preset macos-debug
-./build/macos-debug/rg353v-demo
+./build/macos-debug/bolo
 ```
 
 Release:
@@ -64,7 +64,7 @@ Release:
 ```bash
 cmake --preset macos-release
 cmake --build --preset macos-release
-./build/macos-release/rg353v-demo
+./build/macos-release/bolo
 ```
 
 ## 4) RG353V cross-compile setup (one time)
@@ -81,10 +81,11 @@ Example:
 ./scripts/sync-rg353v-sysroot.sh 192.168.1.42 ark
 ```
 
-Set environment variable in `~/.zshrc`:
+`rg353v-*` presets default `RG353V_SYSROOT` to `${sourceDir}/sysroot`.
+If you run manual CMake commands outside presets, set:
 
 ```bash
-export RG353V_SYSROOT="/absolute/path/to/bolo/sysroot/rg353v"
+export RG353V_SYSROOT="/absolute/path/to/bolo/sysroot"
 ```
 
 Reload shell:
@@ -112,19 +113,19 @@ cmake --build --preset rg353v-final
 Output:
 
 ```bash
-./build/rg353v-final/rg353v-demo
+./build/rg353v-final/bolo
 ```
 
 ## 6) Deploy to RG353V
 
 ```bash
-scp ./build/rg353v-final/rg353v-demo ark@<device-ip>:/roms2/ports/demo/
+scp ./build/rg353v-final/bolo ark@<device-ip>:/roms2/ports/bolo/
 ```
 
-Suggested launcher `/roms2/ports/demo.sh`:
+Suggested launcher `/roms2/ports/bolo.sh`:
 
 ```bash
 #!/bin/bash
-cd /roms2/ports/demo || exit 1
-exec ./rg353v-demo
+cd /roms2/ports/bolo || exit 1
+exec ./bolo
 ```

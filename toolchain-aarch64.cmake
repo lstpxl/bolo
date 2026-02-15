@@ -7,6 +7,15 @@ if(NOT DEFINED CMAKE_SYSROOT OR CMAKE_SYSROOT STREQUAL "")
     endif()
 endif()
 
+# Accept both repository layouts:
+# - sysroot/usr/... (preferred current)
+# - sysroot/rg353v/usr/... (legacy)
+if(DEFINED CMAKE_SYSROOT AND NOT CMAKE_SYSROOT STREQUAL "")
+    if(EXISTS "${CMAKE_SYSROOT}/rg353v/usr/include/SDL2/SDL.h")
+        set(CMAKE_SYSROOT "${CMAKE_SYSROOT}/rg353v" CACHE PATH "RG353V sysroot" FORCE)
+    endif()
+endif()
+
 set(CMAKE_C_COMPILER "zig")
 set(CMAKE_C_COMPILER_ARG1 "cc")
 

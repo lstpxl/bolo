@@ -4,3 +4,4 @@
 /build-arm/
 /raylib/.zig-cache/
 /raylib/build-arm/
+sysroot-backup.zip

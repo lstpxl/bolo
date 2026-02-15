@@ -32,6 +32,9 @@
       "generator": "Unix Makefiles",
       "binaryDir": "${sourceDir}/build/rg353v-debug",
       "toolchainFile": "${sourceDir}/toolchain-aarch64.cmake",
+      "environment": {
+        "RG353V_SYSROOT": "${sourceDir}/sysroot"
+      },
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "TARGET_RG353V": "ON",
@@ -45,6 +48,9 @@
       "generator": "Unix Makefiles",
       "binaryDir": "${sourceDir}/build/rg353v-final",
       "toolchainFile": "${sourceDir}/toolchain-aarch64.cmake",
+      "environment": {
+        "RG353V_SYSROOT": "${sourceDir}/sysroot"
+      },
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "TARGET_RG353V": "ON",

@@ -11,7 +11,7 @@ cd /Users/ip/Projects/bolo
 ```bash
 cmake --preset macos-debug
 cmake --build --preset macos-debug
-./build/macos-debug/rg353v-demo
+./build/macos-debug/bolo
 ```
 
 ## macOS Release
@@ -19,7 +19,7 @@ cmake --build --preset macos-debug
 ```bash
 cmake --preset macos-release
 cmake --build --preset macos-release
-./build/macos-release/rg353v-demo
+./build/macos-release/bolo
 ```
 
 ## RG353V Debug (handheld)
@@ -32,7 +32,7 @@ cmake --build --preset rg353v-debug
 Binary:
 
 ```bash
-./build/rg353v-debug/rg353v-demo
+./build/rg353v-debug/bolo
 ```
 
 ## RG353V Final (handheld)
@@ -45,13 +45,13 @@ cmake --build --preset rg353v-final
 Binary:
 
 ```bash
-./build/rg353v-final/rg353v-demo
+./build/rg353v-final/bolo
 ```
 
 Deploy final build to device:
 
 ```bash
-scp ./build/rg353v-final/rg353v-demo ark@<device-ip>:/roms2/ports/demo/
+scp ./build/rg353v-final/bolo ark@<device-ip>:/roms2/ports/bolo/
 ```
 
 ## If configure fails due to missing tools, install prerequisites
