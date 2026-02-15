@@ -1,0 +1,74 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "macos-debug",
+      "displayName": "macOS Debug",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build/macos-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "TARGET_RG353V": "OFF"
+      }
+    },
+    {
+      "name": "macos-release",
+      "displayName": "macOS Release",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build/macos-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "TARGET_RG353V": "OFF"
+      }
+    },
+    {
+      "name": "rg353v-debug",
+      "displayName": "RG353V Debug (SDL)",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build/rg353v-debug",
+      "toolchainFile": "${sourceDir}/toolchain-aarch64.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "TARGET_RG353V": "ON",
+        "CMAKE_PREFIX_PATH": "$env{RG353V_SYSROOT}/usr",
+        "CMAKE_SYSROOT": "$env{RG353V_SYSROOT}"
+      }
+    },
+    {
+      "name": "rg353v-final",
+      "displayName": "RG353V Final (SDL)",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build/rg353v-final",
+      "toolchainFile": "${sourceDir}/toolchain-aarch64.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "TARGET_RG353V": "ON",
+        "CMAKE_PREFIX_PATH": "$env{RG353V_SYSROOT}/usr",
+        "CMAKE_SYSROOT": "$env{RG353V_SYSROOT}"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "macos-debug",
+      "configurePreset": "macos-debug"
+    },
+    {
+      "name": "macos-release",
+      "configurePreset": "macos-release"
+    },
+    {
+      "name": "rg353v-debug",
+      "configurePreset": "rg353v-debug"
+    },
+    {
+      "name": "rg353v-final",
+      "configurePreset": "rg353v-final"
+    }
+  ]
+}

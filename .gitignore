@@ -1,0 +1,6 @@
+/build/
+/sysroot/
+.DS_Store
+/build-arm/
+/raylib/.zig-cache/
+/raylib/build-arm/
