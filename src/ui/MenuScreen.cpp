@@ -57,29 +57,44 @@ MenuScreenResult MenuScreen::Render(
     mazeDensityPercent_ = currentSettings.mazeDensityPercent;
     bool interactionOccurred = false;
 
-    if (input.menuNavigateDownPressed) {
-        focusedControl_ = NextFocusedControl(focusedControl_);
-        interactionOccurred = true;
-    }
-    if (input.menuNavigateUpPressed) {
-        focusedControl_ = PreviousFocusedControl(focusedControl_);
-        interactionOccurred = true;
+    if (!quitConfirmationOpen_) {
+        if (input.menuNavigateDownPressed) {
+            focusedControl_ = NextFocusedControl(focusedControl_);
+            interactionOccurred = true;
+        }
+        if (input.menuNavigateUpPressed) {
+            focusedControl_ = PreviousFocusedControl(focusedControl_);
+            interactionOccurred = true;
+        }
     }
 
     const Rectangle panel = {
         .x = static_cast<float>(config.screenWidth) * 0.5F - 220.0F,
-        .y = 80.0F,
+        .y = static_cast<float>(config.screenHeight) * 0.5F - 195.0F,
         .width = 440.0F,
-        .height = 340.0F,
+        .height = 390.0F,
     };
+    const float panelCenterX = panel.x + panel.width * 0.5F;
 
     DrawRectangleRounded(panel, 0.15F, 8, Color{38, 45, 58, 240});
-    DrawText("BOLO", static_cast<int>(panel.x) + 24, static_cast<int>(panel.y) + 20, 40, RAYWHITE);
+    const int titleFontSize = 40;
+    DrawText(
+        "BOLO",
+        static_cast<int>(panelCenterX) - MeasureText("BOLO", titleFontSize) / 2,
+        static_cast<int>(panel.y) + 20,
+        titleFontSize,
+        RAYWHITE);
 
     const int previousTextSize = GuiGetStyle(DEFAULT, TEXT_SIZE);
     GuiSetStyle(DEFAULT, TEXT_SIZE, 20);
 
-    DrawText("Select difficulty and maze density", static_cast<int>(panel.x) + 24, static_cast<int>(panel.y) + 66, 20, LIGHTGRAY);
+    const char* subtitle = "Select difficulty and maze density";
+    DrawText(
+        subtitle,
+        static_cast<int>(panelCenterX) - MeasureText(subtitle, 20) / 2,
+        static_cast<int>(panel.y) + 66,
+        20,
+        LIGHTGRAY);
 
     bool easyActive = selectedDifficulty_ == static_cast<int>(DifficultyLevel::Easy);
     bool normalActive = selectedDifficulty_ == static_cast<int>(DifficultyLevel::Normal);
@@ -88,12 +103,12 @@ MenuScreenResult MenuScreen::Render(
     const bool wasNormalActive = normalActive;
     const bool wasHardActive = hardActive;
 
-    const Rectangle easyButton = Rectangle{panel.x + 24.0F, panel.y + 108.0F, 180.0F, 30.0F};
-    const Rectangle normalButton = Rectangle{panel.x + 24.0F, panel.y + 146.0F, 180.0F, 30.0F};
-    const Rectangle hardButton = Rectangle{panel.x + 24.0F, panel.y + 184.0F, 180.0F, 30.0F};
-    const Rectangle densityGauge = Rectangle{panel.x + 24.0F, panel.y + 252.0F, 320.0F, 28.0F};
-    const Rectangle startButton = Rectangle{panel.x + 24.0F, panel.y + 288.0F, 188.0F, 28.0F};
-    const Rectangle quitButton = Rectangle{panel.x + 226.0F, panel.y + 288.0F, 188.0F, 28.0F};
+    const Rectangle easyButton = Rectangle{panelCenterX - 90.0F, panel.y + 108.0F, 180.0F, 30.0F};
+    const Rectangle normalButton = Rectangle{panelCenterX - 90.0F, panel.y + 146.0F, 180.0F, 30.0F};
+    const Rectangle hardButton = Rectangle{panelCenterX - 90.0F, panel.y + 184.0F, 180.0F, 30.0F};
+    const Rectangle densityGauge = Rectangle{panelCenterX - 160.0F, panel.y + 252.0F, 320.0F, 28.0F};
+    const Rectangle startButton = Rectangle{panelCenterX - 195.0F, panel.y + 300.0F, 390.0F, 30.0F};
+    const Rectangle quitButton = Rectangle{panelCenterX - 195.0F, panel.y + 350.0F, 390.0F, 30.0F};
 
     GuiToggle(
         easyButton,
@@ -117,8 +132,13 @@ MenuScreenResult MenuScreen::Render(
     }
 
     float densityValue = static_cast<float>(mazeDensityPercent_);
-    DrawText("Maze Density", static_cast<int>(panel.x) + 24, static_cast<int>(panel.y) + 228, 20, LIGHTGRAY);
-    if (focusedControl_ == FocusedControl::Density) {
+    DrawText(
+        "Maze Density",
+        static_cast<int>(panelCenterX) - MeasureText("Maze Density", 20) / 2,
+        static_cast<int>(panel.y) + 228,
+        20,
+        LIGHTGRAY);
+    if (!quitConfirmationOpen_ && focusedControl_ == FocusedControl::Density) {
         if (input.menuNavigateLeftPressed) {
             densityValue = std::max(
                 static_cast<float>(kMinMazeDensityPercent),
@@ -147,11 +167,14 @@ MenuScreenResult MenuScreen::Render(
 
     bool startPressed = GuiButton(startButton, "Start");
     bool quitPressed = GuiButton(quitButton, "Quit");
-    if (startPressed || quitPressed) {
+    if (quitConfirmationOpen_) {
+        startPressed = false;
+        quitPressed = false;
+    } else if (startPressed || quitPressed) {
         interactionOccurred = true;
     }
 
-    if (input.menuSelectPressed) {
+    if (!quitConfirmationOpen_ && input.menuSelectPressed) {
         interactionOccurred = true;
         if (focusedControl_ == FocusedControl::Easy) {
             selectedDifficulty_ = static_cast<int>(DifficultyLevel::Easy);
@@ -166,18 +189,93 @@ MenuScreenResult MenuScreen::Render(
         }
     }
 
-    DrawFocus(easyButton, focusedControl_ == FocusedControl::Easy);
-    DrawFocus(normalButton, focusedControl_ == FocusedControl::Normal);
-    DrawFocus(hardButton, focusedControl_ == FocusedControl::Hard);
-    DrawFocus(densityGauge, focusedControl_ == FocusedControl::Density);
-    DrawFocus(startButton, focusedControl_ == FocusedControl::Start);
-    DrawFocus(quitButton, focusedControl_ == FocusedControl::Quit);
+    DrawFocus(easyButton, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Easy);
+    DrawFocus(normalButton, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Normal);
+    DrawFocus(hardButton, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Hard);
+    DrawFocus(densityGauge, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Density);
+    DrawFocus(startButton, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Start);
+    DrawFocus(quitButton, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Quit);
+
+    if (quitPressed) {
+        quitConfirmationOpen_ = true;
+        quitDialogFocus_ = QuitDialogFocus::Cancel;
+        interactionOccurred = true;
+    }
+
+    bool confirmQuitPressed = false;
+    if (quitConfirmationOpen_) {
+        DrawRectangle(
+            0,
+            0,
+            config.screenWidth,
+            config.screenHeight,
+            Fade(BLACK, 0.6F));
+
+        const Rectangle dialog = {
+            .x = panel.x + 40.0F,
+            .y = panel.y + 116.0F,
+            .width = panel.width - 80.0F,
+            .height = 150.0F,
+        };
+        const Rectangle confirmQuitButton = {
+            .x = dialog.x + 24.0F,
+            .y = dialog.y + 98.0F,
+            .width = 132.0F,
+            .height = 30.0F,
+        };
+        const Rectangle confirmCancelButton = {
+            .x = dialog.x + dialog.width - 24.0F - 132.0F,
+            .y = dialog.y + 98.0F,
+            .width = 132.0F,
+            .height = 30.0F,
+        };
+
+        DrawRectangleRounded(dialog, 0.12F, 8, Color{26, 31, 40, 248});
+        DrawText(
+            "Are you sure want to quit",
+            static_cast<int>(dialog.x) + 20,
+            static_cast<int>(dialog.y) + 24,
+            20,
+            RAYWHITE);
+
+        bool modalQuitPressed = GuiButton(confirmQuitButton, "Quit");
+        bool modalCancelPressed = GuiButton(confirmCancelButton, "Cancel");
+        if (modalQuitPressed || modalCancelPressed) {
+            interactionOccurred = true;
+        }
+
+        if (input.menuNavigateLeftPressed || input.menuNavigateRightPressed) {
+            quitDialogFocus_ = quitDialogFocus_ == QuitDialogFocus::Quit
+                ? QuitDialogFocus::Cancel
+                : QuitDialogFocus::Quit;
+            interactionOccurred = true;
+        }
+
+        if (input.menuSelectPressed) {
+            interactionOccurred = true;
+            if (quitDialogFocus_ == QuitDialogFocus::Quit) {
+                modalQuitPressed = true;
+            } else {
+                modalCancelPressed = true;
+            }
+        }
+
+        DrawFocus(confirmQuitButton, quitDialogFocus_ == QuitDialogFocus::Quit);
+        DrawFocus(confirmCancelButton, quitDialogFocus_ == QuitDialogFocus::Cancel);
+
+        if (modalQuitPressed) {
+            confirmQuitPressed = true;
+            quitConfirmationOpen_ = false;
+        } else if (modalCancelPressed) {
+            quitConfirmationOpen_ = false;
+        }
+    }
 
     GuiSetStyle(DEFAULT, TEXT_SIZE, previousTextSize);
 
     return MenuScreenResult{
         .startGameRequested = startPressed,
-        .quitRequested = quitPressed,
+        .quitRequested = confirmQuitPressed,
         .interactionOccurred = interactionOccurred,
         .menuSettings =
             MenuSettings{

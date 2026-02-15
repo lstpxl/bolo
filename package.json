@@ -4,6 +4,9 @@
   "description": "BOLO build and deploy scripts",
   "private": true,
   "scripts": {
+    "build:macos": "cmake --preset macos-debug && cmake --build --preset macos-debug",
+    "run:macos": "./build/macos-debug/bolo",
+    "build-and-run:macos": "npm run build:macos && ./build/macos-debug/bolo",
     "build:rg353v:final": "cmake --preset rg353v-final --fresh && cmake --build --preset rg353v-final",
     "build:rg353v:debug": "cmake --preset rg353v-debug --fresh && cmake --build --preset rg353v-debug",
     "deploy:rg353v:final": "bash scripts/deploy-rg353v.sh final",

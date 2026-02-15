@@ -28,7 +28,14 @@ public:
         const FrameInput& input);
 
 private:
+    enum class QuitDialogFocus {
+        Quit = 0,
+        Cancel = 1,
+    };
+
     int selectedDifficulty_ = static_cast<int>(DifficultyLevel::Normal);
     int mazeDensityPercent_ = 45;
     FocusedControl focusedControl_ = FocusedControl::Easy;
+    bool quitConfirmationOpen_ = false;
+    QuitDialogFocus quitDialogFocus_ = QuitDialogFocus::Cancel;
 };
