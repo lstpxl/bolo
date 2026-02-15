@@ -6,6 +6,7 @@ FrameInput PollFrameInput() {
     constexpr float axisDeadzone = 0.2F;
     float moveX = 0.0F;
     float moveY = 0.0F;
+    float turnInput = 0.0F;
 
     if (IsGamepadAvailable(0)) {
         const float axisX = GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_X);
@@ -18,10 +19,10 @@ FrameInput PollFrameInput() {
         }
 
         if (IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_LEFT)) {
-            moveX -= 1.0F;
+            turnInput -= 1.0F;
         }
         if (IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_RIGHT)) {
-            moveX += 1.0F;
+            turnInput += 1.0F;
         }
         if (IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_UP)) {
             moveY -= 1.0F;
@@ -30,10 +31,10 @@ FrameInput PollFrameInput() {
             moveY += 1.0F;
         }
     } else {
-        if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) {
+        if (IsKeyDown(KEY_A)) {
             moveX -= 1.0F;
         }
-        if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) {
+        if (IsKeyDown(KEY_D)) {
             moveX += 1.0F;
         }
         if (IsKeyDown(KEY_W) || IsKeyDown(KEY_UP)) {
@@ -41,6 +42,12 @@ FrameInput PollFrameInput() {
         }
         if (IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN)) {
             moveY += 1.0F;
+        }
+        if (IsKeyDown(KEY_LEFT)) {
+            turnInput -= 1.0F;
+        }
+        if (IsKeyDown(KEY_RIGHT)) {
+            turnInput += 1.0F;
         }
     }
 
@@ -55,6 +62,12 @@ FrameInput PollFrameInput() {
     }
     if (moveY < -1.0F) {
         moveY = -1.0F;
+    }
+    if (turnInput > 1.0F) {
+        turnInput = 1.0F;
+    }
+    if (turnInput < -1.0F) {
+        turnInput = -1.0F;
     }
 
     const bool gamepadStartPressed = IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_RIGHT) ||
@@ -71,6 +84,7 @@ FrameInput PollFrameInput() {
     return FrameInput{
         .moveX = moveX,
         .moveY = moveY,
+        .turnInput = turnInput,
         .shootPressed = IsKeyPressed(KEY_SPACE) || gamepadSouthPressed,
         .startPressed = IsKeyPressed(KEY_ENTER) || gamepadStartPressed,
         .quitRequested = IsKeyPressed(KEY_ESCAPE) || gamepadQuitComboPressed,

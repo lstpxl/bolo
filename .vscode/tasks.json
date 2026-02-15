@@ -2,6 +2,12 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "BOLO: Run macOS",
+      "type": "shell",
+      "command": "npm run run:macos",
+      "problemMatcher": []
+    },
+    {
       "label": "BOLO: Build RG353V Final",
       "type": "shell",
       "command": "npm run build:rg353v:final",
