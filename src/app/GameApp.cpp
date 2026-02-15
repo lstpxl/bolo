@@ -13,6 +13,12 @@ int GameApp::Run() {
     InitWindow(config_.screenWidth, config_.screenHeight, config_.windowTitle.data());
     SetTargetFPS(config_.targetFps);
     ConfigureRayguiDefaultStyle();
+    InitAudioDevice();
+    audioReady_ = IsAudioDeviceReady();
+    if (audioReady_) {
+        menuClickSound_ = LoadSound("resources/audio/keyboard-click.wav");
+        menuClickSoundLoaded_ = menuClickSound_.frameCount > 0;
+    }
 
     while (!WindowShouldClose()) {
         const FrameInput input = PollFrameInput();
@@ -32,6 +38,12 @@ int GameApp::Run() {
         Render();
     }
 
+    if (menuClickSoundLoaded_) {
+        UnloadSound(menuClickSound_);
+    }
+    if (audioReady_) {
+        CloseAudioDevice();
+    }
     CloseWindow();
     return 0;
 }
@@ -56,8 +68,13 @@ void GameApp::Render() {
     ClearBackground(BLACK);
 
     if (modeController_.Mode() == GameMode::Menu) {
+        const DifficultyLevel previousDifficulty = state_.menuSettings.difficulty;
         const MenuScreenResult result = menuScreen_.Render(state_.menuSettings, config_);
         state_.menuSettings = result.menuSettings;
+        if (menuClickSoundLoaded_ &&
+            (result.startGameRequested || state_.menuSettings.difficulty != previousDifficulty)) {
+            PlaySound(menuClickSound_);
+        }
         if (result.startGameRequested) {
             modeController_.StartGame(state_, state_.menuSettings);
         }

@@ -37,8 +37,10 @@ MenuScreenResult MenuScreen::Render(const MenuSettings& currentSettings, const A
     bool easyActive = selectedDifficulty_ == static_cast<int>(DifficultyLevel::Easy);
     bool normalActive = selectedDifficulty_ == static_cast<int>(DifficultyLevel::Normal);
     bool hardActive = selectedDifficulty_ == static_cast<int>(DifficultyLevel::Hard);
+    const bool wasEasyActive = easyActive;
+    const bool wasNormalActive = normalActive;
+    const bool wasHardActive = hardActive;
 
-   
     GuiToggle(
         Rectangle{panel.x + 24.0F, panel.y + 108.0F, 180.0F, 30.0F},
         "Easy",
@@ -51,13 +53,12 @@ MenuScreenResult MenuScreen::Render(const MenuSettings& currentSettings, const A
         Rectangle{panel.x + 24.0F, panel.y + 184.0F, 180.0F, 30.0F},
         "Hard",
         &hardActive);
-    
 
-    if (easyActive) {
+    if (!wasEasyActive && easyActive) {
         selectedDifficulty_ = static_cast<int>(DifficultyLevel::Easy);
-    } else if (normalActive) {
+    } else if (!wasNormalActive && normalActive) {
         selectedDifficulty_ = static_cast<int>(DifficultyLevel::Normal);
-    } else if (hardActive) {
+    } else if (!wasHardActive && hardActive) {
         selectedDifficulty_ = static_cast<int>(DifficultyLevel::Hard);
     }
 

@@ -6,6 +6,7 @@
 #include "game/GameState.h"
 #include "platform/Input.h"
 #include "platform/Renderer2D.h"
+#include "raylib.h"
 #include "ui/HudPanel.h"
 #include "ui/MenuScreen.h"
 
@@ -25,4 +26,7 @@ private:
     MenuScreen menuScreen_{};
     HudPanel hudPanel_{};
     Renderer2D renderer_{};
+    Sound menuClickSound_{};
+    bool audioReady_ = false;
+    bool menuClickSoundLoaded_ = false;
 };
