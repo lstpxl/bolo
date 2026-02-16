@@ -1,5 +1,6 @@
 #include "platform/Renderer2D.h"
 
+#include <algorithm>
 #include <cstddef>
 #include <cmath>
 #include "platform/PlayerFigure.h"
@@ -16,6 +17,26 @@ Vector2 SnapWorldToPixelGrid(const Vec2f& worldPosition) {
         std::round(worldPosition.x * pixelsPerUnit) / pixelsPerUnit,
         std::round(worldPosition.y * pixelsPerUnit) / pixelsPerUnit,
     };
+}
+
+int RoundToInt(float value) {
+    return static_cast<int>(std::round(value));
+}
+
+void DrawHorizontalWallPixels(Vector2 a, Vector2 b, int thicknessPixels, Color color) {
+    const int x1 = RoundToInt(std::min(a.x, b.x));
+    const int x2 = RoundToInt(std::max(a.x, b.x));
+    const int y = RoundToInt(a.y) - (thicknessPixels / 2);
+    const int width = std::max(1, x2 - x1);
+    DrawRectangle(x1, y, width, thicknessPixels, color);
+}
+
+void DrawVerticalWallPixels(Vector2 a, Vector2 b, int thicknessPixels, Color color) {
+    const int y1 = RoundToInt(std::min(a.y, b.y));
+    const int y2 = RoundToInt(std::max(a.y, b.y));
+    const int x = RoundToInt(a.x) - (thicknessPixels / 2);
+    const int height = std::max(1, y2 - y1);
+    DrawRectangle(x, y1, thicknessPixels, height, color);
 }
 }  // namespace
 
@@ -40,16 +61,34 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) cons
     camera.zoom = static_cast<float>(GameplayConstants::kPixelsPerUnit);
 
     BeginScissorMode(0, 0, worldWidth, config.screenHeight);
-    BeginMode2D(camera);
-
     const float mazeWidthUnits =
         static_cast<float>(state.world.maze.widthCells * state.world.maze.cellSizeUnits);
     const float mazeHeightUnits =
         static_cast<float>(state.world.maze.heightCells * state.world.maze.cellSizeUnits);
-    const float wallThickness = GameplayConstants::kWallThicknessUnits;
+    constexpr int wallThicknessPixels = 2;
 
-    for (int y = 0; y < state.world.maze.heightCells; ++y) {
-        for (int x = 0; x < state.world.maze.widthCells; ++x) {
+    const float halfVisibleWidthUnits = worldViewport.width / (2.0F * camera.zoom);
+    const float halfVisibleHeightUnits = worldViewport.height / (2.0F * camera.zoom);
+    const float visibleLeft = camera.target.x - halfVisibleWidthUnits;
+    const float visibleRight = camera.target.x + halfVisibleWidthUnits;
+    const float visibleTop = camera.target.y - halfVisibleHeightUnits;
+    const float visibleBottom = camera.target.y + halfVisibleHeightUnits;
+
+    const int minCellX = std::max(
+        0,
+        static_cast<int>(std::floor(visibleLeft / static_cast<float>(state.world.maze.cellSizeUnits))) - 1);
+    const int maxCellX = std::min(
+        state.world.maze.widthCells - 1,
+        static_cast<int>(std::ceil(visibleRight / static_cast<float>(state.world.maze.cellSizeUnits))) + 1);
+    const int minCellY = std::max(
+        0,
+        static_cast<int>(std::floor(visibleTop / static_cast<float>(state.world.maze.cellSizeUnits))) - 1);
+    const int maxCellY = std::min(
+        state.world.maze.heightCells - 1,
+        static_cast<int>(std::ceil(visibleBottom / static_cast<float>(state.world.maze.cellSizeUnits))) + 1);
+
+    for (int y = minCellY; y <= maxCellY; ++y) {
+        for (int x = minCellX; x <= maxCellX; ++x) {
             const MazeCell& cell =
                 state.world.maze.cells[static_cast<std::size_t>(y * state.world.maze.widthCells + x)];
             const float left = static_cast<float>(x * state.world.maze.cellSizeUnits);
@@ -57,52 +96,46 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) cons
             const float right = left + static_cast<float>(state.world.maze.cellSizeUnits);
             const float bottom = top + static_cast<float>(state.world.maze.cellSizeUnits);
             if (cell.northWall) {
-                DrawRectangleRec(
-                    Rectangle{
-                        .x = left,
-                        .y = top - (wallThickness * 0.5F),
-                        .width = static_cast<float>(state.world.maze.cellSizeUnits),
-                        .height = wallThickness,
-                    },
+                DrawHorizontalWallPixels(
+                    GetWorldToScreen2D(Vector2{left, top}, camera),
+                    GetWorldToScreen2D(Vector2{right, top}, camera),
+                    wallThicknessPixels,
                     GRAY);
             }
             if (cell.westWall) {
-                DrawRectangleRec(
-                    Rectangle{
-                        .x = left - (wallThickness * 0.5F),
-                        .y = top,
-                        .width = wallThickness,
-                        .height = static_cast<float>(state.world.maze.cellSizeUnits),
-                    },
+                DrawVerticalWallPixels(
+                    GetWorldToScreen2D(Vector2{left, top}, camera),
+                    GetWorldToScreen2D(Vector2{left, bottom}, camera),
+                    wallThicknessPixels,
                     GRAY);
             }
             if (x == state.world.maze.widthCells - 1 && cell.eastWall) {
-                DrawRectangleRec(
-                    Rectangle{
-                        .x = right - (wallThickness * 0.5F),
-                        .y = top,
-                        .width = wallThickness,
-                        .height = static_cast<float>(state.world.maze.cellSizeUnits),
-                    },
+                DrawVerticalWallPixels(
+                    GetWorldToScreen2D(Vector2{right, top}, camera),
+                    GetWorldToScreen2D(Vector2{right, bottom}, camera),
+                    wallThicknessPixels,
                     GRAY);
             }
             if (y == state.world.maze.heightCells - 1 && cell.southWall) {
-                DrawRectangleRec(
-                    Rectangle{
-                        .x = left,
-                        .y = bottom - (wallThickness * 0.5F),
-                        .width = static_cast<float>(state.world.maze.cellSizeUnits),
-                        .height = wallThickness,
-                    },
+                DrawHorizontalWallPixels(
+                    GetWorldToScreen2D(Vector2{left, bottom}, camera),
+                    GetWorldToScreen2D(Vector2{right, bottom}, camera),
+                    wallThicknessPixels,
                     GRAY);
             }
         }
     }
 
-    DrawRectangleLinesEx(
-        Rectangle{.x = 0.0F, .y = 0.0F, .width = mazeWidthUnits, .height = mazeHeightUnits},
-        wallThickness,
-        DARKGRAY);
+    const Vector2 borderTopLeft = GetWorldToScreen2D(Vector2{0.0F, 0.0F}, camera);
+    const Vector2 borderTopRight = GetWorldToScreen2D(Vector2{mazeWidthUnits, 0.0F}, camera);
+    const Vector2 borderBottomLeft = GetWorldToScreen2D(Vector2{0.0F, mazeHeightUnits}, camera);
+    const Vector2 borderBottomRight = GetWorldToScreen2D(Vector2{mazeWidthUnits, mazeHeightUnits}, camera);
+    DrawHorizontalWallPixels(borderTopLeft, borderTopRight, wallThicknessPixels, DARKGRAY);
+    DrawHorizontalWallPixels(borderBottomLeft, borderBottomRight, wallThicknessPixels, DARKGRAY);
+    DrawVerticalWallPixels(borderTopLeft, borderBottomLeft, wallThicknessPixels, DARKGRAY);
+    DrawVerticalWallPixels(borderTopRight, borderBottomRight, wallThicknessPixels, DARKGRAY);
+
+    BeginMode2D(camera);
 
     for (const EnemyBase& base : state.world.enemyBases) {
         const float half = GameplayConstants::kEnemyBaseSizeUnits * 0.5F;

@@ -38,6 +38,7 @@ struct PlayerTank {
     Vec2f velocity;
     float hullHeadingRadians;
     float turretHeadingRadians;
+    float throttleNormalized = 0.0F;
     bool alive = true;
 };
 
@@ -60,6 +61,7 @@ struct WorldState {
         .velocity = Vec2f{.x = 0.0F, .y = 0.0F},
         .hullHeadingRadians = 0.0F,
         .turretHeadingRadians = 0.0F,
+        .throttleNormalized = 0.0F,
         .alive = true,
     };
     std::vector<EnemyTank> enemies{};

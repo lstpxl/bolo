@@ -34,7 +34,7 @@ void HudPanel::Render(const GameState& state, const AppConfig& config) const {
     // 2) SCORE 0000 display
     DrawRectangle(contentX, cursorY, contentWidth, 36, BLACK);
     DrawRectangleLines(contentX, cursorY, contentWidth, 36, RAYWHITE);
-    DrawText("SCORE 0000", contentX + 8, cursorY + 9, 18, RAYWHITE);
+    DrawText("SCORE 0000", contentX + 8, cursorY + 9, 20, RAYWHITE);
     cursorY += 44;
 
     // 3) 4 lives icons
