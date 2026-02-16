@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include "app/BuildInfo.h"
 #include "raygui.h"
 #include "raylib.h"
 
@@ -64,22 +65,45 @@ MenuScreenResult MenuScreen::Render(
         }
     }
 
+    const float panelWidth = std::min(440.0F, static_cast<float>(config.screenWidth) - 24.0F);
     const Rectangle panel = {
-        .x = static_cast<float>(config.screenWidth) * 0.5F - 220.0F,
-        .y = static_cast<float>(config.screenHeight) * 0.5F - 190.0F,
-        .width = 440.0F,
-        .height = 380.0F,
+        .x = (static_cast<float>(config.screenWidth) - panelWidth) * 0.5F,
+        .y = 0.0F,
+        .width = panelWidth,
+        .height = static_cast<float>(config.screenHeight),
     };
     const float panelCenterX = panel.x + panel.width * 0.5F;
+    const float panelInnerPaddingX = 12.0F;
+    const float controlsPaddingX = 24.0F;
+    const float controlsWidth = panel.width - controlsPaddingX * 2.0F;
+    const float gaugeWidth = std::min(320.0F, controlsWidth);
+    const float gaugeX = panelCenterX - gaugeWidth * 0.5F;
+    const float buttonsX = panelCenterX - controlsWidth * 0.5F;
+
+    const float titleY = panel.y + 20.0F;
+    const float subtitleY = titleY + 46.0F;
+    const float levelLabelY = subtitleY + 44.0F;
+    const float levelGaugeY = levelLabelY + 28.0F;
+    const float densityLabelY = levelGaugeY + 52.0F;
+    const float densityGaugeY = densityLabelY + 28.0F;
+    const float buildTextY = panel.y + panel.height - 20.0F;
+    const float quitButtonY = buildTextY - 38.0F - 100.0F;
+    const float startButtonY = quitButtonY - 40.0F;
 
     DrawRectangleRounded(panel, 0.15F, 8, Color{38, 45, 58, 240});
     const int titleFontSize = 40;
     DrawText(
         "BOLO",
         static_cast<int>(panelCenterX) - MeasureText("BOLO", titleFontSize) / 2,
-        static_cast<int>(panel.y) + 20,
+        static_cast<int>(titleY),
         titleFontSize,
         RAYWHITE);
+    DrawText(
+        TextFormat("Build #%d", CurrentBuildNumber()),
+        static_cast<int>(panel.x + panelInnerPaddingX),
+        static_cast<int>(buildTextY),
+        10,
+        GRAY);
 
     const int previousTextSize = GuiGetStyle(DEFAULT, TEXT_SIZE);
     GuiSetStyle(DEFAULT, TEXT_SIZE, 20);
@@ -88,20 +112,20 @@ MenuScreenResult MenuScreen::Render(
     DrawText(
         subtitle,
         static_cast<int>(panelCenterX) - MeasureText(subtitle, 20) / 2,
-        static_cast<int>(panel.y) + 66,
+        static_cast<int>(subtitleY),
         20,
         LIGHTGRAY);
 
-    const Rectangle levelGauge = Rectangle{panelCenterX - 160.0F, panel.y + 138.0F, 320.0F, 28.0F};
-    const Rectangle densityGauge = Rectangle{panelCenterX - 160.0F, panel.y + 228.0F, 320.0F, 28.0F};
-    const Rectangle startButton = Rectangle{panelCenterX - 195.0F, panel.y + 292.0F, 390.0F, 30.0F};
-    const Rectangle quitButton = Rectangle{panelCenterX - 195.0F, panel.y + 338.0F, 390.0F, 30.0F};
+    const Rectangle levelGauge = Rectangle{gaugeX, levelGaugeY, gaugeWidth, 28.0F};
+    const Rectangle densityGauge = Rectangle{gaugeX, densityGaugeY, gaugeWidth, 28.0F};
+    const Rectangle startButton = Rectangle{buttonsX, startButtonY, controlsWidth, 30.0F};
+    const Rectangle quitButton = Rectangle{buttonsX, quitButtonY, controlsWidth, 30.0F};
 
     float levelValue = static_cast<float>(levelNumber_);
     DrawText(
         "Level",
         static_cast<int>(panelCenterX) - MeasureText("Level", 20) / 2,
-        static_cast<int>(panel.y) + 110,
+        static_cast<int>(levelLabelY),
         20,
         LIGHTGRAY);
     if (!quitConfirmationOpen_ && focusedControl_ == FocusedControl::Level) {
@@ -131,7 +155,7 @@ MenuScreenResult MenuScreen::Render(
     DrawText(
         "Density",
         static_cast<int>(panelCenterX) - MeasureText("Density", 20) / 2,
-        static_cast<int>(panel.y) + 200,
+        static_cast<int>(densityLabelY),
         20,
         LIGHTGRAY);
     if (!quitConfirmationOpen_ && focusedControl_ == FocusedControl::Density) {

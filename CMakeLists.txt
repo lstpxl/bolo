@@ -49,10 +49,25 @@ endif()
 
 add_subdirectory(raylib)
 
+set(BOLO_GENERATED_DIR "${CMAKE_BINARY_DIR}/generated")
+set(BOLO_BUILD_NUMBER_FILE "${CMAKE_BINARY_DIR}/build_number.txt")
+set(BOLO_BUILD_NUMBER_HEADER "${BOLO_GENERATED_DIR}/BuildNumber.h")
+
+add_custom_target(
+    bolo_build_number ALL
+    COMMAND ${CMAKE_COMMAND}
+        -DBUILD_NUMBER_FILE=${BOLO_BUILD_NUMBER_FILE}
+        -DOUTPUT_HEADER=${BOLO_BUILD_NUMBER_HEADER}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/GenerateBuildNumber.cmake
+    BYPRODUCTS ${BOLO_BUILD_NUMBER_HEADER} ${BOLO_BUILD_NUMBER_FILE}
+    COMMENT "Generating auto-incremented build number"
+)
+
 add_executable(
     bolo
     src/app/main.cpp
     src/app/AppConfig.cpp
+    src/app/BuildInfo.cpp
     src/app/GameApp.cpp
     src/core/Random.cpp
     src/core/Time.cpp
@@ -75,8 +90,11 @@ target_include_directories(
     bolo
     PRIVATE
     src
+    ${BOLO_GENERATED_DIR}
     third_party/raygui/src
 )
+
+add_dependencies(bolo bolo_build_number)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
     target_compile_options(bolo PRIVATE -Wall -Wextra -Wpedantic)
