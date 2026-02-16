@@ -50,7 +50,7 @@ endif()
 add_subdirectory(raylib)
 
 set(BOLO_GENERATED_DIR "${CMAKE_BINARY_DIR}/generated")
-set(BOLO_BUILD_NUMBER_FILE "${CMAKE_BINARY_DIR}/build_number.txt")
+set(BOLO_BUILD_NUMBER_FILE "${CMAKE_SOURCE_DIR}/build/build_number.txt")
 set(BOLO_BUILD_NUMBER_HEADER "${BOLO_GENERATED_DIR}/BuildNumber.h")
 
 add_custom_target(

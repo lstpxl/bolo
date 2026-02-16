@@ -1,4 +1,5 @@
-/build/
+/build/**
+!/build/build_number.txt
 /sysroot/
 .DS_Store
 /build-arm/

@@ -14,6 +14,8 @@ endif()
 math(EXPR next_build_number "${current_build_number} + 1")
 
 get_filename_component(output_header_dir "${OUTPUT_HEADER}" DIRECTORY)
+get_filename_component(build_number_file_dir "${BUILD_NUMBER_FILE}" DIRECTORY)
+file(MAKE_DIRECTORY "${build_number_file_dir}")
 file(MAKE_DIRECTORY "${output_header_dir}")
 file(WRITE "${BUILD_NUMBER_FILE}" "${next_build_number}\n")
 file(WRITE "${OUTPUT_HEADER}" "#pragma once\n#define BOLO_BUILD_NUMBER ${next_build_number}\n")
