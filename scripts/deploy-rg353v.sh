@@ -9,7 +9,7 @@ if [[ -f ".env" ]]; then
 fi
 
 if [[ $# -lt 1 ]]; then
-  echo "Usage: bash scripts/deploy-rg353v.sh <final|debug> [device_ip]"
+  echo "Usage: bash scripts/deploy-rg353v.sh <release|debug> [device_ip]"
   exit 1
 fi
 
@@ -25,10 +25,10 @@ if [[ -z "${DEVICE_IP}" ]]; then
 fi
 
 case "${BUILD_FLAVOR}" in
-  final|debug)
+  release|debug)
     ;;
   *)
-    echo "Invalid build flavor: ${BUILD_FLAVOR}. Use final or debug."
+    echo "Invalid build flavor: ${BUILD_FLAVOR}. Use release or debug."
     exit 1
     ;;
 esac

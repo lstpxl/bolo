@@ -35,29 +35,29 @@ Binary:
 ./build/rg353v-debug/bolo
 ```
 
-## RG353V Final (handheld)
+## RG353V Release (handheld)
 
 ```bash
-cmake --preset rg353v-final --fresh
-cmake --build --preset rg353v-final
+cmake --preset rg353v-release --fresh
+cmake --build --preset rg353v-release
 ```
 
 Binary:
 
 ```bash
-./build/rg353v-final/bolo
+./build/rg353v-release/bolo
 ```
 
-Deploy final build to device:
+Deploy release build to device:
 
 ```bash
 # direct deploy script:
-bash scripts/deploy-rg353v.sh final <device-ip>
+bash scripts/deploy-rg353v.sh release <device-ip>
 
 # or npm script workflow:
 cp .env.example .env
 # edit .env once with RG353V_DEVICE_IP
-npm run ship:rg353v:final
+npm run build-and-deploy:rg353v:release
 ```
 
 ## If configure fails due to missing tools, install prerequisites

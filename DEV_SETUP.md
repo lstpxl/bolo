@@ -103,23 +103,23 @@ cmake --preset rg353v-debug --fresh
 cmake --build --preset rg353v-debug
 ```
 
-Final:
+Release:
 
 ```bash
-cmake --preset rg353v-final --fresh
-cmake --build --preset rg353v-final
+cmake --preset rg353v-release --fresh
+cmake --build --preset rg353v-release
 ```
 
 Output:
 
 ```bash
-./build/rg353v-final/bolo
+./build/rg353v-release/bolo
 ```
 
 ## 6) Deploy to RG353V
 
 ```bash
-scp ./build/rg353v-final/bolo ark@<device-ip>:/roms2/ports/bolo/
+scp ./build/rg353v-release/bolo ark@<device-ip>:/roms2/ports/bolo/
 ```
 
 Suggested launcher `/roms2/ports/bolo.sh`:

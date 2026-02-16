@@ -45,17 +45,17 @@ Binary:
 ./build/rg353v-debug/bolo
 ```
 
-### 4) `rg353v-final`
+### 4) `rg353v-release`
 
 ```bash
-cmake --preset rg353v-final --fresh
-cmake --build --preset rg353v-final
+cmake --preset rg353v-release --fresh
+cmake --build --preset rg353v-release
 ```
 
 Binary:
 
 ```bash
-./build/rg353v-final/bolo
+./build/rg353v-release/bolo
 ```
 
 ## One-time RG353V sysroot setup
@@ -88,7 +88,7 @@ source ~/.zshrc
 ## Deploy to device
 
 ```bash
-bash scripts/deploy-rg353v.sh final <device-ip>
+bash scripts/deploy-rg353v.sh release <device-ip>
 ```
 
 Or with npm scripts (VS Code friendly):
@@ -98,8 +98,8 @@ Or with npm scripts (VS Code friendly):
 cp .env.example .env
 # then edit .env with your device IP/user/path
 
-# build + deploy final:
-npm run ship:rg353v:final
+# build + deploy release:
+npm run build-and-deploy:rg353v:release
 ```
 
 Example launcher (`/roms2/ports/bolo.sh`):

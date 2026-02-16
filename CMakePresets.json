@@ -43,10 +43,10 @@
       }
     },
     {
-      "name": "rg353v-final",
-      "displayName": "RG353V Final (SDL)",
+      "name": "rg353v-release",
+      "displayName": "RG353V Release (SDL)",
       "generator": "Unix Makefiles",
-      "binaryDir": "${sourceDir}/build/rg353v-final",
+      "binaryDir": "${sourceDir}/build/rg353v-release",
       "toolchainFile": "${sourceDir}/toolchain-aarch64.cmake",
       "environment": {
         "RG353V_SYSROOT": "${sourceDir}/sysroot"
@@ -73,8 +73,8 @@
       "configurePreset": "rg353v-debug"
     },
     {
-      "name": "rg353v-final",
-      "configurePreset": "rg353v-final"
+      "name": "rg353v-release",
+      "configurePreset": "rg353v-release"
     }
   ]
 }

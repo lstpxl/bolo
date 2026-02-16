@@ -23,7 +23,7 @@ if(TARGET_RG353V)
             "CMAKE_SYSROOT is not set for RG353V cross-build.\n"
             "Recommended permanent setup:\n"
             "  export RG353V_SYSROOT=/absolute/path/to/sysroot/rg353v\n"
-            "  cmake --preset rg353v-final")
+            "  cmake --preset rg353v-release")
     endif()
 
     if(NOT EXISTS "${CMAKE_SYSROOT}/usr/include/SDL2/SDL.h")

@@ -8,9 +8,9 @@
       "problemMatcher": []
     },
     {
-      "label": "BOLO: Build RG353V Final",
+      "label": "BOLO: Build RG353V Release",
       "type": "shell",
-      "command": "npm run build:rg353v:final",
+      "command": "npm run build:rg353v:release",
       "group": "build",
       "problemMatcher": []
     },
@@ -22,9 +22,9 @@
       "problemMatcher": []
     },
     {
-      "label": "BOLO: Deploy RG353V Final",
+      "label": "BOLO: Deploy RG353V Release",
       "type": "shell",
-      "command": "RG353V_DEVICE_IP=${input:rg353vDeviceIp} npm run deploy:rg353v:final",
+      "command": "RG353V_DEVICE_IP=${input:rg353vDeviceIp} npm run deploy:rg353v:release",
       "problemMatcher": []
     },
     {
@@ -34,9 +34,9 @@
       "problemMatcher": []
     },
     {
-      "label": "BOLO: Ship RG353V Final",
+      "label": "BOLO: Build and Deploy RG353V Release",
       "type": "shell",
-      "command": "RG353V_DEVICE_IP=${input:rg353vDeviceIp} npm run ship:rg353v:final",
+      "command": "RG353V_DEVICE_IP=${input:rg353vDeviceIp} npm run build-and-deploy:rg353v:release",
       "group": {
         "kind": "build",
         "isDefault": true
@@ -44,9 +44,9 @@
       "problemMatcher": []
     },
     {
-      "label": "BOLO: Ship RG353V Debug",
+      "label": "BOLO: Build and Deploy RG353V Debug",
       "type": "shell",
-      "command": "RG353V_DEVICE_IP=${input:rg353vDeviceIp} npm run ship:rg353v:debug",
+      "command": "RG353V_DEVICE_IP=${input:rg353vDeviceIp} npm run build-and-deploy:rg353v:debug",
       "problemMatcher": []
     }
   ],
