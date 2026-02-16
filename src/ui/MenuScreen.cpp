@@ -1,6 +1,7 @@
 #include "ui/MenuScreen.h"
 
 #include <algorithm>
+#include <cmath>
 #include "raygui.h"
 #include "raylib.h"
 
@@ -37,6 +38,10 @@ void DrawFocus(const Rectangle& bounds, bool isFocused) {
         },
         3.0F,
         Color{255, 209, 102, 255});
+}
+
+int RoundToNearestInt(float value) {
+    return static_cast<int>(std::round(value));
 }
 }  // namespace
 
@@ -117,7 +122,7 @@ MenuScreenResult MenuScreen::Render(
         &levelValue,
         static_cast<float>(kMinLevelNumber),
         static_cast<float>(kMaxLevelNumber));
-    levelNumber_ = static_cast<int>(levelValue);
+    levelNumber_ = RoundToNearestInt(levelValue);
     if (levelNumber_ != previousLevelNumber) {
         interactionOccurred = true;
     }
@@ -147,7 +152,7 @@ MenuScreenResult MenuScreen::Render(
         &densityValue,
         static_cast<float>(kMinMazeDensity),
         static_cast<float>(kMaxMazeDensity));
-    mazeDensity_ = static_cast<int>(densityValue);
+    mazeDensity_ = RoundToNearestInt(densityValue);
     if (mazeDensity_ != previousDensity) {
         interactionOccurred = true;
     }
