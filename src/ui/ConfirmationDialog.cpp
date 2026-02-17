@@ -23,10 +23,11 @@ void DrawFocus(const Rectangle& bounds, bool isFocused) {
 
 void ConfirmationDialog::Open(Focus initialFocus) {
     focus_ = initialFocus;
+    suppressInputPressOnce_ = true;
 }
 
 ConfirmationDialogResult ConfirmationDialog::Render(
-    const ConfirmationDialogSpec& spec,
+    const Spec& spec,
     const FrameInput& input) {
     const Rectangle confirmButton = {
         .x = spec.bounds.x + 24.0F,
@@ -62,7 +63,7 @@ ConfirmationDialogResult ConfirmationDialog::Render(
         result.interactionOccurred = true;
     }
 
-    if (input.menuSelectPressed) {
+    if (input.menuSelectPressed && !suppressInputPressOnce_) {
         result.interactionOccurred = true;
         if (focus_ == Focus::Confirm) {
             confirmPressed = true;
@@ -70,6 +71,12 @@ ConfirmationDialogResult ConfirmationDialog::Render(
             cancelPressed = true;
         }
     }
+
+    if (IsKeyPressed(KEY_ESCAPE) && !suppressInputPressOnce_) {
+        cancelPressed = true;
+        result.interactionOccurred = true;
+    }
+    suppressInputPressOnce_ = false;
 
     DrawFocus(confirmButton, focus_ == Focus::Confirm);
     DrawFocus(cancelButton, focus_ == Focus::Cancel);

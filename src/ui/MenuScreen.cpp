@@ -227,7 +227,7 @@ MenuScreenResult MenuScreen::Render(
             .height = 150.0F,
         };
         const ConfirmationDialogResult modalResult = quitConfirmationDialog_.Render(
-            ConfirmationDialogSpec{
+            ConfirmationDialog::Spec{
                 .bounds = dialog,
                 .message = "Are you sure want to quit",
                 .confirmButtonLabel = "Quit",

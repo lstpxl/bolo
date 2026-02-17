@@ -108,7 +108,7 @@ int GameApp::Run() {
 void GameApp::UpdatePlaying(const FrameInput& input, float deltaSeconds) {
     if (input.gameplayPausePressed && !gameplayPauseDialogOpen_) {
         gameplayPauseDialogOpen_ = true;
-        gameplayPauseDialog_.Open(ConfirmationDialog::Focus::Confirm);
+        gameplayPauseDialog_.Open(ConfirmationDialog::Focus::Cancel);
         return;
     }
 
@@ -141,11 +141,11 @@ void GameApp::RenderGameplayPauseDialog(const FrameInput& input) {
     };
 
     const ConfirmationDialogResult dialogResult = gameplayPauseDialog_.Render(
-        ConfirmationDialogSpec{
+        ConfirmationDialog::Spec{
             .bounds = dialog,
             .message = "Paused",
-            .confirmButtonLabel = "Resume",
-            .cancelButtonLabel = "Quit to menu",
+            .confirmButtonLabel = "Quit to menu",
+            .cancelButtonLabel = "Resume",
         },
         input);
 
@@ -153,9 +153,9 @@ void GameApp::RenderGameplayPauseDialog(const FrameInput& input) {
         PlaySound(menuClickSound_);
     }
 
-    if (dialogResult.confirmPressed) {
+    if (dialogResult.cancelPressed) {
         gameplayPauseDialogOpen_ = false;
-    } else if (dialogResult.cancelPressed) {
+    } else if (dialogResult.confirmPressed) {
         gameplayPauseDialogOpen_ = false;
         modeController_.RequestMenu();
     }
