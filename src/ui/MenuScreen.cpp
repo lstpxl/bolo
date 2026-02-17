@@ -66,15 +66,16 @@ MenuScreenResult MenuScreen::Render(
     }
 
     const float panelWidth = std::min(440.0F, static_cast<float>(config.screenWidth) - 24.0F);
+    const float panelHeight = static_cast<float>(config.screenHeight) - 24.0F;
     const Rectangle panel = {
         .x = (static_cast<float>(config.screenWidth) - panelWidth) * 0.5F,
-        .y = 0.0F,
+        .y = (static_cast<float>(config.screenHeight) - panelHeight) * 0.5F,
         .width = panelWidth,
-        .height = static_cast<float>(config.screenHeight),
+        .height = panelHeight,
     };
     const float panelCenterX = panel.x + panel.width * 0.5F;
-    const float panelInnerPaddingX = 12.0F;
-    const float controlsPaddingX = 24.0F;
+    const float panelInnerPaddingX = 24.0F;
+    const float controlsPaddingX = panelInnerPaddingX;
     const float controlsWidth = panel.width - controlsPaddingX * 2.0F;
     const float gaugeWidth = std::min(320.0F, controlsWidth);
     const float gaugeX = panelCenterX - gaugeWidth * 0.5F;
@@ -87,10 +88,10 @@ MenuScreenResult MenuScreen::Render(
     const float densityLabelY = levelGaugeY + 52.0F;
     const float densityGaugeY = densityLabelY + 28.0F;
     const float buildTextY = panel.y + panel.height - 20.0F;
-    const float quitButtonY = buildTextY - 38.0F - 100.0F;
-    const float startButtonY = quitButtonY - 40.0F;
+    const float quitButtonY = buildTextY - 38.0F - 60.0F;
+    const float startButtonY = quitButtonY - 60.0F;
 
-    DrawRectangleRounded(panel, 0.15F, 8, Color{38, 45, 58, 240});
+    DrawRectangleRounded(panel, 0.05F, 8, Color{38, 45, 58, 240});
     const int titleFontSize = 40;
     DrawText(
         "BOLO",
@@ -100,7 +101,7 @@ MenuScreenResult MenuScreen::Render(
         RAYWHITE);
     DrawText(
         TextFormat("Build #%d", CurrentBuildNumber()),
-        static_cast<int>(panel.x + panelInnerPaddingX),
+        static_cast<int>(panel.x + controlsPaddingX),
         static_cast<int>(buildTextY),
         10,
         GRAY);
