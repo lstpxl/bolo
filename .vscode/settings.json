@@ -1,4 +1,25 @@
 {
+  "cmake.useCMakePresets": "always",
+  "cmake.defaultConfigurePreset": "macos-debug",
+  "cmake.defaultBuildPreset": "macos-debug",
+  "cmake.configureOnOpen": true,
+  "cmake.configureSettings": {
+    "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+  },
+  "cmake.buildDirectory": "${workspaceFolder}/build/${presetName}",
+  "C_Cpp.default.compileCommands": "${workspaceFolder}/build/macos-debug/compile_commands.json",
+  "C_Cpp.default.includePath": [
+    "${workspaceFolder}/src",
+    "${workspaceFolder}/third_party/raygui/src",
+    "${workspaceFolder}/raylib/src"
+  ],
+  "C_Cpp.default.compilerPath": "/usr/bin/c++",
+  "C_Cpp.default.cppStandard": "c++20",
+  "C_Cpp.default.intelliSenseMode": "macos-clang-arm64",
+  "C_Cpp.errorSquiggles": "enabled",
+  "clangd.arguments": [
+    "--compile-commands-dir=${workspaceFolder}/build/macos-debug"
+  ],
   "npm.enableScriptExplorer": true,
   "npm.scriptRunner": "npm"
 }
