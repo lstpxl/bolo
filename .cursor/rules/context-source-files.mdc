@@ -1,0 +1,24 @@
+---
+description: Check canonical project docs before gameplay/menu changes
+alwaysApply: true
+---
+
+# Canonical Context Files
+
+Before changing gameplay, controls, maze generation, rendering, or menu behavior, read these files first:
+
+- `docs/GAME_DESIGN.md` (canonical game design and mechanics)
+- `docs/ARCHITECTURE.md` (high-level project architecture)
+- `README.md` (build, run, deploy commands and environment assumptions)
+
+When behavior in code and docs differs:
+
+- Treat code as source of runtime truth.
+- Update `docs/GAME_DESIGN.md` in the same task so docs stay current.
+
+For menu-specific work, also check:
+
+- `src/ui/MenuScreen.h`
+- `src/ui/MenuScreen.cpp`
+- `src/ui/ConfirmationDialog.h`
+- `src/ui/ConfirmationDialog.cpp`
