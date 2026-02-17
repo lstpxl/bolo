@@ -1,0 +1,11 @@
+---
+description: Use multiples of 10 for raylib text sizes
+alwaysApply: true
+---
+
+# Raylib Text Size Rule
+
+- For raylib text rendering, use font sizes that are multiples of 10.
+- Allowed examples: `10`, `20`, `30`, `40`.
+- Do not introduce sizes like `12`, `14`, `16`, `18`, `22`, etc.
+- Apply this to direct calls like `DrawText(...)` and related text-size settings used for on-screen text.
