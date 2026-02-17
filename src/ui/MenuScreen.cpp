@@ -207,7 +207,7 @@ MenuScreenResult MenuScreen::Render(
 
     if (quitPressed) {
         quitConfirmationOpen_ = true;
-        quitDialogFocus_ = QuitDialogFocus::Cancel;
+        quitConfirmationDialog_.Open(ConfirmationDialog::Focus::Cancel);
         interactionOccurred = true;
     }
 
@@ -226,56 +226,22 @@ MenuScreenResult MenuScreen::Render(
             .width = panel.width - 80.0F,
             .height = 150.0F,
         };
-        const Rectangle confirmQuitButton = {
-            .x = dialog.x + 24.0F,
-            .y = dialog.y + 98.0F,
-            .width = 132.0F,
-            .height = 30.0F,
-        };
-        const Rectangle confirmCancelButton = {
-            .x = dialog.x + dialog.width - 24.0F - 132.0F,
-            .y = dialog.y + 98.0F,
-            .width = 132.0F,
-            .height = 30.0F,
-        };
-
-        DrawRectangleRounded(dialog, 0.12F, 8, Color{26, 31, 40, 248});
-        DrawText(
-            "Are you sure want to quit",
-            static_cast<int>(dialog.x) + 20,
-            static_cast<int>(dialog.y) + 24,
-            20,
-            RAYWHITE);
-
-        bool modalQuitPressed = GuiButton(confirmQuitButton, "Quit");
-        bool modalCancelPressed = GuiButton(confirmCancelButton, "Cancel");
-        if (modalQuitPressed || modalCancelPressed) {
+        const ConfirmationDialogResult modalResult = quitConfirmationDialog_.Render(
+            ConfirmationDialogSpec{
+                .bounds = dialog,
+                .message = "Are you sure want to quit",
+                .confirmButtonLabel = "Quit",
+                .cancelButtonLabel = "Cancel",
+            },
+            input);
+        if (modalResult.interactionOccurred) {
             interactionOccurred = true;
         }
 
-        if (input.menuNavigateLeftPressed || input.menuNavigateRightPressed) {
-            quitDialogFocus_ = quitDialogFocus_ == QuitDialogFocus::Quit
-                ? QuitDialogFocus::Cancel
-                : QuitDialogFocus::Quit;
-            interactionOccurred = true;
-        }
-
-        if (input.menuSelectPressed) {
-            interactionOccurred = true;
-            if (quitDialogFocus_ == QuitDialogFocus::Quit) {
-                modalQuitPressed = true;
-            } else {
-                modalCancelPressed = true;
-            }
-        }
-
-        DrawFocus(confirmQuitButton, quitDialogFocus_ == QuitDialogFocus::Quit);
-        DrawFocus(confirmCancelButton, quitDialogFocus_ == QuitDialogFocus::Cancel);
-
-        if (modalQuitPressed) {
+        if (modalResult.confirmPressed) {
             confirmQuitPressed = true;
             quitConfirmationOpen_ = false;
-        } else if (modalCancelPressed) {
+        } else if (modalResult.cancelPressed) {
             quitConfirmationOpen_ = false;
         }
     }

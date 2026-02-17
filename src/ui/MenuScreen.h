@@ -3,6 +3,7 @@
 #include "app/AppConfig.h"
 #include "core/Types.h"
 #include "platform/Input.h"
+#include "ui/ConfirmationDialog.h"
 
 struct MenuScreenResult {
     bool startGameRequested;
@@ -26,14 +27,9 @@ public:
         const FrameInput& input);
 
 private:
-    enum class QuitDialogFocus {
-        Quit = 0,
-        Cancel = 1,
-    };
-
     int levelNumber_ = 1;
     int mazeDensity_ = 3;
     FocusedControl focusedControl_ = FocusedControl::Level;
     bool quitConfirmationOpen_ = false;
-    QuitDialogFocus quitDialogFocus_ = QuitDialogFocus::Cancel;
+    ConfirmationDialog quitConfirmationDialog_{};
 };

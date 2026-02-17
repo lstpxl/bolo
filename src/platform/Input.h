@@ -12,6 +12,7 @@ struct FrameInput {
     bool reverseButtonReleased = false;
     bool shootPressed = false;
     bool startPressed = false;
+    bool gameplayPausePressed = false;
     bool quitRequested = false;
     bool menuNavigateUpPressed = false;
     bool menuNavigateDownPressed = false;

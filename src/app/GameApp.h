@@ -8,6 +8,7 @@
 #include "platform/Renderer2D.h"
 #include "raylib.h"
 #include "ui/HudPanel.h"
+#include "ui/ConfirmationDialog.h"
 #include "ui/MenuScreen.h"
 
 class GameApp {
@@ -16,6 +17,7 @@ public:
 
 private:
     void UpdatePlaying(const FrameInput& input, float deltaSeconds);
+    void RenderGameplayPauseDialog(const FrameInput& input);
     void Render(const FrameInput& input);
 
     AppConfig config_ = MakeDefaultAppConfig();
@@ -29,4 +31,6 @@ private:
     bool audioReady_ = false;
     bool menuClickSoundLoaded_ = false;
     bool exitRequested_ = false;
+    bool gameplayPauseDialogOpen_ = false;
+    ConfirmationDialog gameplayPauseDialog_{};
 };

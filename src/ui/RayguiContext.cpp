@@ -11,5 +11,5 @@
 #endif
 
 void ConfigureRayguiDefaultStyle() {
-    GuiSetStyle(DEFAULT, TEXT_SIZE, 18);
+    GuiSetStyle(DEFAULT, TEXT_SIZE, 20);
 }

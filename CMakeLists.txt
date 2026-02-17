@@ -81,6 +81,7 @@ add_executable(
     src/platform/Input.cpp
     src/platform/PlayerFigure.cpp
     src/platform/Renderer2D.cpp
+    src/ui/ConfirmationDialog.cpp
     src/ui/HudPanel.cpp
     src/ui/MenuScreen.cpp
     src/ui/RayguiContext.cpp

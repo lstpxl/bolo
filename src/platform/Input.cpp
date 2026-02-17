@@ -80,6 +80,7 @@ FrameInput PollFrameInput() {
         (gamepadMiddleDown && gamepadStartDown);
     const bool gamepadSouthPressed = IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN);
     const bool gamepadEastPressed = IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT);
+    const bool escapePressed = IsKeyPressed(KEY_ESCAPE);
     const bool gamepadForwardDown = IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_UP);
     const bool gamepadReverseDown = IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_DOWN);
     const bool gamepadForwardPressed = IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_UP);
@@ -106,7 +107,8 @@ FrameInput PollFrameInput() {
         .reverseButtonReleased = keyReverseReleased || gamepadReverseReleased,
         .shootPressed = IsKeyPressed(KEY_SPACE) || gamepadSouthPressed,
         .startPressed = IsKeyPressed(KEY_ENTER) || gamepadStartPressed,
-        .quitRequested = IsKeyPressed(KEY_ESCAPE) || gamepadQuitComboPressed,
+        .gameplayPausePressed = escapePressed || gamepadStartPressed,
+        .quitRequested = gamepadQuitComboPressed,
         .menuNavigateUpPressed =
             IsKeyPressed(KEY_UP) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_UP),
         .menuNavigateDownPressed =
