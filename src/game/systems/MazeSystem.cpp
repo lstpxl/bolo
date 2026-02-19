@@ -15,6 +15,11 @@ struct CellCoord {
     int y;
 };
 
+struct MazeEdge {
+    CellCoord a;
+    CellCoord b;
+};
+
 int ToIndex(const MazeState& maze, int x, int y) {
     return y * maze.widthCells + x;
 }
@@ -113,59 +118,6 @@ bool IsMazeWallTopologyValid(const MazeState& maze) {
     return true;
 }
 
-struct WallDistribution {
-    int horizontal = 0;
-    int vertical = 0;
-    std::array<int, 4> horizontalByQuadrant{{0, 0, 0, 0}};
-    std::array<int, 4> verticalByQuadrant{{0, 0, 0, 0}};
-};
-
-WallDistribution BuildWallDistribution(const MazeState& maze) {
-    WallDistribution distribution{};
-    const int midX = maze.widthCells / 2;
-    const int midY = maze.heightCells / 2;
-
-    for (int y = 0; y < maze.heightCells; ++y) {
-        for (int x = 0; x < maze.widthCells; ++x) {
-            const MazeCell& cell = maze.cells[ToIndex(maze, x, y)];
-            const int quadrant = (y < midY ? 0 : 2) + (x < midX ? 0 : 1);
-            if (cell.northWall) {
-                ++distribution.horizontal;
-                ++distribution.horizontalByQuadrant[static_cast<std::size_t>(quadrant)];
-            }
-            if (cell.westWall) {
-                ++distribution.vertical;
-                ++distribution.verticalByQuadrant[static_cast<std::size_t>(quadrant)];
-            }
-            if (x == maze.widthCells - 1 && cell.eastWall) {
-                ++distribution.vertical;
-                ++distribution.verticalByQuadrant[static_cast<std::size_t>(quadrant)];
-            }
-            if (y == maze.heightCells - 1 && cell.southWall) {
-                ++distribution.horizontal;
-                ++distribution.horizontalByQuadrant[static_cast<std::size_t>(quadrant)];
-            }
-        }
-    }
-    return distribution;
-}
-
-bool IsWallDistributionValid(const MazeState& maze) {
-    const WallDistribution distribution = BuildWallDistribution(maze);
-    if (distribution.horizontal == 0 || distribution.vertical == 0) {
-        return false;
-    }
-
-    // Each quadrant must include both orientations to avoid degenerate-looking mazes.
-    for (int i = 0; i < 4; ++i) {
-        if (distribution.horizontalByQuadrant[static_cast<std::size_t>(i)] == 0 ||
-            distribution.verticalByQuadrant[static_cast<std::size_t>(i)] == 0) {
-            return false;
-        }
-    }
-    return true;
-}
-
 void GenerateConnectedMaze(MazeState& maze, Random& random, int density) {
     const int totalCells = maze.widthCells * maze.heightCells;
     maze.cells.assign(static_cast<std::size_t>(totalCells), MazeCell{});
@@ -214,20 +166,64 @@ void GenerateConnectedMaze(MazeState& maze, Random& random, int density) {
         stack.push(next);
     }
 
-    // Lower density means fewer walls: carve extra openings after building connected backbone.
+    // Build a concrete, measurable density target:
+    // internal wall segments per 100 cells.
+    // density=1 -> 10, density=5 -> 50 (linear interpolation).
     const int clampedDensity = std::max(1, std::min(5, density));
-    const int extraOpenings = (5 - clampedDensity) * (totalCells / 8);
-    for (int i = 0; i < extraOpenings; ++i) {
-        const int cellX = random.NextInt(0, maze.widthCells - 1);
-        const int cellY = random.NextInt(0, maze.heightCells - 1);
-        const CellCoord origin{.x = cellX, .y = cellY};
-        const CellCoord offset = offsets[static_cast<std::size_t>(random.NextInt(0, 3))];
-        const int neighborX = origin.x + offset.x;
-        const int neighborY = origin.y + offset.y;
-        if (!IsInBounds(maze, neighborX, neighborY)) {
+    const int horizontalConnections = maze.widthCells * (maze.heightCells - 1);
+    const int verticalConnections = (maze.widthCells - 1) * maze.heightCells;
+    const int totalInternalEdges = horizontalConnections + verticalConnections;
+    constexpr float kDensity1WallsPer100Cells = 39.0F;  // +30% from current 30
+    constexpr float kDensity5WallsPer100Cells = 90.0F;  // +20% from current 75
+    const float densityT = static_cast<float>(clampedDensity - 1) / 4.0F;
+    const float targetWallSegmentsPer100Cells =
+        kDensity1WallsPer100Cells +
+        (kDensity5WallsPer100Cells - kDensity1WallsPer100Cells) * densityT;
+    int targetInternalWalls = static_cast<int>(
+        std::round(targetWallSegmentsPer100Cells * static_cast<float>(totalCells) / 100.0F));
+    targetInternalWalls = std::max(0, std::min(totalInternalEdges, targetInternalWalls));
+
+    // Connected graph requires at least (V - 1) open edges.
+    int targetOpenEdges = totalInternalEdges - targetInternalWalls;
+    targetOpenEdges = std::max(targetOpenEdges, totalCells - 1);
+
+    // DFS opened exactly (totalCells - 1) edges already.
+    int extraOpeningsNeeded = targetOpenEdges - (totalCells - 1);
+    if (extraOpeningsNeeded <= 0) {
+        return;
+    }
+
+    std::vector<MazeEdge> internalEdges{};
+    internalEdges.reserve(static_cast<std::size_t>(totalInternalEdges));
+    for (int y = 0; y < maze.heightCells; ++y) {
+        for (int x = 0; x < maze.widthCells; ++x) {
+            if (x + 1 < maze.widthCells) {
+                internalEdges.push_back(MazeEdge{
+                    .a = CellCoord{.x = x, .y = y},
+                    .b = CellCoord{.x = x + 1, .y = y},
+                });
+            }
+            if (y + 1 < maze.heightCells) {
+                internalEdges.push_back(MazeEdge{
+                    .a = CellCoord{.x = x, .y = y},
+                    .b = CellCoord{.x = x, .y = y + 1},
+                });
+            }
+        }
+    }
+
+    for (std::size_t i = 0; i < internalEdges.size() && extraOpeningsNeeded > 0; ++i) {
+        const int swapIndex = random.NextInt(static_cast<int>(i), static_cast<int>(internalEdges.size() - 1));
+        std::swap(internalEdges[i], internalEdges[static_cast<std::size_t>(swapIndex)]);
+        const MazeEdge& edge = internalEdges[i];
+        const MazeCell& a = maze.cells[ToIndex(maze, edge.a.x, edge.a.y)];
+        const MazeCell& b = maze.cells[ToIndex(maze, edge.b.x, edge.b.y)];
+        const bool alreadyOpen = edge.a.x == edge.b.x ? (!a.southWall && !b.northWall) : (!a.eastWall && !b.westWall);
+        if (alreadyOpen) {
             continue;
         }
-        RemoveWallBetween(maze, origin, CellCoord{.x = neighborX, .y = neighborY});
+        RemoveWallBetween(maze, edge.a, edge.b);
+        --extraOpeningsNeeded;
     }
 }
 
@@ -262,6 +258,67 @@ bool IsBaseVisibleFromPosition(
 
     return baseLeft < viewRight && baseRight > viewLeft && baseTop < viewBottom && baseBottom > viewTop;
 }
+
+bool TryPlacePlayer(
+    GameState& state,
+    const AppConfig& config,
+    Random& random,
+    bool disallowBaseInView) {
+    const float visibleWidthUnits = static_cast<float>(config.screenWidth - ComputeHudWidth(config)) /
+        static_cast<float>(GameplayConstants::kPixelsPerUnit);
+    const float visibleHeightUnits = static_cast<float>(config.screenHeight) /
+        static_cast<float>(GameplayConstants::kPixelsPerUnit);
+
+    for (int attempts = 0; attempts < 5000; ++attempts) {
+        const int cellX = random.NextInt(0, state.world.maze.widthCells - 1);
+        const int cellY = random.NextInt(0, state.world.maze.heightCells - 1);
+        const Vec2f candidate = CellCenterPosition(state.world.maze, cellX, cellY);
+
+        bool overlapsBase = false;
+        for (const EnemyBase& base : state.world.enemyBases) {
+            if (base.destroyed) {
+                continue;
+            }
+            const float dx = std::fabs(base.position.x - candidate.x);
+            const float dy = std::fabs(base.position.y - candidate.y);
+            const float minSeparation = (GameplayConstants::kEnemyBaseSizeUnits * 0.5F) +
+                (GameplayConstants::kEntitySizeUnits * 0.5F);
+            if (dx < minSeparation && dy < minSeparation) {
+                overlapsBase = true;
+                break;
+            }
+        }
+        if (overlapsBase) {
+            continue;
+        }
+
+        if (disallowBaseInView) {
+            bool seesAnyBase = false;
+            for (const EnemyBase& base : state.world.enemyBases) {
+                if (base.destroyed) {
+                    continue;
+                }
+                if (IsBaseVisibleFromPosition(base, candidate, visibleWidthUnits, visibleHeightUnits)) {
+                    seesAnyBase = true;
+                    break;
+                }
+            }
+            if (seesAnyBase) {
+                continue;
+            }
+        }
+
+        state.world.player.position = candidate;
+        state.world.player.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
+        state.world.player.hullHeadingRadians = 0.0F;
+        state.world.player.turretHeadingRadians = 0.0F;
+        state.world.player.throttleNormalized = 0.0F;
+        state.world.player.fireCooldownSeconds = 0.0F;
+        state.world.player.alive = true;
+        return true;
+    }
+    return false;
+}
 }  // namespace
 
 void InitializeMazeWorld(GameState& state, const AppConfig& config) {
@@ -276,8 +333,7 @@ void InitializeMazeWorld(GameState& state, const AppConfig& config) {
         GenerateConnectedMaze(state.world.maze, random, state.menuSettings.mazeDensity);
     } while (
         !IsMazeFullyAccessible(state.world.maze) ||
-        !IsMazeWallTopologyValid(state.world.maze) ||
-        !IsWallDistributionValid(state.world.maze));
+        !IsMazeWallTopologyValid(state.world.maze));
 
     state.world.enemyBases.clear();
     state.world.enemyBases.reserve(GameplayConstants::kEnemyBaseCount);
@@ -298,6 +354,7 @@ void InitializeMazeWorld(GameState& state, const AppConfig& config) {
             state.world.enemyBases.push_back(EnemyBase{
                 .position = CellCenterPosition(state.world.maze, cellX, cellY),
                 .destroyed = false,
+                .spawnCooldownSeconds = 0.0F,
                 .activeEnemies = 0,
             });
             placed = true;
@@ -317,68 +374,44 @@ void InitializeMazeWorld(GameState& state, const AppConfig& config) {
             state.world.enemyBases.push_back(EnemyBase{
                 .position = CellCenterPosition(state.world.maze, x, y),
                 .destroyed = false,
+                .spawnCooldownSeconds = 0.0F,
                 .activeEnemies = 0,
             });
         }
     }
 
-    const float visibleWidthUnits = static_cast<float>(config.screenWidth - ComputeHudWidth(config)) /
-        static_cast<float>(GameplayConstants::kPixelsPerUnit);
-    const float visibleHeightUnits = static_cast<float>(config.screenHeight) /
-        static_cast<float>(GameplayConstants::kPixelsPerUnit);
-
-    bool playerPlaced = false;
-    for (int attempts = 0; attempts < 5000 && !playerPlaced; ++attempts) {
-        const int cellX = random.NextInt(0, state.world.maze.widthCells - 1);
-        const int cellY = random.NextInt(0, state.world.maze.heightCells - 1);
-        const Vec2f candidate = CellCenterPosition(state.world.maze, cellX, cellY);
-
-        bool overlapsBase = false;
-        for (const EnemyBase& base : state.world.enemyBases) {
-            const float dx = std::fabs(base.position.x - candidate.x);
-            const float dy = std::fabs(base.position.y - candidate.y);
-            const float minSeparation = (GameplayConstants::kEnemyBaseSizeUnits * 0.5F) +
-                (GameplayConstants::kEntitySizeUnits * 0.5F);
-            if (dx < minSeparation && dy < minSeparation) {
-                overlapsBase = true;
-                break;
-            }
-        }
-        if (overlapsBase) {
-            continue;
-        }
-
-        bool seesAnyBase = false;
-        for (const EnemyBase& base : state.world.enemyBases) {
-            if (IsBaseVisibleFromPosition(base, candidate, visibleWidthUnits, visibleHeightUnits)) {
-                seesAnyBase = true;
-                break;
-            }
-        }
-        if (seesAnyBase) {
-            continue;
-        }
-
-        state.world.player.position = candidate;
-        state.world.player.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
-        state.world.player.hullHeadingRadians = 0.0F;
-        state.world.player.turretHeadingRadians = 0.0F;
-        state.world.player.throttleNormalized = 0.0F;
-        state.world.player.alive = true;
-        playerPlaced = true;
-    }
-
-    if (!playerPlaced) {
+    if (!TryPlacePlayer(state, config, random, true)) {
         state.world.player.position = CellCenterPosition(state.world.maze, 0, 0);
         state.world.player.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
         state.world.player.hullHeadingRadians = 0.0F;
         state.world.player.turretHeadingRadians = 0.0F;
         state.world.player.throttleNormalized = 0.0F;
+        state.world.player.fireCooldownSeconds = 0.0F;
         state.world.player.alive = true;
     }
 
+    state.world.player.fuel = 100.0F;
     state.world.enemies.clear();
-    state.world.score = 0;
+    state.world.projectiles.clear();
+    state.world.playerTurnLostPending = false;
+    state.world.levelCleared = false;
+    state.world.levelClearMessageSeconds = 0.0F;
+}
+
+bool PlacePlayerAtSafeSpawn(GameState& state, const AppConfig& config) {
+    const std::uint32_t seed = static_cast<std::uint32_t>(GetTime() * 1000.0);
+    Random random(seed);
+    if (TryPlacePlayer(state, config, random, false)) {
+        return true;
+    }
+    state.world.player.position = CellCenterPosition(state.world.maze, 0, 0);
+    state.world.player.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
+    state.world.player.hullHeadingRadians = 0.0F;
+    state.world.player.turretHeadingRadians = 0.0F;
+    state.world.player.throttleNormalized = 0.0F;
+    state.world.player.fireCooldownSeconds = 0.0F;
+    state.world.player.alive = true;
+    return false;
 }
 
 void UpdateMazeSystem(GameState& state, float deltaSeconds) {

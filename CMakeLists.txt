@@ -72,6 +72,7 @@ add_executable(
     src/core/Random.cpp
     src/core/Time.cpp
     src/game/GameModeController.cpp
+    src/game/Game.cpp
     src/game/systems/CollisionSystem.cpp
     src/game/systems/EnemySystem.cpp
     src/game/systems/MazeSystem.cpp
@@ -80,6 +81,7 @@ add_executable(
     src/game/systems/SpawnerSystem.cpp
     src/platform/Input.cpp
     src/platform/PlayerFigure.cpp
+    src/platform/RaylibRenderer.cpp
     src/platform/Renderer2D.cpp
     src/ui/ConfirmationDialog.cpp
     src/ui/HudPanel.cpp

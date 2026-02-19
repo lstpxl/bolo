@@ -153,6 +153,16 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) cons
         if (!enemy.alive) {
             continue;
         }
+        Color enemyColor = ORANGE;
+        if (enemy.type == EnemyType::Drone) {
+            enemyColor = ORANGE;
+        } else if (enemy.type == EnemyType::Torpedo) {
+            enemyColor = GOLD;
+        } else if (enemy.type == EnemyType::Hunter) {
+            enemyColor = RED;
+        } else if (enemy.type == EnemyType::Assassin) {
+            enemyColor = MAGENTA;
+        }
         const float half = GameplayConstants::kEntitySizeUnits * 0.5F;
         DrawRectangleRec(
             Rectangle{
@@ -161,7 +171,15 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) cons
                 .width = GameplayConstants::kEntitySizeUnits,
                 .height = GameplayConstants::kEntitySizeUnits,
             },
-            ORANGE);
+            enemyColor);
+    }
+
+    for (const Projectile& projectile : state.world.projectiles) {
+        if (!projectile.alive) {
+            continue;
+        }
+        const Color color = projectile.owner == ProjectileOwner::Player ? SKYBLUE : YELLOW;
+        DrawCircleV(Vector2{projectile.position.x, projectile.position.y}, 0.18F, color);
     }
 
     DrawPlayerFigure(

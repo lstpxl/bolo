@@ -7,6 +7,7 @@ FrameInput PollFrameInput() {
     float moveX = 0.0F;
     float moveY = 0.0F;
     float turnInput = 0.0F;
+    float turretTurnInput = 0.0F;
 
     if (IsGamepadAvailable(0)) {
         const float axisX = GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_X);
@@ -30,6 +31,12 @@ FrameInput PollFrameInput() {
         if (IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_DOWN)) {
             moveY += 1.0F;
         }
+        if (IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_TRIGGER_1)) {
+            turretTurnInput -= 1.0F;
+        }
+        if (IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_TRIGGER_1)) {
+            turretTurnInput += 1.0F;
+        }
     } else {
         if (IsKeyDown(KEY_A)) {
             moveX -= 1.0F;
@@ -48,6 +55,12 @@ FrameInput PollFrameInput() {
         }
         if (IsKeyDown(KEY_RIGHT)) {
             turnInput += 1.0F;
+        }
+        if (IsKeyDown(KEY_ONE)) {
+            turretTurnInput -= 1.0F;
+        }
+        if (IsKeyDown(KEY_TWO)) {
+            turretTurnInput += 1.0F;
         }
     }
 
@@ -68,6 +81,12 @@ FrameInput PollFrameInput() {
     }
     if (turnInput < -1.0F) {
         turnInput = -1.0F;
+    }
+    if (turretTurnInput > 1.0F) {
+        turretTurnInput = 1.0F;
+    }
+    if (turretTurnInput < -1.0F) {
+        turretTurnInput = -1.0F;
     }
 
     const bool gamepadStartPressed = IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_RIGHT) ||
@@ -99,6 +118,7 @@ FrameInput PollFrameInput() {
         .moveX = moveX,
         .moveY = moveY,
         .turnInput = turnInput,
+        .turretTurnInput = turretTurnInput,
         .forwardButtonDown = keyForwardDown || gamepadForwardDown,
         .forwardButtonPressed = keyForwardPressed || gamepadForwardPressed,
         .forwardButtonReleased = keyForwardReleased || gamepadForwardReleased,

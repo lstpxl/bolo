@@ -39,19 +39,49 @@ struct PlayerTank {
     float hullHeadingRadians;
     float turretHeadingRadians;
     float throttleNormalized = 0.0F;
+    float fireCooldownSeconds = 0.0F;
+    float fuel = 100.0F;
+    int lives = 4;
     bool alive = true;
+};
+
+enum class EnemyType {
+    Drone,
+    Torpedo,
+    Hunter,
+    Assassin,
 };
 
 struct EnemyTank {
     Vec2f position;
+    Vec2f velocity;
     float headingRadians;
+    EnemyType type = EnemyType::Drone;
+    float fireCooldownSeconds = 0.0F;
+    float aiStateTimerSeconds = 0.0F;
+    Vec2f wanderDirection{.x = 0.0F, .y = -1.0F};
     bool alive = true;
 };
 
 struct EnemyBase {
     Vec2f position;
     bool destroyed = false;
+    float spawnCooldownSeconds = 0.0F;
     int activeEnemies = 0;
+};
+
+enum class ProjectileOwner {
+    Player,
+    Enemy,
+};
+
+struct Projectile {
+    Vec2f previousPosition;
+    Vec2f position;
+    Vec2f velocity;
+    ProjectileOwner owner = ProjectileOwner::Enemy;
+    float remainingLifeSeconds = 0.0F;
+    bool alive = true;
 };
 
 struct WorldState {
@@ -62,11 +92,19 @@ struct WorldState {
         .hullHeadingRadians = 0.0F,
         .turretHeadingRadians = 0.0F,
         .throttleNormalized = 0.0F,
+        .fireCooldownSeconds = 0.0F,
+        .fuel = 100.0F,
+        .lives = 4,
         .alive = true,
     };
     std::vector<EnemyTank> enemies{};
     std::vector<EnemyBase> enemyBases{};
+    std::vector<Projectile> projectiles{};
     int score = 0;
+    bool playerTurnLostPending = false;
+    bool levelCleared = false;
+    bool gameOver = false;
+    float levelClearMessageSeconds = 0.0F;
 };
 
 struct GameState {

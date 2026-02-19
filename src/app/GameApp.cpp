@@ -1,11 +1,5 @@
 #include "app/GameApp.h"
 
-#include "game/systems/CollisionSystem.h"
-#include "game/systems/EnemySystem.h"
-#include "game/systems/MazeSystem.h"
-#include "game/systems/PlayerSystem.h"
-#include "game/systems/ProjectileSystem.h"
-#include "game/systems/SpawnerSystem.h"
 #include <algorithm>
 #include <array>
 #include <filesystem>
@@ -85,8 +79,14 @@ int GameApp::Run() {
         int fixedStepsThisFrame = 0;
         constexpr int kMaxFixedStepsPerFrame = 4;
         while (fixedStepTimer_.ShouldStep() && fixedStepsThisFrame < kMaxFixedStepsPerFrame) {
-            if (modeController_.Mode() == GameMode::Playing) {
-                UpdatePlaying(input, fixedStepTimer_.StepSeconds());
+            if (game_.Mode() == GameMode::Playing) {
+                if (input.gameplayPausePressed && !gameplayPauseDialogOpen_) {
+                    gameplayPauseDialogOpen_ = true;
+                    gameplayPauseDialog_.Open(ConfirmationDialog::Focus::Cancel);
+                }
+                if (!gameplayPauseDialogOpen_) {
+                    game_.Update(input, fixedStepTimer_.StepSeconds(), config_);
+                }
             }
             fixedStepTimer_.ConsumeStep();
             ++fixedStepsThisFrame;
@@ -103,25 +103,6 @@ int GameApp::Run() {
     }
     CloseWindow();
     return 0;
-}
-
-void GameApp::UpdatePlaying(const FrameInput& input, float deltaSeconds) {
-    if (input.gameplayPausePressed && !gameplayPauseDialogOpen_) {
-        gameplayPauseDialogOpen_ = true;
-        gameplayPauseDialog_.Open(ConfirmationDialog::Focus::Cancel);
-        return;
-    }
-
-    if (gameplayPauseDialogOpen_) {
-        return;
-    }
-
-    UpdatePlayerSystem(state_, input, deltaSeconds);
-    UpdateEnemySystem(state_, deltaSeconds);
-    UpdateProjectileSystem(state_, deltaSeconds);
-    UpdateSpawnerSystem(state_, deltaSeconds);
-    UpdateMazeSystem(state_, deltaSeconds);
-    UpdateCollisionSystem(state_, deltaSeconds);
 }
 
 void GameApp::RenderGameplayPauseDialog(const FrameInput& input) {
@@ -157,7 +138,7 @@ void GameApp::RenderGameplayPauseDialog(const FrameInput& input) {
         gameplayPauseDialogOpen_ = false;
     } else if (dialogResult.confirmPressed) {
         gameplayPauseDialogOpen_ = false;
-        modeController_.RequestMenu();
+        game_.RequestMenu();
     }
 }
 
@@ -165,27 +146,27 @@ void GameApp::Render(const FrameInput& input) {
     BeginDrawing();
     ClearBackground(BLACK);
 
-    if (modeController_.Mode() == GameMode::Menu) {
-        const MenuSettings previousSettings = state_.menuSettings;
-        const MenuScreenResult result = menuScreen_.Render(state_.menuSettings, config_, input);
-        state_.menuSettings = result.menuSettings;
+    if (game_.Mode() == GameMode::Menu) {
+        const MenuSettings previousSettings = game_.CurrentMenuSettings();
+        const MenuScreenResult result = menuScreen_.Render(game_.CurrentMenuSettings(), config_, input);
+        game_.SetMenuSettings(result.menuSettings);
         if (menuClickSoundLoaded_ &&
             (result.interactionOccurred ||
              result.startGameRequested ||
              result.quitRequested ||
-             state_.menuSettings.levelNumber != previousSettings.levelNumber ||
-             state_.menuSettings.mazeDensity != previousSettings.mazeDensity)) {
+             result.menuSettings.levelNumber != previousSettings.levelNumber ||
+             result.menuSettings.mazeDensity != previousSettings.mazeDensity)) {
             PlaySound(menuClickSound_);
         }
         if (result.startGameRequested) {
-            modeController_.StartGame(state_, state_.menuSettings, config_);
+            gameplayPauseDialogOpen_ = false;
+            game_.StartGame(config_);
         }
         if (result.quitRequested) {
             exitRequested_ = true;
         }
     } else {
-        renderer_.DrawWorld(state_, config_);
-        hudPanel_.Render(state_, config_);
+        game_.Render(renderer_, config_);
         if (gameplayPauseDialogOpen_) {
             RenderGameplayPauseDialog(input);
         }
