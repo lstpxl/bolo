@@ -12,6 +12,10 @@ namespace {
 constexpr int kSourcePlayerFrameCount = 6;
 constexpr int kSourcePlayerFrameSize = 20;
 
+float PixelsToWorldUnits(float pixels) {
+    return pixels / static_cast<float>(GameplayConstants::kPixelsPerUnit);
+}
+
 Vector2 SnapWorldToPixelGrid(const Vec2f& worldPosition) {
     const float pixelsPerUnit = static_cast<float>(GameplayConstants::kPixelsPerUnit);
     return Vector2{
@@ -52,6 +56,42 @@ int PlayerFrameIndexFromHeading(float headingRadians, int frameCount) {
         frameIndex += frameCount;
     }
     return frameIndex;
+}
+
+Vector2 ComputeFramePivotOffsetPixels(const Image& spriteSheet, int frameIndex, int frameSizePx) {
+    const int frameStartX = frameIndex * frameSizePx;
+    constexpr unsigned char alphaThreshold = 128;
+    int minX = frameSizePx;
+    int minY = frameSizePx;
+    int maxX = -1;
+    int maxY = -1;
+
+    for (int y = 0; y < frameSizePx; ++y) {
+        for (int x = 0; x < frameSizePx; ++x) {
+            const Color pixel = GetImageColor(spriteSheet, frameStartX + x, y);
+            if (pixel.a < alphaThreshold) {
+                continue;
+            }
+            minX = std::min(minX, x);
+            minY = std::min(minY, y);
+            maxX = std::max(maxX, x);
+            maxY = std::max(maxY, y);
+        }
+    }
+
+    if (maxX < minX || maxY < minY) {
+        return Vector2{0.0F, 0.0F};
+    }
+
+    const float frameCenter = (static_cast<float>(frameSizePx) - 1.0F) * 0.5F;
+    const float contentCenterX = (static_cast<float>(minX + maxX)) * 0.5F;
+    const float contentCenterY = (static_cast<float>(minY + maxY)) * 0.5F;
+    const float offsetX = std::round(frameCenter - contentCenterX);
+    const float offsetY = std::round(frameCenter - contentCenterY);
+    return Vector2{
+        offsetX,
+        offsetY,
+    };
 }
 
 void CopyFrameFromStripToSheet(
@@ -98,6 +138,9 @@ bool TryLoadImageAtPath(Image& image, const char* path) {
 
 bool Renderer2D::LoadResources() {
     UnloadResources();
+    for (Vector2& offset : playerTankFrameOffsetsPixels_) {
+        offset = Vector2{0.0F, 0.0F};
+    }
 
     std::array<const char*, 5> candidatePaths = {
         "resources/textures/player_tank_sheet.png",
@@ -205,6 +248,12 @@ bool Renderer2D::LoadResources() {
         SetTextureFilter(playerTankSheet_, TEXTURE_FILTER_POINT);
         playerTankFrameSizePx_ = kSourcePlayerFrameSize;
         playerTankFrameCount_ = kSourcePlayerFrameCount * 4;
+        const int frameCountToMeasure =
+            std::min(playerTankFrameCount_, static_cast<int>(playerTankFrameOffsetsPixels_.size()));
+        for (int frameIndex = 0; frameIndex < frameCountToMeasure; ++frameIndex) {
+            playerTankFrameOffsetsPixels_[static_cast<std::size_t>(frameIndex)] =
+                ComputeFramePivotOffsetPixels(combinedSheet, frameIndex, playerTankFrameSizePx_);
+        }
     }
 
     UnloadImage(combinedSheet);
@@ -319,6 +368,8 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
     DrawVerticalWallPixels(borderTopLeft, borderBottomLeft, wallThicknessPixels, DARKGRAY);
     DrawVerticalWallPixels(borderTopRight, borderBottomRight, wallThicknessPixels, DARKGRAY);
 
+    const Vector2 playerRenderPosition = SnapWorldToPixelGrid(state.world.player.position);
+
     BeginMode2D(camera);
 
     for (const EnemyBase& base : state.world.enemyBases) {
@@ -366,31 +417,36 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
         DrawCircleV(Vector2{projectile.position.x, projectile.position.y}, 0.18F, color);
     }
 
-    const Vector2 playerRenderPosition = SnapWorldToPixelGrid(state.world.player.position);
+    if (playerTankSheetLoaded_) {
+        // Draw in screen space at fixed 20x20 to avoid platform-dependent camera scaling artifacts.
+    } else {
+        DrawPlayerFigure(
+            playerRenderPosition,
+            PixelsToWorldUnits(static_cast<float>(kSourcePlayerFrameSize)),
+            state.world.player.hullHeadingRadians,
+            GREEN);
+    }
+
+    EndMode2D();
     if (playerTankSheetLoaded_) {
         const int frameIndex = PlayerFrameIndexFromHeading(state.world.player.hullHeadingRadians, playerTankFrameCount_);
+        const Vector2 frameOffsetPixels =
+            playerTankFrameOffsetsPixels_[static_cast<std::size_t>(frameIndex)];
         const Rectangle sourceRect{
             .x = static_cast<float>(frameIndex * playerTankFrameSizePx_),
             .y = 0.0F,
             .width = static_cast<float>(playerTankFrameSizePx_),
             .height = static_cast<float>(playerTankFrameSizePx_),
         };
-        const float halfSize = GameplayConstants::kEntitySizeUnits * 0.5F;
+        const Vector2 playerScreenPosition = GetWorldToScreen2D(playerRenderPosition, camera);
         const Rectangle destRect{
-            .x = playerRenderPosition.x - halfSize,
-            .y = playerRenderPosition.y - halfSize,
-            .width = GameplayConstants::kEntitySizeUnits,
-            .height = GameplayConstants::kEntitySizeUnits,
+            .x = static_cast<float>(RoundToInt(playerScreenPosition.x + frameOffsetPixels.x)),
+            .y = static_cast<float>(RoundToInt(playerScreenPosition.y + frameOffsetPixels.y)),
+            .width = static_cast<float>(playerTankFrameSizePx_),
+            .height = static_cast<float>(playerTankFrameSizePx_),
         };
-        DrawTexturePro(playerTankSheet_, sourceRect, destRect, Vector2{0.0F, 0.0F}, 0.0F, WHITE);
-    } else {
-        DrawPlayerFigure(
-            playerRenderPosition,
-            GameplayConstants::kEntitySizeUnits,
-            state.world.player.hullHeadingRadians,
-            GREEN);
+        const float halfFrame = static_cast<float>(playerTankFrameSizePx_) * 0.5F;
+        DrawTexturePro(playerTankSheet_, sourceRect, destRect, Vector2{halfFrame, halfFrame}, 0.0F, WHITE);
     }
-
-    EndMode2D();
     EndScissorMode();
 }

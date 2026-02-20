@@ -121,7 +121,9 @@ World rendering is in `src/platform/Renderer2D.cpp`.
 - Camera target follows player and snaps to pixel grid.
 - Maze walls are rendered in screen space at fixed 2px thickness for handheld stability.
 - Visible maze cell range is culled for rendering performance.
-- Player, enemies, and bases render in world units.
+- Enemy tanks and bases render in world units.
+- Player tank sprite renders in screen space at native `20x20` pixels (camera-following world position), while gameplay footprint remains `kEntitySizeUnits = 1.0`.
+- Player tank animation frames apply per-frame pivot correction to keep the sprite visually centered while changing heading frames.
 - Gameplay view draws a top-left input debug line at font size `10`: `Axes:  0:...  1:...  2:...  3:...` using gamepad raw axis values (approximate signed 16-bit range).
 
 ## Main Menu UX
