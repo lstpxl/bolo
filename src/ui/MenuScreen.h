@@ -29,7 +29,7 @@ public:
 private:
     int levelNumber_ = 1;
     int mazeDensity_ = 3;
-    FocusedControl focusedControl_ = FocusedControl::Level;
+    FocusedControl focusedControl_ = FocusedControl::Start;
     bool quitConfirmationOpen_ = false;
     ConfirmationDialog quitConfirmationDialog_{};
 };
