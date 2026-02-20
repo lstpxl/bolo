@@ -12,10 +12,6 @@ namespace {
 constexpr int kSourcePlayerFrameCount = 6;
 constexpr int kSourcePlayerFrameSize = 20;
 
-Vector2 ToVector2(const Vec2f& value) {
-    return Vector2{value.x, value.y};
-}
-
 Vector2 SnapWorldToPixelGrid(const Vec2f& worldPosition) {
     const float pixelsPerUnit = static_cast<float>(GameplayConstants::kPixelsPerUnit);
     return Vector2{
@@ -370,6 +366,7 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
         DrawCircleV(Vector2{projectile.position.x, projectile.position.y}, 0.18F, color);
     }
 
+    const Vector2 playerRenderPosition = SnapWorldToPixelGrid(state.world.player.position);
     if (playerTankSheetLoaded_) {
         const int frameIndex = PlayerFrameIndexFromHeading(state.world.player.hullHeadingRadians, playerTankFrameCount_);
         const Rectangle sourceRect{
@@ -380,15 +377,15 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
         };
         const float halfSize = GameplayConstants::kEntitySizeUnits * 0.5F;
         const Rectangle destRect{
-            .x = state.world.player.position.x - halfSize,
-            .y = state.world.player.position.y - halfSize,
+            .x = playerRenderPosition.x - halfSize,
+            .y = playerRenderPosition.y - halfSize,
             .width = GameplayConstants::kEntitySizeUnits,
             .height = GameplayConstants::kEntitySizeUnits,
         };
         DrawTexturePro(playerTankSheet_, sourceRect, destRect, Vector2{0.0F, 0.0F}, 0.0F, WHITE);
     } else {
         DrawPlayerFigure(
-            ToVector2(state.world.player.position),
+            playerRenderPosition,
             GameplayConstants::kEntitySizeUnits,
             state.world.player.hullHeadingRadians,
             GREEN);

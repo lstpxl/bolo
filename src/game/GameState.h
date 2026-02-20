@@ -161,7 +161,7 @@ struct WorldState {
 struct GameState {
     MenuSettings menuSettings{
         .levelNumber = 1,
-        .mazeDensity = 3,
+        .mazeDensity = 2,
     };
     WorldState world{};
 };
