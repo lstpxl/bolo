@@ -62,6 +62,9 @@ int GameApp::Run() {
     SetExitKey(KEY_NULL);
     SetTargetFPS(config_.targetFps);
     ConfigureRayguiDefaultStyle();
+    if (!renderer_.LoadResources()) {
+        TraceLog(LOG_WARNING, "RENDER: Failed to load one or more renderer resources");
+    }
     InitAudioDevice();
     audioReady_ = IsAudioDeviceReady();
     if (audioReady_) {
@@ -98,6 +101,7 @@ int GameApp::Run() {
     if (menuClickSoundLoaded_) {
         UnloadSound(menuClickSound_);
     }
+    renderer_.UnloadResources();
     if (audioReady_) {
         CloseAudioDevice();
     }

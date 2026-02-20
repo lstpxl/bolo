@@ -3,10 +3,15 @@
 #include <algorithm>
 #include <cstddef>
 #include <cmath>
+#include <array>
+#include <filesystem>
 #include "platform/PlayerFigure.h"
 #include "raylib.h"
 
 namespace {
+constexpr int kSourcePlayerFrameCount = 6;
+constexpr int kSourcePlayerFrameSize = 20;
+
 Vector2 ToVector2(const Vec2f& value) {
     return Vector2{value.x, value.y};
 }
@@ -38,9 +43,192 @@ void DrawVerticalWallPixels(Vector2 a, Vector2 b, int thicknessPixels, Color col
     const int height = std::max(1, y2 - y1);
     DrawRectangle(x, y1, thicknessPixels, height, color);
 }
+
+int PlayerFrameIndexFromHeading(float headingRadians, int frameCount) {
+    const float twoPi = PI * 2.0F;
+    float normalized = std::fmod(headingRadians, twoPi);
+    if (normalized < 0.0F) {
+        normalized += twoPi;
+    }
+    const float frameFloat = normalized / twoPi * static_cast<float>(frameCount);
+    int frameIndex = static_cast<int>(std::round(frameFloat)) % frameCount;
+    if (frameIndex < 0) {
+        frameIndex += frameCount;
+    }
+    return frameIndex;
+}
+
+void CopyFrameFromStripToSheet(
+    Image& destination,
+    int destinationFrameIndex,
+    const Image& stripImage,
+    int sourceFrameIndex,
+    bool verticalStrip,
+    bool reverseOrder,
+    int frameCount,
+    int frameSizePx) {
+    const int effectiveSourceIndex = reverseOrder ? (frameCount - 1 - sourceFrameIndex) : sourceFrameIndex;
+    const Rectangle sourceRect{
+        .x = verticalStrip ? 0.0F : static_cast<float>(effectiveSourceIndex * frameSizePx),
+        .y = verticalStrip ? static_cast<float>(effectiveSourceIndex * frameSizePx) : 0.0F,
+        .width = static_cast<float>(frameSizePx),
+        .height = static_cast<float>(frameSizePx),
+    };
+    Image frameImage = ImageFromImage(stripImage, sourceRect);
+    const Rectangle frameRect{
+        .x = 0.0F,
+        .y = 0.0F,
+        .width = static_cast<float>(frameSizePx),
+        .height = static_cast<float>(frameSizePx),
+    };
+    const Rectangle destRect{
+        .x = static_cast<float>(destinationFrameIndex * frameSizePx),
+        .y = 0.0F,
+        .width = static_cast<float>(frameSizePx),
+        .height = static_cast<float>(frameSizePx),
+    };
+    ImageDraw(&destination, frameImage, frameRect, destRect, WHITE);
+    UnloadImage(frameImage);
+}
+
+bool TryLoadImageAtPath(Image& image, const char* path) {
+    if (!FileExists(path)) {
+        return false;
+    }
+    image = LoadImage(path);
+    return image.data != nullptr;
+}
 }  // namespace
 
-void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) const {
+bool Renderer2D::LoadResources() {
+    UnloadResources();
+
+    std::array<const char*, 5> candidatePaths = {
+        "resources/textures/player_tank_sheet.png",
+        "../resources/textures/player_tank_sheet.png",
+        "../../resources/textures/player_tank_sheet.png",
+        "../../../resources/textures/player_tank_sheet.png",
+        "../../../../resources/textures/player_tank_sheet.png",
+    };
+
+    Image sourceSheet{};
+    bool loaded = false;
+    for (const char* path : candidatePaths) {
+        if (TryLoadImageAtPath(sourceSheet, path)) {
+            loaded = true;
+            break;
+        }
+    }
+    if (!loaded) {
+        const char* applicationDirectory = GetApplicationDirectory();
+        if (applicationDirectory != nullptr && applicationDirectory[0] != '\0') {
+            std::filesystem::path base(applicationDirectory);
+            for (int i = 0; i <= 4 && !loaded; ++i) {
+                const std::filesystem::path candidate = base / "resources" / "textures" / "player_tank_sheet.png";
+                if (TryLoadImageAtPath(sourceSheet, candidate.string().c_str())) {
+                    loaded = true;
+                    break;
+                }
+                if (!base.has_parent_path()) {
+                    break;
+                }
+                base = base.parent_path();
+            }
+        }
+    }
+    if (!loaded) {
+        TraceLog(LOG_WARNING, "RENDER: player_tank_sheet.png not found");
+        return false;
+    }
+
+    if (sourceSheet.width != kSourcePlayerFrameCount * kSourcePlayerFrameSize ||
+        sourceSheet.height != kSourcePlayerFrameSize) {
+        TraceLog(
+            LOG_WARNING,
+            "RENDER: player_tank_sheet.png has unexpected size (%i x %i), expected %i x %i",
+            sourceSheet.width,
+            sourceSheet.height,
+            kSourcePlayerFrameCount * kSourcePlayerFrameSize,
+            kSourcePlayerFrameSize);
+    }
+
+    Image rotated90 = ImageCopy(sourceSheet);
+    ImageRotateCW(&rotated90);
+    Image rotated180 = ImageCopy(rotated90);
+    ImageRotateCW(&rotated180);
+    Image rotated270 = ImageCopy(rotated180);
+    ImageRotateCW(&rotated270);
+
+    Image combinedSheet = GenImageColor(
+        kSourcePlayerFrameCount * 4 * kSourcePlayerFrameSize,
+        kSourcePlayerFrameSize,
+        BLANK);
+
+    for (int i = 0; i < kSourcePlayerFrameCount; ++i) {
+        CopyFrameFromStripToSheet(
+            combinedSheet,
+            i,
+            sourceSheet,
+            i,
+            false,
+            false,
+            kSourcePlayerFrameCount,
+            kSourcePlayerFrameSize);
+        CopyFrameFromStripToSheet(
+            combinedSheet,
+            kSourcePlayerFrameCount + i,
+            rotated90,
+            i,
+            true,
+            false,
+            kSourcePlayerFrameCount,
+            kSourcePlayerFrameSize);
+        CopyFrameFromStripToSheet(
+            combinedSheet,
+            kSourcePlayerFrameCount * 2 + i,
+            rotated180,
+            i,
+            false,
+            true,
+            kSourcePlayerFrameCount,
+            kSourcePlayerFrameSize);
+        CopyFrameFromStripToSheet(
+            combinedSheet,
+            kSourcePlayerFrameCount * 3 + i,
+            rotated270,
+            i,
+            true,
+            true,
+            kSourcePlayerFrameCount,
+            kSourcePlayerFrameSize);
+    }
+
+    playerTankSheet_ = LoadTextureFromImage(combinedSheet);
+    playerTankSheetLoaded_ = playerTankSheet_.id != 0;
+    if (playerTankSheetLoaded_) {
+        SetTextureFilter(playerTankSheet_, TEXTURE_FILTER_POINT);
+        playerTankFrameSizePx_ = kSourcePlayerFrameSize;
+        playerTankFrameCount_ = kSourcePlayerFrameCount * 4;
+    }
+
+    UnloadImage(combinedSheet);
+    UnloadImage(rotated270);
+    UnloadImage(rotated180);
+    UnloadImage(rotated90);
+    UnloadImage(sourceSheet);
+
+    return playerTankSheetLoaded_;
+}
+
+void Renderer2D::UnloadResources() {
+    if (playerTankSheetLoaded_) {
+        UnloadTexture(playerTankSheet_);
+        playerTankSheetLoaded_ = false;
+        playerTankSheet_ = Texture2D{};
+    }
+}
+
+void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
     const int worldWidth = config.screenWidth - ComputeHudWidth(config);
     const Rectangle worldViewport = {
         .x = 0.0F,
@@ -182,11 +370,29 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) cons
         DrawCircleV(Vector2{projectile.position.x, projectile.position.y}, 0.18F, color);
     }
 
-    DrawPlayerFigure(
-        ToVector2(state.world.player.position),
-        GameplayConstants::kEntitySizeUnits,
-        state.world.player.hullHeadingRadians,
-        GREEN);
+    if (playerTankSheetLoaded_) {
+        const int frameIndex = PlayerFrameIndexFromHeading(state.world.player.hullHeadingRadians, playerTankFrameCount_);
+        const Rectangle sourceRect{
+            .x = static_cast<float>(frameIndex * playerTankFrameSizePx_),
+            .y = 0.0F,
+            .width = static_cast<float>(playerTankFrameSizePx_),
+            .height = static_cast<float>(playerTankFrameSizePx_),
+        };
+        const float halfSize = GameplayConstants::kEntitySizeUnits * 0.5F;
+        const Rectangle destRect{
+            .x = state.world.player.position.x - halfSize,
+            .y = state.world.player.position.y - halfSize,
+            .width = GameplayConstants::kEntitySizeUnits,
+            .height = GameplayConstants::kEntitySizeUnits,
+        };
+        DrawTexturePro(playerTankSheet_, sourceRect, destRect, Vector2{0.0F, 0.0F}, 0.0F, WHITE);
+    } else {
+        DrawPlayerFigure(
+            ToVector2(state.world.player.position),
+            GameplayConstants::kEntitySizeUnits,
+            state.world.player.hullHeadingRadians,
+            GREEN);
+    }
 
     EndMode2D();
     EndScissorMode();
