@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdio>
 #include <filesystem>
 #include <string>
 #include "raylib.h"
@@ -171,6 +172,16 @@ void GameApp::Render(const FrameInput& input) {
         }
     } else {
         game_.Render(renderer_, config_);
+        char axesText[96] = {};
+        std::snprintf(
+            axesText,
+            sizeof(axesText),
+            "Axes:  0:%6d  1:%6d  2:%6d  3:%6d",
+            input.gamepadAxis0Raw,
+            input.gamepadAxis1Raw,
+            input.gamepadAxis2Raw,
+            input.gamepadAxis3Raw);
+        DrawText(axesText, 8, 8, 10, RAYWHITE);
         if (gameplayPauseDialogOpen_) {
             RenderGameplayPauseDialog(input);
         }

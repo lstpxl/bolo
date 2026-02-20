@@ -5,6 +5,10 @@ struct FrameInput {
     float moveY = 0.0F;
     float turnInput = 0.0F;
     float turretTurnInput = 0.0F;
+    int gamepadAxis0Raw = 0;
+    int gamepadAxis1Raw = 0;
+    int gamepadAxis2Raw = 0;
+    int gamepadAxis3Raw = 0;
     bool forwardButtonDown = false;
     bool forwardButtonPressed = false;
     bool forwardButtonReleased = false;

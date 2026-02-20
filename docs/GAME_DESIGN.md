@@ -122,6 +122,7 @@ World rendering is in `src/platform/Renderer2D.cpp`.
 - Maze walls are rendered in screen space at fixed 2px thickness for handheld stability.
 - Visible maze cell range is culled for rendering performance.
 - Player, enemies, and bases render in world units.
+- Gameplay view draws a top-left input debug line at font size `10`: `Axes:  0:...  1:...  2:...  3:...` using gamepad raw axis values (approximate signed 16-bit range).
 
 ## Main Menu UX
 

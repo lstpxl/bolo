@@ -1,17 +1,29 @@
 #include "platform/Input.h"
 
+#include <cmath>
 #include "raylib.h"
 
 FrameInput PollFrameInput() {
     constexpr float axisDeadzone = 0.2F;
+    constexpr float axisToRawScale = 32767.0F;
     float moveX = 0.0F;
     float moveY = 0.0F;
     float turnInput = 0.0F;
     float turretTurnInput = 0.0F;
+    int gamepadAxis0Raw = 0;
+    int gamepadAxis1Raw = 0;
+    int gamepadAxis2Raw = 0;
+    int gamepadAxis3Raw = 0;
 
     if (IsGamepadAvailable(0)) {
         const float axisX = GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_X);
         const float axisY = GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_Y);
+        const float axisZ = GetGamepadAxisMovement(0, GAMEPAD_AXIS_RIGHT_X);
+        const float axisW = GetGamepadAxisMovement(0, GAMEPAD_AXIS_RIGHT_Y);
+        gamepadAxis0Raw = static_cast<int>(std::lround(axisX * axisToRawScale));
+        gamepadAxis1Raw = static_cast<int>(std::lround(axisY * axisToRawScale));
+        gamepadAxis2Raw = static_cast<int>(std::lround(axisZ * axisToRawScale));
+        gamepadAxis3Raw = static_cast<int>(std::lround(axisW * axisToRawScale));
         if (axisX > axisDeadzone || axisX < -axisDeadzone) {
             moveX += axisX;
         }
@@ -119,6 +131,10 @@ FrameInput PollFrameInput() {
         .moveY = moveY,
         .turnInput = turnInput,
         .turretTurnInput = turretTurnInput,
+        .gamepadAxis0Raw = gamepadAxis0Raw,
+        .gamepadAxis1Raw = gamepadAxis1Raw,
+        .gamepadAxis2Raw = gamepadAxis2Raw,
+        .gamepadAxis3Raw = gamepadAxis3Raw,
         .forwardButtonDown = keyForwardDown || gamepadForwardDown,
         .forwardButtonPressed = keyForwardPressed || gamepadForwardPressed,
         .forwardButtonReleased = keyForwardReleased || gamepadForwardReleased,
