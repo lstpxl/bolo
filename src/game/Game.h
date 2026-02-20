@@ -18,7 +18,7 @@ public:
     void RequestMenu();
     void StartGame(const AppConfig& config);
     void Update(const FrameInput& input, float deltaSeconds, const AppConfig& config);
-    void Render(IRenderer& renderer, const AppConfig& config) const;
+    void Render(IRenderer& renderer, const AppConfig& config, const FrameInput& input) const;
 
 private:
     GameModeController modeController_{};

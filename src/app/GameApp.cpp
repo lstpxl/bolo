@@ -171,7 +171,7 @@ void GameApp::Render(const FrameInput& input) {
             exitRequested_ = true;
         }
     } else {
-        game_.Render(renderer_, config_);
+        game_.Render(renderer_, config_, input);
         char axesText[96] = {};
         std::snprintf(
             axesText,

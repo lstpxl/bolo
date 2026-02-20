@@ -111,9 +111,9 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const AppConfig& 
     }
 }
 
-void Game::Render(IRenderer& renderer, const AppConfig& config) const {
+void Game::Render(IRenderer& renderer, const AppConfig& config, const FrameInput& input) const {
     if (modeController_.Mode() != GameMode::Playing) {
         return;
     }
-    renderer.RenderGameplay(state_, config);
+    renderer.RenderGameplay(state_, config, input);
 }

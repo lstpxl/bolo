@@ -26,6 +26,7 @@ struct GameplayConstants {
     static constexpr float kPlayerSecondsToFullVelocity = 3.0F;      // seconds
     static constexpr float kPlayerTurnSpeedRadians = 2.5F;           // radians / second
     static constexpr float kPlayerTurretTurnSpeedRadians = 3.0F;     // radians / second
+    static constexpr float kJoystickAcceleration = 0.7F;        // normalized-velocity units / second
     static constexpr float kPlayerProjectileSpeed = 20.0F;           // world-units / second
     static constexpr float kPlayerFireCooldownSeconds = 0.22F;       // seconds
 

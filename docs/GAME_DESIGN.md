@@ -86,6 +86,8 @@ Input is collected in `src/platform/Input.cpp`.
 - Turn:
   - keyboard: Left/Right arrows
   - gamepad: D-pad left/right
+- Move joystick: gamepad axes `0` and `1` (left stick).
+- Fire joystick: gamepad axes `2` and `3` (right stick).
 - Throttle:
   - forward: W or Up / D-pad up
   - decelerate: S or Down / D-pad down
@@ -93,6 +95,7 @@ Input is collected in `src/platform/Input.cpp`.
   - Enter (keyboard) or Start (gamepad)
 - Exit app:
   - gamepad combo Start + Select
+- If fire joystick is inclined past deadzone, player fires repeatedly on cooldown in fire-joystick direction.
 
 ### Menu
 
@@ -110,8 +113,19 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
 - Forward button increases throttle.
 - Reverse/down button decreases throttle.
 - Throttle is clamped to `0..1` (no negative velocity, no reverse movement).
-- Current velocity is computed from throttle and heading:
-  - `forwardSpeed = throttleNormalized * fullVelocity`.
+- Current velocity is integrated over time (not overwritten each frame).
+- Throttle contributes forward acceleration along hull heading.
+- Move joystick (`axes 0/1`) is processed in polar coordinates:
+  - joystick provides normalized target velocity vector `J`
+  - UP/DOWN throttle contributes an additional forward target component (`throttleNormalized` along hull heading)
+  - combined target is clamped to normalized magnitude `<= 1`
+  - current velocity is normalized as `V` (`velocity / kPlayerFullVelocity`)
+  - transform vector is `T = J - V`
+  - each update, `V` moves toward `J` at constant rate `kJoystickAcceleration`:
+    - `V += normalize(T) * min(|T|, kJoystickAcceleration * dt)`
+  - this gives transition time `|T| / kJoystickAcceleration` (e.g. `|T|=1`, `a=1` => `1s`)
+  - tank heading is aligned to resulting velocity direction
+- There is no passive velocity damping/braking; when joystick returns to neutral, tank keeps its last velocity until another force (input/collision) changes it.
 
 ## Rendering and Camera
 
@@ -124,6 +138,7 @@ World rendering is in `src/platform/Renderer2D.cpp`.
 - Enemy tanks and bases render in world units.
 - Player tank sprite renders in screen space at native `20x20` pixels (camera-following world position), while gameplay footprint remains `kEntitySizeUnits = 1.0`.
 - Player tank animation frames apply per-frame pivot correction to keep the sprite visually centered while changing heading frames.
+- HUD direction radar draws three lines: hull heading (white), move joystick vector from gamepad axes `0/1` (sky blue), and fire joystick vector from gamepad axes `2/3` (red). Joystick direction uses `(axisX, axisY)` and amplitude is normalized by raw max magnitude `32768`.
 - Gameplay view draws a top-left input debug line at font size `10`: `Axes:  0:...  1:...  2:...  3:...` using gamepad raw axis values (approximate signed 16-bit range).
 
 ## Main Menu UX

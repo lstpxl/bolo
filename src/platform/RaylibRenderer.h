@@ -8,7 +8,7 @@ class RaylibRenderer final : public IRenderer {
 public:
     bool LoadResources();
     void UnloadResources();
-    void RenderGameplay(const GameState& state, const AppConfig& config) override;
+    void RenderGameplay(const GameState& state, const AppConfig& config, const FrameInput& input) override;
 
 private:
     Renderer2D renderer2D_{};

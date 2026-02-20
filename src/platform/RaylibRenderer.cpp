@@ -8,7 +8,7 @@ void RaylibRenderer::UnloadResources() {
     renderer2D_.UnloadResources();
 }
 
-void RaylibRenderer::RenderGameplay(const GameState& state, const AppConfig& config) {
+void RaylibRenderer::RenderGameplay(const GameState& state, const AppConfig& config, const FrameInput& input) {
     renderer2D_.DrawWorld(state, config);
-    hudPanel_.Render(state, config);
+    hudPanel_.Render(state, config, input);
 }

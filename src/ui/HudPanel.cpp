@@ -5,7 +5,7 @@
 #include "platform/PlayerFigure.h"
 #include "raylib.h"
 
-void HudPanel::Render(const GameState& state, const AppConfig& config) const {
+void HudPanel::Render(const GameState& state, const AppConfig& config, const FrameInput& input) const {
     const int hudWidth = ComputeHudWidth(config);
     const Rectangle panel = {
         .x = static_cast<float>(config.screenWidth - hudWidth),
@@ -178,6 +178,27 @@ void HudPanel::Render(const GameState& state, const AppConfig& config) const {
         BLACK);
     const float headingX = std::sin(state.world.player.hullHeadingRadians);
     const float headingY = -std::cos(state.world.player.hullHeadingRadians);
+    constexpr float joystickAxisRawMax = 32768.0F;
+    const float leftRawAxisX = static_cast<float>(input.gamepadAxis0Raw);
+    const float leftRawAxisY = static_cast<float>(input.gamepadAxis1Raw);
+    const float leftRawMagnitude = std::sqrt(leftRawAxisX * leftRawAxisX + leftRawAxisY * leftRawAxisY);
+    const float leftJoystickAmplitude = std::min(1.0F, leftRawMagnitude / joystickAxisRawMax);
+    float leftJoystickDirX = 0.0F;
+    float leftJoystickDirY = 0.0F;
+    if (leftRawMagnitude > 0.0F) {
+        leftJoystickDirX = leftRawAxisX / leftRawMagnitude;
+        leftJoystickDirY = leftRawAxisY / leftRawMagnitude;
+    }
+    const float rightRawAxisX = static_cast<float>(input.gamepadAxis2Raw);
+    const float rightRawAxisY = static_cast<float>(input.gamepadAxis3Raw);
+    const float rightRawMagnitude = std::sqrt(rightRawAxisX * rightRawAxisX + rightRawAxisY * rightRawAxisY);
+    const float rightJoystickAmplitude = std::min(1.0F, rightRawMagnitude / joystickAxisRawMax);
+    float rightJoystickDirX = 0.0F;
+    float rightJoystickDirY = 0.0F;
+    if (rightRawMagnitude > 0.0F) {
+        rightJoystickDirX = rightRawAxisX / rightRawMagnitude;
+        rightJoystickDirY = rightRawAxisY / rightRawMagnitude;
+    }
     const int centerX = compassX + leftBlockSize / 2;
     const int centerY = blocksY + leftBlockSize / 2;
     const float armLength = static_cast<float>(leftBlockSize) * 0.28F;
@@ -187,6 +208,18 @@ void HudPanel::Render(const GameState& state, const AppConfig& config) const {
         static_cast<int>(static_cast<float>(centerX) + headingX * armLength),
         static_cast<int>(static_cast<float>(centerY) + headingY * armLength),
         RAYWHITE);
+    DrawLine(
+        centerX,
+        centerY,
+        static_cast<int>(static_cast<float>(centerX) + leftJoystickDirX * armLength * leftJoystickAmplitude),
+        static_cast<int>(static_cast<float>(centerY) + leftJoystickDirY * armLength * leftJoystickAmplitude),
+        SKYBLUE);
+    DrawLine(
+        centerX,
+        centerY,
+        static_cast<int>(static_cast<float>(centerX) + rightJoystickDirX * armLength * rightJoystickAmplitude),
+        static_cast<int>(static_cast<float>(centerY) + rightJoystickDirY * armLength * rightJoystickAmplitude),
+        RED);
 
     if (state.world.levelCleared || state.world.levelClearMessageSeconds > 0.0F) {
         DrawText("LEVEL CLEARED", contentX + 6, blocksY - 26, 20, LIME);
