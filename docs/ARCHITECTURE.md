@@ -146,7 +146,7 @@ public:
 
     void drawText(const char* text, Vec2 pos) override
     {
-        DrawText(text, pos.x, pos.y, 12, WHITE);
+        DrawText(text, pos.x, pos.y, 10, WHITE);
     }
 };
 ```
