@@ -9,14 +9,65 @@ enum class GameMode {
 };
 
 struct GameplayConstants {
-    static constexpr int kPixelsPerUnit = 16;
-    static constexpr int kMazeWidthCells = 60;
-    static constexpr int kMazeHeightCells = 60;
-    static constexpr int kMazeCellSizeUnits = 6;
-    static constexpr float kWallThicknessUnits = 0.125F;  // 2px at 16px/unit
-    static constexpr float kEntitySizeUnits = 1.0F;
-    static constexpr float kEnemyBaseSizeUnits = 3.0F;
-    static constexpr int kEnemyBaseCount = 6;
+    // World geometry.
+    static constexpr int kPixelsPerUnit = 16;                // pixels / world-unit
+    static constexpr int kMazeWidthCells = 60;               // cells
+    static constexpr int kMazeHeightCells = 60;              // cells
+    static constexpr int kMazeCellSizeUnits = 6;             // world-units / cell
+    static constexpr float kWallThicknessUnits = 0.125F;     // world-units (2px at 16px/unit)
+    static constexpr float kEntitySizeUnits = 1.0F;          // world-units
+    static constexpr float kEnemyBaseSizeUnits = 3.0F;       // world-units
+    static constexpr int kEnemyBaseCount = 6;                // bases / maze
+
+    // Player tuning.
+    static constexpr int kStartingLives = 4;                         // lives
+    static constexpr float kFuelMax = 100.0F;                        // fuel units
+    static constexpr float kPlayerFullVelocity = 20.0F;              // world-units / second
+    static constexpr float kPlayerSecondsToFullVelocity = 3.0F;      // seconds
+    static constexpr float kPlayerTurnSpeedRadians = 2.5F;           // radians / second
+    static constexpr float kPlayerTurretTurnSpeedRadians = 3.0F;     // radians / second
+    static constexpr float kPlayerProjectileSpeed = 20.0F;           // world-units / second
+    static constexpr float kPlayerFireCooldownSeconds = 0.22F;       // seconds
+
+    // Enemy tuning.
+    static constexpr float kEnemyDroneSpeed = 2.0F;                  // world-units / second
+    static constexpr float kEnemyTorpedoSpeed = 4.0F;                // world-units / second
+    static constexpr float kEnemyHunterSpeed = 6.0F;                 // world-units / second
+    static constexpr float kEnemyAssassinSpeed = 8.0F;              // world-units / second
+    static constexpr float kEnemyDroneFireInterval = 3.0F;           // seconds
+    static constexpr float kEnemyTorpedoFireInterval = 2.0F;         // seconds
+    static constexpr float kEnemyHunterFireInterval = 1.5F;          // seconds
+    static constexpr float kEnemyAssassinFireInterval = 1.0F;        // seconds
+    static constexpr float kEnemyProjectileSpeed = 7.0F;        // world-units / second
+    static constexpr float kEnemyAggroRangeUnits = 140.0F;           // world-units
+    static constexpr float kEnemyFireRangeUnits = 180.0F;            // world-units
+    static constexpr int kDroneMaxLevel = 2;                         // level index
+    static constexpr int kTorpedoMaxLevel = 4;                       // level index
+    static constexpr int kHunterMaxLevel = 7;                        // level index
+    static constexpr float kEnemyAssassinPredictionSeconds = 0.8F;   // seconds
+    static constexpr float kEnemyAiRetargetMinSeconds = 0.7F;        // seconds
+    static constexpr float kEnemyAiRetargetRandomSeconds = 0.9F;     // seconds
+    static constexpr int kMaxAliveEnemies = 18;                      // enemies
+    static constexpr float kEnemyInitialFireCooldownSeconds = 0.2F;  // seconds
+    static constexpr float kBaseSpawnCooldownSeconds = 1.2F;         // seconds
+
+    // Projectiles and collisions.
+    static constexpr float kProjectileLifetimeSeconds = 3.0F;        // seconds
+    static constexpr float kProjectileHitRadius = 0.7F;              // world-units
+    static constexpr float kPlayerEnemyCollisionRadius = 1.0F;       // world-units
+    static constexpr float kLineOfSightSampleSpacing = 0.08F;        // world-units
+
+    // Fuel/rules.
+    static constexpr float kFuelDrainMovementThresholdSq = 0.01F;    // (world-units / second)^2
+    static constexpr float kFuelDrainBasePerSecond = 0.9F;           // fuel units / second
+    static constexpr float kFuelDrainThrottlePerSecond = 1.1F;       // fuel units / second @ throttle=1
+    static constexpr float kLevelClearMessageSeconds = 2.0F;         // seconds
+    static constexpr int kEnemyScorePerLevelMultiplier = 1;          // points * level
+    static constexpr int kBaseScorePerLevelMultiplier = 100;         // points * level
+
+    // Maze density control: internal wall segments per 100 cells.
+    static constexpr float kDensity1WallsPer100Cells = 39.0F;        // wall-segments / 100 cells
+    static constexpr float kDensity5WallsPer100Cells = 90.0F;        // wall-segments / 100 cells
 };
 
 struct MazeCell {
@@ -40,8 +91,8 @@ struct PlayerTank {
     float turretHeadingRadians;
     float throttleNormalized = 0.0F;
     float fireCooldownSeconds = 0.0F;
-    float fuel = 100.0F;
-    int lives = 4;
+    float fuel = GameplayConstants::kFuelMax;
+    int lives = GameplayConstants::kStartingLives;
     bool alive = true;
 };
 
@@ -93,8 +144,8 @@ struct WorldState {
         .turretHeadingRadians = 0.0F,
         .throttleNormalized = 0.0F,
         .fireCooldownSeconds = 0.0F,
-        .fuel = 100.0F,
-        .lives = 4,
+        .fuel = GameplayConstants::kFuelMax,
+        .lives = GameplayConstants::kStartingLives,
         .alive = true,
     };
     std::vector<EnemyTank> enemies{};

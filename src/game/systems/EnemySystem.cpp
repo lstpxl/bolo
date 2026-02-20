@@ -9,13 +9,13 @@
 
 namespace {
 EnemyType EnemyTypeForLevel(int level) {
-    if (level <= 2) {
+    if (level <= GameplayConstants::kDroneMaxLevel) {
         return EnemyType::Drone;
     }
-    if (level <= 4) {
+    if (level <= GameplayConstants::kTorpedoMaxLevel) {
         return EnemyType::Torpedo;
     }
-    if (level <= 7) {
+    if (level <= GameplayConstants::kHunterMaxLevel) {
         return EnemyType::Hunter;
     }
     return EnemyType::Assassin;
@@ -23,28 +23,28 @@ EnemyType EnemyTypeForLevel(int level) {
 
 float EnemySpeed(EnemyType type) {
     if (type == EnemyType::Drone) {
-        return 4.0F;
+        return GameplayConstants::kEnemyDroneSpeed;
     }
     if (type == EnemyType::Torpedo) {
-        return 7.0F;
+        return GameplayConstants::kEnemyTorpedoSpeed;
     }
     if (type == EnemyType::Hunter) {
-        return 9.0F;
+        return GameplayConstants::kEnemyHunterSpeed;
     }
-    return 11.0F;
+    return GameplayConstants::kEnemyAssassinSpeed;
 }
 
 float EnemyFireInterval(EnemyType type) {
     if (type == EnemyType::Drone) {
-        return 2.0F;
+        return GameplayConstants::kEnemyDroneFireInterval;
     }
     if (type == EnemyType::Torpedo) {
-        return 1.4F;
+        return GameplayConstants::kEnemyTorpedoFireInterval;
     }
     if (type == EnemyType::Hunter) {
-        return 1.0F;
+        return GameplayConstants::kEnemyHunterFireInterval;
     }
-    return 0.7F;
+    return GameplayConstants::kEnemyAssassinFireInterval;
 }
 
 float DistanceSq(const Vec2f& a, const Vec2f& b) {
@@ -85,7 +85,7 @@ bool IsSegmentObscuredByWall(const WorldState& world, const Vec2f& from, const V
     if (distance <= 0.001F) {
         return false;
     }
-    const float sampleSpacing = 0.08F;
+    const float sampleSpacing = GameplayConstants::kLineOfSightSampleSpacing;
     const int steps = std::max(1, static_cast<int>(std::ceil(distance / sampleSpacing)));
     for (int i = 1; i < steps; ++i) {
         const float t = static_cast<float>(i) / static_cast<float>(steps);
@@ -145,7 +145,9 @@ void UpdateEnemySystem(GameState& state, const AppConfig& config, float deltaSec
         enemy.type = levelType;
         enemy.aiStateTimerSeconds -= deltaSeconds;
         if (enemy.aiStateTimerSeconds <= 0.0F) {
-            enemy.aiStateTimerSeconds = 0.7F + random.NextFloat(0.0F, 0.9F);
+            enemy.aiStateTimerSeconds =
+                GameplayConstants::kEnemyAiRetargetMinSeconds +
+                random.NextFloat(0.0F, GameplayConstants::kEnemyAiRetargetRandomSeconds);
             const float angle = random.NextFloat(0.0F, PI * 2.0F);
             enemy.wanderDirection = Vec2f{.x = std::sin(angle), .y = -std::cos(angle)};
         }
@@ -156,15 +158,18 @@ void UpdateEnemySystem(GameState& state, const AppConfig& config, float deltaSec
             .y = state.world.player.position.y - enemy.position.y,
         };
         const float distanceToPlayerSq = DistanceSq(enemy.position, state.world.player.position);
-        const bool playerInAggroRange = distanceToPlayerSq < (140.0F * 140.0F);
+        const bool playerInAggroRange =
+            distanceToPlayerSq < (GameplayConstants::kEnemyAggroRangeUnits * GameplayConstants::kEnemyAggroRangeUnits);
         if (enemy.type == EnemyType::Torpedo && playerInAggroRange) {
             desiredDirection = toPlayer;
         } else if (enemy.type == EnemyType::Hunter) {
             desiredDirection = toPlayer;
         } else if (enemy.type == EnemyType::Assassin) {
             const Vec2f predicted{
-                .x = state.world.player.position.x + state.world.player.velocity.x * 0.8F,
-                .y = state.world.player.position.y + state.world.player.velocity.y * 0.8F,
+                .x = state.world.player.position.x +
+                    state.world.player.velocity.x * GameplayConstants::kEnemyAssassinPredictionSeconds,
+                .y = state.world.player.position.y +
+                    state.world.player.velocity.y * GameplayConstants::kEnemyAssassinPredictionSeconds,
             };
             desiredDirection = Vec2f{
                 .x = predicted.x - enemy.position.x,
@@ -203,9 +208,14 @@ void UpdateEnemySystem(GameState& state, const AppConfig& config, float deltaSec
         if (enemy.fireCooldownSeconds <= 0.0F &&
             enemyVisibleInViewport &&
             !playerObscured &&
-            distanceToPlayerSq < (180.0F * 180.0F)) {
+            distanceToPlayerSq < (GameplayConstants::kEnemyFireRangeUnits * GameplayConstants::kEnemyFireRangeUnits)) {
             const float headingToPlayer = std::atan2(toPlayer.x, -toPlayer.y);
-            SpawnProjectile(state, ProjectileOwner::Enemy, enemy.position, headingToPlayer, 9.666667F);
+            SpawnProjectile(
+                state,
+                ProjectileOwner::Enemy,
+                enemy.position,
+                headingToPlayer,
+                GameplayConstants::kEnemyProjectileSpeed);
             enemy.fireCooldownSeconds = EnemyFireInterval(enemy.type);
         }
     }

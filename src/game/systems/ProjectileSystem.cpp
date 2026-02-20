@@ -17,7 +17,7 @@ void SpawnProjectile(
                 .y = -std::cos(headingRadians) * speedUnitsPerSecond,
             },
         .owner = owner,
-        .remainingLifeSeconds = 3.0F,
+        .remainingLifeSeconds = GameplayConstants::kProjectileLifetimeSeconds,
         .alive = true,
     });
 }

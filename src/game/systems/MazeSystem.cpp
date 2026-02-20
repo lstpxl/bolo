@@ -168,17 +168,15 @@ void GenerateConnectedMaze(MazeState& maze, Random& random, int density) {
 
     // Build a concrete, measurable density target:
     // internal wall segments per 100 cells.
-    // density=1 -> 10, density=5 -> 50 (linear interpolation).
+    // density=1 and density=5 are defined in GameplayConstants.
     const int clampedDensity = std::max(1, std::min(5, density));
     const int horizontalConnections = maze.widthCells * (maze.heightCells - 1);
     const int verticalConnections = (maze.widthCells - 1) * maze.heightCells;
     const int totalInternalEdges = horizontalConnections + verticalConnections;
-    constexpr float kDensity1WallsPer100Cells = 39.0F;  // +30% from current 30
-    constexpr float kDensity5WallsPer100Cells = 90.0F;  // +20% from current 75
     const float densityT = static_cast<float>(clampedDensity - 1) / 4.0F;
     const float targetWallSegmentsPer100Cells =
-        kDensity1WallsPer100Cells +
-        (kDensity5WallsPer100Cells - kDensity1WallsPer100Cells) * densityT;
+        GameplayConstants::kDensity1WallsPer100Cells +
+        (GameplayConstants::kDensity5WallsPer100Cells - GameplayConstants::kDensity1WallsPer100Cells) * densityT;
     int targetInternalWalls = static_cast<int>(
         std::round(targetWallSegmentsPer100Cells * static_cast<float>(totalCells) / 100.0F));
     targetInternalWalls = std::max(0, std::min(totalInternalEdges, targetInternalWalls));
@@ -390,7 +388,7 @@ void InitializeMazeWorld(GameState& state, const AppConfig& config) {
         state.world.player.alive = true;
     }
 
-    state.world.player.fuel = 100.0F;
+    state.world.player.fuel = GameplayConstants::kFuelMax;
     state.world.enemies.clear();
     state.world.projectiles.clear();
     state.world.playerTurnLostPending = false;

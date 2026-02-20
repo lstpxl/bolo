@@ -87,10 +87,11 @@ void UpdateCollisionSystem(GameState& state, float deltaSeconds) {
                 if (!enemy.alive) {
                     continue;
                 }
-                if (DistanceSq(projectile.position, enemy.position) <= 0.7F * 0.7F) {
+                if (DistanceSq(projectile.position, enemy.position) <=
+                    GameplayConstants::kProjectileHitRadius * GameplayConstants::kProjectileHitRadius) {
                     enemy.alive = false;
                     projectile.alive = false;
-                    world.score += state.menuSettings.levelNumber;
+                    world.score += state.menuSettings.levelNumber * GameplayConstants::kEnemyScorePerLevelMultiplier;
                     break;
                 }
             }
@@ -108,13 +109,15 @@ void UpdateCollisionSystem(GameState& state, float deltaSeconds) {
                 if (dx <= halfBase && dy <= halfBase) {
                     base.destroyed = true;
                     projectile.alive = false;
-                    world.score += state.menuSettings.levelNumber * 100;
-                    world.player.fuel = 100.0F;
+                    world.score += state.menuSettings.levelNumber * GameplayConstants::kBaseScorePerLevelMultiplier;
+                    world.player.fuel = GameplayConstants::kFuelMax;
                     break;
                 }
             }
         } else {
-            if (world.player.alive && DistanceSq(projectile.position, world.player.position) <= 0.7F * 0.7F) {
+            if (world.player.alive &&
+                DistanceSq(projectile.position, world.player.position) <=
+                    GameplayConstants::kProjectileHitRadius * GameplayConstants::kProjectileHitRadius) {
                 projectile.alive = false;
                 world.player.alive = false;
                 world.playerTurnLostPending = true;
@@ -136,7 +139,8 @@ void UpdateCollisionSystem(GameState& state, float deltaSeconds) {
         if (!enemy.alive) {
             continue;
         }
-        if (DistanceSq(world.player.position, enemy.position) <= 1.0F) {
+        if (DistanceSq(world.player.position, enemy.position) <=
+            GameplayConstants::kPlayerEnemyCollisionRadius * GameplayConstants::kPlayerEnemyCollisionRadius) {
             world.player.alive = false;
             world.playerTurnLostPending = true;
             return;

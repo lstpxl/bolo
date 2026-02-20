@@ -15,8 +15,8 @@ void GameModeController::StartGame(
     const MenuSettings& settings,
     const AppConfig& config) {
     state.menuSettings = settings;
-    state.world.player.lives = 4;
-    state.world.player.fuel = 100.0F;
+    state.world.player.lives = GameplayConstants::kStartingLives;
+    state.world.player.fuel = GameplayConstants::kFuelMax;
     state.world.score = 0;
     state.world.gameOver = false;
     InitializeMazeWorld(state, config);

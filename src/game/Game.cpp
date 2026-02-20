@@ -48,8 +48,10 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const AppConfig& 
     // Fuel/rules.
     const float speedSq = state_.world.player.velocity.x * state_.world.player.velocity.x +
         state_.world.player.velocity.y * state_.world.player.velocity.y;
-    if (speedSq > 0.01F) {
-        state_.world.player.fuel -= deltaSeconds * (0.9F + state_.world.player.throttleNormalized * 1.1F);
+    if (speedSq > GameplayConstants::kFuelDrainMovementThresholdSq) {
+        state_.world.player.fuel -= deltaSeconds * (
+            GameplayConstants::kFuelDrainBasePerSecond +
+            state_.world.player.throttleNormalized * GameplayConstants::kFuelDrainThrottlePerSecond);
     }
     if (state_.world.player.fuel <= 0.0F) {
         state_.world.player.fuel = 0.0F;
@@ -80,7 +82,7 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const AppConfig& 
             RequestMenu();
             return;
         }
-        state_.world.player.fuel = 100.0F;
+        state_.world.player.fuel = GameplayConstants::kFuelMax;
         PlacePlayerAtSafeSpawn(state_, config);
     }
 
@@ -97,9 +99,9 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const AppConfig& 
         InitializeMazeWorld(state_, config);
         state_.world.score = score;
         state_.world.player.lives = lives;
-        state_.world.player.fuel = 100.0F;
+        state_.world.player.fuel = GameplayConstants::kFuelMax;
         state_.world.levelCleared = true;
-        state_.world.levelClearMessageSeconds = 2.0F;
+        state_.world.levelClearMessageSeconds = GameplayConstants::kLevelClearMessageSeconds;
     }
 
     if (state_.world.levelClearMessageSeconds > 0.0F) {

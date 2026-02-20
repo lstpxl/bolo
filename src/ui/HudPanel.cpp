@@ -26,11 +26,23 @@ void HudPanel::Render(const GameState& state, const AppConfig& config) const {
     const int contentPadding = 10;
     const int contentX = panelX + contentPadding;
     const int contentWidth = hudWidth - (contentPadding * 2);
+    const int mapBottomPadding = 10;
     int cursorY = 8;
 
     // 1) BOLO text
-    DrawText("BOLO", contentX, cursorY, 40, PURPLE);
-    cursorY += 46;
+    constexpr float boloFontSize = 50.0F;  // 1.25x over previous 40
+    const int boloBaseWidth = MeasureText("BOLO", static_cast<int>(boloFontSize));
+    const float boloSpacing = std::max(
+        1.0F,
+        (static_cast<float>(contentWidth) - static_cast<float>(boloBaseWidth)) / 3.0F);
+    DrawTextEx(
+        GetFontDefault(),
+        "BOLO",
+        Vector2{static_cast<float>(contentX), static_cast<float>(cursorY)},
+        boloFontSize,
+        boloSpacing,
+        PURPLE);
+    cursorY += 56;
 
     // 2) SCORE 0000 display
     DrawRectangle(contentX, cursorY, contentWidth, 36, BLACK);
@@ -65,22 +77,38 @@ void HudPanel::Render(const GameState& state, const AppConfig& config) const {
     cursorY += 20;
 
     // 5) Velocity bar
-    constexpr float kPlayerFullVelocityUnitsPerSecond = 20.0F;
     const float speed = std::sqrt(
         state.world.player.velocity.x * state.world.player.velocity.x +
         state.world.player.velocity.y * state.world.player.velocity.y);
-    const float speedNormalized = std::max(0.0F, std::min(1.0F, speed / kPlayerFullVelocityUnitsPerSecond));
+    const float speedNormalized =
+        std::max(0.0F, std::min(1.0F, speed / GameplayConstants::kPlayerFullVelocity));
     const int speedWidth = static_cast<int>(speedNormalized * static_cast<float>(contentWidth));
     DrawRectangle(contentX, cursorY, contentWidth, 12, DARKGRAY);
     DrawRectangle(contentX, cursorY, speedWidth, 12, SKYBLUE);
     DrawRectangleLines(contentX, cursorY, contentWidth, 12, RAYWHITE);
     cursorY += 20;
 
-    // 6) Base direction quadrants + player heading indicator
+    // 6) Live square map (player dot) aligned to HUD bottom
+    const int mapSize = contentWidth;
+    const int mapY = static_cast<int>(panel.y + panel.height) - mapBottomPadding - mapSize;
+    DrawRectangle(contentX, mapY, mapSize, mapSize, BLACK);
+    DrawRectangleLines(contentX, mapY, mapSize, mapSize, RAYWHITE);
+    const float mazeWidth = static_cast<float>(state.world.maze.widthCells * state.world.maze.cellSizeUnits);
+    const float mazeHeight = static_cast<float>(state.world.maze.heightCells * state.world.maze.cellSizeUnits);
+    const float normalizedX = mazeWidth > 0.0F ? state.world.player.position.x / mazeWidth : 0.5F;
+    const float normalizedY = mazeHeight > 0.0F ? state.world.player.position.y / mazeHeight : 0.5F;
+    const int dotX = contentX + static_cast<int>(
+        std::max(0.0F, std::min(1.0F, normalizedX)) * static_cast<float>(mapSize - 1));
+    const int dotY = mapY + static_cast<int>(
+        std::max(0.0F, std::min(1.0F, normalizedY)) * static_cast<float>(mapSize - 1));
+    DrawCircle(dotX, dotY, 2.0F, GREEN);
+
+    // 7) Base direction quadrants + player heading indicator (moved near map)
     const int blockGap = 8;
     const int leftBlockSize = (contentWidth - blockGap) / 2;
-    DrawRectangle(contentX, cursorY, leftBlockSize, leftBlockSize, BLACK);
-    DrawRectangleLines(contentX, cursorY, leftBlockSize, leftBlockSize, RAYWHITE);
+    const int blocksY = mapY - leftBlockSize - 10;
+    DrawRectangle(contentX, blocksY, leftBlockSize, leftBlockSize, BLACK);
+    DrawRectangleLines(contentX, blocksY, leftBlockSize, leftBlockSize, RAYWHITE);
     const int quadrantCell = leftBlockSize / 2;
     int highlightedQuadrant = -1;
     float nearestDistanceSq = 0.0F;
@@ -110,48 +138,48 @@ void HudPanel::Render(const GameState& state, const AppConfig& config) const {
     const Color brightQuadrant = Color{160, 255, 120, 255};
     DrawRectangle(
         contentX + 2,
-        cursorY + 2,
+        blocksY + 2,
         quadrantCell - 3,
         quadrantCell - 3,
         highlightedQuadrant == 0 ? brightQuadrant : dimQuadrant);
     DrawRectangle(
         contentX + quadrantCell + 1,
-        cursorY + 2,
+        blocksY + 2,
         quadrantCell - 3,
         quadrantCell - 3,
         highlightedQuadrant == 1 ? brightQuadrant : dimQuadrant);
     DrawRectangle(
         contentX + 2,
-        cursorY + quadrantCell + 1,
+        blocksY + quadrantCell + 1,
         quadrantCell - 3,
         quadrantCell - 3,
         highlightedQuadrant == 2 ? brightQuadrant : dimQuadrant);
     DrawRectangle(
         contentX + quadrantCell + 1,
-        cursorY + quadrantCell + 1,
+        blocksY + quadrantCell + 1,
         quadrantCell - 3,
         quadrantCell - 3,
         highlightedQuadrant == 3 ? brightQuadrant : dimQuadrant);
 
     const int compassX = contentX + leftBlockSize + blockGap;
-    DrawRectangle(compassX, cursorY, leftBlockSize, leftBlockSize, Color{237, 126, 188, 255});
-    DrawRectangleLines(compassX, cursorY, leftBlockSize, leftBlockSize, RAYWHITE);
+    DrawRectangle(compassX, blocksY, leftBlockSize, leftBlockSize, Color{237, 126, 188, 255});
+    DrawRectangleLines(compassX, blocksY, leftBlockSize, leftBlockSize, RAYWHITE);
     const int compassPadding = 4;
     DrawRectangle(
         compassX + compassPadding,
-        cursorY + compassPadding,
+        blocksY + compassPadding,
         leftBlockSize - compassPadding * 2,
         leftBlockSize - compassPadding * 2,
-        Color{27, 31, 39, 255});
+        Color{237, 126, 188, 255});
     DrawCircle(
         compassX + (leftBlockSize / 2),
-        cursorY + (leftBlockSize / 2),
-        static_cast<float>(leftBlockSize) / 3.0F,
+        blocksY + (leftBlockSize / 2),
+        (static_cast<float>(leftBlockSize) / 3.0F) * 1.15F,
         BLACK);
     const float headingX = std::sin(state.world.player.hullHeadingRadians);
     const float headingY = -std::cos(state.world.player.hullHeadingRadians);
     const int centerX = compassX + leftBlockSize / 2;
-    const int centerY = cursorY + leftBlockSize / 2;
+    const int centerY = blocksY + leftBlockSize / 2;
     const float armLength = static_cast<float>(leftBlockSize) * 0.28F;
     DrawLine(
         centerX,
@@ -159,23 +187,8 @@ void HudPanel::Render(const GameState& state, const AppConfig& config) const {
         static_cast<int>(static_cast<float>(centerX) + headingX * armLength),
         static_cast<int>(static_cast<float>(centerY) + headingY * armLength),
         RAYWHITE);
-    cursorY += leftBlockSize + 10;
-
-    // 7) Live square map (player dot)
-    const int mapSize = contentWidth;
-    DrawRectangle(contentX, cursorY, mapSize, mapSize, BLACK);
-    DrawRectangleLines(contentX, cursorY, mapSize, mapSize, RAYWHITE);
-    const float mazeWidth = static_cast<float>(state.world.maze.widthCells * state.world.maze.cellSizeUnits);
-    const float mazeHeight = static_cast<float>(state.world.maze.heightCells * state.world.maze.cellSizeUnits);
-    const float normalizedX = mazeWidth > 0.0F ? state.world.player.position.x / mazeWidth : 0.5F;
-    const float normalizedY = mazeHeight > 0.0F ? state.world.player.position.y / mazeHeight : 0.5F;
-    const int dotX = contentX + static_cast<int>(
-        std::max(0.0F, std::min(1.0F, normalizedX)) * static_cast<float>(mapSize - 1));
-    const int dotY = cursorY + static_cast<int>(
-        std::max(0.0F, std::min(1.0F, normalizedY)) * static_cast<float>(mapSize - 1));
-    DrawCircle(dotX, dotY, 3.0F, PURPLE);
 
     if (state.world.levelCleared || state.world.levelClearMessageSeconds > 0.0F) {
-        DrawText("LEVEL CLEARED", contentX + 6, cursorY + mapSize + 8, 20, LIME);
+        DrawText("LEVEL CLEARED", contentX + 6, blocksY - 26, 20, LIME);
     }
 }
