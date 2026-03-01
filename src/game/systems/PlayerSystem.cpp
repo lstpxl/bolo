@@ -31,7 +31,7 @@ Vec2f DirectionFromHeading(float headingRadians) {
 }
 
 constexpr float kEightDirectionStepRadians = 3.14159265358979323846F / 4.0F;
-constexpr float kTurnRepeatIntervalSeconds = 0.33333333333333333333F;
+constexpr float kTurnRepeatIntervalSeconds = 0.333F;
 
 }  // namespace
 
