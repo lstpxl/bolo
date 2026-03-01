@@ -128,6 +128,8 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
   - turn input behavior: on initial LEFT/RIGHT press, hull turns immediately by 45 degrees; while held, additional 45-degree turns repeat every `0.333` seconds; releasing clears partial repeat timing (no stored half-step momentum)
 - There is no passive velocity damping/braking; when joystick returns to neutral, tank keeps its last velocity until another force (input/collision) changes it.
 - Enemy movement heading is also quantized to the same 8-way (45-degree) directions.
+- Player and enemy collision shape is treated as a disc with `9px` diameter.
+- Enemy wall movement keeps additional margin: enemy disc edge stays at least `2px` away from maze walls.
 
 ## Rendering and Camera
 

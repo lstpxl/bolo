@@ -1,5 +1,6 @@
 #include "game/systems/CollisionSystem.h"
 
+#include <algorithm>
 #include <cstddef>
 #include <cmath>
 
@@ -10,14 +11,15 @@ float DistanceSq(const Vec2f& a, const Vec2f& b) {
     return dx * dx + dy * dy;
 }
 
-bool IsInsideMaze(const WorldState& world, const Vec2f& p) {
+bool IsInsideMaze(const WorldState& world, const Vec2f& p, float clearanceUnits) {
     const float mazeWidthUnits = static_cast<float>(world.maze.widthCells * world.maze.cellSizeUnits);
     const float mazeHeightUnits = static_cast<float>(world.maze.heightCells * world.maze.cellSizeUnits);
-    return p.x >= 0.0F && p.x <= mazeWidthUnits && p.y >= 0.0F && p.y <= mazeHeightUnits;
+    return p.x >= clearanceUnits && p.x <= mazeWidthUnits - clearanceUnits &&
+        p.y >= clearanceUnits && p.y <= mazeHeightUnits - clearanceUnits;
 }
 
-bool HitsWallAtPoint(const WorldState& world, const Vec2f& point) {
-    if (!IsInsideMaze(world, point)) {
+bool HitsWallAtPoint(const WorldState& world, const Vec2f& point, float clearanceUnits) {
+    if (!IsInsideMaze(world, point, clearanceUnits)) {
         return true;
     }
     const float cellSize = static_cast<float>(world.maze.cellSizeUnits);
@@ -30,30 +32,30 @@ bool HitsWallAtPoint(const WorldState& world, const Vec2f& point) {
         world.maze.cells[static_cast<std::size_t>(cellY * world.maze.widthCells + cellX)];
     const float localX = point.x - static_cast<float>(cellX) * cellSize;
     const float localY = point.y - static_cast<float>(cellY) * cellSize;
-    const float t = GameplayConstants::kWallThicknessUnits;
-    if (cell.northWall && localY <= t) {
+    const float wallLimit = GameplayConstants::kWallThicknessUnits + clearanceUnits;
+    if (cell.northWall && localY <= wallLimit) {
         return true;
     }
-    if (cell.southWall && localY >= cellSize - t) {
+    if (cell.southWall && localY >= cellSize - wallLimit) {
         return true;
     }
-    if (cell.westWall && localX <= t) {
+    if (cell.westWall && localX <= wallLimit) {
         return true;
     }
-    if (cell.eastWall && localX >= cellSize - t) {
+    if (cell.eastWall && localX >= cellSize - wallLimit) {
         return true;
     }
     return false;
 }
 
-bool SegmentHitsWall(const WorldState& world, const Vec2f& a, const Vec2f& b) {
+bool SegmentHitsWall(const WorldState& world, const Vec2f& a, const Vec2f& b, float clearanceUnits) {
     const float dx = b.x - a.x;
     const float dy = b.y - a.y;
     const float distance = std::sqrt(dx * dx + dy * dy);
     if (distance <= 0.001F) {
-        return HitsWallAtPoint(world, b);
+        return HitsWallAtPoint(world, b, clearanceUnits);
     }
-    const float sampleSpacing = GameplayConstants::kWallThicknessUnits * 0.5F;
+    const float sampleSpacing = std::max(0.02F, clearanceUnits * 0.5F);
     const int steps = std::max(1, static_cast<int>(std::ceil(distance / sampleSpacing)));
     for (int i = 1; i <= steps; ++i) {
         const float t = static_cast<float>(i) / static_cast<float>(steps);
@@ -61,7 +63,7 @@ bool SegmentHitsWall(const WorldState& world, const Vec2f& a, const Vec2f& b) {
             .x = a.x + dx * t,
             .y = a.y + dy * t,
         };
-        if (HitsWallAtPoint(world, sample)) {
+        if (HitsWallAtPoint(world, sample, clearanceUnits)) {
             return true;
         }
     }
@@ -77,7 +79,7 @@ void UpdateCollisionSystem(GameState& state, float deltaSeconds) {
         if (!projectile.alive) {
             continue;
         }
-        if (SegmentHitsWall(world, projectile.previousPosition, projectile.position)) {
+        if (SegmentHitsWall(world, projectile.previousPosition, projectile.position, 0.0F)) {
             projectile.alive = false;
             continue;
         }
@@ -129,7 +131,7 @@ void UpdateCollisionSystem(GameState& state, float deltaSeconds) {
         return;
     }
 
-    if (HitsWallAtPoint(world, world.player.position)) {
+    if (HitsWallAtPoint(world, world.player.position, GameplayConstants::kTankCollisionRadiusUnits)) {
         world.player.alive = false;
         world.playerTurnLostPending = true;
         return;

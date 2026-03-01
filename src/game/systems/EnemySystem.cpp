@@ -78,14 +78,15 @@ float DistanceSq(const Vec2f& a, const Vec2f& b) {
     return dx * dx + dy * dy;
 }
 
-bool IsPointInsideMaze(const WorldState& world, const Vec2f& p) {
+bool IsPointInsideMaze(const WorldState& world, const Vec2f& p, float clearanceUnits) {
     const float mazeWidthUnits = static_cast<float>(world.maze.widthCells * world.maze.cellSizeUnits);
     const float mazeHeightUnits = static_cast<float>(world.maze.heightCells * world.maze.cellSizeUnits);
-    return p.x >= 0.0F && p.x <= mazeWidthUnits && p.y >= 0.0F && p.y <= mazeHeightUnits;
+    return p.x >= clearanceUnits && p.x <= mazeWidthUnits - clearanceUnits &&
+        p.y >= clearanceUnits && p.y <= mazeHeightUnits - clearanceUnits;
 }
 
-bool IsPointInWall(const WorldState& world, const Vec2f& point) {
-    if (!IsPointInsideMaze(world, point)) {
+bool IsPointInWall(const WorldState& world, const Vec2f& point, float clearanceUnits) {
+    if (!IsPointInsideMaze(world, point, clearanceUnits)) {
         return true;
     }
     const float cellSize = static_cast<float>(world.maze.cellSizeUnits);
@@ -98,9 +99,9 @@ bool IsPointInWall(const WorldState& world, const Vec2f& point) {
         world.maze.cells[static_cast<std::size_t>(cellY * world.maze.widthCells + cellX)];
     const float localX = point.x - static_cast<float>(cellX) * cellSize;
     const float localY = point.y - static_cast<float>(cellY) * cellSize;
-    const float t = GameplayConstants::kWallThicknessUnits;
-    return (cell.northWall && localY <= t) || (cell.southWall && localY >= cellSize - t) ||
-        (cell.westWall && localX <= t) || (cell.eastWall && localX >= cellSize - t);
+    const float wallLimit = GameplayConstants::kWallThicknessUnits + clearanceUnits;
+    return (cell.northWall && localY <= wallLimit) || (cell.southWall && localY >= cellSize - wallLimit) ||
+        (cell.westWall && localX <= wallLimit) || (cell.eastWall && localX >= cellSize - wallLimit);
 }
 
 bool IsSegmentObscuredByWall(const WorldState& world, const Vec2f& from, const Vec2f& to) {
@@ -118,7 +119,7 @@ bool IsSegmentObscuredByWall(const WorldState& world, const Vec2f& from, const V
             .x = from.x + dx * t,
             .y = from.y + dy * t,
         };
-        if (IsPointInWall(world, sample)) {
+        if (IsPointInWall(world, sample, 0.0F)) {
             return true;
         }
     }
@@ -137,14 +138,14 @@ bool IsInPlayerViewport(const Vec2f& point, const GameState& state, const AppCon
         point.y >= center.y - halfHeight && point.y <= center.y + halfHeight;
 }
 
-bool SegmentIntersectsWall(const WorldState& world, const Vec2f& from, const Vec2f& to) {
+bool SegmentIntersectsWall(const WorldState& world, const Vec2f& from, const Vec2f& to, float clearanceUnits) {
     const float dx = to.x - from.x;
     const float dy = to.y - from.y;
     const float distance = std::sqrt(dx * dx + dy * dy);
     if (distance <= 0.001F) {
-        return IsPointInWall(world, to);
+        return IsPointInWall(world, to, clearanceUnits);
     }
-    const float sampleSpacing = GameplayConstants::kWallThicknessUnits * 0.5F;
+    const float sampleSpacing = std::max(0.02F, clearanceUnits * 0.5F);
     const int steps = std::max(1, static_cast<int>(std::ceil(distance / sampleSpacing)));
     for (int i = 1; i <= steps; ++i) {
         const float t = static_cast<float>(i) / static_cast<float>(steps);
@@ -152,7 +153,7 @@ bool SegmentIntersectsWall(const WorldState& world, const Vec2f& from, const Vec
             .x = from.x + dx * t,
             .y = from.y + dy * t,
         };
-        if (IsPointInWall(world, sample)) {
+        if (IsPointInWall(world, sample, clearanceUnits)) {
             return true;
         }
     }
@@ -225,7 +226,11 @@ void UpdateEnemySystem(GameState& state, const AppConfig& config, float deltaSec
             .x = enemy.position.x + enemy.velocity.x * deltaSeconds,
             .y = enemy.position.y + enemy.velocity.y * deltaSeconds,
         };
-        if (SegmentIntersectsWall(state.world, previousPosition, candidatePosition)) {
+        if (SegmentIntersectsWall(
+                state.world,
+                previousPosition,
+                candidatePosition,
+                GameplayConstants::kEnemyWallAvoidanceRadiusUnits)) {
             enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
             enemy.aiStateTimerSeconds = 0.0F;
         } else {

@@ -53,9 +53,17 @@ struct GameplayConstants {
     static constexpr float kBaseSpawnCooldownSeconds = 1.2F;         // seconds
 
     // Projectiles and collisions.
+    static constexpr float kTankCollisionDiameterPixels = 9.0F;        // pixels
+    static constexpr float kTankCollisionRadiusUnits =
+        (kTankCollisionDiameterPixels * 0.5F) / static_cast<float>(kPixelsPerUnit); // world-units
+    static constexpr float kEnemyWallClearancePixels = 2.0F;           // pixels
+    static constexpr float kEnemyWallClearanceUnits =
+        kEnemyWallClearancePixels / static_cast<float>(kPixelsPerUnit); // world-units
+    static constexpr float kEnemyWallAvoidanceRadiusUnits =
+        kTankCollisionRadiusUnits + kEnemyWallClearanceUnits;           // world-units
     static constexpr float kProjectileLifetimeSeconds = 3.0F;        // seconds
     static constexpr float kProjectileHitRadius = 0.7F;              // world-units
-    static constexpr float kPlayerEnemyCollisionRadius = 1.0F;       // world-units
+    static constexpr float kPlayerEnemyCollisionRadius = kTankCollisionRadiusUnits * 2.0F; // world-units
     static constexpr float kLineOfSightSampleSpacing = 0.08F;        // world-units
 
     // Fuel/rules.
