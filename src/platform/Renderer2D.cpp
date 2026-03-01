@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cmath>
 #include <array>
+#include <cstdint>
 #include <filesystem>
 #include "raylib.h"
 
@@ -16,6 +17,37 @@ constexpr int kPlayerBarrelRowIndex = 1;
 constexpr int kEnemySpriteSheetCellSize = 9;
 constexpr int kEnemySpriteFirstRowIndex = 3;
 constexpr int kPlayerRenderSizePx = 16;
+
+constexpr Color ColorFromHexRGB(std::uint32_t hex) {
+    return Color{
+        static_cast<unsigned char>((hex >> 16U) & 0xFFU),
+        static_cast<unsigned char>((hex >> 8U) & 0xFFU),
+        static_cast<unsigned char>(hex & 0xFFU),
+        255,
+    };
+}
+
+constexpr std::uint32_t kBackgroundHex = 0x000000;
+constexpr std::uint32_t kWallsHex = 0xCCCCCC;
+constexpr std::uint32_t kPlayerHex = 0x00FFFF;
+constexpr std::uint32_t kDroneHex = 0x8A2BE2;
+constexpr std::uint32_t kTorpedoHex = 0xFFFF00;
+constexpr std::uint32_t kHunterHex = 0xFFA500;
+constexpr std::uint32_t kAssassinHex = 0xFF0000;
+constexpr std::uint32_t kEnemyBaseHex = 0xFF00FF;
+constexpr std::uint32_t kPlayerShellHex = 0xFFFFFF;
+constexpr std::uint32_t kEnemyShellHex = 0xFFB000;
+
+constexpr Color kBackgroundColor = ColorFromHexRGB(kBackgroundHex);
+constexpr Color kWallsColor = ColorFromHexRGB(kWallsHex);
+constexpr Color kPlayerColor = ColorFromHexRGB(kPlayerHex);
+constexpr Color kDroneColor = ColorFromHexRGB(kDroneHex);
+constexpr Color kTorpedoColor = ColorFromHexRGB(kTorpedoHex);
+constexpr Color kHunterColor = ColorFromHexRGB(kHunterHex);
+constexpr Color kAssassinColor = ColorFromHexRGB(kAssassinHex);
+constexpr Color kEnemyBaseColor = ColorFromHexRGB(kEnemyBaseHex);
+constexpr Color kPlayerShellColor = ColorFromHexRGB(kPlayerShellHex);
+constexpr Color kEnemyShellColor = ColorFromHexRGB(kEnemyShellHex);
 
 Vector2 SnapWorldToPixelGrid(const Vec2f& worldPosition) {
     const float pixelsPerUnit = static_cast<float>(GameplayConstants::kPixelsPerUnit);
@@ -243,8 +275,8 @@ bool Renderer2D::LoadResources() {
     Image playerBody45 = ExtractSpriteCell(sourceSheet, 1, kPlayerBodyRowIndex, kSpriteSheetCellSize);
     Image playerBarrelUp = ExtractSpriteCell(sourceSheet, 0, kPlayerBarrelRowIndex, kSpriteSheetCellSize);
     Image playerBarrel45 = ExtractSpriteCell(sourceSheet, 1, kPlayerBarrelRowIndex, kSpriteSheetCellSize);
-    Image playerFrame0 = CombineCellsXor(playerBodyUp, playerBarrelUp, Color{0, 228, 48, 255});
-    Image playerFrame1 = CombineCellsXor(playerBody45, playerBarrel45, Color{0, 228, 48, 255});
+    Image playerFrame0 = CombineCellsXor(playerBodyUp, playerBarrelUp, kPlayerColor);
+    Image playerFrame1 = CombineCellsXor(playerBody45, playerBarrel45, kPlayerColor);
     Image playerFrame2 = ImageCopy(playerFrame0);
     ImageRotateCW(&playerFrame2);
     Image playerFrame3 = ImageCopy(playerFrame1);
@@ -377,7 +409,7 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
         .height = static_cast<float>(config.screenHeight),
     };
 
-    DrawRectangleRec(worldViewport, Color{20, 24, 30, 255});
+    DrawRectangleRec(worldViewport, kBackgroundColor);
 
     Camera2D camera{};
     camera.target = SnapWorldToPixelGrid(state.world.player.position);
@@ -428,28 +460,28 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
                     GetWorldToScreen2D(Vector2{left, top}, camera),
                     GetWorldToScreen2D(Vector2{right, top}, camera),
                     wallThicknessPixels,
-                    GRAY);
+                    kWallsColor);
             }
             if (cell.westWall) {
                 DrawVerticalWallPixels(
                     GetWorldToScreen2D(Vector2{left, top}, camera),
                     GetWorldToScreen2D(Vector2{left, bottom}, camera),
                     wallThicknessPixels,
-                    GRAY);
+                    kWallsColor);
             }
             if (x == state.world.maze.widthCells - 1 && cell.eastWall) {
                 DrawVerticalWallPixels(
                     GetWorldToScreen2D(Vector2{right, top}, camera),
                     GetWorldToScreen2D(Vector2{right, bottom}, camera),
                     wallThicknessPixels,
-                    GRAY);
+                    kWallsColor);
             }
             if (y == state.world.maze.heightCells - 1 && cell.southWall) {
                 DrawHorizontalWallPixels(
                     GetWorldToScreen2D(Vector2{left, bottom}, camera),
                     GetWorldToScreen2D(Vector2{right, bottom}, camera),
                     wallThicknessPixels,
-                    GRAY);
+                    kWallsColor);
             }
         }
     }
@@ -458,10 +490,10 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
     const Vector2 borderTopRight = GetWorldToScreen2D(Vector2{mazeWidthUnits, 0.0F}, camera);
     const Vector2 borderBottomLeft = GetWorldToScreen2D(Vector2{0.0F, mazeHeightUnits}, camera);
     const Vector2 borderBottomRight = GetWorldToScreen2D(Vector2{mazeWidthUnits, mazeHeightUnits}, camera);
-    DrawHorizontalWallPixels(borderTopLeft, borderTopRight, wallThicknessPixels, DARKGRAY);
-    DrawHorizontalWallPixels(borderBottomLeft, borderBottomRight, wallThicknessPixels, DARKGRAY);
-    DrawVerticalWallPixels(borderTopLeft, borderBottomLeft, wallThicknessPixels, DARKGRAY);
-    DrawVerticalWallPixels(borderTopRight, borderBottomRight, wallThicknessPixels, DARKGRAY);
+    DrawHorizontalWallPixels(borderTopLeft, borderTopRight, wallThicknessPixels, kWallsColor);
+    DrawHorizontalWallPixels(borderBottomLeft, borderBottomRight, wallThicknessPixels, kWallsColor);
+    DrawVerticalWallPixels(borderTopLeft, borderBottomLeft, wallThicknessPixels, kWallsColor);
+    DrawVerticalWallPixels(borderTopRight, borderBottomRight, wallThicknessPixels, kWallsColor);
 
     const Vector2 playerRenderPosition = SnapWorldToPixelGrid(state.world.player.position);
 
@@ -476,7 +508,7 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
                 .width = GameplayConstants::kEnemyBaseSizeUnits,
                 .height = GameplayConstants::kEnemyBaseSizeUnits,
             },
-            base.destroyed ? DARKGRAY : RED);
+            base.destroyed ? kWallsColor : kEnemyBaseColor);
     }
 
     for (const EnemyTank& enemy : state.world.enemies) {
@@ -499,17 +531,27 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
                 .width = GameplayConstants::kEntitySizeUnits,
                 .height = GameplayConstants::kEntitySizeUnits,
             };
-            DrawTexturePro(enemyTankSheet_, sourceRect, destRect, Vector2{0.0F, 0.0F}, 0.0F, WHITE);
-        } else {
-            Color enemyColor = ORANGE;
+            Color enemyColor = kDroneColor;
             if (enemy.type == EnemyType::Drone) {
-                enemyColor = ORANGE;
+                enemyColor = kDroneColor;
             } else if (enemy.type == EnemyType::Torpedo) {
-                enemyColor = GOLD;
+                enemyColor = kTorpedoColor;
             } else if (enemy.type == EnemyType::Hunter) {
-                enemyColor = RED;
+                enemyColor = kHunterColor;
             } else if (enemy.type == EnemyType::Assassin) {
-                enemyColor = MAGENTA;
+                enemyColor = kAssassinColor;
+            }
+            DrawTexturePro(enemyTankSheet_, sourceRect, destRect, Vector2{0.0F, 0.0F}, 0.0F, enemyColor);
+        } else {
+            Color enemyColor = kDroneColor;
+            if (enemy.type == EnemyType::Drone) {
+                enemyColor = kDroneColor;
+            } else if (enemy.type == EnemyType::Torpedo) {
+                enemyColor = kTorpedoColor;
+            } else if (enemy.type == EnemyType::Hunter) {
+                enemyColor = kHunterColor;
+            } else if (enemy.type == EnemyType::Assassin) {
+                enemyColor = kAssassinColor;
             }
             const float half = GameplayConstants::kEntitySizeUnits * 0.5F;
             DrawRectangleRec(
@@ -527,7 +569,7 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
         if (!projectile.alive) {
             continue;
         }
-        const Color color = projectile.owner == ProjectileOwner::Player ? SKYBLUE : YELLOW;
+        const Color color = projectile.owner == ProjectileOwner::Player ? kPlayerShellColor : kEnemyShellColor;
         DrawCircleV(Vector2{projectile.position.x, projectile.position.y}, 0.18F, color);
     }
 
@@ -540,7 +582,7 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
                 .width = GameplayConstants::kEntitySizeUnits,
                 .height = GameplayConstants::kEntitySizeUnits,
             },
-            Color{0, 228, 48, 255});
+            kPlayerColor);
     }
 
     EndMode2D();
