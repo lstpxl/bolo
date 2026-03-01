@@ -7,3 +7,4 @@
 /raylib/build-arm/
 sysroot-backup.zip
 .env
+compile_commands.json

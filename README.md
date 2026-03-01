@@ -16,6 +16,8 @@ brew install cmake zig rsync
 
 ## Build configs
 
+Note: when CMake exports compile commands, the project root `compile_commands.json` is auto-synced to the active build directory file for IDE/clangd diagnostics.
+
 ### 1) `macos-debug`
 
 ```bash
