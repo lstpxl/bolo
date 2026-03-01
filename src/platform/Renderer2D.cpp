@@ -61,6 +61,33 @@ int RoundToInt(float value) {
     return static_cast<int>(std::round(value));
 }
 
+int UnitsToPixels(float valueInUnits) {
+    const float pixels = valueInUnits * static_cast<float>(GameplayConstants::kPixelsPerUnit);
+    return std::max(1, RoundToInt(pixels));
+}
+
+Color EnemyColorForType(EnemyType type) {
+    if (type == EnemyType::Drone) {
+        return kDroneColor;
+    }
+    if (type == EnemyType::Torpedo) {
+        return kTorpedoColor;
+    }
+    if (type == EnemyType::Hunter) {
+        return kHunterColor;
+    }
+    return kAssassinColor;
+}
+
+Vector2 WorldToSnappedScreen(const Vec2f& worldPosition, const Camera2D& camera) {
+    const Vector2 snappedWorld = SnapWorldToPixelGrid(worldPosition);
+    const Vector2 screen = GetWorldToScreen2D(snappedWorld, camera);
+    return Vector2{
+        static_cast<float>(RoundToInt(screen.x)),
+        static_cast<float>(RoundToInt(screen.y)),
+    };
+}
+
 void DrawHorizontalWallPixels(Vector2 a, Vector2 b, int thicknessPixels, Color color) {
     const int x1 = RoundToInt(std::min(a.x, b.x));
     const int x2 = RoundToInt(std::max(a.x, b.x));
@@ -496,25 +523,32 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
     DrawVerticalWallPixels(borderTopRight, borderBottomRight, wallThicknessPixels, kWallsColor);
 
     const Vector2 playerRenderPosition = SnapWorldToPixelGrid(state.world.player.position);
-
-    BeginMode2D(camera);
-
+    const int baseSizePixels = UnitsToPixels(GameplayConstants::kEnemyBaseSizeUnits);
+    const int baseHalfPixels = baseSizePixels / 2;
     for (const EnemyBase& base : state.world.enemyBases) {
-        const float half = GameplayConstants::kEnemyBaseSizeUnits * 0.5F;
-        DrawRectangleRec(
-            Rectangle{
-                .x = base.position.x - half,
-                .y = base.position.y - half,
-                .width = GameplayConstants::kEnemyBaseSizeUnits,
-                .height = GameplayConstants::kEnemyBaseSizeUnits,
-            },
+        const Vector2 baseScreenPosition = WorldToSnappedScreen(base.position, camera);
+        DrawRectangle(
+            RoundToInt(baseScreenPosition.x) - baseHalfPixels,
+            RoundToInt(baseScreenPosition.y) - baseHalfPixels,
+            baseSizePixels,
+            baseSizePixels,
             base.destroyed ? kWallsColor : kEnemyBaseColor);
     }
 
+    const int enemySizePixels = UnitsToPixels(GameplayConstants::kEntitySizeUnits);
+    const int enemyHalfPixels = enemySizePixels / 2;
     for (const EnemyTank& enemy : state.world.enemies) {
         if (!enemy.alive) {
             continue;
         }
+        const Vector2 enemyScreenPosition = WorldToSnappedScreen(enemy.position, camera);
+        const Rectangle destRect{
+            .x = static_cast<float>(RoundToInt(enemyScreenPosition.x) - enemyHalfPixels),
+            .y = static_cast<float>(RoundToInt(enemyScreenPosition.y) - enemyHalfPixels),
+            .width = static_cast<float>(enemySizePixels),
+            .height = static_cast<float>(enemySizePixels),
+        };
+        const Color enemyColor = EnemyColorForType(enemy.type);
         if (enemyTankSheetLoaded_) {
             const int directionIndex = PlayerFrameIndexFromHeading(enemy.headingRadians, kEnemyTankDirectionCount);
             const int typeIndex = EnemyTypeIndex(enemy.type);
@@ -524,46 +558,13 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
                 .width = static_cast<float>(kEnemyTankFrameSizePx),
                 .height = static_cast<float>(kEnemyTankFrameSizePx),
             };
-            const float half = GameplayConstants::kEntitySizeUnits * 0.5F;
-            const Rectangle destRect{
-                .x = enemy.position.x - half,
-                .y = enemy.position.y - half,
-                .width = GameplayConstants::kEntitySizeUnits,
-                .height = GameplayConstants::kEntitySizeUnits,
-            };
-            Color enemyColor = kDroneColor;
-            if (enemy.type == EnemyType::Drone) {
-                enemyColor = kDroneColor;
-            } else if (enemy.type == EnemyType::Torpedo) {
-                enemyColor = kTorpedoColor;
-            } else if (enemy.type == EnemyType::Hunter) {
-                enemyColor = kHunterColor;
-            } else if (enemy.type == EnemyType::Assassin) {
-                enemyColor = kAssassinColor;
-            }
             DrawTexturePro(enemyTankSheet_, sourceRect, destRect, Vector2{0.0F, 0.0F}, 0.0F, enemyColor);
         } else {
-            Color enemyColor = kDroneColor;
-            if (enemy.type == EnemyType::Drone) {
-                enemyColor = kDroneColor;
-            } else if (enemy.type == EnemyType::Torpedo) {
-                enemyColor = kTorpedoColor;
-            } else if (enemy.type == EnemyType::Hunter) {
-                enemyColor = kHunterColor;
-            } else if (enemy.type == EnemyType::Assassin) {
-                enemyColor = kAssassinColor;
-            }
-            const float half = GameplayConstants::kEntitySizeUnits * 0.5F;
-            DrawRectangleRec(
-                Rectangle{
-                    .x = enemy.position.x - half,
-                    .y = enemy.position.y - half,
-                    .width = GameplayConstants::kEntitySizeUnits,
-                    .height = GameplayConstants::kEntitySizeUnits,
-                },
-                enemyColor);
+            DrawRectangleRec(destRect, enemyColor);
         }
     }
+
+    BeginMode2D(camera);
 
     for (const Projectile& projectile : state.world.projectiles) {
         if (!projectile.alive) {

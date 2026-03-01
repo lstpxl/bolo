@@ -48,7 +48,7 @@ struct GameplayConstants {
     static constexpr float kEnemyAssassinPredictionSeconds = 0.8F;   // seconds
     static constexpr float kEnemyAiRetargetMinSeconds = 0.7F;        // seconds
     static constexpr float kEnemyAiRetargetRandomSeconds = 0.9F;     // seconds
-    static constexpr int kMaxAliveEnemies = 18;                      // enemies
+    static constexpr int kMaxAliveEnemies = 30;                      // enemies
     static constexpr float kEnemyInitialFireCooldownSeconds = 0.2F;  // seconds
     static constexpr float kBaseSpawnCooldownSeconds = 1.2F;         // seconds
 
@@ -114,11 +114,18 @@ enum class EnemyType {
     Assassin,
 };
 
+enum class EnemySubtype {
+    Basic,
+    Advanced,
+    Lord,
+};
+
 struct EnemyTank {
     Vec2f position;
     Vec2f velocity;
     float headingRadians;
     EnemyType type = EnemyType::Drone;
+    EnemySubtype subtype = EnemySubtype::Advanced;
     float fireCooldownSeconds = 0.0F;
     float aiStateTimerSeconds = 0.0F;
     Vec2f wanderDirection{.x = 0.0F, .y = -1.0F};

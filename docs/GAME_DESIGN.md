@@ -71,11 +71,19 @@ Defined in `src/game/GameState.h`.
   - `throttleNormalized` in range `0..1`
   - alive flag
 - `EnemyTank`
-  - position, heading, alive flag
+  - position, heading, type, subtype, alive flag
 - `EnemyBase`
   - position, destroyed flag, active enemy count
 - `MazeState`
   - grid dimensions and `MazeCell` wall flags (`north/east/south/west`)
+
+Enemy spawn table behavior (`src/game/systems/SpawnerSystem.cpp`):
+
+- Spawn selection uses a fixed 9-entry table of `(EnemyType, EnemySubtype)`, one entry per level slot.
+- On spawn at level `L`, choose one random entry from slots `1..L` (inclusive) and use that entry's type/subtype.
+- Current table entries are all `Advanced` subtypes:
+  - `1..2` Drone, `3..4` Torpedo, `5..7` Hunter, `8..9` Assassin.
+- Global alive-enemy cap is `30`.
 
 ## Controls and Input
 
@@ -128,6 +136,12 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
   - turn input behavior: on initial LEFT/RIGHT press, hull turns immediately by 45 degrees; while held, additional 45-degree turns repeat every `0.333` seconds; releasing clears partial repeat timing (no stored half-step momentum)
 - There is no passive velocity damping/braking; when joystick returns to neutral, tank keeps its last velocity until another force (input/collision) changes it.
 - Enemy movement heading is also quantized to the same 8-way (45-degree) directions.
+- Enemy subtype controls movement speed multiplier:
+  - `Basic`: `75%` of advanced speed
+  - `Advanced`: `100%` baseline speed
+  - `Hunter Lord`: `125%` of hunter advanced speed
+- Assassin advanced speed has two modes: `3.0` world-units/second when player line-of-sight is blocked or out of aggro range, and `6.0` world-units/second when the assassin has line-of-sight to a player in aggro range.
+- Enemy projectile firing heading is quantized to the same 8-way (45-degree) directions.
 - Player and enemy collision shape is treated as a disc with `9px` diameter.
 - Enemy wall movement keeps additional margin: enemy disc edge stays at least `2px` away from maze walls.
 
@@ -140,10 +154,10 @@ World rendering is in `src/platform/Renderer2D.cpp`.
 - Maze walls are rendered in screen space at fixed 2px thickness for handheld stability.
 - Current gameplay palette (hex): background `#000000`, walls `#CCCCCC`, player `#00FFFF`, drone `#8A2BE2`, torpedo `#FFFF00`, hunter `#FFA500`, assassin `#FF0000`, enemy base `#FF00FF`, player shell `#FFFFFF`, enemy shell `#FFB000`.
 - Visible maze cell range is culled for rendering performance.
-- Enemy tanks and bases render in world units.
+- Enemy tanks and bases are rendered in pixel-snapped screen space (derived from world positions) to match wall stability on handheld displays.
 - Enemy tank visuals load from `resources/textures/sprites.png` (`2x7` grid, `9x9` cells). Rows `4..7` map to `Drone`, `Torpedo`, `Hunter`, `Assassin` (matching `docs/original-1982/ENEMY_TYPES.md` order). Column 1 is facing 12 o'clock, column 2 is 45 degrees clockwise; the renderer precomputes all 8 directions at load time and uses the matching directional frame at draw time. Non-transparent source pixels are normalized to white during load, then tinted by enemy type color at draw time.
 - Player tank visuals load from `resources/textures/sprites.png` (`2x7` grid, `9x9` cells). Row `1` is body and row `2` is barrel; each direction frame is prebuilt by XOR-combining body+barrel cells and rendered in cyan (`#00FFFF`), with 8 directions precomputed from the two source columns.
-- Enemy sprite rendering is in world space. Player gameplay footprint remains `kEntitySizeUnits = 1.0`, but the player sprite is rendered in pixel-snapped screen space at fixed `16x16` with per-frame pivot correction to avoid heading-frame jitter.
+- Enemy sprite rendering uses pixel-snapped screen-space placement derived from world positions. Player gameplay footprint remains `kEntitySizeUnits = 1.0`, and the player sprite is rendered in pixel-snapped screen space at fixed `16x16` with per-frame pivot correction to avoid heading-frame jitter.
 - HUD direction radar draws three lines: hull heading (white), move joystick vector from gamepad axes `0/1` (sky blue), and fire joystick vector from gamepad axes `2/3` (red). Joystick direction uses `(axisX, axisY)` and amplitude is normalized by raw max magnitude `32768`.
 - Gameplay view draws a top-left input debug line at font size `10`: `Axes:  0:...  1:...  2:...  3:...` using gamepad raw axis values (approximate signed 16-bit range).
 

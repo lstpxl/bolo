@@ -33,30 +33,28 @@ Vec2f DirectionFromHeading(float headingRadians) {
     };
 }
 
-EnemyType EnemyTypeForLevel(int level) {
-    if (level <= GameplayConstants::kDroneMaxLevel) {
-        return EnemyType::Drone;
+float EnemySubtypeSpeedMultiplier(EnemyType type, EnemySubtype subtype) {
+    if (subtype == EnemySubtype::Basic) {
+        return 0.75F;
     }
-    if (level <= GameplayConstants::kTorpedoMaxLevel) {
-        return EnemyType::Torpedo;
+    if (subtype == EnemySubtype::Lord && type == EnemyType::Hunter) {
+        return 1.25F;
     }
-    if (level <= GameplayConstants::kHunterMaxLevel) {
-        return EnemyType::Hunter;
-    }
-    return EnemyType::Assassin;
+    return 1.0F;
 }
 
-float EnemySpeed(EnemyType type) {
+float EnemySpeed(EnemyType type, EnemySubtype subtype, bool assassinSeesPlayer) {
+    float baseSpeed = GameplayConstants::kEnemyDroneSpeed;
     if (type == EnemyType::Drone) {
-        return GameplayConstants::kEnemyDroneSpeed;
+        baseSpeed = GameplayConstants::kEnemyDroneSpeed;
+    } else if (type == EnemyType::Torpedo) {
+        baseSpeed = GameplayConstants::kEnemyTorpedoSpeed;
+    } else if (type == EnemyType::Hunter) {
+        baseSpeed = GameplayConstants::kEnemyHunterSpeed;
+    } else {
+        baseSpeed = assassinSeesPlayer ? 6.0F : 3.0F;
     }
-    if (type == EnemyType::Torpedo) {
-        return GameplayConstants::kEnemyTorpedoSpeed;
-    }
-    if (type == EnemyType::Hunter) {
-        return GameplayConstants::kEnemyHunterSpeed;
-    }
-    return GameplayConstants::kEnemyAssassinSpeed;
+    return baseSpeed * EnemySubtypeSpeedMultiplier(type, subtype);
 }
 
 float EnemyFireInterval(EnemyType type) {
@@ -163,12 +161,10 @@ bool SegmentIntersectsWall(const WorldState& world, const Vec2f& from, const Vec
 
 void UpdateEnemySystem(GameState& state, const AppConfig& config, float deltaSeconds) {
     static Random random(static_cast<std::uint32_t>(GetTime() * 1000.0));
-    const EnemyType levelType = EnemyTypeForLevel(state.menuSettings.levelNumber);
     for (EnemyTank& enemy : state.world.enemies) {
         if (!enemy.alive) {
             continue;
         }
-        enemy.type = levelType;
         enemy.aiStateTimerSeconds -= deltaSeconds;
         if (enemy.aiStateTimerSeconds <= 0.0F) {
             enemy.aiStateTimerSeconds =
@@ -186,6 +182,9 @@ void UpdateEnemySystem(GameState& state, const AppConfig& config, float deltaSec
         const float distanceToPlayerSq = DistanceSq(enemy.position, state.world.player.position);
         const bool playerInAggroRange =
             distanceToPlayerSq < (GameplayConstants::kEnemyAggroRangeUnits * GameplayConstants::kEnemyAggroRangeUnits);
+        const bool playerObscured = IsSegmentObscuredByWall(state.world, enemy.position, state.world.player.position);
+        const bool assassinSeesPlayer =
+            enemy.type == EnemyType::Assassin && playerInAggroRange && !playerObscured;
         if (enemy.type == EnemyType::Torpedo && playerInAggroRange) {
             desiredDirection = toPlayer;
         } else if (enemy.type == EnemyType::Hunter) {
@@ -218,7 +217,7 @@ void UpdateEnemySystem(GameState& state, const AppConfig& config, float deltaSec
         }
         movementHeading = QuantizeToEightDirections(movementHeading);
         const Vec2f snappedDirection = DirectionFromHeading(movementHeading);
-        const float speed = EnemySpeed(enemy.type);
+        const float speed = EnemySpeed(enemy.type, enemy.subtype, assassinSeesPlayer);
         enemy.velocity.x = snappedDirection.x * speed;
         enemy.velocity.y = snappedDirection.y * speed;
         const Vec2f previousPosition = enemy.position;
@@ -240,17 +239,17 @@ void UpdateEnemySystem(GameState& state, const AppConfig& config, float deltaSec
 
         enemy.fireCooldownSeconds -= deltaSeconds;
         const bool enemyVisibleInViewport = IsInPlayerViewport(enemy.position, state, config);
-        const bool playerObscured = IsSegmentObscuredByWall(state.world, enemy.position, state.world.player.position);
         if (enemy.fireCooldownSeconds <= 0.0F &&
             enemyVisibleInViewport &&
             !playerObscured &&
             distanceToPlayerSq < (GameplayConstants::kEnemyFireRangeUnits * GameplayConstants::kEnemyFireRangeUnits)) {
             const float headingToPlayer = std::atan2(toPlayer.x, -toPlayer.y);
+            const float quantizedHeadingToPlayer = QuantizeToEightDirections(headingToPlayer);
             SpawnProjectile(
                 state,
                 ProjectileOwner::Enemy,
                 enemy.position,
-                headingToPlayer,
+                quantizedHeadingToPlayer,
                 GameplayConstants::kEnemyProjectileSpeed);
             enemy.fireCooldownSeconds = EnemyFireInterval(enemy.type);
         }
