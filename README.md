@@ -111,3 +111,12 @@ exec ./bolo
 ```
 
 App exit combo: `START + SELECT`.
+
+## Links
+
+https://bdragon1727.itch.io/fire-pixel-bullet-16x16
+
+https://monkeyslunch.com/resources/big-list-of-game-mechanics/
+https://www.squidi.net/three/index.php
+
+[PixelLab - AI Generator for Pixel Art Game Assets](https://www.pixellab.ai)
