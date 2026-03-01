@@ -3,7 +3,7 @@
 Run commands from project root:
 
 ```bash
-cd /Users/ip/Projects/bolo
+cd /Users/ip/Projects/bolt
 ```
 
 ## macOS Debug
@@ -11,7 +11,7 @@ cd /Users/ip/Projects/bolo
 ```bash
 cmake --preset macos-debug
 cmake --build --preset macos-debug
-./build/macos-debug/bolo
+./build/macos-debug/bolt
 ```
 
 ## macOS Release
@@ -19,7 +19,7 @@ cmake --build --preset macos-debug
 ```bash
 cmake --preset macos-release
 cmake --build --preset macos-release
-./build/macos-release/bolo
+./build/macos-release/bolt
 ```
 
 ## RG353V Debug (handheld)
@@ -32,7 +32,7 @@ cmake --build --preset rg353v-debug
 Binary:
 
 ```bash
-./build/rg353v-debug/bolo
+./build/rg353v-debug/bolt
 ```
 
 ## RG353V Release (handheld)
@@ -45,7 +45,7 @@ cmake --build --preset rg353v-release
 Binary:
 
 ```bash
-./build/rg353v-release/bolo
+./build/rg353v-release/bolt
 ```
 
 Deploy release build to device:

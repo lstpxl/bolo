@@ -3,5 +3,5 @@
 #include "BuildNumber.h"
 
 int CurrentBuildNumber() {
-    return BOLO_BUILD_NUMBER;
+    return BOLT_BUILD_NUMBER;
 }

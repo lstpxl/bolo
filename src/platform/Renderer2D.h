@@ -12,10 +12,15 @@ public:
     void DrawWorld(const GameState& state, const AppConfig& config);
 
 private:
-    static constexpr int kMaxPlayerTankFrames = 24;
+    static constexpr int kMaxPlayerTankFrames = 8;
+    static constexpr int kEnemyTankTypeCount = 4;
+    static constexpr int kEnemyTankDirectionCount = 8;
+    static constexpr int kEnemyTankFrameSizePx = 9;
     Texture2D playerTankSheet_{};
     bool playerTankSheetLoaded_ = false;
-    int playerTankFrameSizePx_ = 20;
-    int playerTankFrameCount_ = 24;
+    int playerTankFrameSizePx_ = 9;
+    int playerTankFrameCount_ = 8;
     std::array<Vector2, kMaxPlayerTankFrames> playerTankFrameOffsetsPixels_{};
+    Texture2D enemyTankSheet_{};
+    bool enemyTankSheetLoaded_ = false;
 };

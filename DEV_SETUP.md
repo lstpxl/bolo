@@ -39,8 +39,8 @@ rsync --version
 ## 2) Clone project
 
 ```bash
-git clone --recurse-submodules <your-repo-url> bolo
-cd bolo
+git clone --recurse-submodules <your-repo-url> bolt
+cd bolt
 ```
 
 If you already cloned without submodules:
@@ -56,7 +56,7 @@ Debug:
 ```bash
 cmake --preset macos-debug
 cmake --build --preset macos-debug
-./build/macos-debug/bolo
+./build/macos-debug/bolt
 ```
 
 Release:
@@ -64,7 +64,7 @@ Release:
 ```bash
 cmake --preset macos-release
 cmake --build --preset macos-release
-./build/macos-release/bolo
+./build/macos-release/bolt
 ```
 
 ## 4) RG353V cross-compile setup (one time)
@@ -85,7 +85,7 @@ Example:
 If you run manual CMake commands outside presets, set:
 
 ```bash
-export RG353V_SYSROOT="/absolute/path/to/bolo/sysroot"
+export RG353V_SYSROOT="/absolute/path/to/bolt/sysroot"
 ```
 
 Reload shell:
@@ -113,19 +113,19 @@ cmake --build --preset rg353v-release
 Output:
 
 ```bash
-./build/rg353v-release/bolo
+./build/rg353v-release/bolt
 ```
 
 ## 6) Deploy to RG353V
 
 ```bash
-scp ./build/rg353v-release/bolo ark@<device-ip>:/roms2/ports/bolo/
+scp ./build/rg353v-release/bolt ark@<device-ip>:/roms2/ports/bolt/
 ```
 
-Suggested launcher `/roms2/ports/bolo.sh`:
+Suggested launcher `/roms2/ports/bolt.sh`:
 
 ```bash
 #!/bin/bash
-cd /roms2/ports/bolo || exit 1
-exec ./bolo
+cd /roms2/ports/bolt || exit 1
+exec ./bolt
 ```

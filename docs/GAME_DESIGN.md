@@ -1,11 +1,11 @@
-# BOLO Game Design and Mechanics
+# BOLT Game Design and Mechanics
 
 This document is the canonical gameplay and mechanics reference for both developers and coding agents.
 Update it whenever gameplay behavior changes.
 
 ## Scope
 
-This file describes the current BOLO implementation in this repository:
+This file describes the current BOLT implementation in this repository:
 
 - main menu behavior
 - world scale and units
@@ -136,8 +136,9 @@ World rendering is in `src/platform/Renderer2D.cpp`.
 - Maze walls are rendered in screen space at fixed 2px thickness for handheld stability.
 - Visible maze cell range is culled for rendering performance.
 - Enemy tanks and bases render in world units.
-- Player tank sprite renders in screen space at native `20x20` pixels (camera-following world position), while gameplay footprint remains `kEntitySizeUnits = 1.0`.
-- Player tank animation frames apply per-frame pivot correction to keep the sprite visually centered while changing heading frames.
+- Enemy tank visuals load from `resources/textures/sprites.png` (`2x7` grid, `9x9` cells). Rows `4..7` map to `Drone`, `Torpedo`, `Hunter`, `Assassin` (matching `docs/ENEMY_TYPES.md` order). Column 1 is facing 12 o'clock, column 2 is 45 degrees clockwise; the renderer precomputes all 8 directions at load time and uses the matching directional frame at draw time. Non-transparent source pixels are normalized to white during load.
+- Player tank visuals load from `resources/textures/sprites.png` (`2x7` grid, `9x9` cells). Row `1` is body and row `2` is barrel; each direction frame is prebuilt by XOR-combining body+barrel cells and rendered in green (`#00E430`), with 8 directions precomputed from the two source columns.
+- Enemy sprite rendering is in world space. Player gameplay footprint remains `kEntitySizeUnits = 1.0`, but the player sprite is rendered in pixel-snapped screen space at fixed `16x16` with per-frame pivot correction to avoid heading-frame jitter.
 - HUD direction radar draws three lines: hull heading (white), move joystick vector from gamepad axes `0/1` (sky blue), and fire joystick vector from gamepad axes `2/3` (red). Joystick direction uses `(axisX, axisY)` and amplitude is normalized by raw max magnitude `32768`.
 - Gameplay view draws a top-left input debug line at font size `10`: `Axes:  0:...  1:...  2:...  3:...` using gamepad raw axis values (approximate signed 16-bit range).
 
@@ -170,6 +171,6 @@ The following systems are placeholders or minimal:
 - projectile logic
 - enemy AI behavior
 - full collision response against maze walls/entities
-- original BOLO combat and fuel/lives progression details
+- original BOLT combat and fuel/lives progression details
 
 When implementing these features, update this document so it remains the single source of truth.

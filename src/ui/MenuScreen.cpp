@@ -94,8 +94,8 @@ MenuScreenResult MenuScreen::Render(
     DrawRectangleRounded(panel, 0.05F, 8, Color{38, 45, 58, 240});
     const int titleFontSize = 40;
     DrawText(
-        "BOLO",
-        static_cast<int>(panelCenterX) - MeasureText("BOLO", titleFontSize) / 2,
+        "BOLT",
+        static_cast<int>(panelCenterX) - MeasureText("BOLT", titleFontSize) / 2,
         static_cast<int>(titleY),
         titleFontSize,
         RAYWHITE);

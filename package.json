@@ -1,12 +1,12 @@
 {
-  "name": "bolo",
+  "name": "bolt",
   "version": "0.1.0",
-  "description": "BOLO build and deploy scripts",
+  "description": "BOLT build and deploy scripts",
   "private": true,
   "scripts": {
     "build:macos": "cmake --preset macos-debug && cmake --build --preset macos-debug",
-    "run:macos": "./build/macos-debug/bolo",
-    "build-and-run:macos": "npm run build:macos && ./build/macos-debug/bolo",
+    "run:macos": "./build/macos-debug/bolt",
+    "build-and-run:macos": "npm run build:macos && ./build/macos-debug/bolt",
     "build:rg353v:release": "cmake --preset rg353v-release --fresh && cmake --build --preset rg353v-release",
     "build:rg353v:debug": "cmake --preset rg353v-debug --fresh && cmake --build --preset rg353v-debug",
     "deploy:rg353v:release": "bash scripts/deploy-rg353v.sh release",

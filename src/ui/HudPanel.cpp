@@ -29,18 +29,18 @@ void HudPanel::Render(const GameState& state, const AppConfig& config, const Fra
     const int mapBottomPadding = 10;
     int cursorY = 8;
 
-    // 1) BOLO text
-    constexpr float boloFontSize = 50.0F;  // 1.25x over previous 40
-    const int boloBaseWidth = MeasureText("BOLO", static_cast<int>(boloFontSize));
-    const float boloSpacing = std::max(
+    // 1) BOLT text
+    constexpr float boltFontSize = 50.0F;  // 1.25x over previous 40
+    const int boltBaseWidth = MeasureText("BOLT", static_cast<int>(boltFontSize));
+    const float boltSpacing = std::max(
         1.0F,
-        (static_cast<float>(contentWidth) - static_cast<float>(boloBaseWidth)) / 3.0F);
+        (static_cast<float>(contentWidth) - static_cast<float>(boltBaseWidth)) / 3.0F);
     DrawTextEx(
         GetFontDefault(),
-        "BOLO",
+        "BOLT",
         Vector2{static_cast<float>(contentX), static_cast<float>(cursorY)},
-        boloFontSize,
-        boloSpacing,
+        boltFontSize,
+        boltSpacing,
         PURPLE);
     cursorY += 56;
 

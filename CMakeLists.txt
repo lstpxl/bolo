@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(bolo C CXX)
+project(bolt C CXX)
 
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_CXX_STANDARD 20)
@@ -49,22 +49,22 @@ endif()
 
 add_subdirectory(raylib)
 
-set(BOLO_GENERATED_DIR "${CMAKE_BINARY_DIR}/generated")
-set(BOLO_BUILD_NUMBER_FILE "${CMAKE_SOURCE_DIR}/build/build_number.txt")
-set(BOLO_BUILD_NUMBER_HEADER "${BOLO_GENERATED_DIR}/BuildNumber.h")
+set(BOLT_GENERATED_DIR "${CMAKE_BINARY_DIR}/generated")
+set(BOLT_BUILD_NUMBER_FILE "${CMAKE_SOURCE_DIR}/build/build_number.txt")
+set(BOLT_BUILD_NUMBER_HEADER "${BOLT_GENERATED_DIR}/BuildNumber.h")
 
 add_custom_target(
-    bolo_build_number ALL
+    bolt_build_number ALL
     COMMAND ${CMAKE_COMMAND}
-        -DBUILD_NUMBER_FILE=${BOLO_BUILD_NUMBER_FILE}
-        -DOUTPUT_HEADER=${BOLO_BUILD_NUMBER_HEADER}
+        -DBUILD_NUMBER_FILE=${BOLT_BUILD_NUMBER_FILE}
+        -DOUTPUT_HEADER=${BOLT_BUILD_NUMBER_HEADER}
         -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/GenerateBuildNumber.cmake
-    BYPRODUCTS ${BOLO_BUILD_NUMBER_HEADER} ${BOLO_BUILD_NUMBER_FILE}
+    BYPRODUCTS ${BOLT_BUILD_NUMBER_HEADER} ${BOLT_BUILD_NUMBER_FILE}
     COMMENT "Generating auto-incremented build number"
 )
 
 add_executable(
-    bolo
+    bolt
     src/app/main.cpp
     src/app/AppConfig.cpp
     src/app/BuildInfo.cpp
@@ -90,17 +90,17 @@ add_executable(
 )
 
 target_include_directories(
-    bolo
+    bolt
     PRIVATE
     src
-    ${BOLO_GENERATED_DIR}
+    ${BOLT_GENERATED_DIR}
     third_party/raygui/src
 )
 
-add_dependencies(bolo bolo_build_number)
+add_dependencies(bolt bolt_build_number)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
-    target_compile_options(bolo PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(bolt PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
-target_link_libraries(bolo PRIVATE raylib)
+target_link_libraries(bolt PRIVATE raylib)

@@ -5,16 +5,17 @@
 #include <cmath>
 #include <array>
 #include <filesystem>
-#include "platform/PlayerFigure.h"
 #include "raylib.h"
 
 namespace {
-constexpr int kSourcePlayerFrameCount = 6;
-constexpr int kSourcePlayerFrameSize = 20;
-
-float PixelsToWorldUnits(float pixels) {
-    return pixels / static_cast<float>(GameplayConstants::kPixelsPerUnit);
-}
+constexpr int kSpriteSheetColumns = 2;
+constexpr int kSpriteSheetRows = 7;
+constexpr int kSpriteSheetCellSize = 9;
+constexpr int kPlayerBodyRowIndex = 0;
+constexpr int kPlayerBarrelRowIndex = 1;
+constexpr int kEnemySpriteSheetCellSize = 9;
+constexpr int kEnemySpriteFirstRowIndex = 3;
+constexpr int kPlayerRenderSizePx = 16;
 
 Vector2 SnapWorldToPixelGrid(const Vec2f& worldPosition) {
     const float pixelsPerUnit = static_cast<float>(GameplayConstants::kPixelsPerUnit);
@@ -86,45 +87,10 @@ Vector2 ComputeFramePivotOffsetPixels(const Image& spriteSheet, int frameIndex, 
     const float frameCenter = (static_cast<float>(frameSizePx) - 1.0F) * 0.5F;
     const float contentCenterX = (static_cast<float>(minX + maxX)) * 0.5F;
     const float contentCenterY = (static_cast<float>(minY + maxY)) * 0.5F;
-    const float offsetX = std::round(frameCenter - contentCenterX);
-    const float offsetY = std::round(frameCenter - contentCenterY);
     return Vector2{
-        offsetX,
-        offsetY,
+        std::round(frameCenter - contentCenterX),
+        std::round(frameCenter - contentCenterY),
     };
-}
-
-void CopyFrameFromStripToSheet(
-    Image& destination,
-    int destinationFrameIndex,
-    const Image& stripImage,
-    int sourceFrameIndex,
-    bool verticalStrip,
-    bool reverseOrder,
-    int frameCount,
-    int frameSizePx) {
-    const int effectiveSourceIndex = reverseOrder ? (frameCount - 1 - sourceFrameIndex) : sourceFrameIndex;
-    const Rectangle sourceRect{
-        .x = verticalStrip ? 0.0F : static_cast<float>(effectiveSourceIndex * frameSizePx),
-        .y = verticalStrip ? static_cast<float>(effectiveSourceIndex * frameSizePx) : 0.0F,
-        .width = static_cast<float>(frameSizePx),
-        .height = static_cast<float>(frameSizePx),
-    };
-    Image frameImage = ImageFromImage(stripImage, sourceRect);
-    const Rectangle frameRect{
-        .x = 0.0F,
-        .y = 0.0F,
-        .width = static_cast<float>(frameSizePx),
-        .height = static_cast<float>(frameSizePx),
-    };
-    const Rectangle destRect{
-        .x = static_cast<float>(destinationFrameIndex * frameSizePx),
-        .y = 0.0F,
-        .width = static_cast<float>(frameSizePx),
-        .height = static_cast<float>(frameSizePx),
-    };
-    ImageDraw(&destination, frameImage, frameRect, destRect, WHITE);
-    UnloadImage(frameImage);
 }
 
 bool TryLoadImageAtPath(Image& image, const char* path) {
@@ -134,6 +100,119 @@ bool TryLoadImageAtPath(Image& image, const char* path) {
     image = LoadImage(path);
     return image.data != nullptr;
 }
+
+bool TryLoadImageFromTextureDirectory(Image& image, const char* fileName) {
+    std::array<std::filesystem::path, 5> candidatePaths = {
+        std::filesystem::path("resources/textures") / fileName,
+        std::filesystem::path("../resources/textures") / fileName,
+        std::filesystem::path("../../resources/textures") / fileName,
+        std::filesystem::path("../../../resources/textures") / fileName,
+        std::filesystem::path("../../../../resources/textures") / fileName,
+    };
+
+    for (const std::filesystem::path& path : candidatePaths) {
+        if (TryLoadImageAtPath(image, path.string().c_str())) {
+            return true;
+        }
+    }
+
+    const char* applicationDirectory = GetApplicationDirectory();
+    if (applicationDirectory == nullptr || applicationDirectory[0] == '\0') {
+        return false;
+    }
+
+    std::filesystem::path base(applicationDirectory);
+    for (int i = 0; i <= 4; ++i) {
+        const std::filesystem::path candidate = base / "resources" / "textures" / fileName;
+        if (TryLoadImageAtPath(image, candidate.string().c_str())) {
+            return true;
+        }
+        if (!base.has_parent_path()) {
+            break;
+        }
+        base = base.parent_path();
+    }
+    return false;
+}
+
+void FillOpaquePixelsColor(Image& image, Color color) {
+    Color* pixels = static_cast<Color*>(image.data);
+    if (pixels == nullptr) {
+        return;
+    }
+    const int pixelCount = image.width * image.height;
+    for (int i = 0; i < pixelCount; ++i) {
+        if (pixels[i].a == 0) {
+            continue;
+        }
+        pixels[i].r = color.r;
+        pixels[i].g = color.g;
+        pixels[i].b = color.b;
+    }
+}
+
+Image ExtractSpriteCell(const Image& spriteSheet, int columnIndex, int rowIndex, int cellSizePx) {
+    const Rectangle sourceRect{
+        .x = static_cast<float>(columnIndex * cellSizePx),
+        .y = static_cast<float>(rowIndex * cellSizePx),
+        .width = static_cast<float>(cellSizePx),
+        .height = static_cast<float>(cellSizePx),
+    };
+    return ImageFromImage(spriteSheet, sourceRect);
+}
+
+void DrawSpriteCell(Image& destination, const Image& cellImage, int columnIndex, int rowIndex, int cellSizePx) {
+    const Rectangle sourceRect{
+        .x = 0.0F,
+        .y = 0.0F,
+        .width = static_cast<float>(cellSizePx),
+        .height = static_cast<float>(cellSizePx),
+    };
+    const Rectangle destinationRect{
+        .x = static_cast<float>(columnIndex * cellSizePx),
+        .y = static_cast<float>(rowIndex * cellSizePx),
+        .width = static_cast<float>(cellSizePx),
+        .height = static_cast<float>(cellSizePx),
+    };
+    ImageDraw(&destination, cellImage, sourceRect, destinationRect, WHITE);
+}
+
+Image CombineCellsXor(const Image& bodyCell, const Image& barrelCell, Color color) {
+    Image combined = GenImageColor(kSpriteSheetCellSize, kSpriteSheetCellSize, BLANK);
+    Color* combinedPixels = static_cast<Color*>(combined.data);
+    const Color* bodyPixels = static_cast<const Color*>(bodyCell.data);
+    const Color* barrelPixels = static_cast<const Color*>(barrelCell.data);
+    if (combinedPixels == nullptr || bodyPixels == nullptr || barrelPixels == nullptr) {
+        return combined;
+    }
+
+    const int pixelCount = kSpriteSheetCellSize * kSpriteSheetCellSize;
+    for (int i = 0; i < pixelCount; ++i) {
+        const bool bodyOpaque = bodyPixels[i].a > 0;
+        const bool barrelOpaque = barrelPixels[i].a > 0;
+        const bool xorVisible = bodyOpaque != barrelOpaque;
+        if (!xorVisible) {
+            combinedPixels[i] = BLANK;
+            continue;
+        }
+        combinedPixels[i] = color;
+        combinedPixels[i].a = bodyOpaque ? bodyPixels[i].a : barrelPixels[i].a;
+    }
+    return combined;
+}
+
+int EnemyTypeIndex(EnemyType type) {
+    if (type == EnemyType::Drone) {
+        return 0;
+    }
+    if (type == EnemyType::Torpedo) {
+        return 1;
+    }
+    if (type == EnemyType::Hunter) {
+        return 2;
+    }
+    return 3;
+}
 }  // namespace
 
 bool Renderer2D::LoadResources() {
@@ -141,125 +220,136 @@ bool Renderer2D::LoadResources() {
     for (Vector2& offset : playerTankFrameOffsetsPixels_) {
         offset = Vector2{0.0F, 0.0F};
     }
-
-    std::array<const char*, 5> candidatePaths = {
-        "resources/textures/player_tank_sheet.png",
-        "../resources/textures/player_tank_sheet.png",
-        "../../resources/textures/player_tank_sheet.png",
-        "../../../resources/textures/player_tank_sheet.png",
-        "../../../../resources/textures/player_tank_sheet.png",
-    };
-
     Image sourceSheet{};
-    bool loaded = false;
-    for (const char* path : candidatePaths) {
-        if (TryLoadImageAtPath(sourceSheet, path)) {
-            loaded = true;
-            break;
-        }
-    }
-    if (!loaded) {
-        const char* applicationDirectory = GetApplicationDirectory();
-        if (applicationDirectory != nullptr && applicationDirectory[0] != '\0') {
-            std::filesystem::path base(applicationDirectory);
-            for (int i = 0; i <= 4 && !loaded; ++i) {
-                const std::filesystem::path candidate = base / "resources" / "textures" / "player_tank_sheet.png";
-                if (TryLoadImageAtPath(sourceSheet, candidate.string().c_str())) {
-                    loaded = true;
-                    break;
-                }
-                if (!base.has_parent_path()) {
-                    break;
-                }
-                base = base.parent_path();
-            }
-        }
-    }
-    if (!loaded) {
-        TraceLog(LOG_WARNING, "RENDER: player_tank_sheet.png not found");
+    if (!TryLoadImageFromTextureDirectory(sourceSheet, "sprites.png")) {
+        TraceLog(LOG_WARNING, "RENDER: sprites.png not found");
         return false;
     }
 
-    if (sourceSheet.width != kSourcePlayerFrameCount * kSourcePlayerFrameSize ||
-        sourceSheet.height != kSourcePlayerFrameSize) {
+    if (sourceSheet.width != kSpriteSheetColumns * kSpriteSheetCellSize ||
+        sourceSheet.height != kSpriteSheetRows * kSpriteSheetCellSize) {
         TraceLog(
             LOG_WARNING,
-            "RENDER: player_tank_sheet.png has unexpected size (%i x %i), expected %i x %i",
+            "RENDER: sprites.png has unexpected size (%i x %i), expected %i x %i",
             sourceSheet.width,
             sourceSheet.height,
-            kSourcePlayerFrameCount * kSourcePlayerFrameSize,
-            kSourcePlayerFrameSize);
+            kSpriteSheetColumns * kSpriteSheetCellSize,
+            kSpriteSheetRows * kSpriteSheetCellSize);
+        UnloadImage(sourceSheet);
+        return false;
     }
 
-    Image rotated90 = ImageCopy(sourceSheet);
-    ImageRotateCW(&rotated90);
-    Image rotated180 = ImageCopy(rotated90);
-    ImageRotateCW(&rotated180);
-    Image rotated270 = ImageCopy(rotated180);
-    ImageRotateCW(&rotated270);
+    Image playerBodyUp = ExtractSpriteCell(sourceSheet, 0, kPlayerBodyRowIndex, kSpriteSheetCellSize);
+    Image playerBody45 = ExtractSpriteCell(sourceSheet, 1, kPlayerBodyRowIndex, kSpriteSheetCellSize);
+    Image playerBarrelUp = ExtractSpriteCell(sourceSheet, 0, kPlayerBarrelRowIndex, kSpriteSheetCellSize);
+    Image playerBarrel45 = ExtractSpriteCell(sourceSheet, 1, kPlayerBarrelRowIndex, kSpriteSheetCellSize);
+    Image playerFrame0 = CombineCellsXor(playerBodyUp, playerBarrelUp, Color{0, 228, 48, 255});
+    Image playerFrame1 = CombineCellsXor(playerBody45, playerBarrel45, Color{0, 228, 48, 255});
+    Image playerFrame2 = ImageCopy(playerFrame0);
+    ImageRotateCW(&playerFrame2);
+    Image playerFrame3 = ImageCopy(playerFrame1);
+    ImageRotateCW(&playerFrame3);
+    Image playerFrame4 = ImageCopy(playerFrame2);
+    ImageRotateCW(&playerFrame4);
+    Image playerFrame5 = ImageCopy(playerFrame3);
+    ImageRotateCW(&playerFrame5);
+    Image playerFrame6 = ImageCopy(playerFrame4);
+    ImageRotateCW(&playerFrame6);
+    Image playerFrame7 = ImageCopy(playerFrame5);
+    ImageRotateCW(&playerFrame7);
 
-    Image combinedSheet = GenImageColor(
-        kSourcePlayerFrameCount * 4 * kSourcePlayerFrameSize,
-        kSourcePlayerFrameSize,
+    Image playerSheet = GenImageColor(
+        kEnemyTankDirectionCount * kSpriteSheetCellSize,
+        kSpriteSheetCellSize,
         BLANK);
+    DrawSpriteCell(playerSheet, playerFrame0, 0, 0, kSpriteSheetCellSize);
+    DrawSpriteCell(playerSheet, playerFrame1, 1, 0, kSpriteSheetCellSize);
+    DrawSpriteCell(playerSheet, playerFrame2, 2, 0, kSpriteSheetCellSize);
+    DrawSpriteCell(playerSheet, playerFrame3, 3, 0, kSpriteSheetCellSize);
+    DrawSpriteCell(playerSheet, playerFrame4, 4, 0, kSpriteSheetCellSize);
+    DrawSpriteCell(playerSheet, playerFrame5, 5, 0, kSpriteSheetCellSize);
+    DrawSpriteCell(playerSheet, playerFrame6, 6, 0, kSpriteSheetCellSize);
+    DrawSpriteCell(playerSheet, playerFrame7, 7, 0, kSpriteSheetCellSize);
 
-    for (int i = 0; i < kSourcePlayerFrameCount; ++i) {
-        CopyFrameFromStripToSheet(
-            combinedSheet,
-            i,
-            sourceSheet,
-            i,
-            false,
-            false,
-            kSourcePlayerFrameCount,
-            kSourcePlayerFrameSize);
-        CopyFrameFromStripToSheet(
-            combinedSheet,
-            kSourcePlayerFrameCount + i,
-            rotated90,
-            i,
-            true,
-            false,
-            kSourcePlayerFrameCount,
-            kSourcePlayerFrameSize);
-        CopyFrameFromStripToSheet(
-            combinedSheet,
-            kSourcePlayerFrameCount * 2 + i,
-            rotated180,
-            i,
-            false,
-            true,
-            kSourcePlayerFrameCount,
-            kSourcePlayerFrameSize);
-        CopyFrameFromStripToSheet(
-            combinedSheet,
-            kSourcePlayerFrameCount * 3 + i,
-            rotated270,
-            i,
-            true,
-            true,
-            kSourcePlayerFrameCount,
-            kSourcePlayerFrameSize);
-    }
-
-    playerTankSheet_ = LoadTextureFromImage(combinedSheet);
+    playerTankSheet_ = LoadTextureFromImage(playerSheet);
     playerTankSheetLoaded_ = playerTankSheet_.id != 0;
     if (playerTankSheetLoaded_) {
         SetTextureFilter(playerTankSheet_, TEXTURE_FILTER_POINT);
-        playerTankFrameSizePx_ = kSourcePlayerFrameSize;
-        playerTankFrameCount_ = kSourcePlayerFrameCount * 4;
+        playerTankFrameSizePx_ = kSpriteSheetCellSize;
+        playerTankFrameCount_ = kEnemyTankDirectionCount;
         const int frameCountToMeasure =
             std::min(playerTankFrameCount_, static_cast<int>(playerTankFrameOffsetsPixels_.size()));
         for (int frameIndex = 0; frameIndex < frameCountToMeasure; ++frameIndex) {
             playerTankFrameOffsetsPixels_[static_cast<std::size_t>(frameIndex)] =
-                ComputeFramePivotOffsetPixels(combinedSheet, frameIndex, playerTankFrameSizePx_);
+                ComputeFramePivotOffsetPixels(playerSheet, frameIndex, playerTankFrameSizePx_);
         }
+    } else {
+        TraceLog(LOG_WARNING, "RENDER: failed to create player spritesheet texture from sprites.png");
     }
 
-    UnloadImage(combinedSheet);
-    UnloadImage(rotated270);
-    UnloadImage(rotated180);
-    UnloadImage(rotated90);
+    Image enemySheet = GenImageColor(
+        kEnemyTankDirectionCount * kEnemySpriteSheetCellSize,
+        kEnemyTankTypeCount * kEnemySpriteSheetCellSize,
+        BLANK);
+    FillOpaquePixelsColor(sourceSheet, WHITE);
+    for (int typeIndex = 0; typeIndex < kEnemyTankTypeCount; ++typeIndex) {
+        const int sourceRow = kEnemySpriteFirstRowIndex + typeIndex;
+        Image frame0 = ExtractSpriteCell(sourceSheet, 0, sourceRow, kEnemySpriteSheetCellSize);
+        Image frame1 = ExtractSpriteCell(sourceSheet, 1, sourceRow, kEnemySpriteSheetCellSize);
+        Image frame2 = ImageCopy(frame0);
+        ImageRotateCW(&frame2);
+        Image frame3 = ImageCopy(frame1);
+        ImageRotateCW(&frame3);
+        Image frame4 = ImageCopy(frame2);
+        ImageRotateCW(&frame4);
+        Image frame5 = ImageCopy(frame3);
+        ImageRotateCW(&frame5);
+        Image frame6 = ImageCopy(frame4);
+        ImageRotateCW(&frame6);
+        Image frame7 = ImageCopy(frame5);
+        ImageRotateCW(&frame7);
+
+        DrawSpriteCell(enemySheet, frame0, 0, typeIndex, kEnemySpriteSheetCellSize);
+        DrawSpriteCell(enemySheet, frame1, 1, typeIndex, kEnemySpriteSheetCellSize);
+        DrawSpriteCell(enemySheet, frame2, 2, typeIndex, kEnemySpriteSheetCellSize);
+        DrawSpriteCell(enemySheet, frame3, 3, typeIndex, kEnemySpriteSheetCellSize);
+        DrawSpriteCell(enemySheet, frame4, 4, typeIndex, kEnemySpriteSheetCellSize);
+        DrawSpriteCell(enemySheet, frame5, 5, typeIndex, kEnemySpriteSheetCellSize);
+        DrawSpriteCell(enemySheet, frame6, 6, typeIndex, kEnemySpriteSheetCellSize);
+        DrawSpriteCell(enemySheet, frame7, 7, typeIndex, kEnemySpriteSheetCellSize);
+
+        UnloadImage(frame7);
+        UnloadImage(frame6);
+        UnloadImage(frame5);
+        UnloadImage(frame4);
+        UnloadImage(frame3);
+        UnloadImage(frame2);
+        UnloadImage(frame1);
+        UnloadImage(frame0);
+    }
+
+    enemyTankSheet_ = LoadTextureFromImage(enemySheet);
+    enemyTankSheetLoaded_ = enemyTankSheet_.id != 0;
+    if (enemyTankSheetLoaded_) {
+        SetTextureFilter(enemyTankSheet_, TEXTURE_FILTER_POINT);
+    } else {
+        TraceLog(LOG_WARNING, "RENDER: failed to create enemy spritesheet texture from sprites.png");
+    }
+    UnloadImage(enemySheet);
+
+    UnloadImage(playerSheet);
+    UnloadImage(playerFrame7);
+    UnloadImage(playerFrame6);
+    UnloadImage(playerFrame5);
+    UnloadImage(playerFrame4);
+    UnloadImage(playerFrame3);
+    UnloadImage(playerFrame2);
+    UnloadImage(playerFrame1);
+    UnloadImage(playerFrame0);
+    UnloadImage(playerBarrel45);
+    UnloadImage(playerBarrelUp);
+    UnloadImage(playerBody45);
+    UnloadImage(playerBodyUp);
     UnloadImage(sourceSheet);
 
     return playerTankSheetLoaded_;
@@ -270,6 +360,11 @@ void Renderer2D::UnloadResources() {
         UnloadTexture(playerTankSheet_);
         playerTankSheetLoaded_ = false;
         playerTankSheet_ = Texture2D{};
+    }
+    if (enemyTankSheetLoaded_) {
+        UnloadTexture(enemyTankSheet_);
+        enemyTankSheetLoaded_ = false;
+        enemyTankSheet_ = Texture2D{};
     }
 }
 
@@ -388,25 +483,44 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
         if (!enemy.alive) {
             continue;
         }
-        Color enemyColor = ORANGE;
-        if (enemy.type == EnemyType::Drone) {
-            enemyColor = ORANGE;
-        } else if (enemy.type == EnemyType::Torpedo) {
-            enemyColor = GOLD;
-        } else if (enemy.type == EnemyType::Hunter) {
-            enemyColor = RED;
-        } else if (enemy.type == EnemyType::Assassin) {
-            enemyColor = MAGENTA;
-        }
-        const float half = GameplayConstants::kEntitySizeUnits * 0.5F;
-        DrawRectangleRec(
-            Rectangle{
-                .x = enemy.position.x - half,
-                .y = enemy.position.y - half,
+        if (enemyTankSheetLoaded_) {
+            const int directionIndex = PlayerFrameIndexFromHeading(enemy.headingRadians, kEnemyTankDirectionCount);
+            const int typeIndex = EnemyTypeIndex(enemy.type);
+            const Rectangle sourceRect{
+                .x = static_cast<float>(directionIndex * kEnemyTankFrameSizePx),
+                .y = static_cast<float>(typeIndex * kEnemyTankFrameSizePx),
+                .width = static_cast<float>(kEnemyTankFrameSizePx),
+                .height = static_cast<float>(kEnemyTankFrameSizePx),
+            };
+            const float half = GameplayConstants::kEntitySizeUnits * 0.5F;
+            const Rectangle destRect{
+                .x = enemy.position.x,
+                .y = enemy.position.y,
                 .width = GameplayConstants::kEntitySizeUnits,
                 .height = GameplayConstants::kEntitySizeUnits,
-            },
-            enemyColor);
+            };
+            DrawTexturePro(enemyTankSheet_, sourceRect, destRect, Vector2{half, half}, 0.0F, WHITE);
+        } else {
+            Color enemyColor = ORANGE;
+            if (enemy.type == EnemyType::Drone) {
+                enemyColor = ORANGE;
+            } else if (enemy.type == EnemyType::Torpedo) {
+                enemyColor = GOLD;
+            } else if (enemy.type == EnemyType::Hunter) {
+                enemyColor = RED;
+            } else if (enemy.type == EnemyType::Assassin) {
+                enemyColor = MAGENTA;
+            }
+            const float half = GameplayConstants::kEntitySizeUnits * 0.5F;
+            DrawRectangleRec(
+                Rectangle{
+                    .x = enemy.position.x - half,
+                    .y = enemy.position.y - half,
+                    .width = GameplayConstants::kEntitySizeUnits,
+                    .height = GameplayConstants::kEntitySizeUnits,
+                },
+                enemyColor);
+        }
     }
 
     for (const Projectile& projectile : state.world.projectiles) {
@@ -417,21 +531,29 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
         DrawCircleV(Vector2{projectile.position.x, projectile.position.y}, 0.18F, color);
     }
 
-    if (playerTankSheetLoaded_) {
-        // Draw in screen space at fixed 20x20 to avoid platform-dependent camera scaling artifacts.
-    } else {
-        DrawPlayerFigure(
-            playerRenderPosition,
-            PixelsToWorldUnits(static_cast<float>(kSourcePlayerFrameSize)),
-            state.world.player.hullHeadingRadians,
-            GREEN);
+    if (!playerTankSheetLoaded_) {
+        const float half = GameplayConstants::kEntitySizeUnits * 0.5F;
+        DrawRectangleRec(
+            Rectangle{
+                .x = state.world.player.position.x - half,
+                .y = state.world.player.position.y - half,
+                .width = GameplayConstants::kEntitySizeUnits,
+                .height = GameplayConstants::kEntitySizeUnits,
+            },
+            Color{0, 228, 48, 255});
     }
 
     EndMode2D();
     if (playerTankSheetLoaded_) {
         const int frameIndex = PlayerFrameIndexFromHeading(state.world.player.hullHeadingRadians, playerTankFrameCount_);
-        const Vector2 frameOffsetPixels =
+        const Vector2 sourceOffsetPixels =
             playerTankFrameOffsetsPixels_[static_cast<std::size_t>(frameIndex)];
+        const float offsetScale =
+            static_cast<float>(kPlayerRenderSizePx) / static_cast<float>(playerTankFrameSizePx_);
+        const Vector2 scaledOffsetPixels{
+            .x = std::round(sourceOffsetPixels.x * offsetScale),
+            .y = std::round(sourceOffsetPixels.y * offsetScale),
+        };
         const Rectangle sourceRect{
             .x = static_cast<float>(frameIndex * playerTankFrameSizePx_),
             .y = 0.0F,
@@ -440,12 +562,12 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
         };
         const Vector2 playerScreenPosition = GetWorldToScreen2D(playerRenderPosition, camera);
         const Rectangle destRect{
-            .x = static_cast<float>(RoundToInt(playerScreenPosition.x + frameOffsetPixels.x)),
-            .y = static_cast<float>(RoundToInt(playerScreenPosition.y + frameOffsetPixels.y)),
-            .width = static_cast<float>(playerTankFrameSizePx_),
-            .height = static_cast<float>(playerTankFrameSizePx_),
+            .x = static_cast<float>(RoundToInt(playerScreenPosition.x + scaledOffsetPixels.x)),
+            .y = static_cast<float>(RoundToInt(playerScreenPosition.y + scaledOffsetPixels.y)),
+            .width = static_cast<float>(kPlayerRenderSizePx),
+            .height = static_cast<float>(kPlayerRenderSizePx),
         };
-        const float halfFrame = static_cast<float>(playerTankFrameSizePx_) * 0.5F;
+        const float halfFrame = static_cast<float>(kPlayerRenderSizePx) * 0.5F;
         DrawTexturePro(playerTankSheet_, sourceRect, destRect, Vector2{halfFrame, halfFrame}, 0.0F, WHITE);
     }
     EndScissorMode();

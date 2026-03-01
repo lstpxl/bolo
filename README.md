@@ -1,4 +1,4 @@
-# BOLO (RG353V)
+# BOLT (RG353V)
 
 Demo app for:
 
@@ -21,7 +21,7 @@ brew install cmake zig rsync
 ```bash
 cmake --preset macos-debug
 cmake --build --preset macos-debug
-./build/macos-debug/bolo
+./build/macos-debug/bolt
 ```
 
 ### 2) `macos-release`
@@ -29,7 +29,7 @@ cmake --build --preset macos-debug
 ```bash
 cmake --preset macos-release
 cmake --build --preset macos-release
-./build/macos-release/bolo
+./build/macos-release/bolt
 ```
 
 ### 3) `rg353v-debug`
@@ -42,7 +42,7 @@ cmake --build --preset rg353v-debug
 Binary:
 
 ```bash
-./build/rg353v-debug/bolo
+./build/rg353v-debug/bolt
 ```
 
 ### 4) `rg353v-release`
@@ -55,7 +55,7 @@ cmake --build --preset rg353v-release
 Binary:
 
 ```bash
-./build/rg353v-release/bolo
+./build/rg353v-release/bolt
 ```
 
 ## One-time RG353V sysroot setup
@@ -76,7 +76,7 @@ Example:
 If you run manual CMake commands outside presets, set:
 
 ```bash
-export RG353V_SYSROOT="/Users/ip/Projects/bolo/sysroot"
+export RG353V_SYSROOT="/Users/ip/Projects/bolt/sysroot"
 ```
 
 Reload shell:
@@ -102,12 +102,14 @@ cp .env.example .env
 npm run build-and-deploy:rg353v:release
 ```
 
-Example launcher (`/roms2/ports/bolo.sh`):
+Example launcher (`/roms2/ports/bolt.sh`):
+
+scp -r /Users/ip/Projects/bolt/assets/bolt-image.png ark@192.168.100.86:/roms2/ports/images
 
 ```bash
 #!/bin/bash
-cd /roms2/ports/bolo || exit 1
-exec ./bolo
+cd /roms2/ports/bolt || exit 1
+exec ./bolt
 ```
 
 App exit combo: `START + SELECT`.

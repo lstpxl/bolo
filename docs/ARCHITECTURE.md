@@ -1,4 +1,4 @@
-# BOLO Architecture
+# BOLT Architecture
 
 This file defines architecture expectations for both current and future code.
 `docs/GAME_DESIGN.md` is the gameplay source of truth; this file is about structure and engineering style.

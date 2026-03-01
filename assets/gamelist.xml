@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<gameList>
+    <game>
+        <path>./bolt.sh</path>
+        <name>Bolt</name>
+        <desc>You are a space tank and you must destroy all six enemy bases in a randomly generated maze
+            to complete a level.</desc>
+        <image>./images/bolt-image.png</image>
+        <!-- <video>./videos/bolt-video.mp4</video>
+        <marquee>./images/bolt-marquee.png</marquee>
+        <thumbnail>./images/bolt-thumb.png</thumbnail> -->
+        <rating>0.99</rating>
+        <releasedate>20260221T000000</releasedate>
+        <developer>Anonymous</developer>
+        <publisher>Anonymous</publisher>
+        <genre>Platform</genre>
+        <playcount>1</playcount>
+        <lastplayed>20260212T152510</lastplayed>
+    </game>
+</gameList>

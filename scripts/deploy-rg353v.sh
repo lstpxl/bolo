@@ -16,7 +16,7 @@ fi
 BUILD_FLAVOR="$1"
 DEVICE_IP="${2:-${RG353V_DEVICE_IP:-}}"
 DEVICE_USER="${RG353V_DEVICE_USER:-ark}"
-REMOTE_DIR="${RG353V_REMOTE_DIR:-/roms2/ports/bolo}"
+REMOTE_DIR="${RG353V_REMOTE_DIR:-/roms2/ports/bolt}"
 
 if [[ -z "${DEVICE_IP}" ]]; then
   echo "RG353V device IP is missing."
@@ -33,7 +33,7 @@ case "${BUILD_FLAVOR}" in
     ;;
 esac
 
-LOCAL_BINARY="./build/rg353v-${BUILD_FLAVOR}/bolo"
+LOCAL_BINARY="./build/rg353v-${BUILD_FLAVOR}/bolt"
 LOCAL_RESOURCES_DIR="./resources"
 
 if [[ ! -f "${LOCAL_BINARY}" ]]; then
@@ -51,7 +51,7 @@ echo "Creating remote directory: ${REMOTE_DIR}"
 ssh "${DEVICE_USER}@${DEVICE_IP}" "mkdir -p '${REMOTE_DIR}'"
 
 echo "Uploading binary..."
-scp "${LOCAL_BINARY}" "${DEVICE_USER}@${DEVICE_IP}:${REMOTE_DIR}/bolo"
+scp "${LOCAL_BINARY}" "${DEVICE_USER}@${DEVICE_IP}:${REMOTE_DIR}/bolt"
 
 echo "Syncing resources..."
 rsync -av --delete "${LOCAL_RESOURCES_DIR}/" "${DEVICE_USER}@${DEVICE_IP}:${REMOTE_DIR}/resources/"
