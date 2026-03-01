@@ -8,6 +8,31 @@
 #include "raylib.h"
 
 namespace {
+float NormalizeAngle(float angleRadians) {
+    constexpr float kPi = 3.14159265358979323846F;
+    const float twoPi = kPi * 2.0F;
+    float normalized = std::fmod(angleRadians, twoPi);
+    if (normalized < 0.0F) {
+        normalized += twoPi;
+    }
+    return normalized;
+}
+
+float QuantizeToEightDirections(float angleRadians) {
+    constexpr float kPi = 3.14159265358979323846F;
+    constexpr float kStep = kPi / 4.0F;
+    const float normalized = NormalizeAngle(angleRadians);
+    const int stepIndex = static_cast<int>(std::round(normalized / kStep));
+    return NormalizeAngle(static_cast<float>(stepIndex) * kStep);
+}
+
+Vec2f DirectionFromHeading(float headingRadians) {
+    return Vec2f{
+        .x = std::sin(headingRadians),
+        .y = -std::cos(headingRadians),
+    };
+}
+
 EnemyType EnemyTypeForLevel(int level) {
     if (level <= GameplayConstants::kDroneMaxLevel) {
         return EnemyType::Drone;
@@ -186,9 +211,15 @@ void UpdateEnemySystem(GameState& state, const AppConfig& config, float deltaSec
             desiredDirection = Vec2f{.x = 0.0F, .y = 0.0F};
         }
 
+        float movementHeading = enemy.headingRadians;
+        if (desiredLength > 0.001F) {
+            movementHeading = std::atan2(desiredDirection.x, -desiredDirection.y);
+        }
+        movementHeading = QuantizeToEightDirections(movementHeading);
+        const Vec2f snappedDirection = DirectionFromHeading(movementHeading);
         const float speed = EnemySpeed(enemy.type);
-        enemy.velocity.x = desiredDirection.x * speed;
-        enemy.velocity.y = desiredDirection.y * speed;
+        enemy.velocity.x = snappedDirection.x * speed;
+        enemy.velocity.y = snappedDirection.y * speed;
         const Vec2f previousPosition = enemy.position;
         const Vec2f candidatePosition{
             .x = enemy.position.x + enemy.velocity.x * deltaSeconds,
@@ -199,7 +230,7 @@ void UpdateEnemySystem(GameState& state, const AppConfig& config, float deltaSec
             enemy.aiStateTimerSeconds = 0.0F;
         } else {
             enemy.position = candidatePosition;
-            enemy.headingRadians = std::atan2(enemy.velocity.x, -enemy.velocity.y);
+            enemy.headingRadians = movementHeading;
         }
 
         enemy.fireCooldownSeconds -= deltaSeconds;

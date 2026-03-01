@@ -310,6 +310,8 @@ bool TryPlacePlayer(
         state.world.player.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
         state.world.player.hullHeadingRadians = 0.0F;
         state.world.player.turretHeadingRadians = 0.0F;
+        state.world.player.turnHoldDirection = 0;
+        state.world.player.turnHoldElapsedSeconds = 0.0F;
         state.world.player.throttleNormalized = 0.0F;
         state.world.player.fireCooldownSeconds = 0.0F;
         state.world.player.alive = true;
@@ -383,6 +385,8 @@ void InitializeMazeWorld(GameState& state, const AppConfig& config) {
         state.world.player.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
         state.world.player.hullHeadingRadians = 0.0F;
         state.world.player.turretHeadingRadians = 0.0F;
+        state.world.player.turnHoldDirection = 0;
+        state.world.player.turnHoldElapsedSeconds = 0.0F;
         state.world.player.throttleNormalized = 0.0F;
         state.world.player.fireCooldownSeconds = 0.0F;
         state.world.player.alive = true;
@@ -406,6 +410,8 @@ bool PlacePlayerAtSafeSpawn(GameState& state, const AppConfig& config) {
     state.world.player.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
     state.world.player.hullHeadingRadians = 0.0F;
     state.world.player.turretHeadingRadians = 0.0F;
+    state.world.player.turnHoldDirection = 0;
+    state.world.player.turnHoldElapsedSeconds = 0.0F;
     state.world.player.throttleNormalized = 0.0F;
     state.world.player.fireCooldownSeconds = 0.0F;
     state.world.player.alive = true;

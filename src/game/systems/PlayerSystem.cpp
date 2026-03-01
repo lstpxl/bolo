@@ -15,6 +15,24 @@ float NormalizeAngle(float angleRadians) {
     return normalized;
 }
 
+float QuantizeToEightDirections(float angleRadians) {
+    constexpr float kPi = 3.14159265358979323846F;
+    constexpr float kStep = kPi / 4.0F;
+    const float normalized = NormalizeAngle(angleRadians);
+    const int stepIndex = static_cast<int>(std::round(normalized / kStep));
+    return NormalizeAngle(static_cast<float>(stepIndex) * kStep);
+}
+
+Vec2f DirectionFromHeading(float headingRadians) {
+    return Vec2f{
+        .x = std::sin(headingRadians),
+        .y = -std::cos(headingRadians),
+    };
+}
+
+constexpr float kEightDirectionStepRadians = 3.14159265358979323846F / 4.0F;
+constexpr float kTurnRepeatIntervalSeconds = 0.33333333333333333333F;
+
 }  // namespace
 
 void UpdatePlayerSystem(GameState& state, const FrameInput& input, float deltaSeconds) {
@@ -32,17 +50,36 @@ void UpdatePlayerSystem(GameState& state, const FrameInput& input, float deltaSe
     state.world.player.throttleNormalized =
         std::clamp(state.world.player.throttleNormalized, 0.0F, 1.0F);
 
-    state.world.player.hullHeadingRadians += input.turnInput * GameplayConstants::kPlayerTurnSpeedRadians * deltaSeconds;
+    int requestedTurnDirection = 0;
+    if (input.turnInput > 0.5F) {
+        requestedTurnDirection = 1;
+    } else if (input.turnInput < -0.5F) {
+        requestedTurnDirection = -1;
+    }
+    if (requestedTurnDirection == 0) {
+        state.world.player.turnHoldDirection = 0;
+        state.world.player.turnHoldElapsedSeconds = 0.0F;
+    } else if (requestedTurnDirection != state.world.player.turnHoldDirection) {
+        state.world.player.hullHeadingRadians +=
+            static_cast<float>(requestedTurnDirection) * kEightDirectionStepRadians;
+        state.world.player.turnHoldDirection = requestedTurnDirection;
+        state.world.player.turnHoldElapsedSeconds = 0.0F;
+    } else {
+        state.world.player.turnHoldElapsedSeconds += deltaSeconds;
+        while (state.world.player.turnHoldElapsedSeconds >= kTurnRepeatIntervalSeconds) {
+            state.world.player.hullHeadingRadians +=
+                static_cast<float>(requestedTurnDirection) * kEightDirectionStepRadians;
+            state.world.player.turnHoldElapsedSeconds -= kTurnRepeatIntervalSeconds;
+        }
+    }
+    state.world.player.hullHeadingRadians = QuantizeToEightDirections(state.world.player.hullHeadingRadians);
     state.world.player.turretHeadingRadians +=
         input.turretTurnInput * GameplayConstants::kPlayerTurretTurnSpeedRadians * deltaSeconds;
 
     float speed = std::sqrt(
         state.world.player.velocity.x * state.world.player.velocity.x +
         state.world.player.velocity.y * state.world.player.velocity.y);
-    float heading = state.world.player.hullHeadingRadians;
-    if (speed > 0.001F) {
-        heading = std::atan2(state.world.player.velocity.x, -state.world.player.velocity.y);
-    }
+    const float heading = state.world.player.hullHeadingRadians;
 
     speed += state.world.player.throttleNormalized * throttleAccelerationPerSecond * deltaSeconds;
 
@@ -84,18 +121,15 @@ void UpdatePlayerSystem(GameState& state, const FrameInput& input, float deltaSe
     speed = std::sqrt(
         state.world.player.velocity.x * state.world.player.velocity.x +
         state.world.player.velocity.y * state.world.player.velocity.y);
-    if (speed > 0.001F) {
-        heading = std::atan2(state.world.player.velocity.x, -state.world.player.velocity.y);
-    }
-    state.world.player.hullHeadingRadians = heading;
+    state.world.player.hullHeadingRadians = QuantizeToEightDirections(state.world.player.hullHeadingRadians);
 
     speed = std::max(0.0F, speed);
-    heading = NormalizeAngle(heading);
     if (speed <= 0.001F) {
         state.world.player.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
     } else {
-        state.world.player.velocity.x = std::sin(heading) * speed;
-        state.world.player.velocity.y = -std::cos(heading) * speed;
+        const Vec2f snappedDirection = DirectionFromHeading(heading);
+        state.world.player.velocity.x = snappedDirection.x * speed;
+        state.world.player.velocity.y = snappedDirection.y * speed;
     }
     state.world.player.hullHeadingRadians = NormalizeAngle(state.world.player.hullHeadingRadians);
 

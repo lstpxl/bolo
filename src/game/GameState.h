@@ -90,6 +90,8 @@ struct PlayerTank {
     Vec2f velocity;
     float hullHeadingRadians;
     float turretHeadingRadians;
+    int turnHoldDirection = 0;
+    float turnHoldElapsedSeconds = 0.0F;
     float throttleNormalized = 0.0F;
     float fireCooldownSeconds = 0.0F;
     float fuel = GameplayConstants::kFuelMax;
@@ -143,6 +145,8 @@ struct WorldState {
         .velocity = Vec2f{.x = 0.0F, .y = 0.0F},
         .hullHeadingRadians = 0.0F,
         .turretHeadingRadians = 0.0F,
+        .turnHoldDirection = 0,
+        .turnHoldElapsedSeconds = 0.0F,
         .throttleNormalized = 0.0F,
         .fireCooldownSeconds = 0.0F,
         .fuel = GameplayConstants::kFuelMax,
