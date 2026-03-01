@@ -494,12 +494,12 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
             };
             const float half = GameplayConstants::kEntitySizeUnits * 0.5F;
             const Rectangle destRect{
-                .x = enemy.position.x,
-                .y = enemy.position.y,
+                .x = enemy.position.x - half,
+                .y = enemy.position.y - half,
                 .width = GameplayConstants::kEntitySizeUnits,
                 .height = GameplayConstants::kEntitySizeUnits,
             };
-            DrawTexturePro(enemyTankSheet_, sourceRect, destRect, Vector2{half, half}, 0.0F, WHITE);
+            DrawTexturePro(enemyTankSheet_, sourceRect, destRect, Vector2{0.0F, 0.0F}, 0.0F, WHITE);
         } else {
             Color enemyColor = ORANGE;
             if (enemy.type == EnemyType::Drone) {

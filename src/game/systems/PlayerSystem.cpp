@@ -79,7 +79,6 @@ void UpdatePlayerSystem(GameState& state, const FrameInput& input, float deltaSe
     float speed = std::sqrt(
         state.world.player.velocity.x * state.world.player.velocity.x +
         state.world.player.velocity.y * state.world.player.velocity.y);
-    const float heading = state.world.player.hullHeadingRadians;
 
     speed += state.world.player.throttleNormalized * throttleAccelerationPerSecond * deltaSeconds;
 
@@ -127,7 +126,7 @@ void UpdatePlayerSystem(GameState& state, const FrameInput& input, float deltaSe
     if (speed <= 0.001F) {
         state.world.player.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
     } else {
-        const Vec2f snappedDirection = DirectionFromHeading(heading);
+        const Vec2f snappedDirection = DirectionFromHeading(state.world.player.hullHeadingRadians);
         state.world.player.velocity.x = snappedDirection.x * speed;
         state.world.player.velocity.y = snappedDirection.y * speed;
     }
