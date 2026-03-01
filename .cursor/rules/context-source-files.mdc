@@ -11,6 +11,12 @@ Before changing gameplay, controls, maze generation, rendering, or menu behavior
 - `docs/ARCHITECTURE.md` (high-level project architecture)
 - `README.md` (build, run, deploy commands and environment assumptions)
 
+Project-level behavior and implementation docs live in `docs/`.
+Historical source material for the original 1982 game lives in `docs/original-1982/`.
+
+The project is based on the original 1982 game as a design baseline.
+Implementation may intentionally override original behavior to fit modern hardware or development practices, but every override must be explicitly documented in `docs/GAME_DESIGN.md`.
+
 When behavior in code and docs differs:
 
 - Treat code as source of runtime truth.
