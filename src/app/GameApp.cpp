@@ -160,7 +160,8 @@ void GameApp::Render(const FrameInput& input) {
              result.startGameRequested ||
              result.quitRequested ||
              result.menuSettings.levelNumber != previousSettings.levelNumber ||
-             result.menuSettings.mazeDensity != previousSettings.mazeDensity)) {
+             result.menuSettings.mazeDensity != previousSettings.mazeDensity ||
+             result.menuSettings.invisibility != previousSettings.invisibility)) {
             PlaySound(menuClickSound_);
         }
         if (result.startGameRequested) {

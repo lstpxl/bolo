@@ -52,6 +52,7 @@ MenuScreenResult MenuScreen::Render(
     const FrameInput& input) {
     levelNumber_ = std::clamp(currentSettings.levelNumber, kMinLevelNumber, kMaxLevelNumber);
     mazeDensity_ = std::clamp(currentSettings.mazeDensity, kMinMazeDensity, kMaxMazeDensity);
+    invisibility_ = currentSettings.invisibility;
     bool interactionOccurred = false;
 
     if (!quitConfirmationOpen_) {
@@ -85,8 +86,9 @@ MenuScreenResult MenuScreen::Render(
     const float subtitleY = titleY + 46.0F;
     const float levelLabelY = subtitleY + 44.0F;
     const float levelGaugeY = levelLabelY + 28.0F;
-    const float densityLabelY = levelGaugeY + 52.0F;
+    const float densityLabelY = levelGaugeY + 32.0F;
     const float densityGaugeY = densityLabelY + 28.0F;
+    const float invisibilityY = densityGaugeY + 38.0F;
     const float buildTextY = panel.y + panel.height - 20.0F;
     const float quitButtonY = buildTextY - 38.0F - 60.0F;
     const float startButtonY = quitButtonY - 60.0F;
@@ -119,6 +121,7 @@ MenuScreenResult MenuScreen::Render(
 
     const Rectangle levelGauge = Rectangle{gaugeX, levelGaugeY, gaugeWidth, 28.0F};
     const Rectangle densityGauge = Rectangle{gaugeX, densityGaugeY, gaugeWidth, 28.0F};
+    const Rectangle invisibilityControl = Rectangle{gaugeX + 8.0F, invisibilityY, 28.0F, 28.0F};
     const Rectangle startButton = Rectangle{buttonsX, startButtonY, controlsWidth, 30.0F};
     const Rectangle quitButton = Rectangle{buttonsX, quitButtonY, controlsWidth, 30.0F};
 
@@ -182,6 +185,19 @@ MenuScreenResult MenuScreen::Render(
         interactionOccurred = true;
     }
 
+    bool invisibilityValue = invisibility_;
+    if (!quitConfirmationOpen_ && focusedControl_ == FocusedControl::Invisibility) {
+        if (input.menuNavigateLeftPressed || input.menuNavigateRightPressed || input.menuSelectPressed) {
+            invisibilityValue = !invisibilityValue;
+            interactionOccurred = true;
+        }
+    }
+    GuiCheckBox(invisibilityControl, "Invisibility", &invisibilityValue);
+    if (invisibilityValue != invisibility_) {
+        interactionOccurred = true;
+    }
+    invisibility_ = invisibilityValue;
+
     bool startPressed = GuiButton(startButton, "Start");
     bool quitPressed = GuiButton(quitButton, "Quit");
     if (quitConfirmationOpen_) {
@@ -202,6 +218,7 @@ MenuScreenResult MenuScreen::Render(
 
     DrawFocus(levelGauge, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Level);
     DrawFocus(densityGauge, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Density);
+    DrawFocus(invisibilityControl, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Invisibility);
     DrawFocus(startButton, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Start);
     DrawFocus(quitButton, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Quit);
 
@@ -256,6 +273,7 @@ MenuScreenResult MenuScreen::Render(
             MenuSettings{
                 .levelNumber = levelNumber_,
                 .mazeDensity = mazeDensity_,
+                .invisibility = invisibility_,
             },
     };
 }

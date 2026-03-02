@@ -52,7 +52,7 @@ struct GameplayConstants {
     static constexpr int kMaxAliveEnemies = 30;                      // enemies
     static constexpr int kMaxAliveEnemiesPerBase = 12;               // enemies / base
     static constexpr float kEnemyInitialFireCooldownSeconds = 0.2F;  // seconds
-    static constexpr float kBaseSpawnCooldownSeconds = 1.2F;         // seconds
+    static constexpr float kBaseSpawnCooldownSeconds = 3.6F;         // seconds
     static constexpr float kEnemyPreferredSeparationUnits = 0.5F;    // world-units
     static constexpr float kEnemyMutualKillDistanceUnits = 0.12F;    // world-units
     static constexpr float kEnemyLookaheadObstacleUnits = 1.0F;      // world-units
@@ -158,8 +158,12 @@ struct EnemyTank {
     float fireCooldownSeconds = 0.0F;
     float aiStateTimerSeconds = 0.0F;
     float aiModeElapsedSeconds = 0.0F;
+    float selfAwarenessIntervalSeconds = 6.0F;
+    float selfAwarenessTimerSeconds = 6.0F;
     float desiredHeadingRadians = 0.0F;
     Vec2f wanderDirection{.x = 0.0F, .y = -1.0F};
+    int watchRotateDirection = 1;
+    bool returnToBase = false;
     int originBaseIndex = -1;
     std::array<Vec2f, kMaxPathWaypoints> pathWaypoints{};
     int pathWaypointCount = 0;
@@ -221,6 +225,7 @@ struct GameState {
     MenuSettings menuSettings{
         .levelNumber = 3,
         .mazeDensity = 1,
+        .invisibility = false,
     };
     WorldState world{};
 };

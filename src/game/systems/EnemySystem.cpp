@@ -3,10 +3,13 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstdint>
 #include <limits>
 #include <queue>
 #include <vector>
+#include "core/Random.h"
 #include "game/systems/ProjectileSystem.h"
+#include "raylib.h"
 
 namespace {
 constexpr float kPi = 3.14159265358979323846F;
@@ -100,6 +103,90 @@ float DistancePointToSegment(const Vec2f& p, const Vec2f& a, const Vec2f& b) {
     return Distance(p, closest);
 }
 
+float Cross2D(const Vec2f& a, const Vec2f& b, const Vec2f& c) {
+    return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+}
+
+bool IsPointOnSegment(const Vec2f& p, const Vec2f& a, const Vec2f& b) {
+    constexpr float kEps = 0.0001F;
+    return p.x >= std::min(a.x, b.x) - kEps && p.x <= std::max(a.x, b.x) + kEps &&
+        p.y >= std::min(a.y, b.y) - kEps && p.y <= std::max(a.y, b.y) + kEps;
+}
+
+bool SegmentsIntersect(const Vec2f& a1, const Vec2f& a2, const Vec2f& b1, const Vec2f& b2) {
+    const float d1 = Cross2D(a1, a2, b1);
+    const float d2 = Cross2D(a1, a2, b2);
+    const float d3 = Cross2D(b1, b2, a1);
+    const float d4 = Cross2D(b1, b2, a2);
+    constexpr float kEps = 0.0001F;
+
+    if (((d1 > kEps && d2 < -kEps) || (d1 < -kEps && d2 > kEps)) &&
+        ((d3 > kEps && d4 < -kEps) || (d3 < -kEps && d4 > kEps))) {
+        return true;
+    }
+    if (std::fabs(d1) <= kEps && IsPointOnSegment(b1, a1, a2)) {
+        return true;
+    }
+    if (std::fabs(d2) <= kEps && IsPointOnSegment(b2, a1, a2)) {
+        return true;
+    }
+    if (std::fabs(d3) <= kEps && IsPointOnSegment(a1, b1, b2)) {
+        return true;
+    }
+    if (std::fabs(d4) <= kEps && IsPointOnSegment(a2, b1, b2)) {
+        return true;
+    }
+    return false;
+}
+
+float SegmentToSegmentDistance(const Vec2f& a1, const Vec2f& a2, const Vec2f& b1, const Vec2f& b2) {
+    if (SegmentsIntersect(a1, a2, b1, b2)) {
+        return 0.0F;
+    }
+    return std::min(
+        std::min(DistancePointToSegment(a1, b1, b2), DistancePointToSegment(a2, b1, b2)),
+        std::min(DistancePointToSegment(b1, a1, a2), DistancePointToSegment(b2, a1, a2)));
+}
+
+int RandomRotateDirection(Random& random) {
+    return random.NextInt(0, 1) == 0 ? -1 : 1;
+}
+
+float NearestBaseDistance(const WorldState& world, const Vec2f& p) {
+    float nearest = std::numeric_limits<float>::infinity();
+    for (const EnemyBase& base : world.enemyBases) {
+        if (base.destroyed) {
+            continue;
+        }
+        nearest = std::min(nearest, Distance(base.position, p));
+    }
+    return nearest;
+}
+
+Vec2f NearestBasePosition(const WorldState& world, const Vec2f& p) {
+    Vec2f nearestPos = p;
+    float nearest = std::numeric_limits<float>::infinity();
+    for (const EnemyBase& base : world.enemyBases) {
+        if (base.destroyed) {
+            continue;
+        }
+        const float dist = Distance(base.position, p);
+        if (dist < nearest) {
+            nearest = dist;
+            nearestPos = base.position;
+        }
+    }
+    return nearestPos;
+}
+
+void EnterDroneWatchMode(WorldState& world, EnemyTank& enemy, Random& random) {
+    enemy.aiMode = EnemyAiMode::Watch;
+    enemy.aiModeElapsedSeconds = 0.0F;
+    enemy.watchRotateDirection = RandomRotateDirection(random);
+    const float nearestBaseDist = NearestBaseDistance(world, enemy.position);
+    enemy.returnToBase = nearestBaseDist >= 36.0F;
+}
+
 Vec2f NormalizeOrZero(const Vec2f& v) {
     const float lenSq = v.x * v.x + v.y * v.y;
     if (lenSq <= 0.000001F) {
@@ -135,6 +222,25 @@ bool IsPointInWall(const WorldState& world, const Vec2f& point, float clearanceU
         (cell.westWall && localX <= wallLimit) || (cell.eastWall && localX >= cellSize - wallLimit);
 }
 
+bool IsPointInUndestroyedBase(const WorldState& world, const Vec2f& point, float clearanceUnits) {
+    const float halfBase = GameplayConstants::kEnemyBaseSizeUnits * 0.5F;
+    for (const EnemyBase& base : world.enemyBases) {
+        if (base.destroyed) {
+            continue;
+        }
+        const float dx = std::fabs(point.x - base.position.x);
+        const float dy = std::fabs(point.y - base.position.y);
+        if (dx <= halfBase + clearanceUnits && dy <= halfBase + clearanceUnits) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool IsPointBlockedForEnemyMovement(const WorldState& world, const Vec2f& point, float clearanceUnits) {
+    return IsPointInWall(world, point, clearanceUnits) || IsPointInUndestroyedBase(world, point, clearanceUnits);
+}
+
 float FreeDistanceAhead(const WorldState& world, const Vec2f& from, float headingRadians, float maxDistance, float clearanceUnits) {
     const Vec2f dir = DirectionFromHeading(headingRadians);
     const float sampleSpacing = 0.08F;
@@ -145,7 +251,7 @@ float FreeDistanceAhead(const WorldState& world, const Vec2f& from, float headin
             .x = from.x + dir.x * dist,
             .y = from.y + dir.y * dist,
         };
-        if (IsPointInWall(world, sample, clearanceUnits)) {
+        if (IsPointBlockedForEnemyMovement(world, sample, clearanceUnits)) {
             return dist;
         }
     }
@@ -191,7 +297,7 @@ bool SegmentIntersectsWall(const WorldState& world, const Vec2f& from, const Vec
     const float dy = to.y - from.y;
     const float distance = std::sqrt(dx * dx + dy * dy);
     if (distance <= 0.001F) {
-        return IsPointInWall(world, to, clearanceUnits);
+        return IsPointBlockedForEnemyMovement(world, to, clearanceUnits);
     }
     const float sampleSpacing = std::max(0.02F, clearanceUnits * 0.5F);
     const int steps = std::max(1, static_cast<int>(std::ceil(distance / sampleSpacing)));
@@ -201,7 +307,7 @@ bool SegmentIntersectsWall(const WorldState& world, const Vec2f& from, const Vec
             .x = from.x + dx * t,
             .y = from.y + dy * t,
         };
-        if (IsPointInWall(world, sample, clearanceUnits)) {
+        if (IsPointBlockedForEnemyMovement(world, sample, clearanceUnits)) {
             return true;
         }
     }
@@ -272,6 +378,9 @@ Vec2f CellCenter(const WorldState& world, int x, int y) {
 
 bool CanStepToNeighbor(const WorldState& world, int x, int y, int nx, int ny) {
     if (nx < 0 || ny < 0 || nx >= world.maze.widthCells || ny >= world.maze.heightCells) {
+        return false;
+    }
+    if (IsPointInUndestroyedBase(world, CellCenter(world, nx, ny), GameplayConstants::kTankCollisionRadiusUnits)) {
         return false;
     }
     const MazeCell& cell = world.maze.cells[static_cast<std::size_t>(CellIndex(world, x, y))];
@@ -455,6 +564,42 @@ bool BuildAssassinPath(GameState& state, EnemyTank& enemy, int enemyIndex) {
         ++enemy.pathWaypointCount;
     }
     return enemy.pathWaypointCount > 0;
+}
+
+bool BuildAssassinPathToTarget(GameState& state, EnemyTank& enemy, int enemyIndex, const Vec2f& target) {
+    const Vec2f previousPlayerPosition = state.world.player.position;
+    state.world.player.position = target;
+    const bool built = BuildAssassinPath(state, enemy, enemyIndex);
+    state.world.player.position = previousPlayerPosition;
+    return built;
+}
+
+Vec2f RandomMazePoint(const WorldState& world, Random& random) {
+    const int cellX = random.NextInt(0, world.maze.widthCells - 1);
+    const int cellY = random.NextInt(0, world.maze.heightCells - 1);
+    return CellCenter(world, cellX, cellY);
+}
+
+bool BuildAssassinPathToFarRandomTarget(
+    GameState& state,
+    EnemyTank& enemy,
+    int enemyIndex,
+    Random& random) {
+    constexpr float kMinRandomTargetDistanceUnits = 24.0F;
+    constexpr int kMaxTargetAttempts = 24;
+    for (int attempt = 0; attempt < kMaxTargetAttempts; ++attempt) {
+        const Vec2f randomTarget = RandomMazePoint(state.world, random);
+        if (Distance(randomTarget, enemy.position) < kMinRandomTargetDistanceUnits) {
+            continue;
+        }
+        if (BuildAssassinPathToTarget(state, enemy, enemyIndex, randomTarget)) {
+            return true;
+        }
+    }
+
+    // Fallback: still pick some random destination if no far target succeeded.
+    const Vec2f fallbackTarget = RandomMazePoint(state.world, random);
+    return BuildAssassinPathToTarget(state, enemy, enemyIndex, fallbackTarget);
 }
 
 bool PlayerAheadForTorpedo(const EnemyTank& enemy, const Vec2f& toPlayerNormalized) {
@@ -678,9 +823,37 @@ void ResolveEnemySeparation(WorldState& world) {
         }
     }
 }
+
+void ResolveEnemyFrontalCollisions(WorldState& world, const std::vector<Vec2f>& frameStartPositions) {
+    for (int i = 0; i < static_cast<int>(world.enemies.size()); ++i) {
+        EnemyTank& a = world.enemies[static_cast<std::size_t>(i)];
+        if (!a.alive) {
+            continue;
+        }
+        const Vec2f aStart = frameStartPositions[static_cast<std::size_t>(i)];
+        const Vec2f aEnd = a.position;
+        for (int j = i + 1; j < static_cast<int>(world.enemies.size()); ++j) {
+            EnemyTank& b = world.enemies[static_cast<std::size_t>(j)];
+            if (!b.alive) {
+                continue;
+            }
+            const Vec2f bStart = frameStartPositions[static_cast<std::size_t>(j)];
+            const Vec2f bEnd = b.position;
+            const float distance = SegmentToSegmentDistance(aStart, aEnd, bStart, bEnd);
+            if (distance <= GameplayConstants::kEnemyMutualKillDistanceUnits) {
+                a.alive = false;
+                b.alive = false;
+                DecrementOriginBaseAliveCount(world, a);
+                DecrementOriginBaseAliveCount(world, b);
+            }
+        }
+    }
+}
 }  // namespace
 
 void UpdateEnemySystem(GameState& state, const AppConfig& config, float deltaSeconds) {
+    static Random random(static_cast<std::uint32_t>(GetTime() * 1000.0));
+    const bool playerInvisible = state.menuSettings.invisibility;
     std::vector<Vec2f> frameStartPositions{};
     frameStartPositions.reserve(state.world.enemies.size());
     for (const EnemyTank& enemy : state.world.enemies) {
@@ -692,6 +865,21 @@ void UpdateEnemySystem(GameState& state, const AppConfig& config, float deltaSec
         if (!enemy.alive) {
             continue;
         }
+        if (enemy.selfAwarenessIntervalSeconds <= 0.0F) {
+            enemy.selfAwarenessIntervalSeconds = random.NextFloat(4.0F, 8.0F);
+            enemy.selfAwarenessTimerSeconds = enemy.selfAwarenessIntervalSeconds;
+        }
+        enemy.selfAwarenessTimerSeconds -= deltaSeconds;
+        if (enemy.selfAwarenessTimerSeconds <= 0.0F) {
+            enemy.selfAwarenessTimerSeconds = enemy.selfAwarenessIntervalSeconds;
+            if (enemy.type == EnemyType::Drone) {
+                const float nearestBaseDist = NearestBaseDistance(state.world, enemy.position);
+                if (nearestBaseDist >= 36.0F) {
+                    enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
+                    EnterDroneWatchMode(state.world, enemy, random);
+                }
+            }
+        }
         enemy.aiModeElapsedSeconds += deltaSeconds;
         const Vec2f toPlayer{
             .x = state.world.player.position.x - enemy.position.x,
@@ -701,13 +889,17 @@ void UpdateEnemySystem(GameState& state, const AppConfig& config, float deltaSec
         const float distanceToPlayerSq = DistanceSq(enemy.position, state.world.player.position);
         const float distanceToPlayer = std::sqrt(distanceToPlayerSq);
         const bool playerInAggroRange =
+            !playerInvisible &&
             distanceToPlayerSq <=
             (GameplayConstants::kEnemyAggroRangeUnits * GameplayConstants::kEnemyAggroRangeUnits);
-        const bool playerObscured = IsSegmentObscuredByWall(state.world, enemy.position, state.world.player.position);
+        const bool playerObscured =
+            playerInvisible ||
+            IsSegmentObscuredByWall(state.world, enemy.position, state.world.player.position);
         const bool assassinHasLineOfSight =
             enemy.type == EnemyType::Assassin && playerInAggroRange && !playerObscured;
         float movementHeading = QuantizeToEightDirections(enemy.headingRadians);
         float speed = EnemySpeed(enemy.type, enemy.subtype, assassinHasLineOfSight);
+        bool preserveContinuousHeading = false;
 
         if (enemy.type == EnemyType::Drone) {
             if (enemy.aiMode != EnemyAiMode::Watch && enemy.aiMode != EnemyAiMode::Wander) {
@@ -716,18 +908,32 @@ void UpdateEnemySystem(GameState& state, const AppConfig& config, float deltaSec
             }
             if (enemy.aiMode == EnemyAiMode::Watch) {
                 speed = 0.0F;
-                movementHeading = QuantizeToEightDirections(
-                    enemy.headingRadians + (kPi * 2.0F / GameplayConstants::kSlowRotateFullTurnSeconds) * deltaSeconds);
+                preserveContinuousHeading = true;
+                movementHeading = NormalizeAngle(
+                    enemy.headingRadians +
+                    static_cast<float>(enemy.watchRotateDirection) *
+                        (kPi * 2.0F / GameplayConstants::kSlowRotateFullTurnSeconds) * deltaSeconds);
                 const float clearDistance = FreeDistanceAhead(
                     state.world,
                     enemy.position,
                     movementHeading,
                     GameplayConstants::kEnemyRequiredClearRunUnits + 0.5F,
                     GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
-                if (enemy.aiModeElapsedSeconds >= GameplayConstants::kSlowRotateFullTurnSeconds &&
-                    clearDistance > GameplayConstants::kEnemyRequiredClearRunUnits) {
-                    enemy.aiMode = EnemyAiMode::Wander;
-                    enemy.aiModeElapsedSeconds = 0.0F;
+                if (enemy.aiModeElapsedSeconds >= GameplayConstants::kSlowRotateFullTurnSeconds) {
+                    if (enemy.returnToBase) {
+                        const Vec2f nearestBase = NearestBasePosition(state.world, enemy.position);
+                        const Vec2f toBase{
+                            .x = nearestBase.x - enemy.position.x,
+                            .y = nearestBase.y - enemy.position.y,
+                        };
+                        movementHeading = QuantizeToEightDirections(std::atan2(toBase.x, -toBase.y));
+                        enemy.returnToBase = false;
+                        enemy.aiMode = EnemyAiMode::Wander;
+                        enemy.aiModeElapsedSeconds = 0.0F;
+                    } else if (clearDistance > GameplayConstants::kEnemyRequiredClearRunUnits) {
+                        enemy.aiMode = EnemyAiMode::Wander;
+                        enemy.aiModeElapsedSeconds = 0.0F;
+                    }
                 }
             } else {
                 bool shouldWatch = false;
@@ -737,17 +943,22 @@ void UpdateEnemySystem(GameState& state, const AppConfig& config, float deltaSec
                     false,
                     shouldWatch);
                 if (shouldWatch) {
-                    enemy.aiMode = EnemyAiMode::Watch;
-                    enemy.aiModeElapsedSeconds = 0.0F;
+                    EnterDroneWatchMode(state.world, enemy, random);
                     speed = 0.0F;
                 }
             }
         } else if (enemy.type == EnemyType::Torpedo) {
-            const bool playerDetected = !playerObscured && distanceToPlayer <= GameplayConstants::kTorpedoDetectRangeUnits;
+            const bool playerDetected =
+                !playerInvisible &&
+                !playerObscured &&
+                distanceToPlayer <= GameplayConstants::kTorpedoDetectRangeUnits;
             const float directHeading = std::atan2(toPlayer.x, -toPlayer.y);
             movementHeading = SelectTorpedoHeading(state.world, enemy, playerDetected, directHeading);
         } else if (enemy.type == EnemyType::Hunter) {
-            const bool canChase = !playerObscured && distanceToPlayer <= GameplayConstants::kHunterDetectRangeUnits;
+            const bool canChase =
+                !playerInvisible &&
+                !playerObscured &&
+                distanceToPlayer <= GameplayConstants::kHunterDetectRangeUnits;
             if (canChase) {
                 enemy.aiMode = EnemyAiMode::Chase;
                 enemy.aiModeElapsedSeconds = 0.0F;
@@ -766,7 +977,8 @@ void UpdateEnemySystem(GameState& state, const AppConfig& config, float deltaSec
                 }
             } else if (enemy.aiMode == EnemyAiMode::Rotate) {
                 speed = 0.0F;
-                movementHeading = QuantizeToEightDirections(
+                preserveContinuousHeading = true;
+                movementHeading = NormalizeAngle(
                     enemy.headingRadians + (kPi * 2.0F / GameplayConstants::kSlowRotateFullTurnSeconds) * deltaSeconds);
                 const float clearDistance = FreeDistanceAhead(
                     state.world,
@@ -795,7 +1007,7 @@ void UpdateEnemySystem(GameState& state, const AppConfig& config, float deltaSec
             }
         } else {
             enemy.aiMode = EnemyAiMode::Path;
-            if (distanceToPlayer < GameplayConstants::kAssassinMinDistanceUnits) {
+            if (!playerInvisible && distanceToPlayer < GameplayConstants::kAssassinMinDistanceUnits) {
                 speed = 0.0F;
                 enemy.pathWaypointCount = 0;
                 enemy.pathWaypointIndex = 0;
@@ -809,7 +1021,11 @@ void UpdateEnemySystem(GameState& state, const AppConfig& config, float deltaSec
                 const bool needRepathObstacle = obstacleAhead < 2.0F;
                 const bool needRepathEmpty = enemy.pathWaypointCount <= 0 || enemy.pathWaypointIndex >= enemy.pathWaypointCount;
                 if (needRepathObstacle || needRepathEmpty) {
-                    BuildAssassinPath(state, enemy, enemyIndex);
+                    if (playerInvisible) {
+                        BuildAssassinPathToFarRandomTarget(state, enemy, enemyIndex, random);
+                    } else {
+                        BuildAssassinPath(state, enemy, enemyIndex);
+                    }
                 }
 
                 if (enemy.pathWaypointCount > 0 && enemy.pathWaypointIndex < enemy.pathWaypointCount) {
@@ -820,7 +1036,9 @@ void UpdateEnemySystem(GameState& state, const AppConfig& config, float deltaSec
                     };
                     if (DistanceSq(waypoint, enemy.position) <= 0.36F) {
                         enemy.pathWaypointIndex += 1;
-                        if (enemy.pathWaypointIndex < enemy.pathWaypointCount) {
+                        if (playerInvisible) {
+                            BuildAssassinPathToFarRandomTarget(state, enemy, enemyIndex, random);
+                        } else if (enemy.pathWaypointIndex < enemy.pathWaypointCount) {
                             BuildAssassinPath(state, enemy, enemyIndex);
                         }
                     }
@@ -841,7 +1059,11 @@ void UpdateEnemySystem(GameState& state, const AppConfig& config, float deltaSec
             }
         }
 
-        movementHeading = QuantizeToEightDirections(movementHeading);
+        if (preserveContinuousHeading) {
+            movementHeading = NormalizeAngle(movementHeading);
+        } else {
+            movementHeading = QuantizeToEightDirections(movementHeading);
+        }
         const Vec2f snappedDirection = DirectionFromHeading(movementHeading);
         Vec2f candidatePosition{
             .x = enemy.position.x + snappedDirection.x * speed * deltaSeconds,
@@ -880,11 +1102,35 @@ void UpdateEnemySystem(GameState& state, const AppConfig& config, float deltaSec
                 previousPosition,
                 candidatePosition,
                 GameplayConstants::kEnemyPreferredSeparationUnits)) {
-            enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
-            candidatePosition = enemy.position;
+            float turnHeading = movementHeading;
+            Vec2f turnCandidate = candidatePosition;
+            const bool foundTurn = TrySeparationTurn(
+                state.world,
+                state.world.enemies,
+                enemyIndex,
+                speed,
+                deltaSeconds,
+                turnHeading,
+                turnCandidate);
+            if (foundTurn && !IsMovementBlockedByEnemies(
+                    state.world.enemies,
+                    frameStartPositions,
+                    enemyIndex,
+                    previousPosition,
+                    turnCandidate,
+                    GameplayConstants::kEnemyPreferredSeparationUnits)) {
+                movementHeading = turnHeading;
+                candidatePosition = turnCandidate;
+            } else {
+                enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
+                candidatePosition = enemy.position;
+                if (enemy.type == EnemyType::Drone) {
+                    EnterDroneWatchMode(state.world, enemy, random);
+                }
+            }
         }
 
-        if (SegmentIntersectsWall(
+        if (speed > 0.001F && SegmentIntersectsWall(
                 state.world,
                 previousPosition,
                 candidatePosition,
@@ -892,8 +1138,7 @@ void UpdateEnemySystem(GameState& state, const AppConfig& config, float deltaSec
             enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
             enemy.aiStateTimerSeconds = 0.0F;
             if (enemy.type == EnemyType::Drone) {
-                enemy.aiMode = EnemyAiMode::Watch;
-                enemy.aiModeElapsedSeconds = 0.0F;
+                EnterDroneWatchMode(state.world, enemy, random);
             } else if (enemy.type == EnemyType::Hunter) {
                 enemy.aiMode = EnemyAiMode::Rotate;
                 enemy.aiModeElapsedSeconds = 0.0F;
@@ -931,5 +1176,6 @@ void UpdateEnemySystem(GameState& state, const AppConfig& config, float deltaSec
         }
     }
 
+    ResolveEnemyFrontalCollisions(state.world, frameStartPositions);
     ResolveEnemySeparation(state.world);
 }

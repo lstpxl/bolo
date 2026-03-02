@@ -8,4 +8,5 @@ struct Vec2f {
 struct MenuSettings {
     int levelNumber;
     int mazeDensity;
+    bool invisibility;
 };

@@ -226,6 +226,7 @@ void UpdateSpawnerSystem(GameState& state, float deltaSeconds) {
         } else if (spawnedEnemy.type == EnemyType::Assassin) {
             mode = EnemyAiMode::Path;
         }
+        const float selfAwarenessInterval = random.NextFloat(4.0F, 8.0F);
         state.world.enemies.push_back(EnemyTank{
             .position = spawnPosition,
             .velocity = Vec2f{.x = 0.0F, .y = 0.0F},
@@ -236,6 +237,8 @@ void UpdateSpawnerSystem(GameState& state, float deltaSeconds) {
             .fireCooldownSeconds = GameplayConstants::kEnemyInitialFireCooldownSeconds,
             .aiStateTimerSeconds = 0.0F,
             .aiModeElapsedSeconds = 0.0F,
+            .selfAwarenessIntervalSeconds = selfAwarenessInterval,
+            .selfAwarenessTimerSeconds = selfAwarenessInterval,
             .desiredHeadingRadians = 0.0F,
             .wanderDirection = Vec2f{.x = 0.0F, .y = -1.0F},
             .originBaseIndex = baseIndex,

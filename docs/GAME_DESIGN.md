@@ -20,6 +20,7 @@ This file describes the current BOLT implementation in this repository:
 2. Player selects:
    - `Level` in range `1..9`
    - `Density` in range `1..5`
+   - `Invisibility` on/off
 3. Player starts a generated maze run.
 4. Player navigates the maze and interacts with enemy bases/tanks (expanded combat rules are still in progress).
 5. Player can return to menu during gameplay with START/Enter.
@@ -111,6 +112,7 @@ Input is collected in `src/platform/Input.cpp`.
 - Navigate: Up/Down
 - Change slider: Left/Right
 - Select: Enter/Space or gamepad south/east face button
+- `Invisibility` checkbox can be toggled via Left/Right or Select when focused.
 
 ## Movement Model
 
@@ -154,6 +156,7 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
 - If a planned move violates spacing, AI attempts a `45°` turn first; if not possible, enemy stops for that frame.
 - If two enemies occupy nearly the same position (`~0.12` world-units), both are destroyed.
 - Enemy deaths decrement the origin base `activeEnemies` counter used for per-base spawn capping.
+- Every spawned enemy gets a per-enemy self-awareness interval randomly in `4..8` seconds and a self-awareness timer initialized to that value; when timer reaches `0`, it restarts from the same interval.
 
 ### Enemy Type Behavior
 
@@ -161,7 +164,11 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
   - Modes: `Wander` and `Watch`.
   - Wander: move straight; if obstacle is within `1` unit ahead, test `±45°` and pick longer free route.
   - If neither side offers `>=3` units of clear run, switch to Watch.
-  - Watch: stop and rotate clockwise; may exit only after one full turn (`4s`) and clear run ahead `>3`.
+  - Watch: stop and rotate in a random direction (`clockwise` or `counter-clockwise`) chosen when entering Watch.
+  - On entering Watch, drone computes distance to nearest base; if distance is `>=36` units, `return-to-base` is enabled.
+  - After one full turn (`4s`), if `return-to-base` is enabled, exit Watch with heading snapped toward nearest base direction.
+  - If `return-to-base` is not enabled, Watch exits only when clear run ahead `>3`.
+  - On self-awareness timer restart, drone re-checks nearest-base distance; if distance is `>=36`, it stops immediately and enters Watch.
 - Torpedo:
   - Fast local-steering movement (no A* path planning).
   - Detects player with direct line-of-sight and distance `<9` units.
@@ -176,6 +183,15 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
   - Uses hybrid routing with maze-cell A* shortest path (with dynamic enemy occupancy avoidance), not straight-line steering.
   - Repaths when blocked within `2` units or when advancing through path turn points.
   - Avoids ramming by stopping/adjusting when player distance is under `3` units.
+
+### Invisibility Mode
+
+- When menu `Invisibility` is enabled, enemies treat player as non-detectable:
+  - no aggro/chase transition based on player visibility/range
+  - no enemy projectile firing at player
+- Assassin behavior override in invisibility mode:
+  - target is a random maze point anywhere in the maze (with distance bias so it is not near current assassin position)
+  - target is repicked when the current target is reached.
 
 ## Rendering and Camera
 
