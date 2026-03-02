@@ -84,6 +84,7 @@ Enemy spawn table behavior (`src/game/systems/SpawnerSystem.cpp`):
 - Current table entries are all `Advanced` subtypes:
   - `1..2` Drone, `3..4` Torpedo, `5..7` Hunter, `8..9` Assassin.
 - Global alive-enemy cap is `30`.
+- Per-base simultaneous alive cap is `12` enemies.
 
 ## Controls and Input
 
@@ -144,6 +145,37 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
 - Enemy projectile firing heading is quantized to the same 8-way (45-degree) directions.
 - Player and enemy collision shape is treated as a disc with `9px` diameter.
 - Enemy wall movement keeps additional margin: enemy disc edge stays at least `2px` away from maze walls.
+- Start mode: at game start (and level restart after all bases are destroyed), player enters a `2s` lock where movement/fire are disabled and fuel fills from `0` to max on HUD.
+- Death mode: when player dies, player enters a `3s` lock with movement/fire disabled and a simple explosion animation before life loss + respawn resolution.
+
+### Enemy Separation and Mutual Collision
+
+- Enemies continuously try to keep at least `0.5` world-units between each other.
+- If a planned move violates spacing, AI attempts a `45°` turn first; if not possible, enemy stops for that frame.
+- If two enemies occupy nearly the same position (`~0.12` world-units), both are destroyed.
+- Enemy deaths decrement the origin base `activeEnemies` counter used for per-base spawn capping.
+
+### Enemy Type Behavior
+
+- Drone:
+  - Modes: `Wander` and `Watch`.
+  - Wander: move straight; if obstacle is within `1` unit ahead, test `±45°` and pick longer free route.
+  - If neither side offers `>=3` units of clear run, switch to Watch.
+  - Watch: stop and rotate clockwise; may exit only after one full turn (`4s`) and clear run ahead `>3`.
+- Torpedo:
+  - Fast local-steering movement (no A* path planning).
+  - Detects player with direct line-of-sight and distance `<9` units.
+  - Steering prefers `45°` turns and longer straight runs to avoid corner traps.
+  - Firing additionally requires player to be roughly ahead (`±30°`).
+- Hunter:
+  - Modes: `Scout`, `Chase`, and rotate fallback.
+  - Enters Chase when player has LOS and distance `<12`.
+  - Chase keeps stand-off band `3..6` units (approach if farther, retreat if closer, stop inside band).
+  - Scout obstacle handling: try `±45°`, then `±90°`; if no option yields `>=3` clear units, rotate clockwise until clear.
+- Assassin:
+  - Uses hybrid routing with maze-cell A* shortest path (with dynamic enemy occupancy avoidance), not straight-line steering.
+  - Repaths when blocked within `2` units or when advancing through path turn points.
+  - Avoids ramming by stopping/adjusting when player distance is under `3` units.
 
 ## Rendering and Camera
 
@@ -187,9 +219,6 @@ Build number is shown on menu as `Build #<n>`.
 
 The following systems are placeholders or minimal:
 
-- projectile logic
-- enemy AI behavior
-- full collision response against maze walls/entities
 - original BOLT combat and fuel/lives progression details
 
 When implementing these features, update this document so it remains the single source of truth.

@@ -37,26 +37,76 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const AppConfig& 
         return;
     }
 
+    auto beginDeathMode = [&]() {
+        if (state_.world.deathModeRemainingSeconds > 0.0F) {
+            return;
+        }
+        state_.world.startModeRemainingSeconds = 0.0F;
+        state_.world.player.alive = false;
+        state_.world.player.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
+        state_.world.player.throttleNormalized = 0.0F;
+        state_.world.player.fireCooldownSeconds = 0.0F;
+        // Consume the "new death" trigger when death mode starts so it cannot re-trigger endlessly.
+        state_.world.playerTurnLostPending = false;
+        state_.world.deathModeRemainingSeconds = GameplayConstants::kDeathModeDurationSeconds;
+        state_.world.deathExplosionRemainingSeconds = GameplayConstants::kDeathExplosionDurationSeconds;
+        state_.world.deathExplosionPosition = state_.world.player.position;
+    };
+
+    if (state_.world.startModeRemainingSeconds > 0.0F) {
+        state_.world.startModeRemainingSeconds =
+            std::max(0.0F, state_.world.startModeRemainingSeconds - deltaSeconds);
+        const float startProgress =
+            1.0F - (state_.world.startModeRemainingSeconds / GameplayConstants::kStartModeDurationSeconds);
+        state_.world.player.fuel = GameplayConstants::kFuelMax * std::clamp(startProgress, 0.0F, 1.0F);
+    } else if (state_.world.player.fuel < GameplayConstants::kFuelMax && !state_.world.playerTurnLostPending) {
+        state_.world.player.fuel = GameplayConstants::kFuelMax;
+    }
+
+    if (state_.world.deathModeRemainingSeconds > 0.0F) {
+        state_.world.deathModeRemainingSeconds =
+            std::max(0.0F, state_.world.deathModeRemainingSeconds - deltaSeconds);
+    }
+    if (state_.world.deathExplosionRemainingSeconds > 0.0F) {
+        state_.world.deathExplosionRemainingSeconds =
+            std::max(0.0F, state_.world.deathExplosionRemainingSeconds - deltaSeconds);
+    }
+
+    const bool playerLocked =
+        state_.world.startModeRemainingSeconds > 0.0F ||
+        state_.world.deathModeRemainingSeconds > 0.0F ||
+        !state_.world.player.alive;
+
     // Target order: Input -> AI -> Movement -> Collision -> Combat -> Spawning -> Fuel/Rules -> Cleanup.
     UpdateEnemySystem(state_, config, deltaSeconds);
-    UpdatePlayerSystem(state_, input, deltaSeconds);
+    if (!playerLocked) {
+        UpdatePlayerSystem(state_, input, deltaSeconds);
+    } else {
+        state_.world.player.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
+        state_.world.player.throttleNormalized = 0.0F;
+    }
     UpdateProjectileSystem(state_, deltaSeconds);
     UpdateCollisionSystem(state_, deltaSeconds);
     UpdateSpawnerSystem(state_, deltaSeconds);
     UpdateMazeSystem(state_, deltaSeconds);
 
+    if (!state_.world.player.alive &&
+        state_.world.playerTurnLostPending &&
+        state_.world.deathModeRemainingSeconds <= 0.0F) {
+        beginDeathMode();
+    }
+
     // Fuel/rules.
     const float speedSq = state_.world.player.velocity.x * state_.world.player.velocity.x +
         state_.world.player.velocity.y * state_.world.player.velocity.y;
-    if (speedSq > GameplayConstants::kFuelDrainMovementThresholdSq) {
+    if (!playerLocked && speedSq > GameplayConstants::kFuelDrainMovementThresholdSq) {
         state_.world.player.fuel -= deltaSeconds * (
             GameplayConstants::kFuelDrainBasePerSecond +
             state_.world.player.throttleNormalized * GameplayConstants::kFuelDrainThrottlePerSecond);
-    }
-    if (state_.world.player.fuel <= 0.0F) {
-        state_.world.player.fuel = 0.0F;
-        state_.world.player.alive = false;
-        state_.world.playerTurnLostPending = true;
+        if (state_.world.player.fuel <= 0.0F) {
+            state_.world.player.fuel = 0.0F;
+            beginDeathMode();
+        }
     }
 
     // Cleanup dead entities.
@@ -74,14 +124,17 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const AppConfig& 
         state_.world.enemies.end());
 
     // Turn loss handling.
-    if (state_.world.playerTurnLostPending) {
-        state_.world.playerTurnLostPending = false;
+    if (!state_.world.player.alive && state_.world.deathModeRemainingSeconds <= 0.0F) {
         state_.world.player.lives -= 1;
         if (state_.world.player.lives <= 0) {
             state_.world.gameOver = true;
             RequestMenu();
             return;
         }
+        state_.world.player.alive = true;
+        state_.world.player.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
+        state_.world.player.throttleNormalized = 0.0F;
+        state_.world.player.fireCooldownSeconds = 0.0F;
         state_.world.player.fuel = GameplayConstants::kFuelMax;
         PlacePlayerAtSafeSpawn(state_, config);
     }
@@ -99,7 +152,10 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const AppConfig& 
         InitializeMazeWorld(state_, config);
         state_.world.score = score;
         state_.world.player.lives = lives;
-        state_.world.player.fuel = GameplayConstants::kFuelMax;
+        state_.world.player.fuel = 0.0F;
+        state_.world.startModeRemainingSeconds = GameplayConstants::kStartModeDurationSeconds;
+        state_.world.player.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
+        state_.world.player.throttleNormalized = 0.0F;
         state_.world.levelCleared = true;
         state_.world.levelClearMessageSeconds = GameplayConstants::kLevelClearMessageSeconds;
     }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <vector>
 #include "core/Types.h"
 
@@ -49,8 +50,24 @@ struct GameplayConstants {
     static constexpr float kEnemyAiRetargetMinSeconds = 0.7F;        // seconds
     static constexpr float kEnemyAiRetargetRandomSeconds = 0.9F;     // seconds
     static constexpr int kMaxAliveEnemies = 30;                      // enemies
+    static constexpr int kMaxAliveEnemiesPerBase = 12;               // enemies / base
     static constexpr float kEnemyInitialFireCooldownSeconds = 0.2F;  // seconds
     static constexpr float kBaseSpawnCooldownSeconds = 1.2F;         // seconds
+    static constexpr float kEnemyPreferredSeparationUnits = 0.5F;    // world-units
+    static constexpr float kEnemyMutualKillDistanceUnits = 0.12F;    // world-units
+    static constexpr float kEnemyLookaheadObstacleUnits = 1.0F;      // world-units
+    static constexpr float kEnemyRequiredClearRunUnits = 3.0F;       // world-units
+    static constexpr float kSlowRotateFullTurnSeconds = 4.0F;        // seconds
+    static constexpr float kTorpedoDetectRangeUnits = 9.0F;          // world-units
+    static constexpr float kHunterDetectRangeUnits = 12.0F;          // world-units
+    static constexpr float kHunterMinDistanceUnits = 3.0F;           // world-units
+    static constexpr float kHunterMaxDistanceUnits = 6.0F;           // world-units
+    static constexpr float kAssassinMinDistanceUnits = 3.0F;         // world-units
+
+    // Game phase tuning.
+    static constexpr float kStartModeDurationSeconds = 2.0F;         // seconds
+    static constexpr float kDeathModeDurationSeconds = 3.0F;         // seconds
+    static constexpr float kDeathExplosionDurationSeconds = 3.0F;    // seconds
 
     // Projectiles and collisions.
     static constexpr float kTankCollisionDiameterPixels = 9.0F;        // pixels
@@ -120,15 +137,33 @@ enum class EnemySubtype {
     Lord,
 };
 
+enum class EnemyAiMode {
+    Wander,
+    Watch,
+    Scout,
+    Chase,
+    Rotate,
+    Path,
+};
+
 struct EnemyTank {
+    static constexpr int kMaxPathWaypoints = 96;
+
     Vec2f position;
     Vec2f velocity;
     float headingRadians;
     EnemyType type = EnemyType::Drone;
     EnemySubtype subtype = EnemySubtype::Advanced;
+    EnemyAiMode aiMode = EnemyAiMode::Wander;
     float fireCooldownSeconds = 0.0F;
     float aiStateTimerSeconds = 0.0F;
+    float aiModeElapsedSeconds = 0.0F;
+    float desiredHeadingRadians = 0.0F;
     Vec2f wanderDirection{.x = 0.0F, .y = -1.0F};
+    int originBaseIndex = -1;
+    std::array<Vec2f, kMaxPathWaypoints> pathWaypoints{};
+    int pathWaypointCount = 0;
+    int pathWaypointIndex = 0;
     bool alive = true;
 };
 
@@ -173,6 +208,10 @@ struct WorldState {
     std::vector<Projectile> projectiles{};
     int score = 0;
     bool playerTurnLostPending = false;
+    float startModeRemainingSeconds = 0.0F;
+    float deathModeRemainingSeconds = 0.0F;
+    float deathExplosionRemainingSeconds = 0.0F;
+    Vec2f deathExplosionPosition{.x = 0.0F, .y = 0.0F};
     bool levelCleared = false;
     bool gameOver = false;
     float levelClearMessageSeconds = 0.0F;
@@ -180,8 +219,8 @@ struct WorldState {
 
 struct GameState {
     MenuSettings menuSettings{
-        .levelNumber = 1,
-        .mazeDensity = 2,
+        .levelNumber = 3,
+        .mazeDensity = 1,
     };
     WorldState world{};
 };

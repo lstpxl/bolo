@@ -69,6 +69,16 @@ bool SegmentHitsWall(const WorldState& world, const Vec2f& a, const Vec2f& b, fl
     }
     return false;
 }
+
+void DecrementOriginBaseAliveCount(WorldState& world, EnemyTank& enemy) {
+    if (enemy.originBaseIndex < 0 || enemy.originBaseIndex >= static_cast<int>(world.enemyBases.size())) {
+        enemy.originBaseIndex = -1;
+        return;
+    }
+    EnemyBase& origin = world.enemyBases[static_cast<std::size_t>(enemy.originBaseIndex)];
+    origin.activeEnemies = std::max(0, origin.activeEnemies - 1);
+    enemy.originBaseIndex = -1;
+}
 }  // namespace
 
 void UpdateCollisionSystem(GameState& state, float deltaSeconds) {
@@ -92,6 +102,7 @@ void UpdateCollisionSystem(GameState& state, float deltaSeconds) {
                 if (DistanceSq(projectile.position, enemy.position) <=
                     GameplayConstants::kProjectileHitRadius * GameplayConstants::kProjectileHitRadius) {
                     enemy.alive = false;
+                    DecrementOriginBaseAliveCount(world, enemy);
                     projectile.alive = false;
                     world.score += state.menuSettings.levelNumber * GameplayConstants::kEnemyScorePerLevelMultiplier;
                     break;

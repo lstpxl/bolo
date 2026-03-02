@@ -574,7 +574,26 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
         DrawCircleV(Vector2{projectile.position.x, projectile.position.y}, 0.18F, color);
     }
 
-    if (!playerTankSheetLoaded_) {
+    if (state.world.deathExplosionRemainingSeconds > 0.0F) {
+        const float t = 1.0F -
+            (state.world.deathExplosionRemainingSeconds / GameplayConstants::kDeathExplosionDurationSeconds);
+        const float clamped = std::max(0.0F, std::min(1.0F, t));
+        const float outerRadius = 0.4F + clamped * 1.8F;
+        const float coreRadius = std::max(0.0F, 0.6F - clamped * 0.5F);
+        const unsigned char alpha = static_cast<unsigned char>(std::max(0.0F, 255.0F * (1.0F - clamped)));
+        DrawCircleV(
+            Vector2{state.world.deathExplosionPosition.x, state.world.deathExplosionPosition.y},
+            outerRadius,
+            Color{255, 140, 0, alpha});
+        if (coreRadius > 0.0F) {
+            DrawCircleV(
+                Vector2{state.world.deathExplosionPosition.x, state.world.deathExplosionPosition.y},
+                coreRadius,
+                Color{255, 255, 120, alpha});
+        }
+    }
+
+    if (!playerTankSheetLoaded_ && state.world.player.alive) {
         const float half = GameplayConstants::kEntitySizeUnits * 0.5F;
         DrawRectangleRec(
             Rectangle{
@@ -587,7 +606,7 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
     }
 
     EndMode2D();
-    if (playerTankSheetLoaded_) {
+    if (playerTankSheetLoaded_ && state.world.player.alive) {
         const int frameIndex = PlayerFrameIndexFromHeading(state.world.player.hullHeadingRadians, playerTankFrameCount_);
         const Vector2 sourceOffsetPixels =
             playerTankFrameOffsetsPixels_[static_cast<std::size_t>(frameIndex)];

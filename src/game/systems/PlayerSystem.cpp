@@ -42,6 +42,14 @@ void UpdatePlayerSystem(GameState& state, const FrameInput& input, float deltaSe
     constexpr float throttleAccelerationPerSecond =
         GameplayConstants::kPlayerFullVelocity / GameplayConstants::kPlayerSecondsToFullVelocity;
 
+    if (!state.world.player.alive ||
+        state.world.startModeRemainingSeconds > 0.0F ||
+        state.world.deathModeRemainingSeconds > 0.0F) {
+        state.world.player.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
+        state.world.player.throttleNormalized = 0.0F;
+        return;
+    }
+
     if (input.forwardButtonDown && !input.reverseButtonDown) {
         state.world.player.throttleNormalized += throttleRatePerSecond * deltaSeconds;
     } else if (input.reverseButtonDown && !input.forwardButtonDown) {

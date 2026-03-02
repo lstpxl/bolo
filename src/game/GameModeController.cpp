@@ -16,7 +16,15 @@ void GameModeController::StartGame(
     const AppConfig& config) {
     state.menuSettings = settings;
     state.world.player.lives = GameplayConstants::kStartingLives;
-    state.world.player.fuel = GameplayConstants::kFuelMax;
+    state.world.player.fuel = 0.0F;
+    state.world.player.alive = true;
+    state.world.player.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
+    state.world.player.throttleNormalized = 0.0F;
+    state.world.player.fireCooldownSeconds = 0.0F;
+    state.world.playerTurnLostPending = false;
+    state.world.startModeRemainingSeconds = GameplayConstants::kStartModeDurationSeconds;
+    state.world.deathModeRemainingSeconds = 0.0F;
+    state.world.deathExplosionRemainingSeconds = 0.0F;
     state.world.score = 0;
     state.world.gameOver = false;
     InitializeMazeWorld(state, config);
