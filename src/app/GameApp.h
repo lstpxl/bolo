@@ -40,4 +40,6 @@ private:
     bool exitRequested_ = false;
     bool gameplayPauseDialogOpen_ = false;
     ConfirmationDialog gameplayPauseDialog_{};
+    RenderTexture2D presentationTarget_{};
+    bool presentationTargetLoaded_ = false;
 };

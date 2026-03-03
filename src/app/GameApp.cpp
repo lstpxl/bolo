@@ -10,6 +10,13 @@
 #include "ui/RayguiContext.h"
 
 namespace {
+constexpr int kPresentationScale =
+#if defined(__APPLE__)
+    2;
+#else
+    1;
+#endif
+
 bool TryLoadSoundAtPath(Sound& sound, const std::string& path) {
     if (!FileExists(path.c_str())) {
         return false;
@@ -284,12 +291,28 @@ bool FindClosestDestroyedBasePosition(
 }  // namespace
 
 int GameApp::Run() {
-    InitWindow(config_.screenWidth, config_.screenHeight, config_.windowTitle.data());
+    InitWindow(
+        config_.screenWidth * kPresentationScale,
+        config_.screenHeight * kPresentationScale,
+        config_.windowTitle.data());
+    SetMouseOffset(0, 0);
+    SetMouseScale(
+        1.0F / static_cast<float>(kPresentationScale),
+        1.0F / static_cast<float>(kPresentationScale));
     SetExitKey(KEY_NULL);
     SetTargetFPS(config_.targetFps);
     ConfigureRayguiDefaultStyle();
     if (!renderer_.LoadResources()) {
         TraceLog(LOG_WARNING, "RENDER: Failed to load one or more renderer resources");
+    }
+    if (kPresentationScale > 1) {
+        presentationTarget_ = LoadRenderTexture(config_.screenWidth, config_.screenHeight);
+        presentationTargetLoaded_ = presentationTarget_.id != 0;
+        if (presentationTargetLoaded_) {
+            SetTextureFilter(presentationTarget_.texture, TEXTURE_FILTER_POINT);
+        } else {
+            TraceLog(LOG_WARNING, "RENDER: Failed to create presentation render target");
+        }
     }
     InitAudioDevice();
     audioReady_ = IsAudioDeviceReady();
@@ -415,6 +438,10 @@ int GameApp::Run() {
     if (baseExplodingSoundLoaded_) {
         UnloadSound(baseExplodingSound_);
     }
+    if (presentationTargetLoaded_) {
+        UnloadRenderTexture(presentationTarget_);
+        presentationTargetLoaded_ = false;
+    }
     renderer_.UnloadResources();
     if (audioReady_) {
         CloseAudioDevice();
@@ -461,88 +488,115 @@ void GameApp::RenderGameplayPauseDialog(const FrameInput& input) {
 }
 
 void GameApp::Render(const FrameInput& input) {
-    BeginDrawing();
-    ClearBackground(BLACK);
+    const auto drawLogicalFrame = [&]() {
+        ClearBackground(BLACK);
 
-    if (game_.Mode() == GameMode::Menu) {
-        const MenuSettings previousSettings = game_.CurrentMenuSettings();
-        const MenuScreenResult result = menuScreen_.Render(game_.CurrentMenuSettings(), config_, input);
-        game_.SetMenuSettings(result.menuSettings);
-        if (menuClickSoundLoaded_ &&
-            (result.interactionOccurred ||
-             result.startGameRequested ||
-             result.quitRequested ||
-             result.menuSettings.levelNumber != previousSettings.levelNumber ||
-             result.menuSettings.mazeDensity != previousSettings.mazeDensity ||
-             result.menuSettings.invisibility != previousSettings.invisibility)) {
-            PlaySound(menuClickSound_);
-        }
-        if (result.startGameRequested) {
-            gameplayPauseDialogOpen_ = false;
-            game_.StartGame(config_);
-            if (audioReady_ && powerUpSoundLoaded_ && game_.State().world.startModeRemainingSeconds > 0.0F) {
-                const Vec2f listener = game_.State().world.player.position;
-                PlaySpatialSound(powerUpSound_, listener, listener);
+        if (game_.Mode() == GameMode::Menu) {
+            const MenuSettings previousSettings = game_.CurrentMenuSettings();
+            const MenuScreenResult result = menuScreen_.Render(game_.CurrentMenuSettings(), config_, input);
+            game_.SetMenuSettings(result.menuSettings);
+            if (menuClickSoundLoaded_ &&
+                (result.interactionOccurred ||
+                 result.startGameRequested ||
+                 result.quitRequested ||
+                 result.menuSettings.levelNumber != previousSettings.levelNumber ||
+                 result.menuSettings.mazeDensity != previousSettings.mazeDensity ||
+                 result.menuSettings.invisibility != previousSettings.invisibility)) {
+                PlaySound(menuClickSound_);
+            }
+            if (result.startGameRequested) {
+                gameplayPauseDialogOpen_ = false;
+                game_.StartGame(config_);
+                if (audioReady_ && powerUpSoundLoaded_ && game_.State().world.startModeRemainingSeconds > 0.0F) {
+                    const Vec2f listener = game_.State().world.player.position;
+                    PlaySpatialSound(powerUpSound_, listener, listener);
+                }
+            }
+            if (result.quitRequested) {
+                exitRequested_ = true;
+            }
+        } else {
+            game_.Render(renderer_, config_, input);
+            const GameState& state = game_.State();
+            int aliveBases = 0;
+            for (const EnemyBase& base : state.world.enemyBases) {
+                if (!base.destroyed) {
+                    ++aliveBases;
+                }
+            }
+
+            int dronesAlive = 0;
+            int torpedoesAlive = 0;
+            int huntersAlive = 0;
+            int assassinsAlive = 0;
+            for (const EnemyTank& enemy : state.world.enemies) {
+                if (!enemy.alive) {
+                    continue;
+                }
+                if (enemy.type == EnemyType::Drone) {
+                    ++dronesAlive;
+                } else if (enemy.type == EnemyType::Torpedo) {
+                    ++torpedoesAlive;
+                } else if (enemy.type == EnemyType::Hunter) {
+                    ++huntersAlive;
+                } else if (enemy.type == EnemyType::Assassin) {
+                    ++assassinsAlive;
+                }
+            }
+
+            char axesText[96] = {};
+            std::snprintf(
+                axesText,
+                sizeof(axesText),
+                "Axes:  0:%6d  1:%6d  2:%6d  3:%6d",
+                input.gamepadAxis0Raw,
+                input.gamepadAxis1Raw,
+                input.gamepadAxis2Raw,
+                input.gamepadAxis3Raw);
+            DrawText(axesText, 8, 8, 10, RAYWHITE);
+
+            char countsText[96] = {};
+            std::snprintf(
+                countsText,
+                sizeof(countsText),
+                "B:%d D:%d T:%d H:%d A:%d",
+                aliveBases,
+                dronesAlive,
+                torpedoesAlive,
+                huntersAlive,
+                assassinsAlive);
+            DrawText(countsText, 8, config_.screenHeight - 18, 10, RAYWHITE);
+            if (gameplayPauseDialogOpen_) {
+                RenderGameplayPauseDialog(input);
             }
         }
-        if (result.quitRequested) {
-            exitRequested_ = true;
-        }
-    } else {
-        game_.Render(renderer_, config_, input);
-        const GameState& state = game_.State();
-        int aliveBases = 0;
-        for (const EnemyBase& base : state.world.enemyBases) {
-            if (!base.destroyed) {
-                ++aliveBases;
-            }
-        }
+    };
 
-        int dronesAlive = 0;
-        int torpedoesAlive = 0;
-        int huntersAlive = 0;
-        int assassinsAlive = 0;
-        for (const EnemyTank& enemy : state.world.enemies) {
-            if (!enemy.alive) {
-                continue;
-            }
-            if (enemy.type == EnemyType::Drone) {
-                ++dronesAlive;
-            } else if (enemy.type == EnemyType::Torpedo) {
-                ++torpedoesAlive;
-            } else if (enemy.type == EnemyType::Hunter) {
-                ++huntersAlive;
-            } else if (enemy.type == EnemyType::Assassin) {
-                ++assassinsAlive;
-            }
-        }
+    if (kPresentationScale > 1 && presentationTargetLoaded_) {
+        BeginTextureMode(presentationTarget_);
+        drawLogicalFrame();
+        EndTextureMode();
 
-        char axesText[96] = {};
-        std::snprintf(
-            axesText,
-            sizeof(axesText),
-            "Axes:  0:%6d  1:%6d  2:%6d  3:%6d",
-            input.gamepadAxis0Raw,
-            input.gamepadAxis1Raw,
-            input.gamepadAxis2Raw,
-            input.gamepadAxis3Raw);
-        DrawText(axesText, 8, 8, 10, RAYWHITE);
-
-        char countsText[96] = {};
-        std::snprintf(
-            countsText,
-            sizeof(countsText),
-            "B:%d D:%d T:%d H:%d A:%d",
-            aliveBases,
-            dronesAlive,
-            torpedoesAlive,
-            huntersAlive,
-            assassinsAlive);
-        DrawText(countsText, 8, config_.screenHeight - 18, 10, RAYWHITE);
-        if (gameplayPauseDialogOpen_) {
-            RenderGameplayPauseDialog(input);
-        }
+        BeginDrawing();
+        ClearBackground(BLACK);
+        const Rectangle source{
+            .x = 0.0F,
+            .y = 0.0F,
+            .width = static_cast<float>(config_.screenWidth),
+            .height = -static_cast<float>(config_.screenHeight),
+        };
+        const Rectangle dest{
+            .x = 0.0F,
+            .y = 0.0F,
+            .width = static_cast<float>(config_.screenWidth * kPresentationScale),
+            .height = static_cast<float>(config_.screenHeight * kPresentationScale),
+        };
+        DrawTexturePro(presentationTarget_.texture, source, dest, Vector2{0.0F, 0.0F}, 0.0F, WHITE);
+        EndDrawing();
+        return;
     }
 
+    BeginDrawing();
+    drawLogicalFrame();
     EndDrawing();
 }
