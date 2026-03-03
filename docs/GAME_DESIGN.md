@@ -159,6 +159,7 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
 - If two enemies occupy nearly the same position (`~0.12` world-units), both are destroyed.
 - Enemy deaths decrement the origin base `activeEnemies` counter used for per-base spawn capping.
 - Bases are one-way obstacles for enemy movement: enemies outside a base footprint cannot enter/touch it, while enemies that spawn inside can leave freely.
+- Enemy path-planning clearance checks use an inflated collision margin (`+50%` over the base enemy wall-avoidance radius) to reduce corner-side wall sticking.
 - Every spawned enemy gets a per-enemy self-awareness interval and timer:
   - Drone: random in `6..12` seconds.
   - Other enemy types: random in `4..8` seconds.
@@ -173,7 +174,7 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
   - Watch: stop and rotate in a random direction (`clockwise` or `counter-clockwise`) chosen when entering Watch.
   - On entering Watch, drone computes distance to nearest base; if distance is `>=36` units, `return-to-base` is enabled.
   - After one full turn (`4s`), if `return-to-base` is enabled, evaluate candidate return headings toward nearest base and discard any heading with less than `6` units of obstacle-free route.
-  - If at least one candidate return heading remains, exit Watch using the best valid heading toward base; otherwise stay in Watch and keep rotating.
+  - If candidates remain, choose return heading by weighted random: best base-aligned candidate has `60%` weight, remaining `40%` is evenly distributed across the other candidates; if no candidates remain, stay in Watch and keep rotating.
   - If `return-to-base` is not enabled, Watch exits only when clear run ahead `>3` and a heading can be selected that improves separation from nearby enemies.
   - On self-awareness timer restart, drone re-checks nearest-base distance; if distance is `>=36`, it first checks relative bearing to nearest base.
   - If relative bearing is `<80°`, drone keeps moving (already generally pointed toward base) and does not enter Watch.
@@ -218,7 +219,7 @@ World rendering is in `src/platform/Renderer2D.cpp`.
 - Game world uses full screen area except HUD region.
 - Camera target follows player and snaps to pixel grid.
 - Maze walls are rendered in screen space at fixed 2px thickness for handheld stability.
-- Current gameplay palette (hex): background `#000000`, walls `#CCCCCC`, player `#00FFFF`, drone `#8A2BE2`, torpedo `#FFFF00`, hunter `#FFA500`, assassin `#FF0000`, enemy base shell `#CC66CC`, enemy base core `#FF00FF`, player shell `#FFFFFF`, enemy shell `#FFB000`.
+- Current gameplay palette (hex): background `#000000`, walls `#CCCCCC`, player `#00FFFF`, drone `#8A2BE2`, torpedo `#FFFF00`, hunter `#FFA500`, assassin `#FF0000`, enemy base shell `#CC66CC`, enemy base core `#FF00FF`, destroyed base `#606060`, player shell `#FFFFFF`, enemy shell `#FFB000`.
 - Visible maze cell range is culled for rendering performance.
 - Enemy tanks and bases are rendered in pixel-snapped screen space (derived from world positions) to match wall stability on handheld displays.
 - Base visuals use a `3x3` unit shell with an empty center square sized as `(1 unit + 8 px)`; a centered "core" disc is drawn inside the hole with diameter `(center hole - 10 px)`.

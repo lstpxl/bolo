@@ -17,6 +17,7 @@ constexpr float kEightDirectionStep = kPi / 4.0F;
 constexpr float kCosThirtyDegrees = 0.8660254F;
 constexpr float kDroneBaseBearingThresholdRadians = 1.3962634F;  // 80 degrees
 constexpr float kDroneReturnRequiredClearRunUnits = 6.0F;
+constexpr float kEnemyPlanningClearanceScale = 1.5F;
 constexpr float kTorpedoObstacleScanDistanceUnits = 16.0F;
 constexpr float kTorpedoMinStraightBeforeTurnUnits = 3.0F;
 constexpr float kTorpedoRetreatExitClearanceUnits = 2.0F;
@@ -264,8 +265,10 @@ bool IsPointInUndestroyedBase(const WorldState& world, const Vec2f& point, float
 }
 
 float FreeDistanceAhead(const WorldState& world, const Vec2f& from, float headingRadians, float maxDistance, float clearanceUnits) {
+    const float planningClearance =
+        clearanceUnits > 0.0F ? clearanceUnits * kEnemyPlanningClearanceScale : clearanceUnits;
     const Vec2f dir = DirectionFromHeading(headingRadians);
-    const bool startsInsideBase = IsPointInUndestroyedBase(world, from, clearanceUnits);
+    const bool startsInsideBase = IsPointInUndestroyedBase(world, from, planningClearance);
     const float sampleSpacing = 0.08F;
     const int steps = std::max(1, static_cast<int>(std::ceil(maxDistance / sampleSpacing)));
     for (int i = 1; i <= steps; ++i) {
@@ -274,10 +277,10 @@ float FreeDistanceAhead(const WorldState& world, const Vec2f& from, float headin
             .x = from.x + dir.x * dist,
             .y = from.y + dir.y * dist,
         };
-        if (IsPointInWall(world, sample, clearanceUnits)) {
+        if (IsPointInWall(world, sample, planningClearance)) {
             return dist;
         }
-        if (!startsInsideBase && IsPointInUndestroyedBase(world, sample, clearanceUnits)) {
+        if (!startsInsideBase && IsPointInUndestroyedBase(world, sample, planningClearance)) {
             return dist;
         }
     }
@@ -671,7 +674,11 @@ bool BuildAssassinPathToFarRandomTarget(
     return BuildAssassinPathToTarget(state, enemy, enemyIndex, fallbackTarget);
 }
 
-bool SelectDroneReturnToBaseHeading(const WorldState& world, const EnemyTank& enemy, float& selectedHeading) {
+bool SelectDroneReturnToBaseHeading(
+    const WorldState& world,
+    const EnemyTank& enemy,
+    Random& random,
+    float& selectedHeading) {
     const Vec2f nearestBase = NearestBasePosition(world, enemy.position);
     const Vec2f toBase{
         .x = nearestBase.x - enemy.position.x,
@@ -692,9 +699,10 @@ bool SelectDroneReturnToBaseHeading(const WorldState& world, const EnemyTank& en
         -kEightDirectionStep * 3.0F,
         kEightDirectionStep * 4.0F};
 
-    bool found = false;
+    std::array<float, 8> candidateHeadings{};
+    int candidateCount = 0;
+    int bestCandidateIndex = -1;
     float bestAlignment = std::numeric_limits<float>::infinity();
-    float bestHeading = desiredHeading;
     for (float offset : offsets) {
         const float candidate = QuantizeToEightDirections(desiredHeading + offset);
         const float clearDistance = FreeDistanceAhead(
@@ -707,16 +715,39 @@ bool SelectDroneReturnToBaseHeading(const WorldState& world, const EnemyTank& en
             continue;
         }
         const float alignment = AngleDistance(candidate, desiredHeading);
-        if (!found || alignment < bestAlignment) {
-            found = true;
-            bestAlignment = alignment;
-            bestHeading = candidate;
+        if (candidateCount < static_cast<int>(candidateHeadings.size())) {
+            candidateHeadings[static_cast<std::size_t>(candidateCount)] = candidate;
+            if (alignment < bestAlignment) {
+                bestAlignment = alignment;
+                bestCandidateIndex = candidateCount;
+            }
+            ++candidateCount;
         }
     }
-    if (!found) {
+
+    if (candidateCount <= 0 || bestCandidateIndex < 0) {
         return false;
     }
-    selectedHeading = bestHeading;
+    if (candidateCount == 1) {
+        selectedHeading = candidateHeadings[0];
+        return true;
+    }
+
+    constexpr float kBestHeadingWeight = 0.6F;
+    constexpr float kOtherHeadingsTotalWeight = 0.4F;
+    const float otherWeightEach = kOtherHeadingsTotalWeight / static_cast<float>(candidateCount - 1);
+    const float pick = random.NextFloat(0.0F, 1.0F);
+    float cumulative = 0.0F;
+    for (int i = 0; i < candidateCount; ++i) {
+        const float weight = (i == bestCandidateIndex) ? kBestHeadingWeight : otherWeightEach;
+        cumulative += weight;
+        if (pick <= cumulative || i == candidateCount - 1) {
+            selectedHeading = candidateHeadings[static_cast<std::size_t>(i)];
+            return true;
+        }
+    }
+
+    selectedHeading = candidateHeadings[static_cast<std::size_t>(bestCandidateIndex)];
     return true;
 }
 
@@ -914,8 +945,10 @@ float SelectTorpedoMoveHeading(
     if (playerDetected && canTurnNow) {
         const float stepped = StepHeadingByFortyFiveToward(straightHeading, directHeadingToPlayer);
         if (stepped != straightHeading) {
-            const float steppedClear = FreeDistanceAhead(
+            const float steppedClear = FreeDistanceAheadWithEnemies(
                 world,
+                enemies,
+                selfIndex,
                 enemy.position,
                 stepped,
                 kTorpedoObstacleScanDistanceUnits,
@@ -1251,7 +1284,7 @@ void UpdateEnemySystem(GameState& state, const AppConfig& config, float deltaSec
                 if (enemy.aiModeElapsedSeconds >= GameplayConstants::kSlowRotateFullTurnSeconds) {
                     if (enemy.returnToBase) {
                         float returnHeading = movementHeading;
-                        if (SelectDroneReturnToBaseHeading(state.world, enemy, returnHeading)) {
+                        if (SelectDroneReturnToBaseHeading(state.world, enemy, random, returnHeading)) {
                             movementHeading = returnHeading;
                             enemy.returnToBase = false;
                             enemy.aiMode = EnemyAiMode::Wander;

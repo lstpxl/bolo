@@ -31,6 +31,7 @@ constexpr Color ColorFromHexRGB(std::uint32_t hex) {
 
 constexpr std::uint32_t kBackgroundHex = 0x000000;
 constexpr std::uint32_t kWallsHex = 0xCCCCCC;
+constexpr std::uint32_t kDestroyedBaseHex = 0x606060;
 constexpr std::uint32_t kPlayerHex = 0x00FFFF;
 constexpr std::uint32_t kDroneHex = 0x8A2BE2;
 constexpr std::uint32_t kTorpedoHex = 0xFFFF00;
@@ -43,6 +44,7 @@ constexpr std::uint32_t kEnemyShellHex = 0xFFB000;
 
 constexpr Color kBackgroundColor = ColorFromHexRGB(kBackgroundHex);
 constexpr Color kWallsColor = ColorFromHexRGB(kWallsHex);
+constexpr Color kDestroyedBaseColor = ColorFromHexRGB(kDestroyedBaseHex);
 constexpr Color kPlayerColor = ColorFromHexRGB(kPlayerHex);
 constexpr Color kDroneColor = ColorFromHexRGB(kDroneHex);
 constexpr Color kTorpedoColor = ColorFromHexRGB(kTorpedoHex);
@@ -537,8 +539,8 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
         const Vector2 baseScreenPosition = WorldToSnappedScreen(base.position, camera);
         const int centerX = RoundToInt(baseScreenPosition.x);
         const int centerY = RoundToInt(baseScreenPosition.y);
-        const Color baseShellColor = base.destroyed ? kWallsColor : kEnemyBaseShellColor;
-        const Color baseCoreColor = base.destroyed ? kWallsColor : kEnemyBaseColor;
+        const Color baseShellColor = base.destroyed ? kDestroyedBaseColor : kEnemyBaseShellColor;
+        const Color baseCoreColor = base.destroyed ? kDestroyedBaseColor : kEnemyBaseColor;
 
         // Draw base shell (3x3 units), carve 1x1 empty center, then draw core disc inside.
         DrawRectangle(

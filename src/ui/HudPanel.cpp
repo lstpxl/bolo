@@ -12,7 +12,7 @@ constexpr Color kHunterMapColor{255, 165, 0, 255};      // #FFA500
 constexpr Color kAssassinMapColor{255, 0, 0, 255};      // #FF0000
 constexpr Color kPlayerMapColor{0, 255, 255, 255};      // #00FFFF
 constexpr Color kBaseMapColor{255, 0, 255, 255};        // #FF00FF
-constexpr Color kDestroyedBaseMapColor{204, 204, 204, 255}; // #CCCCCC
+constexpr Color kDestroyedBaseMapColor{96, 96, 96, 255};    // #606060
 
 Color EnemyMapColor(EnemyType type) {
     if (type == EnemyType::Drone) {
