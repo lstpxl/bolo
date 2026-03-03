@@ -231,7 +231,8 @@ World rendering is in `src/platform/Renderer2D.cpp`.
 - Compile-time presentation scaling: on macOS builds, the game renders to a logical `640x480` target and presents at `2x` (`1280x960`) with point filtering (each logical pixel becomes `2x2` physical pixels); handheld builds keep `1x` presentation.
 - HUD direction radar draws three lines: hull heading (white), move joystick vector from gamepad axes `0/1` (sky blue), and fire joystick vector from gamepad axes `2/3` (red). Joystick direction uses `(axisX, axisY)` and amplitude is normalized by raw max magnitude `32768`.
 - Gameplay view draws a top-left input debug line at font size `10`: `Axes:  0:...  1:...  2:...  3:...` using gamepad raw axis values (approximate signed 16-bit range).
-- Gameplay view draws a profiling line below the axes line at font size `10`, showing rolling average fixed-step timings (`AI`, `PF`, `PH`) and allocation telemetry (`alloc/free counts`, `allocated/freed KB`, `live/peak KB`).
+- Gameplay view draws a performance line below the axes line at font size `10`: `PERF FPS ... FT ...ms FS ...ms OH ...ms`, where `FT` is frame total average, `FS` is fixed-step average, and `OH` is non-fixed overhead estimate (`FT - FS`).
+- Gameplay view draws a profiling line below the performance line at font size `10`, showing rolling average fixed-step timings (`AI`, `PF`, `PH`) and allocation telemetry (`alloc/free counts`, `allocated/freed KB`, `live/peak KB`).
 - Gameplay view also draws a bottom-left single-line counter at font size `10`: alive bases and alive enemies by type (`B/D/T/H/A`).
 - HUD minimap plots alive enemies as single-pixel markers in their corresponding colors, bases as `3x3` pixel squares, and player as a larger cyan marker.
 
