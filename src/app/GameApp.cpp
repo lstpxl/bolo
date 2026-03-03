@@ -23,17 +23,18 @@ bool TryLoadSoundAtPath(Sound& sound, const std::string& path) {
     return true;
 }
 
-bool TryLoadMenuClickSound(Sound& sound) {
-    constexpr std::array<const char*, 5> relativePaths = {
-        "resources/audio/keyboard-click.wav",
-        "../resources/audio/keyboard-click.wav",
-        "../../resources/audio/keyboard-click.wav",
-        "../../../resources/audio/keyboard-click.wav",
-        "../../../../resources/audio/keyboard-click.wav",
+bool TryLoadSoundFromKnownPaths(Sound& sound, const char* fileName, const char* logName) {
+    const std::array<std::string, 5> relativePaths = {
+        std::string("resources/audio/") + fileName,
+        std::string("../resources/audio/") + fileName,
+        std::string("../../resources/audio/") + fileName,
+        std::string("../../../resources/audio/") + fileName,
+        std::string("../../../../resources/audio/") + fileName,
     };
 
-    for (const char* path : relativePaths) {
+    for (const std::string& path : relativePaths) {
         if (TryLoadSoundAtPath(sound, path)) {
+            TraceLog(LOG_INFO, "AUDIO: %s loaded from: %s", logName, path.c_str());
             return true;
         }
     }
@@ -42,8 +43,9 @@ bool TryLoadMenuClickSound(Sound& sound) {
     if (applicationDirectory != nullptr && applicationDirectory[0] != '\0') {
         std::filesystem::path base(applicationDirectory);
         for (int level = 0; level <= 4; ++level) {
-            const std::filesystem::path candidate = base / "resources" / "audio" / "keyboard-click.wav";
+            const std::filesystem::path candidate = base / "resources" / "audio" / fileName;
             if (TryLoadSoundAtPath(sound, candidate.string())) {
+                TraceLog(LOG_INFO, "AUDIO: %s loaded from: %s", logName, candidate.string().c_str());
                 return true;
             }
             if (!base.has_parent_path()) {
@@ -53,8 +55,18 @@ bool TryLoadMenuClickSound(Sound& sound) {
         }
     }
 
-    TraceLog(LOG_WARNING, "AUDIO: Menu click sound failed to load from known paths");
+    TraceLog(LOG_WARNING, "AUDIO: %s failed to load from known paths", logName);
     return false;
+}
+
+int CountPlayerProjectiles(const GameState& state) {
+    int count = 0;
+    for (const Projectile& projectile : state.world.projectiles) {
+        if (projectile.alive && projectile.owner == ProjectileOwner::Player) {
+            ++count;
+        }
+    }
+    return count;
 }
 }  // namespace
 
@@ -69,7 +81,9 @@ int GameApp::Run() {
     InitAudioDevice();
     audioReady_ = IsAudioDeviceReady();
     if (audioReady_) {
-        menuClickSoundLoaded_ = TryLoadMenuClickSound(menuClickSound_);
+        menuClickSoundLoaded_ = TryLoadSoundFromKnownPaths(menuClickSound_, "keyboard-click.wav", "menu click sound");
+        powerUpSoundLoaded_ = TryLoadSoundFromKnownPaths(powerUpSound_, "power-up.wav", "power-up sound");
+        playerShotSoundLoaded_ = TryLoadSoundFromKnownPaths(playerShotSound_, "player-shot.wav", "player-shot sound");
     }
 
     while (!exitRequested_ && !WindowShouldClose()) {
@@ -89,7 +103,20 @@ int GameApp::Run() {
                     gameplayPauseDialog_.Open(ConfirmationDialog::Focus::Cancel);
                 }
                 if (!gameplayPauseDialogOpen_) {
+                    const GameState beforeUpdate = game_.State();
+                    const int playerProjectilesBefore = CountPlayerProjectiles(beforeUpdate);
                     game_.Update(input, fixedStepTimer_.StepSeconds(), config_);
+                    const GameState& afterUpdate = game_.State();
+                    const int playerProjectilesAfter = CountPlayerProjectiles(afterUpdate);
+                    if (audioReady_ && playerShotSoundLoaded_ && playerProjectilesAfter > playerProjectilesBefore) {
+                        PlaySound(playerShotSound_);
+                    }
+                    if (audioReady_ &&
+                        powerUpSoundLoaded_ &&
+                        beforeUpdate.world.startModeRemainingSeconds <= 0.0F &&
+                        afterUpdate.world.startModeRemainingSeconds > 0.0F) {
+                        PlaySound(powerUpSound_);
+                    }
                 }
             }
             fixedStepTimer_.ConsumeStep();
@@ -101,6 +128,12 @@ int GameApp::Run() {
 
     if (menuClickSoundLoaded_) {
         UnloadSound(menuClickSound_);
+    }
+    if (powerUpSoundLoaded_) {
+        UnloadSound(powerUpSound_);
+    }
+    if (playerShotSoundLoaded_) {
+        UnloadSound(playerShotSound_);
     }
     renderer_.UnloadResources();
     if (audioReady_) {
@@ -167,6 +200,11 @@ void GameApp::Render(const FrameInput& input) {
         if (result.startGameRequested) {
             gameplayPauseDialogOpen_ = false;
             game_.StartGame(config_);
+            previousPlayerProjectileCount_ = 0;
+            previousStartModeRemainingSeconds_ = game_.State().world.startModeRemainingSeconds;
+            if (audioReady_ && powerUpSoundLoaded_ && previousStartModeRemainingSeconds_ > 0.0F) {
+                PlaySound(powerUpSound_);
+            }
         }
         if (result.quitRequested) {
             exitRequested_ = true;

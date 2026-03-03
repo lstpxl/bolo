@@ -23,9 +23,15 @@ private:
     MenuScreen menuScreen_{};
     RaylibRenderer renderer_{};
     Sound menuClickSound_{};
+    Sound powerUpSound_{};
+    Sound playerShotSound_{};
     bool audioReady_ = false;
     bool menuClickSoundLoaded_ = false;
+    bool powerUpSoundLoaded_ = false;
+    bool playerShotSoundLoaded_ = false;
     bool exitRequested_ = false;
     bool gameplayPauseDialogOpen_ = false;
     ConfirmationDialog gameplayPauseDialog_{};
+    int previousPlayerProjectileCount_ = 0;
+    float previousStartModeRemainingSeconds_ = 0.0F;
 };

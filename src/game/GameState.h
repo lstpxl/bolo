@@ -172,6 +172,7 @@ struct EnemyTank {
     bool returnToBase = false;
     TorpedoMoveMode torpedoMoveMode = TorpedoMoveMode::Move;
     float torpedoStraightDistanceSinceTurnUnits = 3.0F;
+    float torpedoRetreatMovedUnits = 0.0F;
     float torpedoRotateTargetHeadingRadians = 0.0F;
     int originBaseIndex = -1;
     std::array<Vec2f, kMaxPathWaypoints> pathWaypoints{};

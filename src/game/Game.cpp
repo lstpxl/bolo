@@ -135,7 +135,8 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const AppConfig& 
         state_.world.player.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
         state_.world.player.throttleNormalized = 0.0F;
         state_.world.player.fireCooldownSeconds = 0.0F;
-        state_.world.player.fuel = GameplayConstants::kFuelMax;
+        state_.world.player.fuel = 0.0F;
+        state_.world.startModeRemainingSeconds = GameplayConstants::kStartModeDurationSeconds;
         PlacePlayerAtSafeSpawn(state_, config);
     }
 

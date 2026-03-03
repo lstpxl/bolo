@@ -284,6 +284,41 @@ float FreeDistanceAhead(const WorldState& world, const Vec2f& from, float headin
     return maxDistance;
 }
 
+float FreeDistanceAheadWithEnemies(
+    const WorldState& world,
+    const std::vector<EnemyTank>& enemies,
+    int selfIndex,
+    const Vec2f& from,
+    float headingRadians,
+    float maxDistance,
+    float clearanceUnits) {
+    const float staticObstacleDistance = FreeDistanceAhead(world, from, headingRadians, maxDistance, clearanceUnits);
+    const float probeDistance = std::min(maxDistance, staticObstacleDistance);
+    const Vec2f dir = DirectionFromHeading(headingRadians);
+    const float sampleSpacing = 0.08F;
+    const int steps = std::max(1, static_cast<int>(std::ceil(probeDistance / sampleSpacing)));
+    for (int i = 1; i <= steps; ++i) {
+        const float dist = std::min(probeDistance, static_cast<float>(i) * sampleSpacing);
+        const Vec2f sample{
+            .x = from.x + dir.x * dist,
+            .y = from.y + dir.y * dist,
+        };
+        for (int enemyIndex = 0; enemyIndex < static_cast<int>(enemies.size()); ++enemyIndex) {
+            if (enemyIndex == selfIndex) {
+                continue;
+            }
+            const EnemyTank& other = enemies[static_cast<std::size_t>(enemyIndex)];
+            if (!other.alive) {
+                continue;
+            }
+            if (Distance(sample, other.position) < GameplayConstants::kEnemyPreferredSeparationUnits) {
+                return dist;
+            }
+        }
+    }
+    return probeDistance;
+}
+
 bool IsSegmentObscuredByWall(const WorldState& world, const Vec2f& from, const Vec2f& to) {
     const float dx = to.x - from.x;
     const float dy = to.y - from.y;
@@ -824,34 +859,42 @@ float StepHeadingByFortyFiveToward(float currentHeading, float desiredHeading) {
 
 float SelectTorpedoMoveHeading(
     const WorldState& world,
+    const std::vector<EnemyTank>& enemies,
+    int selfIndex,
     EnemyTank& enemy,
     bool playerDetected,
     float directHeadingToPlayer,
     bool& startRetreat) {
     startRetreat = false;
     const float straightHeading = QuantizeToEightDirections(enemy.headingRadians);
-    const float straightClear = FreeDistanceAhead(
+    const float straightClearWithEnemies = FreeDistanceAheadWithEnemies(
         world,
+        enemies,
+        selfIndex,
         enemy.position,
         straightHeading,
         kTorpedoObstacleScanDistanceUnits,
         GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
     const float leftHeading = QuantizeToEightDirections(straightHeading - kEightDirectionStep);
     const float rightHeading = QuantizeToEightDirections(straightHeading + kEightDirectionStep);
-    const float leftClear = FreeDistanceAhead(
+    const float leftClear = FreeDistanceAheadWithEnemies(
         world,
+        enemies,
+        selfIndex,
         enemy.position,
         leftHeading,
         kTorpedoObstacleScanDistanceUnits,
         GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
-    const float rightClear = FreeDistanceAhead(
+    const float rightClear = FreeDistanceAheadWithEnemies(
         world,
+        enemies,
+        selfIndex,
         enemy.position,
         rightHeading,
         kTorpedoObstacleScanDistanceUnits,
         GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
 
-    if (straightClear < kTorpedoImmediateObstacleDistanceUnits &&
+    if (straightClearWithEnemies < kTorpedoImmediateObstacleDistanceUnits &&
         leftClear < kTorpedoImmediateObstacleDistanceUnits &&
         rightClear < kTorpedoImmediateObstacleDistanceUnits) {
         startRetreat = true;
@@ -860,8 +903,8 @@ float SelectTorpedoMoveHeading(
 
     const bool canTurnNow =
         enemy.torpedoStraightDistanceSinceTurnUnits >= kTorpedoMinStraightBeforeTurnUnits;
-    if (straightClear < kTorpedoObstacleScanDistanceUnits && canTurnNow) {
-        if (leftClear > straightClear || rightClear > straightClear) {
+    if (straightClearWithEnemies < kTorpedoObstacleScanDistanceUnits && canTurnNow) {
+        if (leftClear > straightClearWithEnemies || rightClear > straightClearWithEnemies) {
             const bool takeLeft = leftClear >= rightClear;
             enemy.torpedoStraightDistanceSinceTurnUnits = 0.0F;
             return takeLeft ? leftHeading : rightHeading;
@@ -877,7 +920,7 @@ float SelectTorpedoMoveHeading(
                 stepped,
                 kTorpedoObstacleScanDistanceUnits,
                 GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
-            if (steppedClear >= straightClear) {
+            if (steppedClear >= straightClearWithEnemies) {
                 enemy.torpedoStraightDistanceSinceTurnUnits = 0.0F;
                 return stepped;
             }
@@ -1249,13 +1292,16 @@ void UpdateEnemySystem(GameState& state, const AppConfig& config, float deltaSec
             if (enemy.torpedoMoveMode == TorpedoMoveMode::Retreat) {
                 movementHeading = QuantizeToEightDirections(enemy.headingRadians);
                 speed = -std::abs(speed) * kTorpedoRetreatSpeedFactor;
-                const float forwardClear = FreeDistanceAhead(
+                const float forwardClear = FreeDistanceAheadWithEnemies(
                     state.world,
+                    state.world.enemies,
+                    enemyIndex,
                     enemy.position,
                     enemy.headingRadians,
                     kTorpedoObstacleScanDistanceUnits,
                     GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
-                if (forwardClear >= kTorpedoRetreatExitClearanceUnits) {
+                if (enemy.torpedoRetreatMovedUnits >= kTorpedoRetreatExitClearanceUnits &&
+                    forwardClear >= kTorpedoRetreatExitClearanceUnits) {
                     speed = 0.0F;
                     EnterTorpedoRotateMode(state.world, enemy, random);
                 }
@@ -1267,12 +1313,15 @@ void UpdateEnemySystem(GameState& state, const AppConfig& config, float deltaSec
                 bool startRetreat = false;
                 movementHeading = SelectTorpedoMoveHeading(
                     state.world,
+                    state.world.enemies,
+                    enemyIndex,
                     enemy,
                     playerDetected,
                     directHeading,
                     startRetreat);
                 if (startRetreat) {
                     enemy.torpedoMoveMode = TorpedoMoveMode::Retreat;
+                    enemy.torpedoRetreatMovedUnits = 0.0F;
                     movementHeading = QuantizeToEightDirections(enemy.headingRadians);
                     speed = -std::abs(speed) * kTorpedoRetreatSpeedFactor;
                 }
@@ -1489,6 +1538,11 @@ void UpdateEnemySystem(GameState& state, const AppConfig& config, float deltaSec
             const float movedDistance = Distance(enemy.position, previousPosition);
             if (movedDistance > 0.0001F) {
                 enemy.torpedoStraightDistanceSinceTurnUnits += movedDistance;
+            }
+        } else if (enemy.type == EnemyType::Torpedo && enemy.torpedoMoveMode == TorpedoMoveMode::Retreat) {
+            const float movedDistance = Distance(enemy.position, previousPosition);
+            if (movedDistance > 0.0001F) {
+                enemy.torpedoRetreatMovedUnits += movedDistance;
             }
         }
 
