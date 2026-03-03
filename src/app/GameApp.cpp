@@ -173,6 +173,33 @@ void GameApp::Render(const FrameInput& input) {
         }
     } else {
         game_.Render(renderer_, config_, input);
+        const GameState& state = game_.State();
+        int aliveBases = 0;
+        for (const EnemyBase& base : state.world.enemyBases) {
+            if (!base.destroyed) {
+                ++aliveBases;
+            }
+        }
+
+        int dronesAlive = 0;
+        int torpedoesAlive = 0;
+        int huntersAlive = 0;
+        int assassinsAlive = 0;
+        for (const EnemyTank& enemy : state.world.enemies) {
+            if (!enemy.alive) {
+                continue;
+            }
+            if (enemy.type == EnemyType::Drone) {
+                ++dronesAlive;
+            } else if (enemy.type == EnemyType::Torpedo) {
+                ++torpedoesAlive;
+            } else if (enemy.type == EnemyType::Hunter) {
+                ++huntersAlive;
+            } else if (enemy.type == EnemyType::Assassin) {
+                ++assassinsAlive;
+            }
+        }
+
         char axesText[96] = {};
         std::snprintf(
             axesText,
@@ -183,6 +210,18 @@ void GameApp::Render(const FrameInput& input) {
             input.gamepadAxis2Raw,
             input.gamepadAxis3Raw);
         DrawText(axesText, 8, 8, 10, RAYWHITE);
+
+        char countsText[96] = {};
+        std::snprintf(
+            countsText,
+            sizeof(countsText),
+            "B:%d D:%d T:%d H:%d A:%d",
+            aliveBases,
+            dronesAlive,
+            torpedoesAlive,
+            huntersAlive,
+            assassinsAlive);
+        DrawText(countsText, 8, config_.screenHeight - 18, 10, RAYWHITE);
         if (gameplayPauseDialogOpen_) {
             RenderGameplayPauseDialog(input);
         }

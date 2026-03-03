@@ -49,11 +49,11 @@ struct GameplayConstants {
     static constexpr float kEnemyAssassinPredictionSeconds = 0.8F;   // seconds
     static constexpr float kEnemyAiRetargetMinSeconds = 0.7F;        // seconds
     static constexpr float kEnemyAiRetargetRandomSeconds = 0.9F;     // seconds
-    static constexpr int kMaxAliveEnemies = 30;                      // enemies
+    static constexpr int kMaxAliveEnemies = 72;                      // enemies
     static constexpr int kMaxAliveEnemiesPerBase = 12;               // enemies / base
     static constexpr float kEnemyInitialFireCooldownSeconds = 0.2F;  // seconds
     static constexpr float kBaseSpawnCooldownSeconds = 3.6F;         // seconds
-    static constexpr float kEnemyPreferredSeparationUnits = 0.5F;    // world-units
+    static constexpr float kEnemyPreferredSeparationUnits = 1.0F;    // world-units
     static constexpr float kEnemyMutualKillDistanceUnits = 0.12F;    // world-units
     static constexpr float kEnemyLookaheadObstacleUnits = 1.0F;      // world-units
     static constexpr float kEnemyRequiredClearRunUnits = 3.0F;       // world-units
@@ -174,7 +174,8 @@ struct EnemyTank {
 struct EnemyBase {
     Vec2f position;
     bool destroyed = false;
-    float spawnCooldownSeconds = 0.0F;
+    float enemyGenerationIntervalSeconds = GameplayConstants::kBaseSpawnCooldownSeconds;
+    float enemyGenerationTimerSeconds = GameplayConstants::kBaseSpawnCooldownSeconds;
     int activeEnemies = 0;
 };
 

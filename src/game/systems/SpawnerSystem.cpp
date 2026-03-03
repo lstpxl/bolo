@@ -194,9 +194,12 @@ void UpdateSpawnerSystem(GameState& state, float deltaSeconds) {
             base.activeEnemies = 0;
             continue;
         }
-        base.spawnCooldownSeconds -= deltaSeconds;
+        if (base.enemyGenerationIntervalSeconds <= 0.0F) {
+            base.enemyGenerationIntervalSeconds = GameplayConstants::kBaseSpawnCooldownSeconds;
+        }
+        base.enemyGenerationTimerSeconds -= deltaSeconds;
         if (aliveEnemies >= GameplayConstants::kMaxAliveEnemies ||
-            base.spawnCooldownSeconds > 0.0F ||
+            base.enemyGenerationTimerSeconds > 0.0F ||
             base.activeEnemies >= GameplayConstants::kMaxAliveEnemiesPerBase) {
             continue;
         }
@@ -226,7 +229,9 @@ void UpdateSpawnerSystem(GameState& state, float deltaSeconds) {
         } else if (spawnedEnemy.type == EnemyType::Assassin) {
             mode = EnemyAiMode::Path;
         }
-        const float selfAwarenessInterval = random.NextFloat(4.0F, 8.0F);
+        const float selfAwarenessInterval = (spawnedEnemy.type == EnemyType::Drone)
+            ? random.NextFloat(6.0F, 12.0F)
+            : random.NextFloat(4.0F, 8.0F);
         state.world.enemies.push_back(EnemyTank{
             .position = spawnPosition,
             .velocity = Vec2f{.x = 0.0F, .y = 0.0F},
@@ -248,7 +253,7 @@ void UpdateSpawnerSystem(GameState& state, float deltaSeconds) {
             .alive = true,
         });
         base.activeEnemies += 1;
-        base.spawnCooldownSeconds = GameplayConstants::kBaseSpawnCooldownSeconds;
+        base.enemyGenerationTimerSeconds = base.enemyGenerationIntervalSeconds;
         ++aliveEnemies;
     }
 }

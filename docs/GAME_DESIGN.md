@@ -84,8 +84,10 @@ Enemy spawn table behavior (`src/game/systems/SpawnerSystem.cpp`):
 - On spawn at level `L`, choose one random entry from slots `1..L` (inclusive) and use that entry's type/subtype.
 - Current table entries are all `Advanced` subtypes:
   - `1..2` Drone, `3..4` Torpedo, `5..7` Hunter, `8..9` Assassin.
-- Global alive-enemy cap is `30`.
+- Global alive-enemy cap is `72`.
 - Per-base simultaneous alive cap is `12` enemies.
+- Each base has its own enemy generation interval assigned at base creation as random `±50%` of `kBaseSpawnCooldownSeconds`.
+- Each base also has an enemy generation timer initialized from that interval; timer counts down and is reset to the same interval after a successful spawn.
 
 ## Controls and Input
 
@@ -152,11 +154,15 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
 
 ### Enemy Separation and Mutual Collision
 
-- Enemies continuously try to keep at least `0.5` world-units between each other.
+- Enemies continuously try to keep at least `1.0` world-units between each other.
 - If a planned move violates spacing, AI attempts a `45°` turn first; if not possible, enemy stops for that frame.
 - If two enemies occupy nearly the same position (`~0.12` world-units), both are destroyed.
 - Enemy deaths decrement the origin base `activeEnemies` counter used for per-base spawn capping.
-- Every spawned enemy gets a per-enemy self-awareness interval randomly in `4..8` seconds and a self-awareness timer initialized to that value; when timer reaches `0`, it restarts from the same interval.
+- Bases are one-way obstacles for enemy movement: enemies outside a base footprint cannot enter/touch it, while enemies that spawn inside can leave freely.
+- Every spawned enemy gets a per-enemy self-awareness interval and timer:
+  - Drone: random in `6..12` seconds.
+  - Other enemy types: random in `4..8` seconds.
+  - Timer is initialized from the interval and restarts from the same interval when it reaches `0`.
 
 ### Enemy Type Behavior
 
@@ -166,9 +172,12 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
   - If neither side offers `>=3` units of clear run, switch to Watch.
   - Watch: stop and rotate in a random direction (`clockwise` or `counter-clockwise`) chosen when entering Watch.
   - On entering Watch, drone computes distance to nearest base; if distance is `>=36` units, `return-to-base` is enabled.
-  - After one full turn (`4s`), if `return-to-base` is enabled, exit Watch with heading snapped toward nearest base direction.
-  - If `return-to-base` is not enabled, Watch exits only when clear run ahead `>3`.
-  - On self-awareness timer restart, drone re-checks nearest-base distance; if distance is `>=36`, it stops immediately and enters Watch.
+  - After one full turn (`4s`), if `return-to-base` is enabled, evaluate candidate return headings toward nearest base and discard any heading with less than `6` units of obstacle-free route.
+  - If at least one candidate return heading remains, exit Watch using the best valid heading toward base; otherwise stay in Watch and keep rotating.
+  - If `return-to-base` is not enabled, Watch exits only when clear run ahead `>3` and a heading can be selected that improves separation from nearby enemies.
+  - On self-awareness timer restart, drone re-checks nearest-base distance; if distance is `>=36`, it first checks relative bearing to nearest base.
+  - If relative bearing is `<80°`, drone keeps moving (already generally pointed toward base) and does not enter Watch.
+  - If relative bearing is `>=80°`, drone stops and enters Watch.
 - Torpedo:
   - Fast local-steering movement (no A* path planning).
   - Detects player with direct line-of-sight and distance `<9` units.
@@ -193,6 +202,10 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
   - target is a random maze point anywhere in the maze (with distance bias so it is not near current assassin position)
   - target is repicked when the current target is reached.
 
+### Direction Terms
+
+- Relative bearing = angle from your current heading to the target object.
+
 ## Rendering and Camera
 
 World rendering is in `src/platform/Renderer2D.cpp`.
@@ -208,6 +221,7 @@ World rendering is in `src/platform/Renderer2D.cpp`.
 - Enemy sprite rendering uses pixel-snapped screen-space placement derived from world positions. Player gameplay footprint remains `kEntitySizeUnits = 1.0`, and the player sprite is rendered in pixel-snapped screen space at fixed `16x16` with per-frame pivot correction to avoid heading-frame jitter.
 - HUD direction radar draws three lines: hull heading (white), move joystick vector from gamepad axes `0/1` (sky blue), and fire joystick vector from gamepad axes `2/3` (red). Joystick direction uses `(axisX, axisY)` and amplitude is normalized by raw max magnitude `32768`.
 - Gameplay view draws a top-left input debug line at font size `10`: `Axes:  0:...  1:...  2:...  3:...` using gamepad raw axis values (approximate signed 16-bit range).
+- Gameplay view also draws a bottom-left single-line counter at font size `10`: alive bases and alive enemies by type (`B/D/T/H/A`).
 
 ## Main Menu UX
 

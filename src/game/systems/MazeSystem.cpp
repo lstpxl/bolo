@@ -10,6 +10,11 @@
 #include "raylib.h"
 
 namespace {
+float RandomBaseGenerationInterval(Random& random) {
+    const float base = GameplayConstants::kBaseSpawnCooldownSeconds;
+    return random.NextFloat(base * 0.5F, base * 1.5F);
+}
+
 struct CellCoord {
     int x;
     int y;
@@ -351,10 +356,12 @@ void InitializeMazeWorld(GameState& state, const AppConfig& config) {
                 continue;
             }
             usedCells[static_cast<std::size_t>(cellIndex)] = true;
+            const float generationInterval = RandomBaseGenerationInterval(random);
             state.world.enemyBases.push_back(EnemyBase{
                 .position = CellCenterPosition(state.world.maze, cellX, cellY),
                 .destroyed = false,
-                .spawnCooldownSeconds = 0.0F,
+                .enemyGenerationIntervalSeconds = generationInterval,
+                .enemyGenerationTimerSeconds = generationInterval,
                 .activeEnemies = 0,
             });
             placed = true;
@@ -371,10 +378,12 @@ void InitializeMazeWorld(GameState& state, const AppConfig& config) {
                 continue;
             }
             usedCells[static_cast<std::size_t>(cellIndex)] = true;
+            const float generationInterval = RandomBaseGenerationInterval(random);
             state.world.enemyBases.push_back(EnemyBase{
                 .position = CellCenterPosition(state.world.maze, x, y),
                 .destroyed = false,
-                .spawnCooldownSeconds = 0.0F,
+                .enemyGenerationIntervalSeconds = generationInterval,
+                .enemyGenerationTimerSeconds = generationInterval,
                 .activeEnemies = 0,
             });
         }
