@@ -181,13 +181,15 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
   - If relative bearing is `>=80°`, drone stops and enters Watch.
 - Torpedo:
   - Fast local-steering movement (no A* path planning), with turns constrained to `45°` increments only.
-  - Detects player with direct line-of-sight and distance `<9` units.
+  - Player detection for steering is throttled to every `0.25s` (cached between checks), using LOS and distance `<9` units.
   - Obstacle-anticipation: if forward obstacle is within `16` units, scans `-45°/+45°`; if either side has longer clear path than straight, turns to the longer side.
   - In torpedo steering, "obstacle" checks include walls, undestroyed bases, and other alive enemies.
   - Turn cooldown: must move straight at least `3` units before another turn.
+  - MOVE optimization: when a direction decision keeps straight heading, torpedo holds that decision for `1` world-unit of traveled distance (distance-based, not frame-based), and only performs near forward collision checks up to `3` units during that hold.
   - If obstacle is directly ahead and straight/left/right are all effectively blocked, enters `Retreat` mode.
-  - Retreat mode: moves backward without turning at `10%` normal speed; it must retreat at least `2` units and have forward clearance of at least `2` units before switching to `Rotate` mode.
-  - Rotate mode: rotates slowly in random clockwise/counterclockwise direction toward the heading with the longest straight clear path, then returns to regular move mode.
+  - Retreat mode: moves backward without turning at `10%` normal speed; it checks only retreat completion distance and near forward clearance to leave the mode.
+  - After retreat completion, torpedo enters `Targeting` mode: picks and stores the heading with the longest straight clear path.
+  - Rotate mode: rotates toward the stored chosen heading using the closer CW/CCW direction and returns to regular move mode when aligned.
   - Firing additionally requires player to be roughly ahead (`±30°`).
 - Hunter:
   - Modes: `Scout`, `Chase`, and rotate fallback.

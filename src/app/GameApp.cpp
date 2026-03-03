@@ -28,7 +28,6 @@ bool TryLoadSoundAtPath(Sound& sound, const std::string& path) {
         return false;
     }
 
-    TraceLog(LOG_INFO, "AUDIO: Sound file loaded from: %s", path.c_str());
     return true;
 }
 
@@ -41,9 +40,16 @@ bool TryLoadSoundFromKnownPaths(Sound& sound, const char* fileName, const char* 
         std::string("../../../../resources/audio/") + fileName,
     };
 
+    const auto tryAndLogLoad = [&](const std::string& path) {
+        if (!TryLoadSoundAtPath(sound, path)) {
+            return false;
+        }
+        TraceLog(LOG_INFO, "AUDIO: %s loaded from: %s", logName, path.c_str());
+        return true;
+    };
+
     for (const std::string& path : relativePaths) {
-        if (TryLoadSoundAtPath(sound, path)) {
-            TraceLog(LOG_INFO, "AUDIO: %s loaded from: %s", logName, path.c_str());
+        if (tryAndLogLoad(path)) {
             return true;
         }
     }
@@ -53,8 +59,7 @@ bool TryLoadSoundFromKnownPaths(Sound& sound, const char* fileName, const char* 
         std::filesystem::path base(applicationDirectory);
         for (int level = 0; level <= 4; ++level) {
             const std::filesystem::path candidate = base / "resources" / "audio" / fileName;
-            if (TryLoadSoundAtPath(sound, candidate.string())) {
-                TraceLog(LOG_INFO, "AUDIO: %s loaded from: %s", logName, candidate.string().c_str());
+            if (tryAndLogLoad(candidate.string())) {
                 return true;
             }
             if (!base.has_parent_path()) {

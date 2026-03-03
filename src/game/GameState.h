@@ -149,6 +149,7 @@ enum class EnemyAiMode {
 enum class TorpedoMoveMode {
     Move,
     Retreat,
+    Targeting,
     Rotate,
 };
 
@@ -172,7 +173,12 @@ struct EnemyTank {
     bool returnToBase = false;
     TorpedoMoveMode torpedoMoveMode = TorpedoMoveMode::Move;
     float torpedoStraightDistanceSinceTurnUnits = 3.0F;
+    float torpedoMoveDecisionHoldRemainingUnits = 0.0F;
     float torpedoRetreatMovedUnits = 0.0F;
+    float torpedoPlayerDetectTimerSeconds = 0.0F;
+    bool torpedoPlayerDetected = false;
+    float torpedoLastKnownPlayerHeadingRadians = 0.0F;
+    float torpedoChosenHeadingRadians = 0.0F;
     float torpedoRotateTargetHeadingRadians = 0.0F;
     int originBaseIndex = -1;
     std::array<Vec2f, kMaxPathWaypoints> pathWaypoints{};
