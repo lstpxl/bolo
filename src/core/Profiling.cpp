@@ -200,6 +200,14 @@ const std::array<const char*, kScopeCount> kScopeNames = {
     "system.spawner_update",
     "system.maze_update",
     "enemy.update",
+    "enemy.type.drone",
+    "enemy.type.torpedo",
+    "enemy.type.hunter",
+    "enemy.type.assassin",
+    "enemy.ai.perception",
+    "enemy.ai.decision",
+    "enemy.ai.movement",
+    "enemy.ai.firing",
     "enemy.pathfinding.total",
     "enemy.pathfinding.far_target",
     "enemy.pathfinding.occupancy",
@@ -282,7 +290,7 @@ void Profiler::EmitPeriodicReport(float fixedStepSeconds) const {
         static_cast<unsigned long long>(allocSnapshot.liveBytes),
         static_cast<unsigned long long>(allocSnapshot.peakLiveBytes));
 
-    constexpr std::size_t kRowsToPrint = 8;
+    constexpr std::size_t kRowsToPrint = 12;
     std::size_t printedRows = 0;
     for (std::size_t i = 0; i < rows.size() && printedRows < kRowsToPrint; ++i) {
         if (rows[i].view.totalCalls == 0 && rows[i].view.avgMs <= 0.0001F) {

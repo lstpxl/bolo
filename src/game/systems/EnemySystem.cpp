@@ -1218,6 +1218,20 @@ void ResolveEnemyFrontalCollisions(WorldState& world, const std::vector<Vec2f>& 
         }
     }
 }
+
+profiling::Scope EnemyTypeProfileScope(EnemyType type) {
+    switch (type) {
+    case EnemyType::Drone:
+        return profiling::Scope::EnemyTypeDroneUpdate;
+    case EnemyType::Torpedo:
+        return profiling::Scope::EnemyTypeTorpedoUpdate;
+    case EnemyType::Hunter:
+        return profiling::Scope::EnemyTypeHunterUpdate;
+    case EnemyType::Assassin:
+        return profiling::Scope::EnemyTypeAssassinUpdate;
+    }
+    return profiling::Scope::EnemyTypeDroneUpdate;
+}
 }  // namespace
 
 void UpdateEnemySystem(GameState& state, const AppConfig& config, float deltaSeconds) {
@@ -1235,390 +1249,411 @@ void UpdateEnemySystem(GameState& state, const AppConfig& config, float deltaSec
         if (!enemy.alive) {
             continue;
         }
-        if (enemy.selfAwarenessIntervalSeconds <= 0.0F) {
-            enemy.selfAwarenessIntervalSeconds = (enemy.type == EnemyType::Drone)
-                ? random.NextFloat(6.0F, 12.0F)
-                : random.NextFloat(4.0F, 8.0F);
-            enemy.selfAwarenessTimerSeconds = enemy.selfAwarenessIntervalSeconds;
+        profiling::ScopedProfile enemyTypeScope(EnemyTypeProfileScope(enemy.type), true);
+
+        Vec2f toPlayer{};
+        Vec2f toPlayerNormalized{};
+        float distanceToPlayerSq = 0.0F;
+        float distanceToPlayer = 0.0F;
+        bool playerInAggroRange = false;
+        bool playerObscured = false;
+        bool assassinHasLineOfSight = false;
+        {
+            profiling::ScopedProfile phaseScope(profiling::Scope::EnemyAiPerception, true);
+            if (enemy.selfAwarenessIntervalSeconds <= 0.0F) {
+                enemy.selfAwarenessIntervalSeconds = (enemy.type == EnemyType::Drone)
+                    ? random.NextFloat(6.0F, 12.0F)
+                    : random.NextFloat(4.0F, 8.0F);
+                enemy.selfAwarenessTimerSeconds = enemy.selfAwarenessIntervalSeconds;
+            }
+            enemy.selfAwarenessTimerSeconds -= deltaSeconds;
+            if (enemy.selfAwarenessTimerSeconds <= 0.0F) {
+                enemy.selfAwarenessTimerSeconds = enemy.selfAwarenessIntervalSeconds;
+                if (enemy.type == EnemyType::Drone) {
+                    const float nearestBaseDist = NearestBaseDistance(state.world, enemy.position);
+                    if (nearestBaseDist >= 36.0F) {
+                        const Vec2f nearestBase = NearestBasePosition(state.world, enemy.position);
+                        const Vec2f toBase{
+                            .x = nearestBase.x - enemy.position.x,
+                            .y = nearestBase.y - enemy.position.y,
+                        };
+                        const float headingToBase = std::atan2(toBase.x, -toBase.y);
+                        const float relativeBearing = AngleDistance(enemy.headingRadians, headingToBase);
+                        if (relativeBearing >= kDroneBaseBearingThresholdRadians) {
+                            enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
+                            EnterDroneWatchMode(state.world, enemy, random);
+                        }
+                    }
+                }
+            }
+            enemy.aiModeElapsedSeconds += deltaSeconds;
+            toPlayer = Vec2f{
+                .x = state.world.player.position.x - enemy.position.x,
+                .y = state.world.player.position.y - enemy.position.y,
+            };
+            toPlayerNormalized = NormalizeOrZero(toPlayer);
+            distanceToPlayerSq = DistanceSq(enemy.position, state.world.player.position);
+            distanceToPlayer = std::sqrt(distanceToPlayerSq);
+            playerInAggroRange =
+                !playerInvisible &&
+                distanceToPlayerSq <=
+                (GameplayConstants::kEnemyAggroRangeUnits * GameplayConstants::kEnemyAggroRangeUnits);
+            playerObscured =
+                playerInvisible ||
+                IsSegmentObscuredByWall(state.world, enemy.position, state.world.player.position);
+            assassinHasLineOfSight =
+                enemy.type == EnemyType::Assassin && playerInAggroRange && !playerObscured;
         }
-        enemy.selfAwarenessTimerSeconds -= deltaSeconds;
-        if (enemy.selfAwarenessTimerSeconds <= 0.0F) {
-            enemy.selfAwarenessTimerSeconds = enemy.selfAwarenessIntervalSeconds;
+
+        float movementHeading = QuantizeToEightDirections(enemy.headingRadians);
+        float speed = EnemySpeed(enemy.type, enemy.subtype, assassinHasLineOfSight);
+        bool preserveContinuousHeading = false;
+        {
+            profiling::ScopedProfile phaseScope(profiling::Scope::EnemyAiDecision, true);
             if (enemy.type == EnemyType::Drone) {
-                const float nearestBaseDist = NearestBaseDistance(state.world, enemy.position);
-                if (nearestBaseDist >= 36.0F) {
-                    const Vec2f nearestBase = NearestBasePosition(state.world, enemy.position);
-                    const Vec2f toBase{
-                        .x = nearestBase.x - enemy.position.x,
-                        .y = nearestBase.y - enemy.position.y,
-                    };
-                    const float headingToBase = std::atan2(toBase.x, -toBase.y);
-                    const float relativeBearing = AngleDistance(enemy.headingRadians, headingToBase);
-                    if (relativeBearing >= kDroneBaseBearingThresholdRadians) {
-                        enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
+                if (enemy.aiMode != EnemyAiMode::Watch && enemy.aiMode != EnemyAiMode::Wander) {
+                    enemy.aiMode = EnemyAiMode::Wander;
+                    enemy.aiModeElapsedSeconds = 0.0F;
+                }
+                if (enemy.aiMode == EnemyAiMode::Watch) {
+                    speed = 0.0F;
+                    preserveContinuousHeading = true;
+                    movementHeading = NormalizeAngle(
+                        enemy.headingRadians +
+                        static_cast<float>(enemy.watchRotateDirection) *
+                            (kPi * 2.0F / GameplayConstants::kSlowRotateFullTurnSeconds) * deltaSeconds);
+                    const float clearDistance = FreeDistanceAhead(
+                        state.world,
+                        enemy.position,
+                        movementHeading,
+                        GameplayConstants::kEnemyRequiredClearRunUnits + 0.5F,
+                        GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
+                    if (enemy.aiModeElapsedSeconds >= GameplayConstants::kSlowRotateFullTurnSeconds) {
+                        if (enemy.returnToBase) {
+                            float returnHeading = movementHeading;
+                            if (SelectDroneReturnToBaseHeading(state.world, enemy, random, returnHeading)) {
+                                movementHeading = returnHeading;
+                                enemy.returnToBase = false;
+                                enemy.aiMode = EnemyAiMode::Wander;
+                                enemy.aiModeElapsedSeconds = 0.0F;
+                            }
+                        } else if (clearDistance > GameplayConstants::kEnemyRequiredClearRunUnits) {
+                            float escapeHeading = movementHeading;
+                            if (SelectDroneWatchEscapeHeading(
+                                    state.world,
+                                    state.world.enemies,
+                                    enemyIndex,
+                                    deltaSeconds,
+                                    escapeHeading)) {
+                                movementHeading = escapeHeading;
+                                enemy.aiMode = EnemyAiMode::Wander;
+                                enemy.aiModeElapsedSeconds = 0.0F;
+                            }
+                        }
+                    }
+                } else {
+                    bool shouldWatch = false;
+                    movementHeading = SelectScoutHeadingWithFallback(
+                        state.world,
+                        enemy,
+                        false,
+                        shouldWatch);
+                    if (shouldWatch) {
+                        EnterDroneWatchMode(state.world, enemy, random);
+                        speed = 0.0F;
+                    }
+                }
+            } else if (enemy.type == EnemyType::Torpedo) {
+                const bool playerDetected =
+                    !playerInvisible &&
+                    !playerObscured &&
+                    distanceToPlayer <= GameplayConstants::kTorpedoDetectRangeUnits;
+                const float directHeading = std::atan2(toPlayer.x, -toPlayer.y);
+                if (enemy.torpedoMoveMode == TorpedoMoveMode::Retreat) {
+                    movementHeading = QuantizeToEightDirections(enemy.headingRadians);
+                    speed = -std::abs(speed) * kTorpedoRetreatSpeedFactor;
+                    const float forwardClear = FreeDistanceAheadWithEnemies(
+                        state.world,
+                        state.world.enemies,
+                        enemyIndex,
+                        enemy.position,
+                        enemy.headingRadians,
+                        kTorpedoObstacleScanDistanceUnits,
+                        GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
+                    if (enemy.torpedoRetreatMovedUnits >= kTorpedoRetreatExitClearanceUnits &&
+                        forwardClear >= kTorpedoRetreatExitClearanceUnits) {
+                        speed = 0.0F;
+                        EnterTorpedoRotateMode(state.world, enemy, random);
+                    }
+                } else if (enemy.torpedoMoveMode == TorpedoMoveMode::Rotate) {
+                    speed = 0.0F;
+                    preserveContinuousHeading = true;
+                    movementHeading = UpdateTorpedoRotateHeading(enemy, deltaSeconds);
+                } else {
+                    bool startRetreat = false;
+                    movementHeading = SelectTorpedoMoveHeading(
+                        state.world,
+                        state.world.enemies,
+                        enemyIndex,
+                        enemy,
+                        playerDetected,
+                        directHeading,
+                        startRetreat);
+                    if (startRetreat) {
+                        enemy.torpedoMoveMode = TorpedoMoveMode::Retreat;
+                        enemy.torpedoRetreatMovedUnits = 0.0F;
+                        movementHeading = QuantizeToEightDirections(enemy.headingRadians);
+                        speed = -std::abs(speed) * kTorpedoRetreatSpeedFactor;
+                    }
+                }
+            } else if (enemy.type == EnemyType::Hunter) {
+                const bool canChase =
+                    !playerInvisible &&
+                    !playerObscured &&
+                    distanceToPlayer <= GameplayConstants::kHunterDetectRangeUnits;
+                if (canChase) {
+                    enemy.aiMode = EnemyAiMode::Chase;
+                    enemy.aiModeElapsedSeconds = 0.0F;
+                } else if (enemy.aiMode == EnemyAiMode::Chase) {
+                    enemy.aiMode = EnemyAiMode::Scout;
+                    enemy.aiModeElapsedSeconds = 0.0F;
+                }
+
+                if (enemy.aiMode == EnemyAiMode::Chase) {
+                    if (distanceToPlayer < GameplayConstants::kHunterMinDistanceUnits) {
+                        movementHeading = QuantizeToEightDirections(std::atan2(-toPlayer.x, toPlayer.y));
+                    } else if (distanceToPlayer > GameplayConstants::kHunterMaxDistanceUnits) {
+                        movementHeading = QuantizeToEightDirections(std::atan2(toPlayer.x, -toPlayer.y));
+                    } else {
+                        speed = 0.0F;
+                    }
+                } else if (enemy.aiMode == EnemyAiMode::Rotate) {
+                    speed = 0.0F;
+                    preserveContinuousHeading = true;
+                    movementHeading = NormalizeAngle(
+                        enemy.headingRadians + (kPi * 2.0F / GameplayConstants::kSlowRotateFullTurnSeconds) * deltaSeconds);
+                    const float clearDistance = FreeDistanceAhead(
+                        state.world,
+                        enemy.position,
+                        movementHeading,
+                        GameplayConstants::kEnemyRequiredClearRunUnits + 0.5F,
+                        GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
+                    if (clearDistance > GameplayConstants::kEnemyRequiredClearRunUnits) {
+                        enemy.aiMode = EnemyAiMode::Scout;
+                        enemy.aiModeElapsedSeconds = 0.0F;
+                    }
+                } else {
+                    bool shouldRotate = false;
+                    movementHeading = SelectScoutHeadingWithFallback(
+                        state.world,
+                        enemy,
+                        true,
+                        shouldRotate);
+                    if (shouldRotate) {
+                        enemy.aiMode = EnemyAiMode::Rotate;
+                        enemy.aiModeElapsedSeconds = 0.0F;
+                        speed = 0.0F;
+                    } else {
+                        enemy.aiMode = EnemyAiMode::Scout;
+                    }
+                }
+            } else {
+                enemy.aiMode = EnemyAiMode::Path;
+                if (!playerInvisible && distanceToPlayer < GameplayConstants::kAssassinMinDistanceUnits) {
+                    speed = 0.0F;
+                    enemy.pathWaypointCount = 0;
+                    enemy.pathWaypointIndex = 0;
+                } else {
+                    const float obstacleAhead = FreeDistanceAhead(
+                        state.world,
+                        enemy.position,
+                        enemy.headingRadians,
+                        2.0F,
+                        GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
+                    const bool needRepathObstacle = obstacleAhead < 2.0F;
+                    const bool needRepathEmpty = enemy.pathWaypointCount <= 0 || enemy.pathWaypointIndex >= enemy.pathWaypointCount;
+                    if (needRepathObstacle || needRepathEmpty) {
+                        if (playerInvisible) {
+                            BuildAssassinPathToFarRandomTarget(state, enemy, enemyIndex, random);
+                        } else {
+                            BuildAssassinPath(state, enemy, enemyIndex);
+                        }
+                    }
+
+                    if (enemy.pathWaypointCount > 0 && enemy.pathWaypointIndex < enemy.pathWaypointCount) {
+                        const Vec2f waypoint = enemy.pathWaypoints[static_cast<std::size_t>(enemy.pathWaypointIndex)];
+                        const Vec2f toWaypoint{
+                            .x = waypoint.x - enemy.position.x,
+                            .y = waypoint.y - enemy.position.y,
+                        };
+                        if (DistanceSq(waypoint, enemy.position) <= 0.36F) {
+                            enemy.pathWaypointIndex += 1;
+                            if (playerInvisible) {
+                                BuildAssassinPathToFarRandomTarget(state, enemy, enemyIndex, random);
+                            } else if (enemy.pathWaypointIndex < enemy.pathWaypointCount) {
+                                BuildAssassinPath(state, enemy, enemyIndex);
+                            }
+                        }
+                        const Vec2f stepDir = NormalizeOrZero(toWaypoint);
+                        if (stepDir.x != 0.0F || stepDir.y != 0.0F) {
+                            movementHeading = QuantizeToEightDirections(std::atan2(stepDir.x, -stepDir.y));
+                        }
+                    } else {
+                        const Vec2f predicted{
+                            .x = state.world.player.position.x +
+                                state.world.player.velocity.x * GameplayConstants::kEnemyAssassinPredictionSeconds,
+                            .y = state.world.player.position.y +
+                                state.world.player.velocity.y * GameplayConstants::kEnemyAssassinPredictionSeconds,
+                        };
+                        movementHeading = QuantizeToEightDirections(
+                            std::atan2(predicted.x - enemy.position.x, -(predicted.y - enemy.position.y)));
+                    }
+                }
+            }
+        }
+
+        const Vec2f previousPosition = enemy.position;
+        {
+            profiling::ScopedProfile phaseScope(profiling::Scope::EnemyAiMovement, true);
+            if (preserveContinuousHeading) {
+                movementHeading = NormalizeAngle(movementHeading);
+            } else {
+                movementHeading = QuantizeToEightDirections(movementHeading);
+            }
+            const Vec2f snappedDirection = DirectionFromHeading(movementHeading);
+            Vec2f candidatePosition{
+                .x = enemy.position.x + snappedDirection.x * speed * deltaSeconds,
+                .y = enemy.position.y + snappedDirection.y * speed * deltaSeconds,
+            };
+
+            // Keep enemies from overlapping: turn first, stop second.
+            float minDistanceToOthers = std::numeric_limits<float>::infinity();
+            float currentMinDistanceToOthers = std::numeric_limits<float>::infinity();
+            for (int i = 0; i < static_cast<int>(state.world.enemies.size()); ++i) {
+                if (i == enemyIndex) {
+                    continue;
+                }
+                const EnemyTank& other = state.world.enemies[static_cast<std::size_t>(i)];
+                if (!other.alive) {
+                    continue;
+                }
+                currentMinDistanceToOthers = std::min(currentMinDistanceToOthers, Distance(enemy.position, other.position));
+                minDistanceToOthers = std::min(minDistanceToOthers, Distance(candidatePosition, other.position));
+            }
+            const bool makingSeparationProgress =
+                minDistanceToOthers > currentMinDistanceToOthers + 0.001F;
+            if (std::fabs(speed) > 0.0F &&
+                minDistanceToOthers < GameplayConstants::kEnemyPreferredSeparationUnits &&
+                !makingSeparationProgress) {
+                float turnHeading = movementHeading;
+                Vec2f turnCandidate = candidatePosition;
+                if (TrySeparationTurn(state.world, state.world.enemies, enemyIndex, speed, deltaSeconds, turnHeading, turnCandidate)) {
+                    movementHeading = turnHeading;
+                    candidatePosition = turnCandidate;
+                } else {
+                    speed = 0.0F;
+                    candidatePosition = enemy.position;
+                    enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
+                    if (enemy.type == EnemyType::Drone) {
                         EnterDroneWatchMode(state.world, enemy, random);
                     }
                 }
             }
-        }
-        enemy.aiModeElapsedSeconds += deltaSeconds;
-        const Vec2f toPlayer{
-            .x = state.world.player.position.x - enemy.position.x,
-            .y = state.world.player.position.y - enemy.position.y,
-        };
-        const Vec2f toPlayerNormalized = NormalizeOrZero(toPlayer);
-        const float distanceToPlayerSq = DistanceSq(enemy.position, state.world.player.position);
-        const float distanceToPlayer = std::sqrt(distanceToPlayerSq);
-        const bool playerInAggroRange =
-            !playerInvisible &&
-            distanceToPlayerSq <=
-            (GameplayConstants::kEnemyAggroRangeUnits * GameplayConstants::kEnemyAggroRangeUnits);
-        const bool playerObscured =
-            playerInvisible ||
-            IsSegmentObscuredByWall(state.world, enemy.position, state.world.player.position);
-        const bool assassinHasLineOfSight =
-            enemy.type == EnemyType::Assassin && playerInAggroRange && !playerObscured;
-        float movementHeading = QuantizeToEightDirections(enemy.headingRadians);
-        float speed = EnemySpeed(enemy.type, enemy.subtype, assassinHasLineOfSight);
-        bool preserveContinuousHeading = false;
 
-        if (enemy.type == EnemyType::Drone) {
-            if (enemy.aiMode != EnemyAiMode::Watch && enemy.aiMode != EnemyAiMode::Wander) {
-                enemy.aiMode = EnemyAiMode::Wander;
-                enemy.aiModeElapsedSeconds = 0.0F;
-            }
-            if (enemy.aiMode == EnemyAiMode::Watch) {
-                speed = 0.0F;
-                preserveContinuousHeading = true;
-                movementHeading = NormalizeAngle(
-                    enemy.headingRadians +
-                    static_cast<float>(enemy.watchRotateDirection) *
-                        (kPi * 2.0F / GameplayConstants::kSlowRotateFullTurnSeconds) * deltaSeconds);
-                const float clearDistance = FreeDistanceAhead(
-                    state.world,
-                    enemy.position,
-                    movementHeading,
-                    GameplayConstants::kEnemyRequiredClearRunUnits + 0.5F,
-                    GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
-                if (enemy.aiModeElapsedSeconds >= GameplayConstants::kSlowRotateFullTurnSeconds) {
-                    if (enemy.returnToBase) {
-                        float returnHeading = movementHeading;
-                        if (SelectDroneReturnToBaseHeading(state.world, enemy, random, returnHeading)) {
-                            movementHeading = returnHeading;
-                            enemy.returnToBase = false;
-                            enemy.aiMode = EnemyAiMode::Wander;
-                            enemy.aiModeElapsedSeconds = 0.0F;
-                        }
-                    } else if (clearDistance > GameplayConstants::kEnemyRequiredClearRunUnits) {
-                        float escapeHeading = movementHeading;
-                        if (SelectDroneWatchEscapeHeading(
-                                state.world,
-                                state.world.enemies,
-                                enemyIndex,
-                                deltaSeconds,
-                                escapeHeading)) {
-                            movementHeading = escapeHeading;
-                            enemy.aiMode = EnemyAiMode::Wander;
-                            enemy.aiModeElapsedSeconds = 0.0F;
-                        }
-                    }
-                }
-            } else {
-                bool shouldWatch = false;
-                movementHeading = SelectScoutHeadingWithFallback(
-                    state.world,
-                    enemy,
-                    false,
-                    shouldWatch);
-                if (shouldWatch) {
-                    EnterDroneWatchMode(state.world, enemy, random);
-                    speed = 0.0F;
-                }
-            }
-        } else if (enemy.type == EnemyType::Torpedo) {
-            const bool playerDetected =
-                !playerInvisible &&
-                !playerObscured &&
-                distanceToPlayer <= GameplayConstants::kTorpedoDetectRangeUnits;
-            const float directHeading = std::atan2(toPlayer.x, -toPlayer.y);
-            if (enemy.torpedoMoveMode == TorpedoMoveMode::Retreat) {
-                movementHeading = QuantizeToEightDirections(enemy.headingRadians);
-                speed = -std::abs(speed) * kTorpedoRetreatSpeedFactor;
-                const float forwardClear = FreeDistanceAheadWithEnemies(
-                    state.world,
-                    state.world.enemies,
-                    enemyIndex,
-                    enemy.position,
-                    enemy.headingRadians,
-                    kTorpedoObstacleScanDistanceUnits,
-                    GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
-                if (enemy.torpedoRetreatMovedUnits >= kTorpedoRetreatExitClearanceUnits &&
-                    forwardClear >= kTorpedoRetreatExitClearanceUnits) {
-                    speed = 0.0F;
-                    EnterTorpedoRotateMode(state.world, enemy, random);
-                }
-            } else if (enemy.torpedoMoveMode == TorpedoMoveMode::Rotate) {
-                speed = 0.0F;
-                preserveContinuousHeading = true;
-                movementHeading = UpdateTorpedoRotateHeading(enemy, deltaSeconds);
-            } else {
-                bool startRetreat = false;
-                movementHeading = SelectTorpedoMoveHeading(
-                    state.world,
-                    state.world.enemies,
-                    enemyIndex,
-                    enemy,
-                    playerDetected,
-                    directHeading,
-                    startRetreat);
-                if (startRetreat) {
-                    enemy.torpedoMoveMode = TorpedoMoveMode::Retreat;
-                    enemy.torpedoRetreatMovedUnits = 0.0F;
-                    movementHeading = QuantizeToEightDirections(enemy.headingRadians);
-                    speed = -std::abs(speed) * kTorpedoRetreatSpeedFactor;
-                }
-            }
-        } else if (enemy.type == EnemyType::Hunter) {
-            const bool canChase =
-                !playerInvisible &&
-                !playerObscured &&
-                distanceToPlayer <= GameplayConstants::kHunterDetectRangeUnits;
-            if (canChase) {
-                enemy.aiMode = EnemyAiMode::Chase;
-                enemy.aiModeElapsedSeconds = 0.0F;
-            } else if (enemy.aiMode == EnemyAiMode::Chase) {
-                enemy.aiMode = EnemyAiMode::Scout;
-                enemy.aiModeElapsedSeconds = 0.0F;
-            }
-
-            if (enemy.aiMode == EnemyAiMode::Chase) {
-                if (distanceToPlayer < GameplayConstants::kHunterMinDistanceUnits) {
-                    movementHeading = QuantizeToEightDirections(std::atan2(-toPlayer.x, toPlayer.y));
-                } else if (distanceToPlayer > GameplayConstants::kHunterMaxDistanceUnits) {
-                    movementHeading = QuantizeToEightDirections(std::atan2(toPlayer.x, -toPlayer.y));
-                } else {
-                    speed = 0.0F;
-                }
-            } else if (enemy.aiMode == EnemyAiMode::Rotate) {
-                speed = 0.0F;
-                preserveContinuousHeading = true;
-                movementHeading = NormalizeAngle(
-                    enemy.headingRadians + (kPi * 2.0F / GameplayConstants::kSlowRotateFullTurnSeconds) * deltaSeconds);
-                const float clearDistance = FreeDistanceAhead(
-                    state.world,
-                    enemy.position,
-                    movementHeading,
-                    GameplayConstants::kEnemyRequiredClearRunUnits + 0.5F,
-                    GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
-                if (clearDistance > GameplayConstants::kEnemyRequiredClearRunUnits) {
-                    enemy.aiMode = EnemyAiMode::Scout;
-                    enemy.aiModeElapsedSeconds = 0.0F;
-                }
-            } else {
-                bool shouldRotate = false;
-                movementHeading = SelectScoutHeadingWithFallback(
-                    state.world,
-                    enemy,
-                    true,
-                    shouldRotate);
-                if (shouldRotate) {
-                    enemy.aiMode = EnemyAiMode::Rotate;
-                    enemy.aiModeElapsedSeconds = 0.0F;
-                    speed = 0.0F;
-                } else {
-                    enemy.aiMode = EnemyAiMode::Scout;
-                }
-            }
-        } else {
-            enemy.aiMode = EnemyAiMode::Path;
-            if (!playerInvisible && distanceToPlayer < GameplayConstants::kAssassinMinDistanceUnits) {
-                speed = 0.0F;
-                enemy.pathWaypointCount = 0;
-                enemy.pathWaypointIndex = 0;
-            } else {
-                const float obstacleAhead = FreeDistanceAhead(
-                    state.world,
-                    enemy.position,
-                    enemy.headingRadians,
-                    2.0F,
-                    GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
-                const bool needRepathObstacle = obstacleAhead < 2.0F;
-                const bool needRepathEmpty = enemy.pathWaypointCount <= 0 || enemy.pathWaypointIndex >= enemy.pathWaypointCount;
-                if (needRepathObstacle || needRepathEmpty) {
-                    if (playerInvisible) {
-                        BuildAssassinPathToFarRandomTarget(state, enemy, enemyIndex, random);
-                    } else {
-                        BuildAssassinPath(state, enemy, enemyIndex);
-                    }
-                }
-
-                if (enemy.pathWaypointCount > 0 && enemy.pathWaypointIndex < enemy.pathWaypointCount) {
-                    const Vec2f waypoint = enemy.pathWaypoints[static_cast<std::size_t>(enemy.pathWaypointIndex)];
-                    const Vec2f toWaypoint{
-                        .x = waypoint.x - enemy.position.x,
-                        .y = waypoint.y - enemy.position.y,
-                    };
-                    if (DistanceSq(waypoint, enemy.position) <= 0.36F) {
-                        enemy.pathWaypointIndex += 1;
-                        if (playerInvisible) {
-                            BuildAssassinPathToFarRandomTarget(state, enemy, enemyIndex, random);
-                        } else if (enemy.pathWaypointIndex < enemy.pathWaypointCount) {
-                            BuildAssassinPath(state, enemy, enemyIndex);
-                        }
-                    }
-                    const Vec2f stepDir = NormalizeOrZero(toWaypoint);
-                    if (stepDir.x != 0.0F || stepDir.y != 0.0F) {
-                        movementHeading = QuantizeToEightDirections(std::atan2(stepDir.x, -stepDir.y));
-                    }
-                } else {
-                    const Vec2f predicted{
-                        .x = state.world.player.position.x +
-                            state.world.player.velocity.x * GameplayConstants::kEnemyAssassinPredictionSeconds,
-                        .y = state.world.player.position.y +
-                            state.world.player.velocity.y * GameplayConstants::kEnemyAssassinPredictionSeconds,
-                    };
-                    movementHeading = QuantizeToEightDirections(
-                        std::atan2(predicted.x - enemy.position.x, -(predicted.y - enemy.position.y)));
-                }
-            }
-        }
-
-        if (preserveContinuousHeading) {
-            movementHeading = NormalizeAngle(movementHeading);
-        } else {
-            movementHeading = QuantizeToEightDirections(movementHeading);
-        }
-        const Vec2f snappedDirection = DirectionFromHeading(movementHeading);
-        Vec2f candidatePosition{
-            .x = enemy.position.x + snappedDirection.x * speed * deltaSeconds,
-            .y = enemy.position.y + snappedDirection.y * speed * deltaSeconds,
-        };
-        const Vec2f previousPosition = enemy.position;
-
-        // Keep enemies from overlapping: turn first, stop second.
-        float minDistanceToOthers = std::numeric_limits<float>::infinity();
-        float currentMinDistanceToOthers = std::numeric_limits<float>::infinity();
-        for (int i = 0; i < static_cast<int>(state.world.enemies.size()); ++i) {
-            if (i == enemyIndex) {
-                continue;
-            }
-            const EnemyTank& other = state.world.enemies[static_cast<std::size_t>(i)];
-            if (!other.alive) {
-                continue;
-            }
-            currentMinDistanceToOthers = std::min(currentMinDistanceToOthers, Distance(enemy.position, other.position));
-            minDistanceToOthers = std::min(minDistanceToOthers, Distance(candidatePosition, other.position));
-        }
-        const bool makingSeparationProgress =
-            minDistanceToOthers > currentMinDistanceToOthers + 0.001F;
-        if (std::fabs(speed) > 0.0F &&
-            minDistanceToOthers < GameplayConstants::kEnemyPreferredSeparationUnits &&
-            !makingSeparationProgress) {
-            float turnHeading = movementHeading;
-            Vec2f turnCandidate = candidatePosition;
-            if (TrySeparationTurn(state.world, state.world.enemies, enemyIndex, speed, deltaSeconds, turnHeading, turnCandidate)) {
-                movementHeading = turnHeading;
-                candidatePosition = turnCandidate;
-            } else {
-                speed = 0.0F;
-                candidatePosition = enemy.position;
-                enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
-                if (enemy.type == EnemyType::Drone) {
-                    EnterDroneWatchMode(state.world, enemy, random);
-                }
-            }
-        }
-
-        if (std::fabs(speed) > 0.0F && IsMovementBlockedByEnemies(
-                state.world.enemies,
-                frameStartPositions,
-                enemyIndex,
-                previousPosition,
-                candidatePosition,
-                GameplayConstants::kEnemyPreferredSeparationUnits)) {
-            float turnHeading = movementHeading;
-            Vec2f turnCandidate = candidatePosition;
-            const bool foundTurn = TrySeparationTurn(
-                state.world,
-                state.world.enemies,
-                enemyIndex,
-                speed,
-                deltaSeconds,
-                turnHeading,
-                turnCandidate);
-            if (foundTurn && !IsMovementBlockedByEnemies(
+            if (std::fabs(speed) > 0.0F && IsMovementBlockedByEnemies(
                     state.world.enemies,
                     frameStartPositions,
                     enemyIndex,
                     previousPosition,
-                    turnCandidate,
+                    candidatePosition,
                     GameplayConstants::kEnemyPreferredSeparationUnits)) {
-                movementHeading = turnHeading;
-                candidatePosition = turnCandidate;
-            } else {
+                float turnHeading = movementHeading;
+                Vec2f turnCandidate = candidatePosition;
+                const bool foundTurn = TrySeparationTurn(
+                    state.world,
+                    state.world.enemies,
+                    enemyIndex,
+                    speed,
+                    deltaSeconds,
+                    turnHeading,
+                    turnCandidate);
+                if (foundTurn && !IsMovementBlockedByEnemies(
+                        state.world.enemies,
+                        frameStartPositions,
+                        enemyIndex,
+                        previousPosition,
+                        turnCandidate,
+                        GameplayConstants::kEnemyPreferredSeparationUnits)) {
+                    movementHeading = turnHeading;
+                    candidatePosition = turnCandidate;
+                } else {
+                    enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
+                    candidatePosition = enemy.position;
+                    if (enemy.type == EnemyType::Drone) {
+                        EnterDroneWatchMode(state.world, enemy, random);
+                    }
+                }
+            }
+
+            if (std::fabs(speed) > 0.001F && SegmentIntersectsWall(
+                    state.world,
+                    previousPosition,
+                    candidatePosition,
+                    GameplayConstants::kEnemyWallAvoidanceRadiusUnits)) {
                 enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
-                candidatePosition = enemy.position;
+                enemy.aiStateTimerSeconds = 0.0F;
                 if (enemy.type == EnemyType::Drone) {
                     EnterDroneWatchMode(state.world, enemy, random);
+                } else if (enemy.type == EnemyType::Hunter) {
+                    enemy.aiMode = EnemyAiMode::Rotate;
+                    enemy.aiModeElapsedSeconds = 0.0F;
+                }
+            } else {
+                enemy.velocity = Vec2f{
+                    .x = snappedDirection.x * speed,
+                    .y = snappedDirection.y * speed,
+                };
+                enemy.position = candidatePosition;
+                enemy.headingRadians = movementHeading;
+            }
+
+            if (enemy.type == EnemyType::Torpedo && enemy.torpedoMoveMode == TorpedoMoveMode::Move) {
+                const float movedDistance = Distance(enemy.position, previousPosition);
+                if (movedDistance > 0.0001F) {
+                    enemy.torpedoStraightDistanceSinceTurnUnits += movedDistance;
+                }
+            } else if (enemy.type == EnemyType::Torpedo && enemy.torpedoMoveMode == TorpedoMoveMode::Retreat) {
+                const float movedDistance = Distance(enemy.position, previousPosition);
+                if (movedDistance > 0.0001F) {
+                    enemy.torpedoRetreatMovedUnits += movedDistance;
                 }
             }
         }
 
-        if (std::fabs(speed) > 0.001F && SegmentIntersectsWall(
-                state.world,
-                previousPosition,
-                candidatePosition,
-                GameplayConstants::kEnemyWallAvoidanceRadiusUnits)) {
-            enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
-            enemy.aiStateTimerSeconds = 0.0F;
-            if (enemy.type == EnemyType::Drone) {
-                EnterDroneWatchMode(state.world, enemy, random);
-            } else if (enemy.type == EnemyType::Hunter) {
-                enemy.aiMode = EnemyAiMode::Rotate;
-                enemy.aiModeElapsedSeconds = 0.0F;
+        {
+            profiling::ScopedProfile phaseScope(profiling::Scope::EnemyAiFiring, true);
+            enemy.fireCooldownSeconds -= deltaSeconds;
+            const bool enemyVisibleInViewport = IsInPlayerViewport(enemy.position, state, config);
+            bool canFireTypeSpecific = true;
+            if (enemy.type == EnemyType::Torpedo) {
+                canFireTypeSpecific = PlayerAheadForTorpedo(enemy, toPlayerNormalized);
             }
-        } else {
-            enemy.velocity = Vec2f{
-                .x = snappedDirection.x * speed,
-                .y = snappedDirection.y * speed,
-            };
-            enemy.position = candidatePosition;
-            enemy.headingRadians = movementHeading;
-        }
-
-        if (enemy.type == EnemyType::Torpedo && enemy.torpedoMoveMode == TorpedoMoveMode::Move) {
-            const float movedDistance = Distance(enemy.position, previousPosition);
-            if (movedDistance > 0.0001F) {
-                enemy.torpedoStraightDistanceSinceTurnUnits += movedDistance;
+            if (state.world.player.alive &&
+                enemy.fireCooldownSeconds <= 0.0F &&
+                enemyVisibleInViewport &&
+                !playerObscured &&
+                canFireTypeSpecific &&
+                distanceToPlayerSq < (GameplayConstants::kEnemyFireRangeUnits * GameplayConstants::kEnemyFireRangeUnits)) {
+                const float headingToPlayer = std::atan2(toPlayer.x, -toPlayer.y);
+                const float quantizedHeadingToPlayer = QuantizeToEightDirections(headingToPlayer);
+                SpawnProjectile(
+                    state,
+                    ProjectileOwner::Enemy,
+                    enemy.position,
+                    quantizedHeadingToPlayer,
+                    GameplayConstants::kEnemyProjectileSpeed);
+                enemy.fireCooldownSeconds = EnemyFireInterval(enemy.type);
             }
-        } else if (enemy.type == EnemyType::Torpedo && enemy.torpedoMoveMode == TorpedoMoveMode::Retreat) {
-            const float movedDistance = Distance(enemy.position, previousPosition);
-            if (movedDistance > 0.0001F) {
-                enemy.torpedoRetreatMovedUnits += movedDistance;
-            }
-        }
-
-        enemy.fireCooldownSeconds -= deltaSeconds;
-        const bool enemyVisibleInViewport = IsInPlayerViewport(enemy.position, state, config);
-        bool canFireTypeSpecific = true;
-        if (enemy.type == EnemyType::Torpedo) {
-            canFireTypeSpecific = PlayerAheadForTorpedo(enemy, toPlayerNormalized);
-        }
-        if (state.world.player.alive &&
-            enemy.fireCooldownSeconds <= 0.0F &&
-            enemyVisibleInViewport &&
-            !playerObscured &&
-            canFireTypeSpecific &&
-            distanceToPlayerSq < (GameplayConstants::kEnemyFireRangeUnits * GameplayConstants::kEnemyFireRangeUnits)) {
-            const float headingToPlayer = std::atan2(toPlayer.x, -toPlayer.y);
-            const float quantizedHeadingToPlayer = QuantizeToEightDirections(headingToPlayer);
-            SpawnProjectile(
-                state,
-                ProjectileOwner::Enemy,
-                enemy.position,
-                quantizedHeadingToPlayer,
-                GameplayConstants::kEnemyProjectileSpeed);
-            enemy.fireCooldownSeconds = EnemyFireInterval(enemy.type);
         }
     }
 

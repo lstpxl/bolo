@@ -1,6 +1,5 @@
 #pragma once
 
-#include <array>
 #include <cstddef>
 #include <cstdint>
 
@@ -19,6 +18,14 @@ enum class Scope : std::uint8_t {
     SpawnerUpdate,
     MazeUpdate,
     EnemyUpdate,
+    EnemyTypeDroneUpdate,
+    EnemyTypeTorpedoUpdate,
+    EnemyTypeHunterUpdate,
+    EnemyTypeAssassinUpdate,
+    EnemyAiPerception,
+    EnemyAiDecision,
+    EnemyAiMovement,
+    EnemyAiFiring,
     PathfindingTotal,
     PathfindingFarTarget,
     PathfindingOccupancy,
