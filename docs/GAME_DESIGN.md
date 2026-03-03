@@ -229,8 +229,16 @@ World rendering is in `src/platform/Renderer2D.cpp`.
 - Compile-time presentation scaling: on macOS builds, the game renders to a logical `640x480` target and presents at `2x` (`1280x960`) with point filtering (each logical pixel becomes `2x2` physical pixels); handheld builds keep `1x` presentation.
 - HUD direction radar draws three lines: hull heading (white), move joystick vector from gamepad axes `0/1` (sky blue), and fire joystick vector from gamepad axes `2/3` (red). Joystick direction uses `(axisX, axisY)` and amplitude is normalized by raw max magnitude `32768`.
 - Gameplay view draws a top-left input debug line at font size `10`: `Axes:  0:...  1:...  2:...  3:...` using gamepad raw axis values (approximate signed 16-bit range).
+- Gameplay view draws a profiling line below the axes line at font size `10`, showing rolling average fixed-step timings (`AI`, `PF`, `PH`) and allocation telemetry (`alloc/free counts`, `allocated/freed KB`, `live/peak KB`).
 - Gameplay view also draws a bottom-left single-line counter at font size `10`: alive bases and alive enemies by type (`B/D/T/H/A`).
 - HUD minimap plots alive enemies as single-pixel markers in their corresponding colors, bases as `3x3` pixel squares, and player as a larger cyan marker.
+
+### Runtime Profiling
+
+- Profiling uses in-engine scope timers with a rolling `120`-frame window and per-scope `avg`, `p95`, `max`, and call counts.
+- Instrumented fixed-step scopes include: frame total, fixed-step update, `Game::Update`, system updates (AI/player/projectile/collision/spawner/maze), enemy update, assassin pathfinding phases, and enemy separation/frontal-collision resolution.
+- A periodic console report is emitted every `120` frames and sorted by average scope time, including fixed-step budget percentage and allocation snapshot deltas.
+- Memory telemetry tracks global C++ allocations/deallocations (`new/delete`) with per-frame and per-scope deltas plus current live and peak bytes.
 
 ## Audio Events
 

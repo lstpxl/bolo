@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <limits>
 #include <string>
+#include "core/Profiling.h"
 #include "raylib.h"
 #include "ui/RayguiContext.h"
 
@@ -27,7 +28,7 @@ bool TryLoadSoundAtPath(Sound& sound, const std::string& path) {
         return false;
     }
 
-    TraceLog(LOG_INFO, "AUDIO: Menu click sound loaded from: %s", path.c_str());
+    TraceLog(LOG_INFO, "AUDIO: Sound file loaded from: %s", path.c_str());
     return true;
 }
 
@@ -295,25 +296,30 @@ int GameApp::Run() {
         config_.screenWidth * kPresentationScale,
         config_.screenHeight * kPresentationScale,
         config_.windowTitle.data());
-    SetMouseOffset(0, 0);
-    SetMouseScale(
-        1.0F / static_cast<float>(kPresentationScale),
-        1.0F / static_cast<float>(kPresentationScale));
     SetExitKey(KEY_NULL);
     SetTargetFPS(config_.targetFps);
     ConfigureRayguiDefaultStyle();
     if (!renderer_.LoadResources()) {
         TraceLog(LOG_WARNING, "RENDER: Failed to load one or more renderer resources");
     }
+    int activePresentationScale = 1;
     if (kPresentationScale > 1) {
         presentationTarget_ = LoadRenderTexture(config_.screenWidth, config_.screenHeight);
         presentationTargetLoaded_ = presentationTarget_.id != 0;
         if (presentationTargetLoaded_) {
             SetTextureFilter(presentationTarget_.texture, TEXTURE_FILTER_POINT);
+            activePresentationScale = kPresentationScale;
         } else {
-            TraceLog(LOG_WARNING, "RENDER: Failed to create presentation render target");
+            TraceLog(
+                LOG_WARNING,
+                "RENDER: Failed to create presentation render target, falling back to 1x presentation");
+            SetWindowSize(config_.screenWidth, config_.screenHeight);
         }
     }
+    SetMouseOffset(0, 0);
+    SetMouseScale(
+        1.0F / static_cast<float>(activePresentationScale),
+        1.0F / static_cast<float>(activePresentationScale));
     InitAudioDevice();
     audioReady_ = IsAudioDeviceReady();
     if (audioReady_) {
@@ -330,91 +336,100 @@ int GameApp::Run() {
     }
 
     while (!exitRequested_ && !WindowShouldClose()) {
-        const FrameInput input = PollFrameInput();
-        if (input.quitRequested) {
-            exitRequested_ = true;
-            continue;
-        }
-        fixedStepTimer_.Accumulate(GetFrameTime());
+        profiling::Profiler::Instance().BeginFrame();
+        {
+            profiling::ScopedProfile frameScope(profiling::Scope::FrameTotal, true);
+            const FrameInput input = PollFrameInput();
+            if (input.quitRequested) {
+                exitRequested_ = true;
+            } else {
+                fixedStepTimer_.Accumulate(GetFrameTime());
 
-        int fixedStepsThisFrame = 0;
-        constexpr int kMaxFixedStepsPerFrame = 4;
-        while (fixedStepTimer_.ShouldStep() && fixedStepsThisFrame < kMaxFixedStepsPerFrame) {
-            if (game_.Mode() == GameMode::Playing) {
-                if (input.gameplayPausePressed && !gameplayPauseDialogOpen_) {
-                    gameplayPauseDialogOpen_ = true;
-                    gameplayPauseDialog_.Open(ConfirmationDialog::Focus::Cancel);
+                int fixedStepsThisFrame = 0;
+                constexpr int kMaxFixedStepsPerFrame = 4;
+                while (fixedStepTimer_.ShouldStep() && fixedStepsThisFrame < kMaxFixedStepsPerFrame) {
+                    profiling::ScopedProfile fixedStepScope(profiling::Scope::FixedStepUpdate, true);
+                    if (game_.Mode() == GameMode::Playing) {
+                        if (input.gameplayPausePressed && !gameplayPauseDialogOpen_) {
+                            gameplayPauseDialogOpen_ = true;
+                            gameplayPauseDialog_.Open(ConfirmationDialog::Focus::Cancel);
+                        }
+                        if (!gameplayPauseDialogOpen_) {
+                            const GameState beforeUpdate = game_.State();
+                            const int playerProjectilesBefore = CountPlayerProjectiles(beforeUpdate);
+                            const int enemyProjectilesBefore = CountEnemyProjectiles(beforeUpdate);
+                            const int aliveEnemiesBefore = CountAliveEnemies(beforeUpdate);
+                            const int aliveBasesBefore = CountAliveBases(beforeUpdate);
+                            const float startModeBefore = beforeUpdate.world.startModeRemainingSeconds;
+                            const float stepSeconds = fixedStepTimer_.StepSeconds();
+                            game_.Update(input, stepSeconds, config_);
+                            const GameState& afterUpdate = game_.State();
+                            const int playerProjectilesAfter = CountPlayerProjectiles(afterUpdate);
+                            const int enemyProjectilesAfter = CountEnemyProjectiles(afterUpdate);
+                            const int aliveEnemiesAfter = CountAliveEnemies(afterUpdate);
+                            const int aliveBasesAfter = CountAliveBases(afterUpdate);
+                            const Vec2f listener = afterUpdate.world.player.position;
+                            if (audioReady_ && playerShotSoundLoaded_ && playerProjectilesAfter > playerProjectilesBefore) {
+                                Vec2f source = listener;
+                                if (FindClosestFreshProjectilePosition(
+                                        afterUpdate,
+                                        ProjectileOwner::Player,
+                                        stepSeconds,
+                                        listener,
+                                        source)) {
+                                    PlaySpatialSound(playerShotSound_, listener, source);
+                                } else {
+                                    PlaySpatialSound(playerShotSound_, listener, listener);
+                                }
+                            }
+                            if (audioReady_ && enemyShotSoundLoaded_ && enemyProjectilesAfter > enemyProjectilesBefore) {
+                                Vec2f source = listener;
+                                if (FindClosestFreshProjectilePosition(
+                                        afterUpdate,
+                                        ProjectileOwner::Enemy,
+                                        stepSeconds,
+                                        listener,
+                                        source)) {
+                                    PlaySpatialSound(enemyShotSound_, listener, source);
+                                }
+                            }
+                            if (audioReady_ && enemySpawningSoundLoaded_ && aliveEnemiesAfter > aliveEnemiesBefore) {
+                                Vec2f source{};
+                                if (FindClosestSpawnedEnemyPosition(beforeUpdate, afterUpdate, listener, source)) {
+                                    PlaySpatialSound(enemySpawningSound_, listener, source);
+                                }
+                            }
+                            if (audioReady_ && enemyExplodingSoundLoaded_ && aliveEnemiesAfter < aliveEnemiesBefore) {
+                                Vec2f source{};
+                                if (FindClosestRemovedEnemyPosition(beforeUpdate, afterUpdate, listener, source)) {
+                                    PlaySpatialSound(enemyExplodingSound_, listener, source);
+                                }
+                            }
+                            if (audioReady_ && baseExplodingSoundLoaded_ && aliveBasesAfter < aliveBasesBefore) {
+                                Vec2f source{};
+                                if (FindClosestDestroyedBasePosition(beforeUpdate, afterUpdate, listener, source)) {
+                                    PlaySpatialSound(baseExplodingSound_, listener, source);
+                                }
+                            }
+                            if (audioReady_ &&
+                                powerUpSoundLoaded_ &&
+                                startModeBefore <= 0.0F &&
+                                afterUpdate.world.startModeRemainingSeconds > 0.0F) {
+                                PlaySpatialSound(powerUpSound_, listener, listener);
+                            }
+                        }
+                    }
+                    fixedStepTimer_.ConsumeStep();
+                    ++fixedStepsThisFrame;
                 }
-                if (!gameplayPauseDialogOpen_) {
-                    const GameState beforeUpdate = game_.State();
-                    const int playerProjectilesBefore = CountPlayerProjectiles(beforeUpdate);
-                    const int enemyProjectilesBefore = CountEnemyProjectiles(beforeUpdate);
-                    const int aliveEnemiesBefore = CountAliveEnemies(beforeUpdate);
-                    const int aliveBasesBefore = CountAliveBases(beforeUpdate);
-                    const float startModeBefore = beforeUpdate.world.startModeRemainingSeconds;
-                    const float stepSeconds = fixedStepTimer_.StepSeconds();
-                    game_.Update(input, stepSeconds, config_);
-                    const GameState& afterUpdate = game_.State();
-                    const int playerProjectilesAfter = CountPlayerProjectiles(afterUpdate);
-                    const int enemyProjectilesAfter = CountEnemyProjectiles(afterUpdate);
-                    const int aliveEnemiesAfter = CountAliveEnemies(afterUpdate);
-                    const int aliveBasesAfter = CountAliveBases(afterUpdate);
-                    const Vec2f listener = afterUpdate.world.player.position;
-                    if (audioReady_ && playerShotSoundLoaded_ && playerProjectilesAfter > playerProjectilesBefore) {
-                        Vec2f source = listener;
-                        if (FindClosestFreshProjectilePosition(
-                                afterUpdate,
-                                ProjectileOwner::Player,
-                                stepSeconds,
-                                listener,
-                                source)) {
-                            PlaySpatialSound(playerShotSound_, listener, source);
-                        } else {
-                            PlaySpatialSound(playerShotSound_, listener, listener);
-                        }
-                    }
-                    if (audioReady_ && enemyShotSoundLoaded_ && enemyProjectilesAfter > enemyProjectilesBefore) {
-                        Vec2f source = listener;
-                        if (FindClosestFreshProjectilePosition(
-                                afterUpdate,
-                                ProjectileOwner::Enemy,
-                                stepSeconds,
-                                listener,
-                                source)) {
-                            PlaySpatialSound(enemyShotSound_, listener, source);
-                        }
-                    }
-                    if (audioReady_ && enemySpawningSoundLoaded_ && aliveEnemiesAfter > aliveEnemiesBefore) {
-                        Vec2f source{};
-                        if (FindClosestSpawnedEnemyPosition(beforeUpdate, afterUpdate, listener, source)) {
-                            PlaySpatialSound(enemySpawningSound_, listener, source);
-                        }
-                    }
-                    if (audioReady_ && enemyExplodingSoundLoaded_ && aliveEnemiesAfter < aliveEnemiesBefore) {
-                        Vec2f source{};
-                        if (FindClosestRemovedEnemyPosition(beforeUpdate, afterUpdate, listener, source)) {
-                            PlaySpatialSound(enemyExplodingSound_, listener, source);
-                        }
-                    }
-                    if (audioReady_ && baseExplodingSoundLoaded_ && aliveBasesAfter < aliveBasesBefore) {
-                        Vec2f source{};
-                        if (FindClosestDestroyedBasePosition(beforeUpdate, afterUpdate, listener, source)) {
-                            PlaySpatialSound(baseExplodingSound_, listener, source);
-                        }
-                    }
-                    if (audioReady_ &&
-                        powerUpSoundLoaded_ &&
-                        startModeBefore <= 0.0F &&
-                        afterUpdate.world.startModeRemainingSeconds > 0.0F) {
-                        PlaySpatialSound(powerUpSound_, listener, listener);
-                    }
-                }
+
+                Render(input);
             }
-            fixedStepTimer_.ConsumeStep();
-            ++fixedStepsThisFrame;
         }
-
-        Render(input);
+        profiling::Profiler::Instance().EndFrame();
+        if (profiling::Profiler::Instance().ShouldEmitPeriodicReport()) {
+            profiling::Profiler::Instance().EmitPeriodicReport(fixedStepTimer_.StepSeconds());
+        }
     }
 
     if (menuClickSoundLoaded_) {
@@ -554,6 +569,39 @@ void GameApp::Render(const FrameInput& input) {
                 input.gamepadAxis2Raw,
                 input.gamepadAxis3Raw);
             DrawText(axesText, 8, 8, 10, RAYWHITE);
+
+        const profiling::ScopeView aiView = profiling::Profiler::Instance().GetScopeView(profiling::Scope::AiUpdate);
+        const profiling::ScopeView pathView =
+            profiling::Profiler::Instance().GetScopeView(profiling::Scope::PathfindingTotal);
+        const profiling::ScopeView physicsView = profiling::Profiler::Instance().GetCombinedScopeView(
+            profiling::Scope::PhysicsCollisionUpdate,
+            profiling::Scope::EnemyFrontalCollisions,
+            profiling::Scope::EnemySeparation);
+        const profiling::AllocationSnapshot allocationView =
+            profiling::Profiler::Instance().LastFrameAllocationSnapshot();
+        char profileText[220] = {};
+        std::snprintf(
+            profileText,
+            sizeof(profileText),
+            "AI %.2f PF %.2f PH %.2f | A +%llu/-%llu B +%lluk/-%lluk L %lluk P %lluk",
+            aiView.avgMs,
+            pathView.avgMs,
+            physicsView.avgMs,
+            static_cast<unsigned long long>(aiView.allocLastFrame.allocCount + pathView.allocLastFrame.allocCount +
+                physicsView.allocLastFrame.allocCount),
+            static_cast<unsigned long long>(aiView.allocLastFrame.freeCount + pathView.allocLastFrame.freeCount +
+                physicsView.allocLastFrame.freeCount),
+            static_cast<unsigned long long>((aiView.allocLastFrame.bytesAllocated +
+                                                pathView.allocLastFrame.bytesAllocated +
+                                                physicsView.allocLastFrame.bytesAllocated) /
+                1024ULL),
+            static_cast<unsigned long long>((aiView.allocLastFrame.bytesFreed +
+                                                pathView.allocLastFrame.bytesFreed +
+                                                physicsView.allocLastFrame.bytesFreed) /
+                1024ULL),
+            static_cast<unsigned long long>(allocationView.liveBytes / 1024ULL),
+            static_cast<unsigned long long>(allocationView.peakLiveBytes / 1024ULL));
+        DrawText(profileText, 8, 20, 10, LIGHTGRAY);
 
             char countsText[96] = {};
             std::snprintf(

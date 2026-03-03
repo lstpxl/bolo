@@ -80,6 +80,7 @@ add_executable(
     src/app/AppConfig.cpp
     src/app/BuildInfo.cpp
     src/app/GameApp.cpp
+    src/core/Profiling.cpp
     src/core/Random.cpp
     src/core/Time.cpp
     src/game/GameModeController.cpp

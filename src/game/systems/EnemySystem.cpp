@@ -7,6 +7,7 @@
 #include <limits>
 #include <queue>
 #include <vector>
+#include "core/Profiling.h"
 #include "core/Random.h"
 #include "game/systems/ProjectileSystem.h"
 #include "raylib.h"
@@ -512,6 +513,7 @@ void BuildEnemyOccupancy(const GameState& state, int ignoreEnemyIndex, std::vect
 }
 
 bool BuildAssassinPath(GameState& state, EnemyTank& enemy, int enemyIndex) {
+    profiling::ScopedProfile totalScope(profiling::Scope::PathfindingTotal, true);
     const int width = state.world.maze.widthCells;
     const int height = state.world.maze.heightCells;
     const int totalCells = width * height;
@@ -532,7 +534,10 @@ bool BuildAssassinPath(GameState& state, EnemyTank& enemy, int enemyIndex) {
     }
 
     std::vector<bool> occupied{};
-    BuildEnemyOccupancy(state, enemyIndex, occupied);
+    {
+        profiling::ScopedProfile occupancyScope(profiling::Scope::PathfindingOccupancy, true);
+        BuildEnemyOccupancy(state, enemyIndex, occupied);
+    }
     occupied[static_cast<std::size_t>(startIndex)] = false;
     occupied[static_cast<std::size_t>(goalIndex)] = false;
 
@@ -546,45 +551,48 @@ bool BuildAssassinPath(GameState& state, EnemyTank& enemy, int enemyIndex) {
     const std::array<int, 4> dx{1, -1, 0, 0};
     const std::array<int, 4> dy{0, 0, 1, -1};
     bool found = false;
-    while (!openSet.empty()) {
-        const OpenNode top = openSet.top();
-        openSet.pop();
-        AStarNode& current = nodes[static_cast<std::size_t>(top.index)];
-        if (current.closed) {
-            continue;
-        }
-        current.closed = true;
-        if (top.index == goalIndex) {
-            found = true;
-            break;
-        }
-
-        const int x = top.index % width;
-        const int y = top.index / width;
-        for (int i = 0; i < 4; ++i) {
-            const int nx = x + dx[static_cast<std::size_t>(i)];
-            const int ny = y + dy[static_cast<std::size_t>(i)];
-            if (!CanStepToNeighbor(state.world, x, y, nx, ny)) {
+    {
+        profiling::ScopedProfile searchScope(profiling::Scope::PathfindingSearch, true);
+        while (!openSet.empty()) {
+            const OpenNode top = openSet.top();
+            openSet.pop();
+            AStarNode& current = nodes[static_cast<std::size_t>(top.index)];
+            if (current.closed) {
                 continue;
             }
-            const int ni = CellIndex(state.world, nx, ny);
-            if (occupied[static_cast<std::size_t>(ni)] && ni != goalIndex) {
-                continue;
+            current.closed = true;
+            if (top.index == goalIndex) {
+                found = true;
+                break;
             }
 
-            AStarNode& neighbor = nodes[static_cast<std::size_t>(ni)];
-            if (neighbor.closed) {
-                continue;
+            const int x = top.index % width;
+            const int y = top.index / width;
+            for (int i = 0; i < 4; ++i) {
+                const int nx = x + dx[static_cast<std::size_t>(i)];
+                const int ny = y + dy[static_cast<std::size_t>(i)];
+                if (!CanStepToNeighbor(state.world, x, y, nx, ny)) {
+                    continue;
+                }
+                const int ni = CellIndex(state.world, nx, ny);
+                if (occupied[static_cast<std::size_t>(ni)] && ni != goalIndex) {
+                    continue;
+                }
+
+                AStarNode& neighbor = nodes[static_cast<std::size_t>(ni)];
+                if (neighbor.closed) {
+                    continue;
+                }
+                const float tentativeG = current.g + 1.0F;
+                if (tentativeG >= neighbor.g) {
+                    continue;
+                }
+                neighbor.parent = top.index;
+                neighbor.g = tentativeG;
+                neighbor.f = tentativeG + HeuristicManhattan(nx, ny, goalX, goalY);
+                neighbor.open = true;
+                openSet.push(OpenNode{.index = ni, .f = neighbor.f});
             }
-            const float tentativeG = current.g + 1.0F;
-            if (tentativeG >= neighbor.g) {
-                continue;
-            }
-            neighbor.parent = top.index;
-            neighbor.g = tentativeG;
-            neighbor.f = tentativeG + HeuristicManhattan(nx, ny, goalX, goalY);
-            neighbor.open = true;
-            openSet.push(OpenNode{.index = ni, .f = neighbor.f});
         }
     }
 
@@ -594,46 +602,53 @@ bool BuildAssassinPath(GameState& state, EnemyTank& enemy, int enemyIndex) {
         return false;
     }
 
-    std::vector<int> pathCells{};
-    int trace = goalIndex;
-    while (trace != -1) {
-        pathCells.push_back(trace);
-        if (trace == startIndex) {
-            break;
+    {
+        profiling::ScopedProfile postprocessScope(profiling::Scope::PathfindingPostprocess, true);
+        std::vector<int> pathCells{};
+        int trace = goalIndex;
+        while (trace != -1) {
+            pathCells.push_back(trace);
+            if (trace == startIndex) {
+                break;
+            }
+            trace = nodes[static_cast<std::size_t>(trace)].parent;
         }
-        trace = nodes[static_cast<std::size_t>(trace)].parent;
-    }
-    if (pathCells.empty() || pathCells.back() != startIndex) {
+        if (pathCells.empty() || pathCells.back() != startIndex) {
+            enemy.pathWaypointCount = 0;
+            enemy.pathWaypointIndex = 0;
+            return false;
+        }
+        std::reverse(pathCells.begin(), pathCells.end());
+
         enemy.pathWaypointCount = 0;
         enemy.pathWaypointIndex = 0;
-        return false;
-    }
-    std::reverse(pathCells.begin(), pathCells.end());
-
-    enemy.pathWaypointCount = 0;
-    enemy.pathWaypointIndex = 0;
-    int lastStepX = 0;
-    int lastStepY = 0;
-    for (int i = 1; i < static_cast<int>(pathCells.size()); ++i) {
-        const int prev = pathCells[static_cast<std::size_t>(i - 1)];
-        const int curr = pathCells[static_cast<std::size_t>(i)];
-        const int px = prev % width;
-        const int py = prev / width;
-        const int cx = curr % width;
-        const int cy = curr / width;
-        const int stepX = cx - px;
-        const int stepY = cy - py;
-        const bool turnPoint = (i == 1) || (stepX != lastStepX) || (stepY != lastStepY) || (i == static_cast<int>(pathCells.size()) - 1);
-        lastStepX = stepX;
-        lastStepY = stepY;
-        if (!turnPoint) {
-            continue;
+        int lastStepX = 0;
+        int lastStepY = 0;
+        for (int i = 1; i < static_cast<int>(pathCells.size()); ++i) {
+            const int prev = pathCells[static_cast<std::size_t>(i - 1)];
+            const int curr = pathCells[static_cast<std::size_t>(i)];
+            const int px = prev % width;
+            const int py = prev / width;
+            const int cx = curr % width;
+            const int cy = curr / width;
+            const int stepX = cx - px;
+            const int stepY = cy - py;
+            const bool turnPoint =
+                (i == 1) ||
+                (stepX != lastStepX) ||
+                (stepY != lastStepY) ||
+                (i == static_cast<int>(pathCells.size()) - 1);
+            lastStepX = stepX;
+            lastStepY = stepY;
+            if (!turnPoint) {
+                continue;
+            }
+            if (enemy.pathWaypointCount >= EnemyTank::kMaxPathWaypoints) {
+                break;
+            }
+            enemy.pathWaypoints[static_cast<std::size_t>(enemy.pathWaypointCount)] = CellCenter(state.world, cx, cy);
+            ++enemy.pathWaypointCount;
         }
-        if (enemy.pathWaypointCount >= EnemyTank::kMaxPathWaypoints) {
-            break;
-        }
-        enemy.pathWaypoints[static_cast<std::size_t>(enemy.pathWaypointCount)] = CellCenter(state.world, cx, cy);
-        ++enemy.pathWaypointCount;
     }
     return enemy.pathWaypointCount > 0;
 }
@@ -657,6 +672,7 @@ bool BuildAssassinPathToFarRandomTarget(
     EnemyTank& enemy,
     int enemyIndex,
     Random& random) {
+    profiling::ScopedProfile scope(profiling::Scope::PathfindingFarTarget, true);
     constexpr float kMinRandomTargetDistanceUnits = 24.0F;
     constexpr int kMaxTargetAttempts = 24;
     for (int attempt = 0; attempt < kMaxTargetAttempts; ++attempt) {
@@ -1119,6 +1135,7 @@ bool IsMovementBlockedByEnemies(
 }
 
 void ResolveEnemySeparation(WorldState& world) {
+    profiling::ScopedProfile scope(profiling::Scope::EnemySeparation, true);
     for (int i = 0; i < static_cast<int>(world.enemies.size()); ++i) {
         EnemyTank& a = world.enemies[static_cast<std::size_t>(i)];
         if (!a.alive) {
@@ -1176,6 +1193,7 @@ void ResolveEnemySeparation(WorldState& world) {
 }
 
 void ResolveEnemyFrontalCollisions(WorldState& world, const std::vector<Vec2f>& frameStartPositions) {
+    profiling::ScopedProfile scope(profiling::Scope::EnemyFrontalCollisions, true);
     for (int i = 0; i < static_cast<int>(world.enemies.size()); ++i) {
         EnemyTank& a = world.enemies[static_cast<std::size_t>(i)];
         if (!a.alive) {
@@ -1203,6 +1221,7 @@ void ResolveEnemyFrontalCollisions(WorldState& world, const std::vector<Vec2f>& 
 }  // namespace
 
 void UpdateEnemySystem(GameState& state, const AppConfig& config, float deltaSeconds) {
+    profiling::ScopedProfile scope(profiling::Scope::EnemyUpdate, true);
     static Random random(static_cast<std::uint32_t>(GetTime() * 1000.0));
     const bool playerInvisible = state.menuSettings.invisibility;
     std::vector<Vec2f> frameStartPositions{};

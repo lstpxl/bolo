@@ -6,6 +6,7 @@
 #include "game/systems/PlayerSystem.h"
 #include "game/systems/ProjectileSystem.h"
 #include "game/systems/SpawnerSystem.h"
+#include "core/Profiling.h"
 #include <algorithm>
 
 GameMode Game::Mode() const {
@@ -36,6 +37,7 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const AppConfig& 
     if (modeController_.Mode() != GameMode::Playing) {
         return;
     }
+    profiling::ScopedProfile gameScope(profiling::Scope::GameUpdate, true);
 
     auto beginDeathMode = [&]() {
         if (state_.world.deathModeRemainingSeconds > 0.0F) {
@@ -78,17 +80,33 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const AppConfig& 
         !state_.world.player.alive;
 
     // Target order: Input -> AI -> Movement -> Collision -> Combat -> Spawning -> Fuel/Rules -> Cleanup.
-    UpdateEnemySystem(state_, config, deltaSeconds);
+    {
+        profiling::ScopedProfile scope(profiling::Scope::AiUpdate, true);
+        UpdateEnemySystem(state_, config, deltaSeconds);
+    }
     if (!playerLocked) {
+        profiling::ScopedProfile scope(profiling::Scope::PlayerUpdate);
         UpdatePlayerSystem(state_, input, deltaSeconds);
     } else {
         state_.world.player.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
         state_.world.player.throttleNormalized = 0.0F;
     }
-    UpdateProjectileSystem(state_, deltaSeconds);
-    UpdateCollisionSystem(state_, deltaSeconds);
-    UpdateSpawnerSystem(state_, deltaSeconds);
-    UpdateMazeSystem(state_, deltaSeconds);
+    {
+        profiling::ScopedProfile scope(profiling::Scope::ProjectileUpdate);
+        UpdateProjectileSystem(state_, deltaSeconds);
+    }
+    {
+        profiling::ScopedProfile scope(profiling::Scope::PhysicsCollisionUpdate, true);
+        UpdateCollisionSystem(state_, deltaSeconds);
+    }
+    {
+        profiling::ScopedProfile scope(profiling::Scope::SpawnerUpdate);
+        UpdateSpawnerSystem(state_, deltaSeconds);
+    }
+    {
+        profiling::ScopedProfile scope(profiling::Scope::MazeUpdate);
+        UpdateMazeSystem(state_, deltaSeconds);
+    }
 
     if (!state_.world.player.alive &&
         state_.world.playerTurnLostPending &&

@@ -216,3 +216,14 @@ Game layer must stay framework-agnostic and render through `IRenderer`.
 ```
 
 This structure is directional guidance, not a requirement to rename all files immediately.
+
+## TODO: Cross-Platform Multithreading
+
+- Use C++ standard threading (`std::jthread`/`std::thread`) for background calculations only.
+- Keep all raylib-facing work on the main thread (window/input/render/audio API calls).
+- Start with one worker thread (or a very small fixed pool) to keep behavior stable on both macOS and RG353V.
+- Good candidates:
+  - enemy pathfinding precompute and route scoring
+  - visibility/line-of-sight grid precompute
+  - spawn-point candidate evaluation
+  - AI utility scoring over immutable world snapshots
