@@ -231,6 +231,19 @@ World rendering is in `src/platform/Renderer2D.cpp`.
 - Gameplay view also draws a bottom-left single-line counter at font size `10`: alive bases and alive enemies by type (`B/D/T/H/A`).
 - HUD minimap plots alive enemies as single-pixel markers in their corresponding colors, bases as `3x3` pixel squares, and player as a larger cyan marker.
 
+## Audio Events
+
+- `resources/audio/power-up.wav`: played when fueling start mode begins (game start and respawn refill).
+- `resources/audio/player-shot.wav`: played when player projectile count increases (player fires).
+- `resources/audio/enemy-shot.wav`: played when enemy projectile count increases (enemy fires).
+- `resources/audio/enemy-spawning.wav`: played when alive enemy count increases (enemy spawned).
+- `resources/audio/enemy-exploding.wav`: played when alive enemy count decreases (enemy destroyed).
+- `resources/audio/base-exploding.wav`: played when alive base count decreases (base destroyed).
+- Distance attenuation for gameplay sounds:
+  - If source distance `d > 10 * 6` world-units, sound is not played.
+  - If `d <= 3 * 6`, full volume is used.
+  - If `3 * 6 < d <= 10 * 6`, volume is `V = 1 - (d - r1) / (r2 - r1)` with `r1 = 3 * 6`, `r2 = 10 * 6`.
+
 ## Main Menu UX
 
 Menu rendering is in `src/ui/MenuScreen.cpp`.
