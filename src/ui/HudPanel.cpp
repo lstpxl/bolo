@@ -5,6 +5,29 @@
 #include "platform/PlayerFigure.h"
 #include "raylib.h"
 
+namespace {
+constexpr Color kDroneMapColor{138, 43, 226, 255};      // #8A2BE2
+constexpr Color kTorpedoMapColor{255, 255, 0, 255};     // #FFFF00
+constexpr Color kHunterMapColor{255, 165, 0, 255};      // #FFA500
+constexpr Color kAssassinMapColor{255, 0, 0, 255};      // #FF0000
+constexpr Color kPlayerMapColor{0, 255, 255, 255};      // #00FFFF
+constexpr Color kBaseMapColor{255, 0, 255, 255};        // #FF00FF
+constexpr Color kDestroyedBaseMapColor{204, 204, 204, 255}; // #CCCCCC
+
+Color EnemyMapColor(EnemyType type) {
+    if (type == EnemyType::Drone) {
+        return kDroneMapColor;
+    }
+    if (type == EnemyType::Torpedo) {
+        return kTorpedoMapColor;
+    }
+    if (type == EnemyType::Hunter) {
+        return kHunterMapColor;
+    }
+    return kAssassinMapColor;
+}
+}  // namespace
+
 void HudPanel::Render(const GameState& state, const AppConfig& config, const FrameInput& input) const {
     const int hudWidth = ComputeHudWidth(config);
     const Rectangle panel = {
@@ -95,13 +118,38 @@ void HudPanel::Render(const GameState& state, const AppConfig& config, const Fra
     DrawRectangleLines(contentX, mapY, mapSize, mapSize, RAYWHITE);
     const float mazeWidth = static_cast<float>(state.world.maze.widthCells * state.world.maze.cellSizeUnits);
     const float mazeHeight = static_cast<float>(state.world.maze.heightCells * state.world.maze.cellSizeUnits);
+    const auto mapPixelX = [&](float worldX) {
+        const float normalized = mazeWidth > 0.0F ? worldX / mazeWidth : 0.5F;
+        return contentX + static_cast<int>(
+            std::max(0.0F, std::min(1.0F, normalized)) * static_cast<float>(mapSize - 1));
+    };
+    const auto mapPixelY = [&](float worldY) {
+        const float normalized = mazeHeight > 0.0F ? worldY / mazeHeight : 0.5F;
+        return mapY + static_cast<int>(
+            std::max(0.0F, std::min(1.0F, normalized)) * static_cast<float>(mapSize - 1));
+    };
+
+    for (const EnemyBase& base : state.world.enemyBases) {
+        const int px = mapPixelX(base.position.x);
+        const int py = mapPixelY(base.position.y);
+        DrawRectangle(px - 1, py - 1, 3, 3, base.destroyed ? kDestroyedBaseMapColor : kBaseMapColor);
+    }
+    for (const EnemyTank& enemy : state.world.enemies) {
+        if (!enemy.alive) {
+            continue;
+        }
+        const int px = mapPixelX(enemy.position.x);
+        const int py = mapPixelY(enemy.position.y);
+        DrawPixel(px, py, EnemyMapColor(enemy.type));
+    }
+
     const float normalizedX = mazeWidth > 0.0F ? state.world.player.position.x / mazeWidth : 0.5F;
     const float normalizedY = mazeHeight > 0.0F ? state.world.player.position.y / mazeHeight : 0.5F;
     const int dotX = contentX + static_cast<int>(
         std::max(0.0F, std::min(1.0F, normalizedX)) * static_cast<float>(mapSize - 1));
     const int dotY = mapY + static_cast<int>(
         std::max(0.0F, std::min(1.0F, normalizedY)) * static_cast<float>(mapSize - 1));
-    DrawCircle(dotX, dotY, 2.0F, GREEN);
+    DrawCircle(dotX, dotY, 2.0F, kPlayerMapColor);
 
     // 7) Base direction quadrants + player heading indicator (moved near map)
     const int blockGap = 8;

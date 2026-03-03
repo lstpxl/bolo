@@ -146,6 +146,12 @@ enum class EnemyAiMode {
     Path,
 };
 
+enum class TorpedoMoveMode {
+    Move,
+    Retreat,
+    Rotate,
+};
+
 struct EnemyTank {
     static constexpr int kMaxPathWaypoints = 96;
 
@@ -164,6 +170,9 @@ struct EnemyTank {
     Vec2f wanderDirection{.x = 0.0F, .y = -1.0F};
     int watchRotateDirection = 1;
     bool returnToBase = false;
+    TorpedoMoveMode torpedoMoveMode = TorpedoMoveMode::Move;
+    float torpedoStraightDistanceSinceTurnUnits = 3.0F;
+    float torpedoRotateTargetHeadingRadians = 0.0F;
     int originBaseIndex = -1;
     std::array<Vec2f, kMaxPathWaypoints> pathWaypoints{};
     int pathWaypointCount = 0;

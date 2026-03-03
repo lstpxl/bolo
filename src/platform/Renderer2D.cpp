@@ -16,7 +16,9 @@ constexpr int kPlayerBodyRowIndex = 0;
 constexpr int kPlayerBarrelRowIndex = 1;
 constexpr int kEnemySpriteSheetCellSize = 9;
 constexpr int kEnemySpriteFirstRowIndex = 3;
-constexpr int kPlayerRenderSizePx = 16;
+constexpr int kTankSpriteRenderScale = 2;
+constexpr int kPlayerRenderSizePx = kSpriteSheetCellSize * kTankSpriteRenderScale;
+constexpr int kEnemyRenderSizePx = kEnemySpriteSheetCellSize * kTankSpriteRenderScale;
 
 constexpr Color ColorFromHexRGB(std::uint32_t hex) {
     return Color{
@@ -34,6 +36,7 @@ constexpr std::uint32_t kDroneHex = 0x8A2BE2;
 constexpr std::uint32_t kTorpedoHex = 0xFFFF00;
 constexpr std::uint32_t kHunterHex = 0xFFA500;
 constexpr std::uint32_t kAssassinHex = 0xFF0000;
+constexpr std::uint32_t kEnemyBaseShellHex = 0xCC66CC;
 constexpr std::uint32_t kEnemyBaseHex = 0xFF00FF;
 constexpr std::uint32_t kPlayerShellHex = 0xFFFFFF;
 constexpr std::uint32_t kEnemyShellHex = 0xFFB000;
@@ -45,6 +48,7 @@ constexpr Color kDroneColor = ColorFromHexRGB(kDroneHex);
 constexpr Color kTorpedoColor = ColorFromHexRGB(kTorpedoHex);
 constexpr Color kHunterColor = ColorFromHexRGB(kHunterHex);
 constexpr Color kAssassinColor = ColorFromHexRGB(kAssassinHex);
+constexpr Color kEnemyBaseShellColor = ColorFromHexRGB(kEnemyBaseShellHex);
 constexpr Color kEnemyBaseColor = ColorFromHexRGB(kEnemyBaseHex);
 constexpr Color kPlayerShellColor = ColorFromHexRGB(kPlayerShellHex);
 constexpr Color kEnemyShellColor = ColorFromHexRGB(kEnemyShellHex);
@@ -525,17 +529,37 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
     const Vector2 playerRenderPosition = SnapWorldToPixelGrid(state.world.player.position);
     const int baseSizePixels = UnitsToPixels(GameplayConstants::kEnemyBaseSizeUnits);
     const int baseHalfPixels = baseSizePixels / 2;
+    const int baseCenterHolePixels = UnitsToPixels(1.0F) + 8;
+    const int baseCenterHoleHalfPixels = baseCenterHolePixels / 2;
+    const int baseCoreDiameterPixels = std::max(2, baseCenterHolePixels - 10);
+    const float baseCoreRadiusPixels = static_cast<float>(baseCoreDiameterPixels) * 0.5F;
     for (const EnemyBase& base : state.world.enemyBases) {
         const Vector2 baseScreenPosition = WorldToSnappedScreen(base.position, camera);
+        const int centerX = RoundToInt(baseScreenPosition.x);
+        const int centerY = RoundToInt(baseScreenPosition.y);
+        const Color baseShellColor = base.destroyed ? kWallsColor : kEnemyBaseShellColor;
+        const Color baseCoreColor = base.destroyed ? kWallsColor : kEnemyBaseColor;
+
+        // Draw base shell (3x3 units), carve 1x1 empty center, then draw core disc inside.
         DrawRectangle(
-            RoundToInt(baseScreenPosition.x) - baseHalfPixels,
-            RoundToInt(baseScreenPosition.y) - baseHalfPixels,
+            centerX - baseHalfPixels,
+            centerY - baseHalfPixels,
             baseSizePixels,
             baseSizePixels,
-            base.destroyed ? kWallsColor : kEnemyBaseColor);
+            baseShellColor);
+        DrawRectangle(
+            centerX - baseCenterHoleHalfPixels,
+            centerY - baseCenterHoleHalfPixels,
+            baseCenterHolePixels,
+            baseCenterHolePixels,
+            kBackgroundColor);
+        DrawCircleV(
+            Vector2{static_cast<float>(centerX), static_cast<float>(centerY)},
+            baseCoreRadiusPixels,
+            baseCoreColor);
     }
 
-    const int enemySizePixels = UnitsToPixels(GameplayConstants::kEntitySizeUnits);
+    const int enemySizePixels = kEnemyRenderSizePx;
     const int enemyHalfPixels = enemySizePixels / 2;
     for (const EnemyTank& enemy : state.world.enemies) {
         if (!enemy.alive) {
