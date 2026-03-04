@@ -7,6 +7,32 @@
 
 This document consolidates two independent analyses and serves as the canonical optimization strategy.
 
+### Phase 1 Implementation (2025-03-03)
+
+| Task | Status | Notes |
+|------|--------|-------|
+| 1.1 Unify geometry | Done | `FreeDistanceAhead`, `FreeDistanceAheadWithEnemies`, `IsSegmentObscuredByWall` moved to `game::geometry::WorldGeometry` |
+| 1.2 Coarser ray sampling | Done | `kRaySampleSpacing` 0.08 → 0.12 in `WorldGeometry.cpp` |
+| 1.3 Pre-filter in FreeDistanceAheadWithEnemies | Done | Candidates within `probeDistance + separationRadius` of `from`; uses `DistanceSq` in inner loop |
+| 1.4 Pathfinding alloc pool | Done | `PathfindingPool` with reused `occupied`, `nodes`, `openHeap`, `pathCells`; manual heap instead of `priority_queue` |
+| 1.5 Distance vs DistanceSq | Done | `BuildAssassinPathToFarRandomTarget`, `TrySeparationTurn`, `ResolveEnemySeparation`, overlap check in movement loop |
+
+### Phase 2 Implementation (2025-03-03)
+
+| Task | Status | Notes |
+|------|--------|-------|
+| 2.1 Grid broad phase | Done | `game::spatial::EnemySpatialGrid`; `ResolveEnemyFrontalCollisions` uses `BuildFromSegments` + `ForEachPairInSameOrAdjacentCell` |
+| 2.2 Grid for separation | Done | `ResolveEnemySeparation` uses `BuildFromPositions` + same pair iteration; shared grid instance |
+| 2.3 Cell index for FreeDistanceAheadWithEnemies | Done | Optional `spatialGrid` param; when provided, uses `GetEnemiesAlongRay`; grid built once per frame from frame-start positions |
+
+### Phase 3 Implementation (2025-03-03)
+
+| Task | Status | Notes |
+|------|--------|-------|
+| 3.1 Repath throttling | Pending | |
+| 3.2 Adaptive ray sampling | Done | `AdaptiveStepAt`; finer 0.08 near origin, coarser 0.20 far; applied to `FreeDistanceAhead`, `FreeDistanceAheadWithEnemies`, `IsSegmentObscuredByWall` |
+| 3.3 Occupancy incremental update | Pending | |
+
 ---
 
 ## 0. Performance and Optimization Ideas (Concepts)
@@ -33,7 +59,7 @@ With 63 enemies:
 
 ### Raycasting cost and sampling
 
-`FreeDistanceAhead` samples every 0.08 units along a ray. For 6 units: 6/0.08 ≈ 75 samples. Each sample: cell lookup + wall check. Torpedo AI may call this many times per frame with `FreeDistanceAheadWithEnemies`, which adds an inner loop over all 63 enemies. Reducing samples (e.g. 0.12 → ~50) or filtering enemies before the inner loop cuts work proportionally.
+`FreeDistanceAhead` samples every 0.12 units along a ray (Phase 1.2). For 6 units: 6/0.12 ≈ 50 samples. Each sample: cell lookup + wall check. Torpedo AI may call this many times per frame with `FreeDistanceAheadWithEnemies`, which adds an inner loop over all 63 enemies. Reducing samples (e.g. 0.12 → ~50) or filtering enemies before the inner loop cuts work proportionally.
 
 ### DistanceSq vs Distance
 
@@ -57,7 +83,7 @@ Keeping related data contiguous (e.g. all positions in one array) improves cache
 
 | Category | Examples | Current Complexity | Profile Impact | Notes |
 |----------|-----------|--------------------|----------------|-------|
-| **Ray / clearance queries** | `FreeDistanceAhead`, `FreeDistanceAheadWithEnemies` | O(steps) per ray; `WithEnemies` adds O(steps × n) | 5–12% (via torpedo, decision, hunter) | `sampleSpacing=0.08` → ~75–200 steps per 6–16 unit ray |
+| **Ray / clearance queries** | `FreeDistanceAhead`, `FreeDistanceAheadWithEnemies` | O(steps) per ray; `WithEnemies` adds O(steps × candidates) | 5–12% (via torpedo, decision, hunter) | `kRaySampleSpacing=0.12`; pre-filter limits candidates |
 | **Point-in-cell queries** | `IsPointInWall`, `HitsWallAtPoint` | O(1) per point | Indirect (inside rays/segments) | Duplicated in EnemySystem, SpawnerSystem, CollisionSystem |
 | **Segment–segment distance** | `SegmentToSegmentDistance` | O(1) per pair | ~2% (frontal collisions) | Called for all pairs in `ResolveEnemyFrontalCollisions` |
 | **Pairwise separation** | `ResolveEnemySeparation` | O(n²) | ~2% | All-pairs distance + `IsPointInWall` for moved positions |
@@ -129,7 +155,7 @@ Keeping related data contiguous (e.g. all positions in one array) improves cache
 | Task | Files | Action | Rationale |
 |------|-------|--------|-----------|
 | **3.1** Repath throttling | EnemySystem | Limit assassin repath to once per N seconds or when path invalidated; reuse cached path otherwise | Reduces A* call count |
-| **3.2** Adaptive ray sampling | Geometry module | Use finer spacing near origin, coarser far away; or binary-search style probe | Fewer samples for long rays when obstacle far |
+| **3.2** Adaptive ray sampling | WorldGeometry.cpp | Done. `AdaptiveStepAt`; finer 0.08 near origin, coarser 0.20 far; applied to `FreeDistanceAhead`, `FreeDistanceAheadWithEnemies`, `IsSegmentObscuredByWall` | Fewer samples for long rays when obstacle far |
 | **3.3** Occupancy incremental update | EnemySystem | Maintain `occupied[]` grid; on enemy move, flip old/new cell bits; avoid full `BuildEnemyOccupancy` each pathfind | O(n) full clear → O(1) per move when pathfinding |
 
 ### Phase 4 — Threading (per ARCHITECTURE.md TODO)

@@ -9,7 +9,17 @@
 namespace game::geometry {
 
 namespace {
-constexpr float kRaySampleSpacing = 0.12F;
+constexpr float kAdaptiveFineSpacing = 0.08F;    // near origin (precise collision)
+constexpr float kAdaptiveCoarseSpacing = 0.20F; // far from origin (detection only)
+
+/// Returns the next step size for adaptive sampling. Step grows with distance from origin.
+float AdaptiveStepAt(float distFromOrigin, float maxDistance) {
+    if (maxDistance <= 0.001F) {
+        return kAdaptiveFineSpacing;
+    }
+    const float t = std::min(1.0F, distFromOrigin / maxDistance);
+    return kAdaptiveFineSpacing + t * (kAdaptiveCoarseSpacing - kAdaptiveFineSpacing);
+}
 }  // namespace
 
 bool IsPointInsideMaze(const WorldState& world, const Vec2f& point, float clearanceUnits) {
@@ -86,13 +96,15 @@ bool IsSegmentObscuredByWall(const WorldState& world, const Vec2f& from, const V
     if (length <= 0.001F) {
         return false;
     }
-    const int steps = std::max(1, static_cast<int>(std::ceil(length / kRaySampleSpacing)));
-    for (int i = 1; i < steps; ++i) {
-        const float t = static_cast<float>(i) / static_cast<float>(steps);
+    const float invLen = 1.0F / length;
+    float dist = kAdaptiveFineSpacing;
+    while (dist < length) {
+        const float t = dist * invLen;
         const Vec2f sample{.x = from.x + dx * t, .y = from.y + dy * t};
         if (IsPointInWall(world, sample, 0.0F)) {
             return true;
         }
+        dist += AdaptiveStepAt(dist, length);
     }
     return false;
 }
@@ -103,16 +115,20 @@ float FreeDistanceAhead(const WorldState& world, const Vec2f& from, float headin
         clearanceUnits > 0.0F ? clearanceUnits * planningClearanceScale : clearanceUnits;
     const Vec2f dir = core::angle::DirectionFromHeading(headingRadians);
     const bool startsInsideBase = IsPointInUndestroyedBase(world, from, planningClearance);
-    const int steps = std::max(1, static_cast<int>(std::ceil(maxDistance / kRaySampleSpacing)));
-    for (int i = 1; i <= steps; ++i) {
-        const float dist = std::min(maxDistance, static_cast<float>(i) * kRaySampleSpacing);
-        const Vec2f sample{.x = from.x + dir.x * dist, .y = from.y + dir.y * dist};
+    float dist = kAdaptiveFineSpacing;
+    while (dist <= maxDistance) {
+        const float clampedDist = std::min(dist, maxDistance);
+        const Vec2f sample{.x = from.x + dir.x * clampedDist, .y = from.y + dir.y * clampedDist};
         if (IsPointInWall(world, sample, planningClearance)) {
-            return dist;
+            return clampedDist;
         }
         if (!startsInsideBase && IsPointInUndestroyedBase(world, sample, planningClearance)) {
-            return dist;
+            return clampedDist;
         }
+        if (clampedDist >= maxDistance) {
+            break;
+        }
+        dist += AdaptiveStepAt(dist, maxDistance);
     }
     return maxDistance;
 }
@@ -152,19 +168,23 @@ float FreeDistanceAheadWithEnemies(const WorldState& world,
 
     const Vec2f dir = core::angle::DirectionFromHeading(headingRadians);
     const float sepSq = separationRadius * separationRadius;
-    const int steps = std::max(1, static_cast<int>(std::ceil(probeDistance / kRaySampleSpacing)));
-    for (int i = 1; i <= steps; ++i) {
-        const float dist = std::min(probeDistance, static_cast<float>(i) * kRaySampleSpacing);
-        const Vec2f sample{.x = from.x + dir.x * dist, .y = from.y + dir.y * dist};
+    float dist = kAdaptiveFineSpacing;
+    while (dist <= probeDistance) {
+        const float clampedDist = std::min(dist, probeDistance);
+        const Vec2f sample{.x = from.x + dir.x * clampedDist, .y = from.y + dir.y * clampedDist};
         for (int ei : candidateIndices) {
             const EnemyTank& other = enemies[static_cast<std::size_t>(ei)];
             const float sdx = sample.x - other.position.x;
             const float sdy = sample.y - other.position.y;
             const float distSq = sdx * sdx + sdy * sdy;
             if (distSq < sepSq) {
-                return dist;
+                return clampedDist;
             }
         }
+        if (clampedDist >= probeDistance) {
+            break;
+        }
+        dist += AdaptiveStepAt(dist, probeDistance);
     }
     return probeDistance;
 }
