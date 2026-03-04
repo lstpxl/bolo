@@ -31,13 +31,13 @@ constexpr Color ColorFromHexRGB(std::uint32_t hex) {
 
 constexpr std::uint32_t kBackgroundHex = 0x000000;
 constexpr std::uint32_t kWallsHex = 0xCCCCCC;
-constexpr std::uint32_t kDestroyedBaseHex = 0x606060;
-constexpr std::uint32_t kPlayerHex = 0x00FFFF;
-constexpr std::uint32_t kDroneHex = 0x8A2BE2;
+constexpr std::uint32_t kDestroyedBaseHex = 0x404040;
+constexpr std::uint32_t kPlayerHex = 0x00C030;
+constexpr std::uint32_t kDroneHex = 0xA0FF00;
 constexpr std::uint32_t kTorpedoHex = 0xFFFF00;
 constexpr std::uint32_t kHunterHex = 0xFFA500;
-constexpr std::uint32_t kAssassinHex = 0xFF0000;
-constexpr std::uint32_t kEnemyBaseShellHex = 0xCC66CC;
+constexpr std::uint32_t kAssassinHex = 0xFF6500;
+constexpr std::uint32_t kEnemyBaseShellHex = 0xA050A0;
 constexpr std::uint32_t kEnemyBaseHex = 0xFF00FF;
 constexpr std::uint32_t kPlayerShellHex = 0xFFFFFF;
 constexpr std::uint32_t kEnemyShellHex = 0xFFB000;

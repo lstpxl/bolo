@@ -221,12 +221,12 @@ World rendering is in `src/platform/Renderer2D.cpp`.
 - Game world uses full screen area except HUD region.
 - Camera target follows player and snaps to pixel grid.
 - Maze walls are rendered in screen space at fixed 2px thickness for handheld stability.
-- Current gameplay palette (hex): background `#000000`, walls `#CCCCCC`, player `#00FFFF`, drone `#8A2BE2`, torpedo `#FFFF00`, hunter `#FFA500`, assassin `#FF0000`, enemy base shell `#CC66CC`, enemy base core `#FF00FF`, destroyed base `#606060`, player shell `#FFFFFF`, enemy shell `#FFB000`.
+- Current gameplay palette (hex): background `#000000`, walls `#CCCCCC`, player `#00C030`, drone `#A0FF00`, torpedo `#FFFF00`, hunter `#FFA500`, assassin `#FF6500`, enemy base shell `#CC66CC`, enemy base core `#FF00FF`, destroyed base `#404040`, player shell `#FFFFFF`, enemy shell `#FFB000`.
 - Visible maze cell range is culled for rendering performance.
 - Enemy tanks and bases are rendered in pixel-snapped screen space (derived from world positions) to match wall stability on handheld displays.
 - Base visuals use a `3x3` unit shell with an empty center square sized as `(1 unit + 8 px)`; a centered "core" disc is drawn inside the hole with diameter `(center hole - 10 px)`.
 - Enemy tank visuals load from `resources/textures/sprites.png` (`2x7` grid, `9x9` cells). Rows `4..7` map to `Drone`, `Torpedo`, `Hunter`, `Assassin` (matching `docs/original-1982/ENEMY_TYPES.md` order). Column 1 is facing 12 o'clock, column 2 is 45 degrees clockwise; the renderer precomputes all 8 directions at load time and uses the matching directional frame at draw time. Non-transparent source pixels are normalized to white during load, then tinted by enemy type color at draw time.
-- Player tank visuals load from `resources/textures/sprites.png` (`2x7` grid, `9x9` cells). Row `1` is body and row `2` is barrel; each direction frame is prebuilt by XOR-combining body+barrel cells and rendered in cyan (`#00FFFF`), with 8 directions precomputed from the two source columns.
+- Player tank visuals load from `resources/textures/sprites.png` (`2x7` grid, `9x9` cells). Row `1` is body and row `2` is barrel; each direction frame is prebuilt by XOR-combining body+barrel cells and rendered in green (`#00C030`), with 8 directions precomputed from the two source columns.
 - Enemy sprite rendering uses pixel-snapped screen-space placement derived from world positions with integer sprite scaling (`9x9` source cells rendered at `18x18`, i.e. exact `2x`). Player gameplay footprint remains `kEntitySizeUnits = 1.0`, and the player sprite is rendered in pixel-snapped screen space at fixed `18x18` with per-frame pivot correction to avoid heading-frame jitter.
 - Compile-time presentation scaling: on macOS builds, the game renders to a logical `640x480` target and presents at `2x` (`1280x960`) with point filtering (each logical pixel becomes `2x2` physical pixels); handheld builds keep `1x` presentation.
 - HUD direction radar draws three lines: hull heading (white), move joystick vector from gamepad axes `0/1` (sky blue), and fire joystick vector from gamepad axes `2/3` (red). Joystick direction uses `(axisX, axisY)` and amplitude is normalized by raw max magnitude `32768`.
@@ -234,7 +234,7 @@ World rendering is in `src/platform/Renderer2D.cpp`.
 - Gameplay view draws a performance line below the axes line at font size `10`: `PERF FPS ... FT ...ms FS ...ms OH ...ms`, where `FT` is frame total average, `FS` is fixed-step average, and `OH` is non-fixed overhead estimate (`FT - FS`).
 - Gameplay view draws a profiling line below the performance line at font size `10`, showing rolling average fixed-step timings (`AI`, `PF`, `PH`) and allocation telemetry (`alloc/free counts`, `allocated/freed KB`, `live/peak KB`).
 - Gameplay view also draws a bottom-left single-line counter at font size `10`: alive bases and alive enemies by type (`B/D/T/H/A`).
-- HUD minimap plots alive enemies as single-pixel markers in their corresponding colors, bases as `3x3` pixel squares, and player as a larger cyan marker.
+- HUD minimap plots alive enemies as single-pixel markers in their corresponding colors, bases as `3x3` pixel squares, and player as a larger green marker.
 
 ### Runtime Profiling
 
