@@ -35,28 +35,6 @@ EnemySpawnEntry PickSpawnEnemyForLevel(int level, Random& random) {
     return kEnemySpawnTable[static_cast<std::size_t>(pickedIndex)];
 }
 
-float FreeDistanceAhead(
-    const WorldState& world,
-    const Vec2f& from,
-    float headingRadians,
-    float maxDistance,
-    float clearanceUnits) {
-    const Vec2f dir = core::angle::DirectionFromHeading(headingRadians);
-    constexpr float sampleSpacing = 0.08F;
-    const int steps = std::max(1, static_cast<int>(std::ceil(maxDistance / sampleSpacing)));
-    for (int i = 1; i <= steps; ++i) {
-        const float dist = std::min(maxDistance, static_cast<float>(i) * sampleSpacing);
-        const Vec2f sample{
-            .x = from.x + dir.x * dist,
-            .y = from.y + dir.y * dist,
-        };
-        if (game::geometry::IsPointInWall(world, sample, clearanceUnits)) {
-            return dist;
-        }
-    }
-    return maxDistance;
-}
-
 struct SpawnRayChoice {
     bool found = false;
     float heading = 0.0F;
@@ -76,7 +54,7 @@ SpawnRayChoice PickSpawnDirection(const WorldState& world, const Vec2f& baseCent
     float bestClear = -1.0F;
     for (int i = 0; i < static_cast<int>(kHeadings.size()); ++i) {
         const float heading = kHeadings[static_cast<std::size_t>(i)];
-        const float clearDistance = FreeDistanceAhead(
+        const float clearDistance = game::geometry::FreeDistanceAhead(
             world,
             baseCenter,
             heading,

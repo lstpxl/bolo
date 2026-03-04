@@ -86,6 +86,7 @@ Enemy spawn table behavior (`src/game/systems/SpawnerSystem.cpp`):
   - `1..2` Drone, `3..4` Torpedo, `5..7` Hunter, `8..9` Assassin.
 - Global alive-enemy cap is `72`.
 - Per-base simultaneous alive cap is `12` enemies.
+- Enemies inside or near any undestroyed base (base footprint + 1 unit clearance) are excluded from enemy–enemy mutual-kill and separation; they never die from base-proximity collisions.
 - Each base has its own enemy generation interval assigned at base creation as random `±50%` of `kBaseSpawnCooldownSeconds`.
 - Each base also has an enemy generation timer initialized from that interval; timer counts down and is reset to the same interval after a successful spawn.
 

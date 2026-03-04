@@ -89,6 +89,7 @@ add_executable(
     src/game/GameModeController.cpp
     src/game/Game.cpp
     src/game/geometry/WorldGeometry.cpp
+    src/game/spatial/EnemySpatialGrid.cpp
     src/game/systems/CollisionSystem.cpp
     src/game/systems/EnemySystem.cpp
     src/game/systems/MazeSystem.cpp

@@ -2,8 +2,16 @@
 
 #include <algorithm>
 #include <cmath>
+#include "core/AngleMath.h"
+#include "game/model/GameplayConstants.h"
+#include "game/spatial/EnemySpatialGrid.h"
 
 namespace game::geometry {
+
+namespace {
+constexpr float kRaySampleSpacing = 0.12F;
+}  // namespace
+
 bool IsPointInsideMaze(const WorldState& world, const Vec2f& point, float clearanceUnits) {
     const float mazeWidthUnits = static_cast<float>(world.maze.widthCells * world.maze.cellSizeUnits);
     const float mazeHeightUnits = static_cast<float>(world.maze.heightCells * world.maze.cellSizeUnits);
@@ -69,5 +77,95 @@ bool SegmentIntersectsWall(const WorldState& world, const Vec2f& from, const Vec
         }
     }
     return false;
+}
+
+bool IsSegmentObscuredByWall(const WorldState& world, const Vec2f& from, const Vec2f& to) {
+    const float dx = to.x - from.x;
+    const float dy = to.y - from.y;
+    const float length = std::sqrt(dx * dx + dy * dy);
+    if (length <= 0.001F) {
+        return false;
+    }
+    const int steps = std::max(1, static_cast<int>(std::ceil(length / kRaySampleSpacing)));
+    for (int i = 1; i < steps; ++i) {
+        const float t = static_cast<float>(i) / static_cast<float>(steps);
+        const Vec2f sample{.x = from.x + dx * t, .y = from.y + dy * t};
+        if (IsPointInWall(world, sample, 0.0F)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+float FreeDistanceAhead(const WorldState& world, const Vec2f& from, float headingRadians,
+    float maxDistance, float clearanceUnits, float planningClearanceScale) {
+    const float planningClearance =
+        clearanceUnits > 0.0F ? clearanceUnits * planningClearanceScale : clearanceUnits;
+    const Vec2f dir = core::angle::DirectionFromHeading(headingRadians);
+    const bool startsInsideBase = IsPointInUndestroyedBase(world, from, planningClearance);
+    const int steps = std::max(1, static_cast<int>(std::ceil(maxDistance / kRaySampleSpacing)));
+    for (int i = 1; i <= steps; ++i) {
+        const float dist = std::min(maxDistance, static_cast<float>(i) * kRaySampleSpacing);
+        const Vec2f sample{.x = from.x + dir.x * dist, .y = from.y + dir.y * dist};
+        if (IsPointInWall(world, sample, planningClearance)) {
+            return dist;
+        }
+        if (!startsInsideBase && IsPointInUndestroyedBase(world, sample, planningClearance)) {
+            return dist;
+        }
+    }
+    return maxDistance;
+}
+
+float FreeDistanceAheadWithEnemies(const WorldState& world,
+    const std::vector<EnemyTank>& enemies, int selfIndex, const Vec2f& from,
+    float headingRadians, float maxDistance, float clearanceUnits,
+    float planningClearanceScale, const game::spatial::EnemySpatialGrid* spatialGrid) {
+    const float staticObstacleDistance =
+        FreeDistanceAhead(world, from, headingRadians, maxDistance, clearanceUnits, planningClearanceScale);
+    const float probeDistance = std::min(maxDistance, staticObstacleDistance);
+    const float separationRadius = GameplayConstants::kEnemyPreferredSeparationUnits;
+
+    std::vector<int> candidateIndices;
+    if (spatialGrid != nullptr) {
+        const Vec2f dir = core::angle::DirectionFromHeading(headingRadians);
+        spatialGrid->GetEnemiesAlongRay(enemies, selfIndex, from, dir, probeDistance, candidateIndices);
+    } else {
+        const float filterRadius = probeDistance + separationRadius;
+        const float filterRadiusSq = filterRadius * filterRadius;
+        candidateIndices.reserve(enemies.size());
+        for (int ei = 0; ei < static_cast<int>(enemies.size()); ++ei) {
+            if (ei == selfIndex) {
+                continue;
+            }
+            const EnemyTank& other = enemies[static_cast<std::size_t>(ei)];
+            if (!other.alive) {
+                continue;
+            }
+            const float dx = from.x - other.position.x;
+            const float dy = from.y - other.position.y;
+            if (dx * dx + dy * dy <= filterRadiusSq) {
+                candidateIndices.push_back(ei);
+            }
+        }
+    }
+
+    const Vec2f dir = core::angle::DirectionFromHeading(headingRadians);
+    const float sepSq = separationRadius * separationRadius;
+    const int steps = std::max(1, static_cast<int>(std::ceil(probeDistance / kRaySampleSpacing)));
+    for (int i = 1; i <= steps; ++i) {
+        const float dist = std::min(probeDistance, static_cast<float>(i) * kRaySampleSpacing);
+        const Vec2f sample{.x = from.x + dir.x * dist, .y = from.y + dir.y * dist};
+        for (int ei : candidateIndices) {
+            const EnemyTank& other = enemies[static_cast<std::size_t>(ei)];
+            const float sdx = sample.x - other.position.x;
+            const float sdy = sample.y - other.position.y;
+            const float distSq = sdx * sdx + sdy * sdy;
+            if (distSq < sepSq) {
+                return dist;
+            }
+        }
+    }
+    return probeDistance;
 }
 }  // namespace game::geometry

@@ -31,7 +31,7 @@ void UpdateCollisionSystem(GameState& state, float deltaSeconds) {
         if (!projectile.alive) {
             continue;
         }
-        if (game::geometry::SegmentIntersectsWall(world, projectile.previousPosition, projectile.position, 0.0F)) {
+        if (game::geometry::IsSegmentObscuredByWall(world, projectile.previousPosition, projectile.position)) {
             projectile.alive = false;
             continue;
         }

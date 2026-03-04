@@ -248,7 +248,8 @@ void AudioEventRouter::RouteStep(
         }
     }
 
-    if (config.enemyExplodingLoaded && config.enemyExplodingSound != nullptr && aliveEnemiesAfter < aliveEnemiesBefore) {
+    if (config.enemyExplodingLoaded && config.enemyExplodingSound != nullptr &&
+        aliveEnemiesAfter <= aliveEnemiesBefore) {
         Vec2f source{};
         if (FindClosestRemovedEnemyPosition(beforeUpdate, afterUpdate, listener, source)) {
             PlaySpatialSound(*config.enemyExplodingSound, listener, source);
