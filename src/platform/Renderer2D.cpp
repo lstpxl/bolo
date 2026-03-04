@@ -5,7 +5,8 @@
 #include <cmath>
 #include <array>
 #include <cstdint>
-#include <filesystem>
+#include <string>
+#include "core/ResourceLocator.h"
 #include "raylib.h"
 
 namespace {
@@ -167,37 +168,8 @@ bool TryLoadImageAtPath(Image& image, const char* path) {
 }
 
 bool TryLoadImageFromTextureDirectory(Image& image, const char* fileName) {
-    std::array<std::filesystem::path, 5> candidatePaths = {
-        std::filesystem::path("resources/textures") / fileName,
-        std::filesystem::path("../resources/textures") / fileName,
-        std::filesystem::path("../../resources/textures") / fileName,
-        std::filesystem::path("../../../resources/textures") / fileName,
-        std::filesystem::path("../../../../resources/textures") / fileName,
-    };
-
-    for (const std::filesystem::path& path : candidatePaths) {
-        if (TryLoadImageAtPath(image, path.string().c_str())) {
-            return true;
-        }
-    }
-
-    const char* applicationDirectory = GetApplicationDirectory();
-    if (applicationDirectory == nullptr || applicationDirectory[0] == '\0') {
-        return false;
-    }
-
-    std::filesystem::path base(applicationDirectory);
-    for (int i = 0; i <= 4; ++i) {
-        const std::filesystem::path candidate = base / "resources" / "textures" / fileName;
-        if (TryLoadImageAtPath(image, candidate.string().c_str())) {
-            return true;
-        }
-        if (!base.has_parent_path()) {
-            break;
-        }
-        base = base.parent_path();
-    }
-    return false;
+    const std::string path = core::resources::ResolveResourcePath("textures", fileName);
+    return !path.empty() && TryLoadImageAtPath(image, path.c_str());
 }
 
 void FillOpaquePixelsColor(Image& image, Color color) {

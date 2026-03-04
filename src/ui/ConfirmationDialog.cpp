@@ -1,25 +1,8 @@
 #include "ui/ConfirmationDialog.h"
 
+#include "ui/UiPrimitives.h"
 #include "raygui.h"
 #include "raylib.h"
-
-namespace {
-void DrawFocus(const Rectangle& bounds, bool isFocused) {
-    if (!isFocused) {
-        return;
-    }
-
-    DrawRectangleLinesEx(
-        Rectangle{
-            .x = bounds.x - 3.0F,
-            .y = bounds.y - 3.0F,
-            .width = bounds.width + 6.0F,
-            .height = bounds.height + 6.0F,
-        },
-        3.0F,
-        Color{255, 209, 102, 255});
-}
-}  // namespace
 
 void ConfirmationDialog::Open(Focus initialFocus) {
     focus_ = initialFocus;
@@ -78,8 +61,8 @@ ConfirmationDialogResult ConfirmationDialog::Render(
     }
     suppressInputPressOnce_ = false;
 
-    DrawFocus(confirmButton, focus_ == Focus::Confirm);
-    DrawFocus(cancelButton, focus_ == Focus::Cancel);
+    ui::primitives::DrawFocusRing(confirmButton, focus_ == Focus::Confirm);
+    ui::primitives::DrawFocusRing(cancelButton, focus_ == Focus::Cancel);
 
     result.confirmPressed = confirmPressed;
     result.cancelPressed = cancelPressed;

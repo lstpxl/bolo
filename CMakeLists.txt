@@ -78,13 +78,17 @@ add_executable(
     bolt
     src/app/main.cpp
     src/app/AppConfig.cpp
+    src/app/AudioEventRouter.cpp
     src/app/BuildInfo.cpp
+    src/app/DebugOverlayRenderer.cpp
     src/app/GameApp.cpp
+    src/core/ResourceLocator.cpp
     src/core/Profiling.cpp
     src/core/Random.cpp
     src/core/Time.cpp
     src/game/GameModeController.cpp
     src/game/Game.cpp
+    src/game/geometry/WorldGeometry.cpp
     src/game/systems/CollisionSystem.cpp
     src/game/systems/EnemySystem.cpp
     src/game/systems/MazeSystem.cpp
@@ -98,6 +102,7 @@ add_executable(
     src/ui/ConfirmationDialog.cpp
     src/ui/HudPanel.cpp
     src/ui/MenuScreen.cpp
+    src/ui/UiPrimitives.cpp
     src/ui/RayguiContext.cpp
 )
 

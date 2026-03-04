@@ -3,71 +3,13 @@
 #include <algorithm>
 #include <cstddef>
 #include <cmath>
+#include "game/geometry/WorldGeometry.h"
 
 namespace {
 float DistanceSq(const Vec2f& a, const Vec2f& b) {
     const float dx = a.x - b.x;
     const float dy = a.y - b.y;
     return dx * dx + dy * dy;
-}
-
-bool IsInsideMaze(const WorldState& world, const Vec2f& p, float clearanceUnits) {
-    const float mazeWidthUnits = static_cast<float>(world.maze.widthCells * world.maze.cellSizeUnits);
-    const float mazeHeightUnits = static_cast<float>(world.maze.heightCells * world.maze.cellSizeUnits);
-    return p.x >= clearanceUnits && p.x <= mazeWidthUnits - clearanceUnits &&
-        p.y >= clearanceUnits && p.y <= mazeHeightUnits - clearanceUnits;
-}
-
-bool HitsWallAtPoint(const WorldState& world, const Vec2f& point, float clearanceUnits) {
-    if (!IsInsideMaze(world, point, clearanceUnits)) {
-        return true;
-    }
-    const float cellSize = static_cast<float>(world.maze.cellSizeUnits);
-    const int cellX = static_cast<int>(point.x / cellSize);
-    const int cellY = static_cast<int>(point.y / cellSize);
-    if (cellX < 0 || cellY < 0 || cellX >= world.maze.widthCells || cellY >= world.maze.heightCells) {
-        return true;
-    }
-    const MazeCell& cell =
-        world.maze.cells[static_cast<std::size_t>(cellY * world.maze.widthCells + cellX)];
-    const float localX = point.x - static_cast<float>(cellX) * cellSize;
-    const float localY = point.y - static_cast<float>(cellY) * cellSize;
-    const float wallLimit = GameplayConstants::kWallThicknessUnits + clearanceUnits;
-    if (cell.northWall && localY <= wallLimit) {
-        return true;
-    }
-    if (cell.southWall && localY >= cellSize - wallLimit) {
-        return true;
-    }
-    if (cell.westWall && localX <= wallLimit) {
-        return true;
-    }
-    if (cell.eastWall && localX >= cellSize - wallLimit) {
-        return true;
-    }
-    return false;
-}
-
-bool SegmentHitsWall(const WorldState& world, const Vec2f& a, const Vec2f& b, float clearanceUnits) {
-    const float dx = b.x - a.x;
-    const float dy = b.y - a.y;
-    const float distance = std::sqrt(dx * dx + dy * dy);
-    if (distance <= 0.001F) {
-        return HitsWallAtPoint(world, b, clearanceUnits);
-    }
-    const float sampleSpacing = std::max(0.02F, clearanceUnits * 0.5F);
-    const int steps = std::max(1, static_cast<int>(std::ceil(distance / sampleSpacing)));
-    for (int i = 1; i <= steps; ++i) {
-        const float t = static_cast<float>(i) / static_cast<float>(steps);
-        const Vec2f sample{
-            .x = a.x + dx * t,
-            .y = a.y + dy * t,
-        };
-        if (HitsWallAtPoint(world, sample, clearanceUnits)) {
-            return true;
-        }
-    }
-    return false;
 }
 
 void DecrementOriginBaseAliveCount(WorldState& world, EnemyTank& enemy) {
@@ -89,7 +31,7 @@ void UpdateCollisionSystem(GameState& state, float deltaSeconds) {
         if (!projectile.alive) {
             continue;
         }
-        if (SegmentHitsWall(world, projectile.previousPosition, projectile.position, 0.0F)) {
+        if (game::geometry::SegmentIntersectsWall(world, projectile.previousPosition, projectile.position, 0.0F)) {
             projectile.alive = false;
             continue;
         }
@@ -142,7 +84,7 @@ void UpdateCollisionSystem(GameState& state, float deltaSeconds) {
         return;
     }
 
-    if (HitsWallAtPoint(world, world.player.position, GameplayConstants::kTankCollisionRadiusUnits)) {
+    if (game::geometry::IsPointInWall(world, world.player.position, GameplayConstants::kTankCollisionRadiusUnits)) {
         world.player.alive = false;
         world.playerTurnLostPending = true;
         return;

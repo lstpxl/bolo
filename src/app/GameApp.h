@@ -1,6 +1,8 @@
 #pragma once
 
 #include "app/AppConfig.h"
+#include "app/AudioEventRouter.h"
+#include "app/DebugOverlayRenderer.h"
 #include "core/Time.h"
 #include "game/Game.h"
 #include "platform/Input.h"
@@ -40,6 +42,8 @@ private:
     bool exitRequested_ = false;
     bool gameplayPauseDialogOpen_ = false;
     ConfirmationDialog gameplayPauseDialog_{};
+    AudioEventRouter audioEventRouter_{};
+    DebugOverlayRenderer debugOverlayRenderer_{};
     RenderTexture2D presentationTarget_{};
     bool presentationTargetLoaded_ = false;
 };

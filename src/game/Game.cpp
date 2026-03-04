@@ -1,5 +1,6 @@
 #include "game/Game.h"
 
+#include <cstdint>
 #include "game/systems/CollisionSystem.h"
 #include "game/systems/EnemySystem.h"
 #include "game/systems/MazeSystem.h"
@@ -8,6 +9,17 @@
 #include "game/systems/SpawnerSystem.h"
 #include "core/Profiling.h"
 #include <algorithm>
+#include <random>
+
+namespace {
+std::uint32_t MakeSeed() {
+    std::random_device device;
+    return device();
+}
+}  // namespace
+
+Game::Game()
+    : runtimeContext_{.randomSeed = MakeSeed()}, random_(runtimeContext_.randomSeed) {}
 
 GameMode Game::Mode() const {
     return modeController_.Mode();
@@ -29,11 +41,11 @@ void Game::RequestMenu() {
     modeController_.RequestMenu();
 }
 
-void Game::StartGame(const AppConfig& config) {
-    modeController_.StartGame(state_, state_.menuSettings, config);
+void Game::StartGame(const AppConfig& config, const GameplayView& view) {
+    modeController_.StartGame(state_, state_.menuSettings, config, view, random_);
 }
 
-void Game::Update(const FrameInput& input, float deltaSeconds, const AppConfig& config) {
+void Game::Update(const FrameInput& input, float deltaSeconds, const GameplayView& view) {
     if (modeController_.Mode() != GameMode::Playing) {
         return;
     }
@@ -82,7 +94,7 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const AppConfig& 
     // Target order: Input -> AI -> Movement -> Collision -> Combat -> Spawning -> Fuel/Rules -> Cleanup.
     {
         profiling::ScopedProfile scope(profiling::Scope::AiUpdate, true);
-        UpdateEnemySystem(state_, config, deltaSeconds);
+        UpdateEnemySystem(state_, view, deltaSeconds, random_);
     }
     if (!playerLocked) {
         profiling::ScopedProfile scope(profiling::Scope::PlayerUpdate);
@@ -101,7 +113,7 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const AppConfig& 
     }
     {
         profiling::ScopedProfile scope(profiling::Scope::SpawnerUpdate);
-        UpdateSpawnerSystem(state_, deltaSeconds);
+        UpdateSpawnerSystem(state_, deltaSeconds, random_);
     }
     {
         profiling::ScopedProfile scope(profiling::Scope::MazeUpdate);
@@ -155,7 +167,7 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const AppConfig& 
         state_.world.player.fireCooldownSeconds = 0.0F;
         state_.world.player.fuel = 0.0F;
         state_.world.startModeRemainingSeconds = GameplayConstants::kStartModeDurationSeconds;
-        PlacePlayerAtSafeSpawn(state_, config);
+        PlacePlayerAtSafeSpawn(state_, view, random_);
     }
 
     // Level complete handling.
@@ -168,7 +180,7 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const AppConfig& 
     if (aliveBases == 0) {
         const int score = state_.world.score;
         const int lives = state_.world.player.lives;
-        InitializeMazeWorld(state_, config);
+        InitializeMazeWorld(state_, view, random_);
         state_.world.score = score;
         state_.world.player.lives = lives;
         state_.world.player.fuel = 0.0F;

@@ -7,7 +7,6 @@
 #include <stack>
 #include <vector>
 #include "core/Random.h"
-#include "raylib.h"
 
 namespace {
 float RandomBaseGenerationInterval(Random& random) {
@@ -264,14 +263,9 @@ bool IsBaseVisibleFromPosition(
 
 bool TryPlacePlayer(
     GameState& state,
-    const AppConfig& config,
+    const GameplayView& view,
     Random& random,
     bool disallowBaseInView) {
-    const float visibleWidthUnits = static_cast<float>(config.screenWidth - ComputeHudWidth(config)) /
-        static_cast<float>(GameplayConstants::kPixelsPerUnit);
-    const float visibleHeightUnits = static_cast<float>(config.screenHeight) /
-        static_cast<float>(GameplayConstants::kPixelsPerUnit);
-
     for (int attempts = 0; attempts < 5000; ++attempts) {
         const int cellX = random.NextInt(0, state.world.maze.widthCells - 1);
         const int cellY = random.NextInt(0, state.world.maze.heightCells - 1);
@@ -301,7 +295,7 @@ bool TryPlacePlayer(
                 if (base.destroyed) {
                     continue;
                 }
-                if (IsBaseVisibleFromPosition(base, candidate, visibleWidthUnits, visibleHeightUnits)) {
+                if (IsBaseVisibleFromPosition(base, candidate, view.viewportWidthUnits, view.viewportHeightUnits)) {
                     seesAnyBase = true;
                     break;
                 }
@@ -326,10 +320,7 @@ bool TryPlacePlayer(
 }
 }  // namespace
 
-void InitializeMazeWorld(GameState& state, const AppConfig& config) {
-    const std::uint32_t seed = static_cast<std::uint32_t>(GetTime() * 1000.0);
-    Random random(seed);
-
+void InitializeMazeWorld(GameState& state, const GameplayView& view, Random& random) {
     state.world.maze.widthCells = GameplayConstants::kMazeWidthCells;
     state.world.maze.heightCells = GameplayConstants::kMazeHeightCells;
     state.world.maze.cellSizeUnits = GameplayConstants::kMazeCellSizeUnits;
@@ -389,7 +380,7 @@ void InitializeMazeWorld(GameState& state, const AppConfig& config) {
         }
     }
 
-    if (!TryPlacePlayer(state, config, random, true)) {
+    if (!TryPlacePlayer(state, view, random, true)) {
         state.world.player.position = CellCenterPosition(state.world.maze, 0, 0);
         state.world.player.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
         state.world.player.hullHeadingRadians = 0.0F;
@@ -409,10 +400,8 @@ void InitializeMazeWorld(GameState& state, const AppConfig& config) {
     state.world.levelClearMessageSeconds = 0.0F;
 }
 
-bool PlacePlayerAtSafeSpawn(GameState& state, const AppConfig& config) {
-    const std::uint32_t seed = static_cast<std::uint32_t>(GetTime() * 1000.0);
-    Random random(seed);
-    if (TryPlacePlayer(state, config, random, false)) {
+bool PlacePlayerAtSafeSpawn(GameState& state, const GameplayView& view, Random& random) {
+    if (TryPlacePlayer(state, view, random, false)) {
         return true;
     }
     state.world.player.position = CellCenterPosition(state.world.maze, 0, 0);

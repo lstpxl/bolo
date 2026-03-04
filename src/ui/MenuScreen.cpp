@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include "app/BuildInfo.h"
+#include "ui/UiPrimitives.h"
 #include "raygui.h"
 #include "raylib.h"
 
@@ -24,21 +25,6 @@ MenuScreen::FocusedControl PreviousFocusedControl(MenuScreen::FocusedControl cur
         return MenuScreen::FocusedControl::Quit;
     }
     return static_cast<MenuScreen::FocusedControl>(static_cast<int>(current) - 1);
-}
-
-void DrawFocus(const Rectangle& bounds, bool isFocused) {
-    if (!isFocused) {
-        return;
-    }
-    DrawRectangleLinesEx(
-        Rectangle{
-            .x = bounds.x - 3.0F,
-            .y = bounds.y - 3.0F,
-            .width = bounds.width + 6.0F,
-            .height = bounds.height + 6.0F,
-        },
-        3.0F,
-        Color{255, 209, 102, 255});
 }
 
 int RoundToNearestInt(float value) {
@@ -216,11 +202,13 @@ MenuScreenResult MenuScreen::Render(
         }
     }
 
-    DrawFocus(levelGauge, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Level);
-    DrawFocus(densityGauge, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Density);
-    DrawFocus(invisibilityControl, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Invisibility);
-    DrawFocus(startButton, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Start);
-    DrawFocus(quitButton, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Quit);
+    ui::primitives::DrawFocusRing(levelGauge, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Level);
+    ui::primitives::DrawFocusRing(densityGauge, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Density);
+    ui::primitives::DrawFocusRing(
+        invisibilityControl,
+        !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Invisibility);
+    ui::primitives::DrawFocusRing(startButton, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Start);
+    ui::primitives::DrawFocusRing(quitButton, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Quit);
 
     if (quitPressed) {
         quitConfirmationOpen_ = true;
@@ -230,12 +218,7 @@ MenuScreenResult MenuScreen::Render(
 
     bool confirmQuitPressed = false;
     if (quitConfirmationOpen_) {
-        DrawRectangle(
-            0,
-            0,
-            config.screenWidth,
-            config.screenHeight,
-            Fade(BLACK, 0.6F));
+        ui::primitives::DrawModalBackdrop(config.screenWidth, config.screenHeight);
 
         const Rectangle dialog = {
             .x = panel.x + 40.0F,

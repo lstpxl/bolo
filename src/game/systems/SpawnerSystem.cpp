@@ -4,8 +4,10 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include "core/AngleMath.h"
 #include "core/Random.h"
-#include "raylib.h"
+#include "game/GameQueries.h"
+#include "game/geometry/WorldGeometry.h"
 
 namespace {
 constexpr float kPi = 3.14159265358979323846F;
@@ -27,53 +29,10 @@ constexpr std::array<EnemySpawnEntry, 9> kEnemySpawnTable{{
     {.type = EnemyType::Assassin, .subtype = EnemySubtype::Advanced}, // level 9
 }};
 
-int AliveEnemyCount(const GameState& state) {
-    int count = 0;
-    for (const EnemyTank& enemy : state.world.enemies) {
-        if (enemy.alive) {
-            ++count;
-        }
-    }
-    return count;
-}
-
 EnemySpawnEntry PickSpawnEnemyForLevel(int level, Random& random) {
     const int clampedLevel = std::max(1, std::min(level, static_cast<int>(kEnemySpawnTable.size())));
     const int pickedIndex = random.NextInt(0, clampedLevel - 1);
     return kEnemySpawnTable[static_cast<std::size_t>(pickedIndex)];
-}
-
-Vec2f DirectionFromHeading(float headingRadians) {
-    return Vec2f{
-        .x = std::sin(headingRadians),
-        .y = -std::cos(headingRadians),
-    };
-}
-
-bool IsPointInsideMaze(const WorldState& world, const Vec2f& p, float clearanceUnits) {
-    const float mazeWidthUnits = static_cast<float>(world.maze.widthCells * world.maze.cellSizeUnits);
-    const float mazeHeightUnits = static_cast<float>(world.maze.heightCells * world.maze.cellSizeUnits);
-    return p.x >= clearanceUnits && p.x <= mazeWidthUnits - clearanceUnits &&
-        p.y >= clearanceUnits && p.y <= mazeHeightUnits - clearanceUnits;
-}
-
-bool IsPointInWall(const WorldState& world, const Vec2f& point, float clearanceUnits) {
-    if (!IsPointInsideMaze(world, point, clearanceUnits)) {
-        return true;
-    }
-    const float cellSize = static_cast<float>(world.maze.cellSizeUnits);
-    const int cellX = static_cast<int>(point.x / cellSize);
-    const int cellY = static_cast<int>(point.y / cellSize);
-    if (cellX < 0 || cellY < 0 || cellX >= world.maze.widthCells || cellY >= world.maze.heightCells) {
-        return true;
-    }
-    const MazeCell& cell =
-        world.maze.cells[static_cast<std::size_t>(cellY * world.maze.widthCells + cellX)];
-    const float localX = point.x - static_cast<float>(cellX) * cellSize;
-    const float localY = point.y - static_cast<float>(cellY) * cellSize;
-    const float wallLimit = GameplayConstants::kWallThicknessUnits + clearanceUnits;
-    return (cell.northWall && localY <= wallLimit) || (cell.southWall && localY >= cellSize - wallLimit) ||
-        (cell.westWall && localX <= wallLimit) || (cell.eastWall && localX >= cellSize - wallLimit);
 }
 
 float FreeDistanceAhead(
@@ -82,7 +41,7 @@ float FreeDistanceAhead(
     float headingRadians,
     float maxDistance,
     float clearanceUnits) {
-    const Vec2f dir = DirectionFromHeading(headingRadians);
+    const Vec2f dir = core::angle::DirectionFromHeading(headingRadians);
     constexpr float sampleSpacing = 0.08F;
     const int steps = std::max(1, static_cast<int>(std::ceil(maxDistance / sampleSpacing)));
     for (int i = 1; i <= steps; ++i) {
@@ -91,7 +50,7 @@ float FreeDistanceAhead(
             .x = from.x + dir.x * dist,
             .y = from.y + dir.y * dist,
         };
-        if (IsPointInWall(world, sample, clearanceUnits)) {
+        if (game::geometry::IsPointInWall(world, sample, clearanceUnits)) {
             return dist;
         }
     }
@@ -149,7 +108,7 @@ SpawnRayChoice PickSpawnDirection(const WorldState& world, const Vec2f& baseCent
 }
 
 bool IsSpawnPositionFree(const GameState& state, const Vec2f& spawnPosition) {
-    if (IsPointInWall(state.world, spawnPosition, GameplayConstants::kEnemyWallAvoidanceRadiusUnits)) {
+    if (game::geometry::IsPointInWall(state.world, spawnPosition, GameplayConstants::kEnemyWallAvoidanceRadiusUnits)) {
         return false;
     }
     const float minDistanceSq =
@@ -169,8 +128,7 @@ bool IsSpawnPositionFree(const GameState& state, const Vec2f& spawnPosition) {
 }
 }  // namespace
 
-void UpdateSpawnerSystem(GameState& state, float deltaSeconds) {
-    static Random random(static_cast<std::uint32_t>(GetTime() * 1000.0));
+void UpdateSpawnerSystem(GameState& state, float deltaSeconds, Random& random) {
     for (EnemyBase& base : state.world.enemyBases) {
         base.activeEnemies = 0;
     }
@@ -187,7 +145,7 @@ void UpdateSpawnerSystem(GameState& state, float deltaSeconds) {
         }
     }
 
-    int aliveEnemies = AliveEnemyCount(state);
+    int aliveEnemies = game::queries::CountAliveEnemies(state);
     for (int baseIndex = 0; baseIndex < static_cast<int>(state.world.enemyBases.size()); ++baseIndex) {
         EnemyBase& base = state.world.enemyBases[static_cast<std::size_t>(baseIndex)];
         if (base.destroyed) {
@@ -210,7 +168,7 @@ void UpdateSpawnerSystem(GameState& state, float deltaSeconds) {
             // Keep trying future ticks until the base has a clear 6-unit escape corridor.
             continue;
         }
-        const Vec2f dir = DirectionFromHeading(spawnDirection.heading);
+        const Vec2f dir = core::angle::DirectionFromHeading(spawnDirection.heading);
         const float spawnOffsetUnits =
             GameplayConstants::kEnemyBaseSizeUnits * 0.5F +
             GameplayConstants::kEntitySizeUnits * 0.5F +

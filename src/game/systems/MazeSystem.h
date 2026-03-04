@@ -1,8 +1,9 @@
 #pragma once
 
-#include "app/AppConfig.h"
+#include "core/Random.h"
+#include "game/GameplayView.h"
 #include "game/GameState.h"
 
-void InitializeMazeWorld(GameState& state, const AppConfig& config);
-bool PlacePlayerAtSafeSpawn(GameState& state, const AppConfig& config);
+void InitializeMazeWorld(GameState& state, const GameplayView& view, Random& random);
+bool PlacePlayerAtSafeSpawn(GameState& state, const GameplayView& view, Random& random);
 void UpdateMazeSystem(GameState& state, float deltaSeconds);

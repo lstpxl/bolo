@@ -13,7 +13,10 @@ void GameModeController::RequestMenu() {
 void GameModeController::StartGame(
     GameState& state,
     const MenuSettings& settings,
-    const AppConfig& config) {
+    const AppConfig& config,
+    const GameplayView& view,
+    Random& random) {
+    (void)config;
     state.menuSettings = settings;
     state.world.player.lives = GameplayConstants::kStartingLives;
     state.world.player.fuel = 0.0F;
@@ -27,6 +30,6 @@ void GameModeController::StartGame(
     state.world.deathExplosionRemainingSeconds = 0.0F;
     state.world.score = 0;
     state.world.gameOver = false;
-    InitializeMazeWorld(state, config);
+    InitializeMazeWorld(state, view, random);
     mode_ = GameMode::Playing;
 }
