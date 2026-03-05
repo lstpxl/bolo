@@ -3,12 +3,14 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
-#include <cstdint>
+#include <limits>
 #include <stack>
 #include <vector>
 #include "core/Random.h"
 
 namespace {
+constexpr float kRespawnMinDistanceFromBaseUnits = 30.0F;
+
 float RandomBaseGenerationInterval(Random& random) {
     const float base = GameplayConstants::kBaseSpawnCooldownSeconds;
     return random.NextFloat(base * 0.5F, base * 1.5F);
@@ -265,13 +267,15 @@ bool TryPlacePlayer(
     GameState& state,
     const GameplayView& view,
     Random& random,
-    bool disallowBaseInView) {
+    bool disallowBaseInView,
+    float minBaseDistanceUnits) {
     for (int attempts = 0; attempts < 5000; ++attempts) {
         const int cellX = random.NextInt(0, state.world.maze.widthCells - 1);
         const int cellY = random.NextInt(0, state.world.maze.heightCells - 1);
         const Vec2f candidate = CellCenterPosition(state.world.maze, cellX, cellY);
 
         bool overlapsBase = false;
+        float nearestBaseDistanceSq = std::numeric_limits<float>::infinity();
         for (const EnemyBase& base : state.world.enemyBases) {
             if (base.destroyed) {
                 continue;
@@ -284,8 +288,14 @@ bool TryPlacePlayer(
                 overlapsBase = true;
                 break;
             }
+            const float distSq = dx * dx + dy * dy;
+            nearestBaseDistanceSq = std::min(nearestBaseDistanceSq, distSq);
         }
         if (overlapsBase) {
+            continue;
+        }
+        if (minBaseDistanceUnits > 0.0F &&
+            nearestBaseDistanceSq < (minBaseDistanceUnits * minBaseDistanceUnits)) {
             continue;
         }
 
@@ -380,7 +390,7 @@ void InitializeMazeWorld(GameState& state, const GameplayView& view, Random& ran
         }
     }
 
-    if (!TryPlacePlayer(state, view, random, true)) {
+    if (!TryPlacePlayer(state, view, random, true, 0.0F)) {
         state.world.player.position = CellCenterPosition(state.world.maze, 0, 0);
         state.world.player.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
         state.world.player.hullHeadingRadians = 0.0F;
@@ -401,10 +411,32 @@ void InitializeMazeWorld(GameState& state, const GameplayView& view, Random& ran
 }
 
 bool PlacePlayerAtSafeSpawn(GameState& state, const GameplayView& view, Random& random) {
-    if (TryPlacePlayer(state, view, random, false)) {
+    if (TryPlacePlayer(state, view, random, false, kRespawnMinDistanceFromBaseUnits)) {
         return true;
     }
-    state.world.player.position = CellCenterPosition(state.world.maze, 0, 0);
+    // Deterministic fallback: choose the cell center farthest from any alive base.
+    float bestDistanceSq = -1.0F;
+    Vec2f bestPosition = CellCenterPosition(state.world.maze, 0, 0);
+    for (int y = 0; y < state.world.maze.heightCells; ++y) {
+        for (int x = 0; x < state.world.maze.widthCells; ++x) {
+            const Vec2f candidate = CellCenterPosition(state.world.maze, x, y);
+            float nearestBaseDistanceSq = std::numeric_limits<float>::infinity();
+            for (const EnemyBase& base : state.world.enemyBases) {
+                if (base.destroyed) {
+                    continue;
+                }
+                const float dx = base.position.x - candidate.x;
+                const float dy = base.position.y - candidate.y;
+                const float distSq = dx * dx + dy * dy;
+                nearestBaseDistanceSq = std::min(nearestBaseDistanceSq, distSq);
+            }
+            if (nearestBaseDistanceSq > bestDistanceSq) {
+                bestDistanceSq = nearestBaseDistanceSq;
+                bestPosition = candidate;
+            }
+        }
+    }
+    state.world.player.position = bestPosition;
     state.world.player.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
     state.world.player.hullHeadingRadians = 0.0F;
     state.world.player.turretHeadingRadians = 0.0F;
@@ -413,7 +445,7 @@ bool PlacePlayerAtSafeSpawn(GameState& state, const GameplayView& view, Random& 
     state.world.player.throttleNormalized = 0.0F;
     state.world.player.fireCooldownSeconds = 0.0F;
     state.world.player.alive = true;
-    return false;
+    return bestDistanceSq >= (kRespawnMinDistanceFromBaseUnits * kRespawnMinDistanceFromBaseUnits);
 }
 
 void UpdateMazeSystem(GameState& state, float deltaSeconds) {

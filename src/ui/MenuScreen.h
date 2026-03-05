@@ -28,9 +28,9 @@ public:
         const FrameInput& input);
 
 private:
-    int levelNumber_ = 3;
+    int levelNumber_ = 4;
     int mazeDensity_ = 1;
-    bool invisibility_ = false;
+    bool invisibility_ = true;
     FocusedControl focusedControl_ = FocusedControl::Start;
     bool quitConfirmationOpen_ = false;
     ConfirmationDialog quitConfirmationDialog_{};

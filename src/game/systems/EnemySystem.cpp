@@ -2,10 +2,10 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdio>
 #include <cmath>
 #include <cstdint>
 #include <limits>
-#include <queue>
 #include <vector>
 #include "core/AngleMath.h"
 #include "core/Profiling.h"
@@ -21,15 +21,49 @@ constexpr float kCosThirtyDegrees = 0.8660254F;
 constexpr float kDroneBaseBearingThresholdRadians = 1.3962634F;  // 80 degrees
 constexpr float kDroneReturnRequiredClearRunUnits = 6.0F;
 constexpr float kEnemyPlanningClearanceScale = 1.5F;
-constexpr float kTorpedoObstacleScanDistanceUnits = 16.0F;
 constexpr float kTorpedoNearCollisionCheckDistanceUnits = 3.0F;
-constexpr float kTorpedoMinStraightBeforeTurnUnits = 3.0F;
 constexpr float kTorpedoMoveDecisionHoldDistanceUnits = 1.0F;
 constexpr float kTorpedoRetreatExitClearanceUnits = 2.0F;
 constexpr float kTorpedoRetreatSpeedFactor = 0.1F;
 constexpr float kTorpedoImmediateObstacleDistanceUnits = 1.0F;
 constexpr float kTorpedoLongPathProbeUnits = 24.0F;
 constexpr float kTorpedoPlayerDetectIntervalSeconds = 0.25F;
+constexpr float kSegmentBuildProbeMaxUnits = 15.0F;
+constexpr float kSegmentBuildSafetyReduceUnits = 4.0F;
+constexpr float kSegmentBuildMinLengthUnits = 2.0F;
+constexpr float kOffscreenSegmentLengthUnits = 8.0F;
+constexpr float kOffscreenTorpedoSegmentLengthUnits = 12.0F;
+constexpr float kOffscreenTorpedoDetectIntervalSeconds = 0.6F;
+
+EnemyRuntimeStats gEnemyRuntimeStats{};
+std::uint64_t gLastEnemyStatsPrintedFrame = 0;
+struct EnemyRuntimeWindowStats {
+    int minAliveCount = std::numeric_limits<int>::max();
+    int maxAliveCount = 0;
+    int minVisibleCount = std::numeric_limits<int>::max();
+    int maxVisibleCount = 0;
+    int minFullTierCount = std::numeric_limits<int>::max();
+    int maxFullTierCount = 0;
+    std::uint64_t fixedSteps = 0;
+    std::uint64_t collisionPassRuns = 0;
+    std::uint64_t collisionPassSkips = 0;
+};
+EnemyRuntimeWindowStats gEnemyRuntimeWindowStats{};
+
+void AccumulateEnemyWindowStats(int aliveCount, int visibleCount, int fullTierCount) {
+    EnemyRuntimeWindowStats& stats = gEnemyRuntimeWindowStats;
+    stats.fixedSteps += 1;
+    stats.minAliveCount = std::min(stats.minAliveCount, aliveCount);
+    stats.maxAliveCount = std::max(stats.maxAliveCount, aliveCount);
+    stats.minVisibleCount = std::min(stats.minVisibleCount, visibleCount);
+    stats.maxVisibleCount = std::max(stats.maxVisibleCount, visibleCount);
+    stats.minFullTierCount = std::min(stats.minFullTierCount, fullTierCount);
+    stats.maxFullTierCount = std::max(stats.maxFullTierCount, fullTierCount);
+}
+
+void ResetEnemyWindowStats() {
+    gEnemyRuntimeWindowStats = EnemyRuntimeWindowStats{};
+}
 
 float NormalizeAngle(float angleRadians) {
     return core::angle::NormalizeAngle(angleRadians);
@@ -220,8 +254,48 @@ bool IsInPlayerViewport(const Vec2f& point, const GameState& state, const Gamepl
         point.y >= center.y - halfHeight && point.y <= center.y + halfHeight;
 }
 
+EnemySimTier DetermineEnemySimTier(const EnemyTank& enemy, const GameState& state, const GameplayView& view) {
+    const float cellWidthUnits = static_cast<float>(state.world.maze.cellSizeUnits);
+    const float fullTierRadiusUnits =
+        (view.viewportWidthUnits * 0.5F + cellWidthUnits) * 1.5F;
+    const float fullTierRadiusSq = fullTierRadiusUnits * fullTierRadiusUnits;
+    const bool nearPlayer = DistanceSq(enemy.position, state.world.player.position) <= fullTierRadiusSq;
+    const bool forceFullForTorpedoState =
+        enemy.type == EnemyType::Torpedo &&
+        enemy.torpedoMoveMode != TorpedoMoveMode::Move;
+    return (nearPlayer || forceFullForTorpedoState)
+        ? EnemySimTier::Full
+        : EnemySimTier::Cheap;
+}
+
 bool SegmentIntersectsWall(const WorldState& world, const Vec2f& from, const Vec2f& to, float clearanceUnits) {
     return game::geometry::SegmentIntersectsWall(world, from, to, clearanceUnits);
+}
+
+float FreeDistanceAheadWallsOnly(
+    const WorldState& world,
+    const Vec2f& from,
+    float headingRadians,
+    float maxDistance,
+    float clearanceUnits) {
+    const Vec2f dir = DirectionFromHeading(headingRadians);
+    const float sampleStep = std::max(0.02F, GameplayConstants::kLineOfSightSampleSpacing);
+    float dist = sampleStep;
+    while (dist <= maxDistance) {
+        const float clampedDist = std::min(dist, maxDistance);
+        const Vec2f sample{
+            .x = from.x + dir.x * clampedDist,
+            .y = from.y + dir.y * clampedDist,
+        };
+        if (game::geometry::IsPointInWall(world, sample, clearanceUnits)) {
+            return clampedDist;
+        }
+        if (clampedDist >= maxDistance) {
+            break;
+        }
+        dist += sampleStep;
+    }
+    return maxDistance;
 }
 
 void DecrementOriginBaseAliveCount(WorldState& world, EnemyTank& enemy) {
@@ -782,25 +856,16 @@ float SelectBestLongStraightHeading(const WorldState& world, const EnemyTank& en
     return QuantizeToEightDirections(bestHeading);
 }
 
-float StepHeadingByFortyFiveToward(float currentHeading, float desiredHeading) {
-    const float signedDelta = SignedAngleDelta(currentHeading, desiredHeading);
-    if (std::fabs(signedDelta) <= 0.0001F) {
-        return QuantizeToEightDirections(currentHeading);
-    }
-    const float step = signedDelta > 0.0F ? kEightDirectionStep : -kEightDirectionStep;
-    return QuantizeToEightDirections(currentHeading + step);
-}
-
 float SelectTorpedoMoveHeading(
     const WorldState& world,
     const std::vector<EnemyTank>& enemies,
     int selfIndex,
     EnemyTank& enemy,
-    bool playerDetected,
-    float directHeadingToPlayer,
+    Random& random,
     bool& startRetreat,
     bool& decidedStraight,
     const game::spatial::EnemySpatialGrid* spatialGrid) {
+    profiling::ScopedProfile selectScope(profiling::Scope::EnemyTorpedoSelectHeading, true);
     startRetreat = false;
     decidedStraight = true;
     const float straightHeading = QuantizeToEightDirections(enemy.headingRadians);
@@ -810,7 +875,7 @@ float SelectTorpedoMoveHeading(
         selfIndex,
         enemy.position,
         straightHeading,
-        kTorpedoObstacleScanDistanceUnits,
+        kSegmentBuildProbeMaxUnits,
         GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
         kEnemyPlanningClearanceScale,
         spatialGrid);
@@ -822,7 +887,7 @@ float SelectTorpedoMoveHeading(
         selfIndex,
         enemy.position,
         leftHeading,
-        kTorpedoObstacleScanDistanceUnits,
+        kSegmentBuildProbeMaxUnits,
         GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
         kEnemyPlanningClearanceScale,
         spatialGrid);
@@ -832,7 +897,7 @@ float SelectTorpedoMoveHeading(
         selfIndex,
         enemy.position,
         rightHeading,
-        kTorpedoObstacleScanDistanceUnits,
+        kSegmentBuildProbeMaxUnits,
         GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
         kEnemyPlanningClearanceScale,
         spatialGrid);
@@ -844,39 +909,42 @@ float SelectTorpedoMoveHeading(
         return straightHeading;
     }
 
-    const bool canTurnNow =
-        enemy.torpedoStraightDistanceSinceTurnUnits >= kTorpedoMinStraightBeforeTurnUnits;
-    if (straightClearWithEnemies < kTorpedoObstacleScanDistanceUnits && canTurnNow) {
-        if (leftClear > straightClearWithEnemies || rightClear > straightClearWithEnemies) {
-            const bool takeLeft = leftClear >= rightClear;
-            enemy.torpedoStraightDistanceSinceTurnUnits = 0.0F;
-            decidedStraight = false;
-            return takeLeft ? leftHeading : rightHeading;
+    struct Candidate {
+        float heading;
+        float clearDistance;
+    };
+    const std::array<Candidate, 3> candidates{{
+        {.heading = straightHeading, .clearDistance = straightClearWithEnemies},
+        {.heading = leftHeading, .clearDistance = leftClear},
+        {.heading = rightHeading, .clearDistance = rightClear},
+    }};
+    float bestClear = -1.0F;
+    for (const Candidate& candidate : candidates) {
+        bestClear = std::max(bestClear, candidate.clearDistance);
+    }
+    std::array<int, 3> bestIndices{};
+    int bestCount = 0;
+    constexpr float kTieEpsilon = 0.001F;
+    for (int i = 0; i < static_cast<int>(candidates.size()); ++i) {
+        if (std::fabs(candidates[static_cast<std::size_t>(i)].clearDistance - bestClear) <= kTieEpsilon) {
+            bestIndices[static_cast<std::size_t>(bestCount)] = i;
+            ++bestCount;
         }
     }
-
-    if (playerDetected && canTurnNow) {
-        const float stepped = StepHeadingByFortyFiveToward(straightHeading, directHeadingToPlayer);
-        if (stepped != straightHeading) {
-            const float steppedClear = game::geometry::FreeDistanceAheadWithEnemies(
-                world,
-                enemies,
-                selfIndex,
-                enemy.position,
-                stepped,
-                kTorpedoObstacleScanDistanceUnits,
-                GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
-                kEnemyPlanningClearanceScale,
-                spatialGrid);
-            if (steppedClear >= straightClearWithEnemies) {
-                enemy.torpedoStraightDistanceSinceTurnUnits = 0.0F;
-                decidedStraight = false;
-                return stepped;
-            }
-        }
+    const int chosenIndex =
+        bestIndices[static_cast<std::size_t>(random.NextInt(0, std::max(0, bestCount - 1)))];
+    const Candidate& chosen = candidates[static_cast<std::size_t>(chosenIndex)];
+    const float maxSegmentLength = chosen.clearDistance - kSegmentBuildSafetyReduceUnits;
+    if (maxSegmentLength < kSegmentBuildMinLengthUnits) {
+        startRetreat = true;
+        return straightHeading;
     }
+    enemy.torpedoMoveDecisionHoldRemainingUnits =
+        random.NextFloat(kSegmentBuildMinLengthUnits, maxSegmentLength);
+    enemy.torpedoStraightDistanceSinceTurnUnits = 0.0F;
+    decidedStraight = chosen.heading == straightHeading;
 
-    return straightHeading;
+    return chosen.heading;
 }
 
 void EnterTorpedoTargetingMode(EnemyTank& enemy) {
@@ -1041,16 +1109,26 @@ bool IsMovementBlockedByEnemies(
     return false;
 }
 
-void ResolveEnemySeparation(WorldState& world, game::spatial::EnemySpatialGrid& grid) {
+void ResolveEnemySeparation(
+    WorldState& world,
+    game::spatial::EnemySpatialGrid& grid,
+    const std::vector<std::uint8_t>& includeMask) {
     profiling::ScopedProfile scope(profiling::Scope::EnemySeparation, true);
-    grid.BuildFromPositions(world);
-    grid.ForEachPairInSameOrAdjacentCell(world.enemies, [&](int i, int j) {
+    {
+        profiling::ScopedProfile buildScope(profiling::Scope::EnemySeparationGridBuild, true);
+        grid.BuildFromPositions(world, nullptr, &includeMask);
+    }
+    {
+        profiling::ScopedProfile pairTraverseScope(profiling::Scope::EnemySeparationPairTraverse, true);
+        grid.ForEachPairInSameOrAdjacentCell(world.enemies, [&](int i, int j) {
+        gEnemyRuntimeStats.separationPairsVisited += 1;
         EnemyTank& a = world.enemies[static_cast<std::size_t>(i)];
         EnemyTank& b = world.enemies[static_cast<std::size_t>(j)];
         if (game::geometry::IsPointInUndestroyedBase(world, a.position, 1.0F) ||
             game::geometry::IsPointInUndestroyedBase(world, b.position, 1.0F)) {
             return;
         }
+        profiling::ScopedProfile pairScope(profiling::Scope::EnemySeparationPairResolve, true);
 
         const float distSq = DistanceSq(a.position, b.position);
         const float killDistSq =
@@ -1067,6 +1145,7 @@ void ResolveEnemySeparation(WorldState& world, game::spatial::EnemySpatialGrid& 
         if (distSq >= sepSq) {
             return;
         }
+        gEnemyRuntimeStats.separationPairsResolved += 1;
 
         const float dist = std::sqrt(distSq);
         const float push = (GameplayConstants::kEnemyPreferredSeparationUnits - dist) * 0.5F;
@@ -1100,20 +1179,32 @@ void ResolveEnemySeparation(WorldState& world, game::spatial::EnemySpatialGrid& 
             a.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
             b.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
         }
-    });
+        });
+    }
 }
 
-void ResolveEnemyFrontalCollisions(WorldState& world, const std::vector<Vec2f>& frameStartPositions,
-    game::spatial::EnemySpatialGrid& grid) {
+void ResolveEnemyFrontalCollisions(
+    WorldState& world,
+    const std::vector<Vec2f>& frameStartPositions,
+    game::spatial::EnemySpatialGrid& grid,
+    const std::vector<std::uint8_t>& includeMask) {
     profiling::ScopedProfile scope(profiling::Scope::EnemyFrontalCollisions, true);
-    grid.BuildFromSegments(world, frameStartPositions);
-    grid.ForEachPairInSameOrAdjacentCell(world.enemies, [&](int i, int j) {
+    {
+        profiling::ScopedProfile buildScope(profiling::Scope::EnemyFrontalGridBuild, true);
+        grid.BuildFromSegments(world, frameStartPositions, &includeMask);
+    }
+    {
+        profiling::ScopedProfile pairTraverseScope(profiling::Scope::EnemyFrontalPairTraverse, true);
+        grid.ForEachPairInSameOrAdjacentCell(world.enemies, [&](int i, int j) {
+        gEnemyRuntimeStats.frontalPairsVisited += 1;
         EnemyTank& a = world.enemies[static_cast<std::size_t>(i)];
         EnemyTank& b = world.enemies[static_cast<std::size_t>(j)];
         if (game::geometry::IsPointInUndestroyedBase(world, a.position, 1.0F) ||
             game::geometry::IsPointInUndestroyedBase(world, b.position, 1.0F)) {
             return;
         }
+        profiling::ScopedProfile pairScope(profiling::Scope::EnemyFrontalPairNarrowphase, true);
+        gEnemyRuntimeStats.frontalPairsDistanceChecks += 1;
         const Vec2f aStart = frameStartPositions[static_cast<std::size_t>(i)];
         const Vec2f aEnd = a.position;
         const Vec2f bStart = frameStartPositions[static_cast<std::size_t>(j)];
@@ -1125,7 +1216,8 @@ void ResolveEnemyFrontalCollisions(WorldState& world, const std::vector<Vec2f>& 
             DecrementOriginBaseAliveCount(world, a);
             DecrementOriginBaseAliveCount(world, b);
         }
-    });
+        });
+    }
 }
 
 struct EnemyPerception {
@@ -1234,10 +1326,154 @@ profiling::Scope EnemyTypeProfileScope(EnemyType type) {
     }
     return profiling::Scope::EnemyTypeDroneUpdate;
 }
+
+void AdvanceCheapTierTimers(
+    GameState& state,
+    EnemyTank& enemy,
+    const EnemyPerception& perception,
+    float deltaSeconds,
+    bool playerInvisible,
+    const GameplayView& view) {
+    enemy.aiModeElapsedSeconds += deltaSeconds;
+    enemy.selfAwarenessTimerSeconds -= deltaSeconds;
+    if (enemy.selfAwarenessTimerSeconds <= 0.0F) {
+        if (enemy.selfAwarenessIntervalSeconds <= 0.0F) {
+            enemy.selfAwarenessIntervalSeconds = (enemy.type == EnemyType::Drone) ? 9.0F : 6.0F;
+        }
+        enemy.selfAwarenessTimerSeconds += enemy.selfAwarenessIntervalSeconds;
+    }
+
+    if (enemy.type == EnemyType::Torpedo) {
+        enemy.torpedoPlayerDetectTimerSeconds -= deltaSeconds;
+        if (enemy.torpedoPlayerDetectTimerSeconds <= 0.0F) {
+            enemy.torpedoPlayerDetectTimerSeconds = kOffscreenTorpedoDetectIntervalSeconds;
+            enemy.torpedoPlayerDetected =
+                !playerInvisible &&
+                perception.distanceToPlayer <= GameplayConstants::kTorpedoDetectRangeUnits &&
+                !game::geometry::IsSegmentObscuredByWall(state.world, enemy.position, state.world.player.position);
+            enemy.torpedoLastKnownPlayerHeadingRadians =
+                std::atan2(perception.toPlayer.x, -perception.toPlayer.y);
+        }
+    }
+
+    // Keep weapon cadence realistic while cheap; this prevents on-screen burst anomalies.
+    enemy.fireCooldownSeconds = std::max(0.0F, enemy.fireCooldownSeconds - deltaSeconds);
+    (void)view;
+}
+
+void BuildOffscreenSegment(WorldState& world, EnemyTank& enemy, float segmentLengthUnits, Random& random) {
+    profiling::ScopedProfile buildScope(profiling::Scope::EnemyCheapSegmentBuild, true);
+    const float forwardHeading = QuantizeToEightDirections(enemy.headingRadians);
+    const float leftHeading = QuantizeToEightDirections(forwardHeading - kEightDirectionStep);
+    const float rightHeading = QuantizeToEightDirections(forwardHeading + kEightDirectionStep);
+    struct Candidate {
+        float heading;
+        float clearDistance;
+    };
+    const std::array<Candidate, 3> candidates{{
+        {.heading = forwardHeading,
+            .clearDistance = FreeDistanceAheadWallsOnly(
+                world,
+                enemy.position,
+                forwardHeading,
+                kSegmentBuildProbeMaxUnits,
+                GameplayConstants::kEnemyWallAvoidanceRadiusUnits)},
+        {.heading = leftHeading,
+            .clearDistance = FreeDistanceAheadWallsOnly(
+                world,
+                enemy.position,
+                leftHeading,
+                kSegmentBuildProbeMaxUnits,
+                GameplayConstants::kEnemyWallAvoidanceRadiusUnits)},
+        {.heading = rightHeading,
+            .clearDistance = FreeDistanceAheadWallsOnly(
+                world,
+                enemy.position,
+                rightHeading,
+                kSegmentBuildProbeMaxUnits,
+                GameplayConstants::kEnemyWallAvoidanceRadiusUnits)},
+    }};
+    float bestClear = -1.0F;
+    for (const Candidate& candidate : candidates) {
+        bestClear = std::max(bestClear, candidate.clearDistance);
+    }
+    std::array<int, 3> bestIndices{};
+    int bestCount = 0;
+    constexpr float kTieEpsilon = 0.001F;
+    for (int i = 0; i < static_cast<int>(candidates.size()); ++i) {
+        if (std::fabs(candidates[static_cast<std::size_t>(i)].clearDistance - bestClear) <= kTieEpsilon) {
+            bestIndices[static_cast<std::size_t>(bestCount)] = i;
+            ++bestCount;
+        }
+    }
+    const int chosenIndex =
+        bestIndices[static_cast<std::size_t>(random.NextInt(0, std::max(0, bestCount - 1)))];
+    const Candidate& chosen = candidates[static_cast<std::size_t>(chosenIndex)];
+    const float maxSegmentLength =
+        std::min(segmentLengthUnits, chosen.clearDistance - kSegmentBuildSafetyReduceUnits);
+    if (maxSegmentLength < kSegmentBuildMinLengthUnits) {
+        enemy.offscreenSegmentActive = false;
+        enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
+        return;
+    }
+    const float targetDistance = random.NextFloat(kSegmentBuildMinLengthUnits, maxSegmentLength);
+    const Vec2f dir = DirectionFromHeading(chosen.heading);
+    enemy.offscreenCachedHeadingRadians = chosen.heading;
+    enemy.offscreenSegmentEnd = Vec2f{
+        .x = enemy.position.x + dir.x * targetDistance,
+        .y = enemy.position.y + dir.y * targetDistance,
+    };
+    enemy.offscreenSegmentActive = true;
+}
+
+void ApplyCheapTierMovement(
+    GameState& state,
+    EnemyTank& enemy,
+    int enemyIndex,
+    float deltaSeconds,
+    float speed,
+    Random& random) {
+    float segmentLength = kOffscreenSegmentLengthUnits;
+    if (enemy.type == EnemyType::Torpedo) {
+        segmentLength = kOffscreenTorpedoSegmentLengthUnits;
+    }
+    const bool reachedSegmentEnd =
+        !enemy.offscreenSegmentActive ||
+        DistanceSq(enemy.position, enemy.offscreenSegmentEnd) <= 0.04F;
+    if (reachedSegmentEnd) {
+        // Cheap-tier policy: decide the next segment only at segment endpoints.
+        BuildOffscreenSegment(state.world, enemy, segmentLength, random);
+    }
+
+    if (!enemy.offscreenSegmentActive || std::fabs(speed) <= 0.0001F) {
+        enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
+        return;
+    }
+
+    const Vec2f dir = DirectionFromHeading(enemy.offscreenCachedHeadingRadians);
+    const float maxStep = std::max(0.0F, speed * deltaSeconds);
+    const float remaining = Distance(enemy.position, enemy.offscreenSegmentEnd);
+    const float step = std::min(maxStep, remaining);
+    enemy.position = Vec2f{
+        .x = enemy.position.x + dir.x * step,
+        .y = enemy.position.y + dir.y * step,
+    };
+    enemy.headingRadians = enemy.offscreenCachedHeadingRadians;
+    enemy.velocity = Vec2f{
+        .x = dir.x * speed,
+        .y = dir.y * speed,
+    };
+
+    if (enemy.type == EnemyType::Torpedo && enemy.torpedoMoveMode == TorpedoMoveMode::Move) {
+        enemy.torpedoStraightDistanceSinceTurnUnits += step;
+    }
+    (void)enemyIndex;
+}
 }  // namespace
 
 void UpdateEnemySystem(GameState& state, const GameplayView& view, float deltaSeconds, Random& random) {
     profiling::ScopedProfile scope(profiling::Scope::EnemyUpdate, true);
+    gEnemyRuntimeStats = EnemyRuntimeStats{};
     const bool playerInvisible = state.menuSettings.invisibility;
     std::vector<Vec2f> frameStartPositions{};
     frameStartPositions.reserve(state.world.enemies.size());
@@ -1254,6 +1490,47 @@ void UpdateEnemySystem(GameState& state, const GameplayView& view, float deltaSe
             continue;
         }
         profiling::ScopedProfile enemyTypeScope(EnemyTypeProfileScope(enemy.type), true);
+
+        const EnemySimTier previousTier = enemy.simTier;
+        enemy.simTier = DetermineEnemySimTier(enemy, state, view);
+        const bool reenteredFullTier =
+            previousTier == EnemySimTier::Cheap &&
+            enemy.simTier == EnemySimTier::Full;
+        if (reenteredFullTier) {
+            enemy.offscreenSegmentActive = false;
+            if (enemy.type == EnemyType::Assassin) {
+                enemy.pathWaypointCount = 0;
+                enemy.pathWaypointIndex = 0;
+            }
+        }
+
+        if (enemy.simTier == EnemySimTier::Cheap) {
+            EnemyPerception cheapPerception{};
+            cheapPerception.toPlayer = Vec2f{
+                .x = state.world.player.position.x - enemy.position.x,
+                .y = state.world.player.position.y - enemy.position.y,
+            };
+            cheapPerception.toPlayerNormalized = NormalizeOrZero(cheapPerception.toPlayer);
+            cheapPerception.distanceToPlayerSq = DistanceSq(enemy.position, state.world.player.position);
+            cheapPerception.distanceToPlayer = std::sqrt(cheapPerception.distanceToPlayerSq);
+            cheapPerception.playerObscured = true;
+            cheapPerception.assassinHasLineOfSight = false;
+
+            AdvanceCheapTierTimers(
+                state,
+                enemy,
+                cheapPerception,
+                deltaSeconds,
+                playerInvisible,
+                view);
+
+            float cheapSpeed = EnemySpeed(enemy.type, enemy.subtype, false);
+            if (enemy.aiMode == EnemyAiMode::Watch || enemy.aiMode == EnemyAiMode::Rotate) {
+                cheapSpeed = 0.0F;
+            }
+            ApplyCheapTierMovement(state, enemy, enemyIndex, deltaSeconds, cheapSpeed, random);
+            continue;
+        }
 
         EnemyPerception perception{};
         {
@@ -1359,7 +1636,11 @@ void UpdateEnemySystem(GameState& state, const GameplayView& view, float deltaSe
                     movementHeading = UpdateTorpedoRotateHeading(enemy, deltaSeconds);
                 } else {
                     const float straightHeading = QuantizeToEightDirections(enemy.headingRadians);
-                    if (enemy.torpedoMoveDecisionHoldRemainingUnits > 0.0F) {
+                    const bool lockHeadingForBaseExit = IsPointInUndestroyedBase(
+                        state.world,
+                        enemy.position,
+                        1.0F);
+                    if (lockHeadingForBaseExit || enemy.torpedoMoveDecisionHoldRemainingUnits > 0.0F) {
                         movementHeading = straightHeading;
                         const float nearClear = game::geometry::FreeDistanceAheadWithEnemies(
                             state.world,
@@ -1377,8 +1658,14 @@ void UpdateEnemySystem(GameState& state, const GameplayView& view, float deltaSe
                             enemy.torpedoMoveDecisionHoldRemainingUnits = 0.0F;
                             movementHeading = straightHeading;
                             speed = -std::abs(speed) * kTorpedoRetreatSpeedFactor;
-                        } else if (nearClear < kTorpedoNearCollisionCheckDistanceUnits) {
+                        } else if (!lockHeadingForBaseExit &&
+                            nearClear < kTorpedoNearCollisionCheckDistanceUnits) {
                             enemy.torpedoMoveDecisionHoldRemainingUnits = 0.0F;
+                        } else if (lockHeadingForBaseExit) {
+                            // Keep torpedo on its spawn heading until it clears base + margin.
+                            enemy.torpedoMoveDecisionHoldRemainingUnits = std::max(
+                                enemy.torpedoMoveDecisionHoldRemainingUnits,
+                                kTorpedoMoveDecisionHoldDistanceUnits);
                         }
                     } else {
                         bool startRetreat = false;
@@ -1388,8 +1675,7 @@ void UpdateEnemySystem(GameState& state, const GameplayView& view, float deltaSe
                             state.world.enemies,
                             enemyIndex,
                             enemy,
-                            enemy.torpedoPlayerDetected,
-                            enemy.torpedoLastKnownPlayerHeadingRadians,
+                            random,
                             startRetreat,
                             decidedStraight,
                             &rayQueryGrid);
@@ -1399,10 +1685,6 @@ void UpdateEnemySystem(GameState& state, const GameplayView& view, float deltaSe
                             enemy.torpedoMoveDecisionHoldRemainingUnits = 0.0F;
                             movementHeading = straightHeading;
                             speed = -std::abs(speed) * kTorpedoRetreatSpeedFactor;
-                        } else if (decidedStraight) {
-                            enemy.torpedoMoveDecisionHoldRemainingUnits = kTorpedoMoveDecisionHoldDistanceUnits;
-                        } else {
-                            enemy.torpedoMoveDecisionHoldRemainingUnits = 0.0F;
                         }
                     }
                 }
@@ -1648,7 +1930,74 @@ void UpdateEnemySystem(GameState& state, const GameplayView& view, float deltaSe
         }
     }
 
-    game::spatial::EnemySpatialGrid spatialGrid;
-    ResolveEnemyFrontalCollisions(state.world, frameStartPositions, spatialGrid);
-    ResolveEnemySeparation(state.world, spatialGrid);
+    std::vector<std::uint8_t> fullTierMask(state.world.enemies.size(), 0U);
+    for (std::size_t i = 0; i < state.world.enemies.size(); ++i) {
+        const EnemyTank& enemy = state.world.enemies[i];
+        if (!enemy.alive) {
+            continue;
+        }
+        gEnemyRuntimeStats.aliveCount += 1;
+        if (IsInPlayerViewport(enemy.position, state, view)) {
+            gEnemyRuntimeStats.visibleInViewportCount += 1;
+        }
+        if (enemy.simTier == EnemySimTier::Full) {
+            fullTierMask[i] = 1U;
+            gEnemyRuntimeStats.fullTierCount += 1;
+            if (game::geometry::IsPointInUndestroyedBase(state.world, enemy.position, 1.0F)) {
+                gEnemyRuntimeStats.fullTierInBaseClearanceCount += 1;
+            }
+        } else {
+            gEnemyRuntimeStats.cheapTierCount += 1;
+        }
+    }
+    AccumulateEnemyWindowStats(
+        gEnemyRuntimeStats.aliveCount,
+        gEnemyRuntimeStats.visibleInViewportCount,
+        gEnemyRuntimeStats.fullTierCount);
+
+    if (gEnemyRuntimeStats.fullTierCount >= 2) {
+        game::spatial::EnemySpatialGrid spatialGrid;
+        ResolveEnemyFrontalCollisions(state.world, frameStartPositions, spatialGrid, fullTierMask);
+        ResolveEnemySeparation(state.world, spatialGrid, fullTierMask);
+        gEnemyRuntimeWindowStats.collisionPassRuns += 1;
+    } else {
+        gEnemyRuntimeWindowStats.collisionPassSkips += 1;
+    }
+
+    const auto& profiler = profiling::Profiler::Instance();
+    const std::uint64_t frameIndex = profiler.FrameIndex();
+    if (profiler.ShouldEmitPeriodicReport() && frameIndex != gLastEnemyStatsPrintedFrame) {
+        gLastEnemyStatsPrintedFrame = frameIndex;
+        std::printf(
+            "[ENEMY_STATS] frame=%llu alive=%d visible=%d full=%d cheap=%d fullInBase=%d pairs(frontal=%d checks=%d separation=%d resolved=%d)\n",
+            static_cast<unsigned long long>(frameIndex),
+            gEnemyRuntimeStats.aliveCount,
+            gEnemyRuntimeStats.visibleInViewportCount,
+            gEnemyRuntimeStats.fullTierCount,
+            gEnemyRuntimeStats.cheapTierCount,
+            gEnemyRuntimeStats.fullTierInBaseClearanceCount,
+            gEnemyRuntimeStats.frontalPairsVisited,
+            gEnemyRuntimeStats.frontalPairsDistanceChecks,
+            gEnemyRuntimeStats.separationPairsVisited,
+            gEnemyRuntimeStats.separationPairsResolved);
+        if (gEnemyRuntimeWindowStats.fixedSteps > 0) {
+            std::printf(
+                "[ENEMY_WINDOW] steps=%llu alive[min=%d max=%d] visible[min=%d max=%d] full[min=%d max=%d] collisionPasses[runs=%llu skips=%llu]\n",
+                static_cast<unsigned long long>(gEnemyRuntimeWindowStats.fixedSteps),
+                gEnemyRuntimeWindowStats.minAliveCount,
+                gEnemyRuntimeWindowStats.maxAliveCount,
+                gEnemyRuntimeWindowStats.minVisibleCount,
+                gEnemyRuntimeWindowStats.maxVisibleCount,
+                gEnemyRuntimeWindowStats.minFullTierCount,
+                gEnemyRuntimeWindowStats.maxFullTierCount,
+                static_cast<unsigned long long>(gEnemyRuntimeWindowStats.collisionPassRuns),
+                static_cast<unsigned long long>(gEnemyRuntimeWindowStats.collisionPassSkips));
+            ResetEnemyWindowStats();
+        }
+        std::fflush(stdout);
+    }
+}
+
+const EnemyRuntimeStats& GetEnemyRuntimeStats() {
+    return gEnemyRuntimeStats;
 }

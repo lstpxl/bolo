@@ -33,6 +33,22 @@ enum class Scope : std::uint8_t {
     PathfindingPostprocess,
     EnemyFrontalCollisions,
     EnemySeparation,
+    EnemyFrontalGridBuild,
+    EnemyFrontalPairTraverse,
+    EnemyFrontalPairNarrowphase,
+    EnemySeparationGridBuild,
+    EnemySeparationPairTraverse,
+    EnemySeparationPairResolve,
+    EnemyTorpedoSelectHeading,
+    EnemyCheapSegmentBuild,
+    FrameInputPoll,
+    FrameRender,
+    RenderWorld,
+    RenderWorldMaze,
+    RenderWorldEnemies,
+    RenderWorldEffects,
+    RenderOverlay,
+    FramePresent,
     Count
 };
 
@@ -57,9 +73,12 @@ struct AllocationDelta {
 struct ScopeView {
     float lastMs = 0.0F;
     float avgMs = 0.0F;
+    float reportAvgMs = 0.0F;
+    float reportTotalMs = 0.0F;
     float maxMs = 0.0F;
     float p95Ms = 0.0F;
     std::uint64_t totalCalls = 0;
+    std::uint64_t reportCalls = 0;
     std::uint32_t callsLastFrame = 0;
     AllocationDelta allocLastFrame{};
 };

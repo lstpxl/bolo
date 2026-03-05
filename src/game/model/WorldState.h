@@ -34,9 +34,9 @@ struct WorldState {
 
 struct GameState {
     MenuSettings menuSettings{
-        .levelNumber = 3,
+        .levelNumber = 4,
         .mazeDensity = 1,
-        .invisibility = false,
+        .invisibility = true,
     };
     WorldState world{};
 };

@@ -31,6 +31,8 @@ std::uint64_t NowUs() {
 struct ScopeStats {
     std::uint64_t totalUs = 0;
     std::uint64_t totalCalls = 0;
+    std::uint64_t lastReportTotalUs = 0;
+    std::uint64_t lastReportTotalCalls = 0;
     std::uint32_t maxUs = 0;
     std::uint32_t lastUs = 0;
     std::uint32_t lastCalls = 0;
@@ -107,12 +109,27 @@ public:
         ScopeView out{};
         out.lastMs = static_cast<float>(stats.lastUs) / 1000.0F;
         out.avgMs = AverageMs(stats);
+        const std::uint64_t reportUs = stats.totalUs - stats.lastReportTotalUs;
+        const std::uint64_t reportCalls = stats.totalCalls - stats.lastReportTotalCalls;
+        out.reportTotalMs = static_cast<float>(reportUs) / 1000.0F;
+        out.reportCalls = reportCalls;
+        out.reportAvgMs = reportCalls > 0
+            ? (static_cast<float>(reportUs) / static_cast<float>(reportCalls) / 1000.0F)
+            : 0.0F;
         out.maxMs = static_cast<float>(stats.maxUs) / 1000.0F;
         out.p95Ms = P95Ms(stats);
         out.totalCalls = stats.totalCalls;
         out.callsLastFrame = stats.lastCalls;
         out.allocLastFrame = stats.allocLastFrame;
         return out;
+    }
+
+    void CommitReportSnapshot() {
+        for (std::size_t i = 0; i < kScopeCount; ++i) {
+            ScopeStats& scope = scopes_[i];
+            scope.lastReportTotalUs = scope.totalUs;
+            scope.lastReportTotalCalls = scope.totalCalls;
+        }
     }
 
     ScopeView CombinedView(Scope a, Scope b, Scope c) const {
@@ -215,6 +232,22 @@ const std::array<const char*, kScopeCount> kScopeNames = {
     "enemy.pathfinding.postprocess",
     "enemy.physics.frontal_collisions",
     "enemy.physics.separation",
+    "enemy.physics.frontal_grid_build",
+    "enemy.physics.frontal_pair_traverse",
+    "enemy.physics.frontal_pair_narrow",
+    "enemy.physics.separation_grid_build",
+    "enemy.physics.separation_pair_traverse",
+    "enemy.physics.separation_pair_resolve",
+    "enemy.torpedo.select_heading",
+    "enemy.cheap.segment_build",
+    "frame.input_poll",
+    "frame.render",
+    "frame.render.world",
+    "frame.render.world.maze",
+    "frame.render.world.enemies",
+    "frame.render.world.effects",
+    "frame.render.overlay",
+    "frame.present",
 };
 
 }  // namespace
@@ -272,6 +305,9 @@ void Profiler::EmitPeriodicReport(float fixedStepSeconds) const {
         rows[i] = ReportRow{.scope = scope, .view = GetScopeView(scope)};
     }
     std::sort(rows.begin(), rows.end(), [](const ReportRow& a, const ReportRow& b) {
+        if (a.view.reportAvgMs != b.view.reportAvgMs) {
+            return a.view.reportAvgMs > b.view.reportAvgMs;
+        }
         return a.view.avgMs > b.view.avgMs;
     });
 
@@ -290,24 +326,30 @@ void Profiler::EmitPeriodicReport(float fixedStepSeconds) const {
         static_cast<unsigned long long>(allocSnapshot.liveBytes),
         static_cast<unsigned long long>(allocSnapshot.peakLiveBytes));
 
-    constexpr std::size_t kRowsToPrint = 12;
+    constexpr std::size_t kRowsToPrint = 24;
     std::size_t printedRows = 0;
     for (std::size_t i = 0; i < rows.size() && printedRows < kRowsToPrint; ++i) {
         if (rows[i].view.totalCalls == 0 && rows[i].view.avgMs <= 0.0001F) {
             continue;
         }
         const float budgetPct = fixedStepBudgetMs > 0.001F ? (rows[i].view.avgMs / fixedStepBudgetMs) * 100.0F : 0.0F;
+        const float reportBudgetPct =
+            fixedStepBudgetMs > 0.001F ? (rows[i].view.reportAvgMs / fixedStepBudgetMs) * 100.0F : 0.0F;
         std::printf(
-            "  %-32s avg=%7.3fms p95=%7.3fms max=%7.3fms calls(last=%3u,total=%llu) (%.1f%% budget)\n",
+            "  %-32s win=%7.3fms avg=%7.3fms p95=%7.3fms max=%7.3fms calls(last=%3u,win=%4llu,total=%llu) (win %.1f%% | avg %.1f%% budget)\n",
             ScopeName(rows[i].scope),
+            rows[i].view.reportAvgMs,
             rows[i].view.avgMs,
             rows[i].view.p95Ms,
             rows[i].view.maxMs,
             rows[i].view.callsLastFrame,
+            static_cast<unsigned long long>(rows[i].view.reportCalls),
             static_cast<unsigned long long>(rows[i].view.totalCalls),
+            reportBudgetPct,
             budgetPct);
         ++printedRows;
     }
+    State().CommitReportSnapshot();
     std::fflush(stdout);
 }
 

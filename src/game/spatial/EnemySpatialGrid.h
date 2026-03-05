@@ -2,6 +2,7 @@
 
 #include "core/Types.h"
 #include "game/model/EntityTypes.h"
+#include <cstdint>
 #include <functional>
 #include <vector>
 
@@ -18,12 +19,14 @@ public:
     /// Build grid from current enemy positions (for separation, ray queries).
     /// If positionsOverride is non-null and matches enemy count, use those positions instead.
     void BuildFromPositions(const WorldState& world,
-        const std::vector<Vec2f>* positionsOverride = nullptr);
+        const std::vector<Vec2f>* positionsOverride = nullptr,
+        const std::vector<std::uint8_t>* includeMask = nullptr);
 
     /// Build grid from frame-start and current positions (for frontal collisions).
     /// Inserts each enemy into cells at both positions to catch crossing segments.
     void BuildFromSegments(const WorldState& world,
-        const std::vector<Vec2f>& frameStartPositions);
+        const std::vector<Vec2f>& frameStartPositions,
+        const std::vector<std::uint8_t>* includeMask = nullptr);
 
     /// Call fn(i, j) for each pair of alive enemies in same or adjacent cell.
     /// i < j. Each pair is invoked at most once.
@@ -55,6 +58,7 @@ private:
     int widthCells_ = 0;
     int heightCells_ = 0;
     std::vector<std::vector<int>> cells_;
+    std::vector<int> activeCells_{};
 };
 
 }  // namespace game::spatial

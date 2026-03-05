@@ -101,7 +101,11 @@ int GameApp::Run() {
         profiling::Profiler::Instance().BeginFrame();
         {
             profiling::ScopedProfile frameScope(profiling::Scope::FrameTotal, true);
-            const FrameInput input = PollFrameInput();
+            FrameInput input{};
+            {
+                profiling::ScopedProfile inputScope(profiling::Scope::FrameInputPoll);
+                input = PollFrameInput();
+            }
             if (input.quitRequested) {
                 exitRequested_ = true;
             } else {
@@ -146,7 +150,10 @@ int GameApp::Run() {
                     ++fixedStepsThisFrame;
                 }
 
-                Render(input);
+                {
+                    profiling::ScopedProfile renderScope(profiling::Scope::FrameRender);
+                    Render(input);
+                }
             }
         }
         profiling::Profiler::Instance().EndFrame();
@@ -248,9 +255,16 @@ void GameApp::Render(const FrameInput& input) {
                 exitRequested_ = true;
             }
         } else {
-            game_.Render(renderer_, config_, input);
-            debugOverlayRenderer_.Draw(game_.State(), config_, input);
+            {
+                profiling::ScopedProfile worldScope(profiling::Scope::RenderWorld);
+                game_.Render(renderer_, config_, input);
+            }
+            {
+                profiling::ScopedProfile overlayScope(profiling::Scope::RenderOverlay);
+                debugOverlayRenderer_.Draw(game_.State(), config_, input);
+            }
             if (gameplayPauseDialogOpen_) {
+                profiling::ScopedProfile overlayScope(profiling::Scope::RenderOverlay);
                 RenderGameplayPauseDialog(input);
             }
         }
@@ -261,6 +275,7 @@ void GameApp::Render(const FrameInput& input) {
         drawLogicalFrame();
         EndTextureMode();
 
+        profiling::ScopedProfile presentScope(profiling::Scope::FramePresent);
         BeginDrawing();
         ClearBackground(BLACK);
         const Rectangle source{
@@ -280,6 +295,7 @@ void GameApp::Render(const FrameInput& input) {
         return;
     }
 
+    profiling::ScopedProfile presentScope(profiling::Scope::FramePresent);
     BeginDrawing();
     drawLogicalFrame();
     EndDrawing();

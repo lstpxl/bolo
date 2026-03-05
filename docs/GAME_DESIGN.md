@@ -86,6 +86,11 @@ Enemy spawn table behavior (`src/game/systems/SpawnerSystem.cpp`):
   - `1..2` Drone, `3..4` Torpedo, `5..7` Hunter, `8..9` Assassin.
 - Global alive-enemy cap is `72`.
 - Per-base simultaneous alive cap is `12` enemies.
+- On spawn, enemy position is initialized inside the base with heading-aligned symmetry through base center:
+  - cardinal heading: tank nose points at the middle of the matching base side.
+  - diagonal heading: tank nose points at the matching base corner, then spawn center is shifted `0.5` world-units toward base core.
+- Spawn safety gate: before creating an enemy, spawn path from the initial spawn position must be clear for at least `6` world-units in its spawn heading (walls/bases/enemies considered). If blocked, base skips this attempt and retries next generation interval.
+- Failed spawn attempts (`no valid spawn heading`, `spawn point occupied`, or `6`-unit path gate blocked) reset that base's generation timer and wait one full generation interval before retry.
 - Enemies inside or near any undestroyed base (base footprint + 1 unit clearance) are excluded from enemy–enemy mutual-kill and separation; they never die from base-proximity collisions.
 - Each base has its own enemy generation interval assigned at base creation as random `±50%` of `kBaseSpawnCooldownSeconds`.
 - Each base also has an enemy generation timer initialized from that interval; timer counts down and is reset to the same interval after a successful spawn.
@@ -116,6 +121,7 @@ Input is collected in `src/platform/Input.cpp`.
 - Change slider: Left/Right
 - Select: Enter/Space or gamepad south/east face button
 - `Invisibility` checkbox can be toggled via Left/Right or Select when focused.
+- Default menu values at app start are `Level = 4`, `Density = 1`, `Invisibility = On`.
 
 ## Movement Model
 
@@ -152,6 +158,7 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
 - Enemy wall movement keeps additional margin: enemy disc edge stays at least `2px` away from maze walls.
 - Start mode: at game start (and level restart after all bases are destroyed), player enters a `2s` lock where movement/fire are disabled and fuel fills from `0` to max on HUD.
 - Death mode: when player dies, player enters a `3s` lock with movement/fire disabled and a simple explosion animation before life loss + respawn resolution.
+- Respawn safety: respawn placement requires at least `30` world-units distance from every undestroyed base; if random placement cannot satisfy this, fallback chooses the farthest cell center from alive bases.
 
 ### Enemy Separation and Mutual Collision
 
@@ -182,8 +189,13 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
   - If relative bearing is `>=80°`, drone stops and enters Watch.
 - Torpedo:
   - Fast local-steering movement (no A* path planning), with turns constrained to `45°` increments only.
+  - Spawn heading lock: after spawn, torpedo keeps initial heading while inside base footprint plus `1.0` world-unit clearance; turning decisions are disabled until this clearance is exited.
   - Player detection for steering is throttled to every `0.25s` (cached between checks), using LOS and distance `<9` units.
-  - Obstacle-anticipation: if forward obstacle is within `16` units, scans `-45°/+45°`; if either side has longer clear path than straight, turns to the longer side.
+  - Segment-direction selection evaluates exactly three headings (`forward`, `-45°`, `+45°`) and measures clearance up to `15` units.
+  - In full-tier torpedo move logic, clearance uses full obstacle checks (walls + undestroyed bases + alive enemies).
+  - In cheap-tier torpedo segment build, clearance is wall-only.
+  - Heading pick uses longest clearance; ties are resolved randomly.
+  - Segment length uses `max = longestClearance - 4` and is sampled randomly in `[2, max]` (if `max < 2`, torpedo enters retreat fallback in full-tier move logic).
   - In torpedo steering, "obstacle" checks include walls, undestroyed bases, and other alive enemies.
   - Turn cooldown: must move straight at least `3` units before another turn.
   - MOVE optimization: when a direction decision keeps straight heading, torpedo holds that decision for `1` world-unit of traveled distance (distance-based, not frame-based), and only performs near forward collision checks up to `3` units during that hold.
@@ -201,6 +213,27 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
   - Uses hybrid routing with maze-cell A* shortest path (with dynamic enemy occupancy avoidance), not straight-line steering.
   - Repaths when blocked within `2` units or when advancing through path turn points.
   - Avoids ramming by stopping/adjusting when player distance is under `3` units.
+
+### Offscreen Enemy Simulation LOD
+
+- Enemy simulation uses two runtime tiers:
+  - `Full`: enemy is within dynamic player-centered radius `d = (viewportWidth/2 + cellWidth) * 1.5`, or (for torpedo) in non-move recovery states.
+  - `Cheap`: enemy is outside that radius and not in forced-full exceptions.
+- In `Cheap` tier, enemies use cached segment movement:
+  - heading is quantized to 8-way direction
+  - next segment heading is chosen from `forward/-45/+45` by longest wall-only clearance (capped at `15`), with random tie-break
+  - segment length is randomized in `[2, (bestClear-4)]` (clamped by per-type segment cap)
+  - movement advances toward cached endpoint and endpoint is recomputed only when current endpoint is reached
+  - no wall/enemy/base collision checks are executed while traversing the current cheap-tier segment
+- Cheap-tier enemies do not participate in enemy-enemy frontal-collision and separation post-passes.
+- Cheap-tier enemies do not run enemy-enemy or enemy-base collision checks at all; wall clearance is evaluated only when selecting the next cheap-tier segment.
+- Torpedo exception:
+  - `Retreat`, `Targeting`, and `Rotate` remain `Full` tier even when offscreen.
+  - only torpedo `Move` mode can use cheap-tier segment movement.
+  - offscreen torpedo player-detection checks run at a lower frequency than full simulation.
+- Assassin exception:
+  - while cheap-tier, assassin follows existing waypoint segment without offscreen repath.
+  - on `Cheap -> Full` transition, assassin path cache is invalidated and rebuilt by regular full logic.
 
 ### Invisibility Mode
 
@@ -224,6 +257,7 @@ World rendering is in `src/platform/Renderer2D.cpp`.
 - Maze walls are rendered in screen space at fixed 2px thickness for handheld stability.
 - Current gameplay palette (hex): background `#000000`, walls `#CCCCCC`, player `#00C030`, drone `#A0FF00`, torpedo `#FFFF00`, hunter `#FFA500`, assassin `#FF6500`, enemy base shell `#CC66CC`, enemy base core `#FF00FF`, destroyed base `#404040`, player shell `#FFFFFF`, enemy shell `#FFB000`.
 - Visible maze cell range is culled for rendering performance.
+- Enemy and projectile rendering is culled to camera-visible world bounds with a small safety margin.
 - Enemy tanks and bases are rendered in pixel-snapped screen space (derived from world positions) to match wall stability on handheld displays.
 - Base visuals use a `3x3` unit shell with an empty center square sized as `(1 unit + 8 px)`; a centered "core" disc is drawn inside the hole with diameter `(center hole - 10 px)`.
 - Enemy tank visuals load from `resources/textures/sprites.png` (`2x7` grid, `9x9` cells). Rows `4..7` map to `Drone`, `Torpedo`, `Hunter`, `Assassin` (matching `docs/original-1982/ENEMY_TYPES.md` order). Column 1 is facing 12 o'clock, column 2 is 45 degrees clockwise; the renderer precomputes all 8 directions at load time and uses the matching directional frame at draw time. Non-transparent source pixels are normalized to white during load, then tinted by enemy type color at draw time.
@@ -235,7 +269,13 @@ World rendering is in `src/platform/Renderer2D.cpp`.
 - Gameplay view draws a performance line below the axes line at font size `10`: `PERF FPS ... FT ...ms FS ...ms OH ...ms`, where `FT` is frame total average, `FS` is fixed-step average, and `OH` is non-fixed overhead estimate (`FT - FS`).
 - Gameplay view draws a profiling line below the performance line at font size `10`, showing rolling average fixed-step timings (`AI`, `PF`, `PH`) and allocation telemetry (`alloc/free counts`, `allocated/freed KB`, `live/peak KB`).
 - Gameplay view also draws a bottom-left single-line counter at font size `10`: alive bases and alive enemies by type (`B/D/T/H/A`).
+- Debug-overlay text content is refreshed every `4` frames and cached between refreshes to reduce per-frame formatting/query overhead.
 - HUD minimap plots alive enemies as single-pixel markers in their corresponding colors, bases as `3x3` pixel squares, and player as a larger green marker.
+- HUD runtime sampling cadence:
+  - enemy minimap positions refresh every `0.5s`
+  - fuel bar value refreshes every `0.5s`
+  - nearest-base radar quadrant refreshes every `1.0s`
+  - joystick direction vectors on compass refresh every `4` frames
 
 ### Runtime Profiling
 

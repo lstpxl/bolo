@@ -67,6 +67,11 @@ enum class TorpedoMoveMode {
     Rotate,
 };
 
+enum class EnemySimTier {
+    Full,
+    Cheap,
+};
+
 struct EnemyTank {
     static constexpr int kMaxPathWaypoints = 96;
 
@@ -94,6 +99,10 @@ struct EnemyTank {
     float torpedoLastKnownPlayerHeadingRadians = 0.0F;
     float torpedoChosenHeadingRadians = 0.0F;
     float torpedoRotateTargetHeadingRadians = 0.0F;
+    EnemySimTier simTier = EnemySimTier::Full;
+    float offscreenCachedHeadingRadians = 0.0F;
+    Vec2f offscreenSegmentEnd{.x = 0.0F, .y = 0.0F};
+    bool offscreenSegmentActive = false;
     int originBaseIndex = -1;
     std::array<Vec2f, kMaxPathWaypoints> pathWaypoints{};
     int pathWaypointCount = 0;

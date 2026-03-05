@@ -1,0 +1,291 @@
+INFO: Initializing raylib 5.6-dev
+INFO: Platform backend: DESKTOP (SDL)
+INFO: Supported raylib modules:
+INFO:     > rcore:..... loaded (mandatory)
+INFO:     > rlgl:...... loaded (mandatory)
+INFO:     > rshapes:... loaded (optional)
+INFO:     > rtextures:. loaded (optional)
+INFO:     > rtext:..... loaded (optional)
+INFO:     > rmodels:... loaded (optional)
+INFO:     > raudio:.... loaded (optional)
+arm_release_ver: g13p0-01eac0, rk_so_ver: 11
+INFO: DISPLAY: Device initialized successfully
+INFO:     > Display size: 640 x 480
+INFO:     > Screen size:  640 x 480
+INFO:     > Render size:  640 x 480
+INFO:     > Viewport offsets: 0, 0
+INFO: GLAD: OpenGL ES 2.0 loaded successfully
+INFO: GL: Supported extensions count: 99
+INFO: GL: OpenGL device information:
+INFO:     > Vendor:   ARM
+INFO:     > Renderer: Mali-G52
+INFO:     > Version:  OpenGL ES 3.2 v1.g13p0-01eac0.fdf91928d758c45c1787782175b35c6a
+INFO:     > GLSL:     OpenGL ES GLSL ES 3.20
+INFO: GL: VAO extension detected, VAO functions loaded successfully
+INFO: GL: NPOT textures extension detected, full NPOT textures supported
+INFO: GL: ETC1 compressed textures supported
+INFO: GL: ASTC compressed textures supported
+INFO: PLATFORM: DESKTOP (SDL2): Initialized successfully
+INFO: TEXTURE: [ID 1] Texture loaded successfully (1x1 | R8G8B8A8 | 1 mipmaps)
+INFO: TEXTURE: [ID 1] Default texture loaded successfully
+INFO: SHADER: [ID 1] Vertex shader compiled successfully
+INFO: SHADER: [ID 2] Fragment shader compiled successfully
+INFO: SHADER: [ID 3] Program shader loaded successfully
+INFO: SHADER: [ID 3] Default shader loaded successfully
+INFO: RLGL: Render batch vertex buffers loaded successfully in RAM (CPU)
+INFO: RLGL: Render batch vertex buffers loaded successfully in VRAM (GPU)
+INFO: RLGL: Default OpenGL state initialized successfully
+INFO: TEXTURE: [ID 2] Texture loaded successfully (128x128 | GRAY_ALPHA | 1 mipmaps)
+INFO: FONT: Default font loaded successfully (224 glyphs)
+INFO: SYSTEM: Working Directory: /roms2/ports/bolt
+INFO: TIMER: Target time per frame: 16.667 milliseconds
+INFO: FILEIO: [resources/textures/sprites.png] File loaded successfully
+INFO: IMAGE: Data loaded successfully (18x63 | R8G8B8A8 | 1 mipmaps)
+INFO: TEXTURE: [ID 3] Texture loaded successfully (72x9 | R8G8B8A8 | 1 mipmaps)
+INFO: TEXTURE: [ID 4] Texture loaded successfully (72x36 | R8G8B8A8 | 1 mipmaps)
+INFO: AUDIO: Device initialized successfully
+INFO:     > Backend:       miniaudio | ALSA
+INFO:     > Format:        32-bit IEEE Floating Point -> 32-bit IEEE Floating Point
+INFO:     > Channels:      2 -> 2
+INFO:     > Sample rate:   44100 -> 44100
+INFO:     > Periods size:  3072
+INFO: FILEIO: [resources/audio/keyboard-click.wav] File loaded successfully
+INFO: WAVE: Data loaded successfully (48000 Hz, 16 bit, 1 channels)
+INFO: AUDIO: menu click sound loaded from: resources/audio/keyboard-click.wav
+INFO: FILEIO: [resources/audio/power-up.wav] File loaded successfully
+INFO: WAVE: Data loaded successfully (48000 Hz, 16 bit, 1 channels)
+INFO: AUDIO: power-up sound loaded from: resources/audio/power-up.wav
+INFO: FILEIO: [resources/audio/player-shot.wav] File loaded successfully
+INFO: WAVE: Data loaded successfully (48000 Hz, 16 bit, 1 channels)
+INFO: AUDIO: player-shot sound loaded from: resources/audio/player-shot.wav
+INFO: FILEIO: [resources/audio/enemy-shot.wav] File loaded successfully
+INFO: WAVE: Data loaded successfully (48000 Hz, 16 bit, 1 channels)
+INFO: AUDIO: enemy-shot sound loaded from: resources/audio/enemy-shot.wav
+INFO: FILEIO: [resources/audio/enemy-spawning.wav] File loaded successfully
+INFO: WAVE: Data loaded successfully (48000 Hz, 16 bit, 1 channels)
+INFO: AUDIO: enemy-spawning sound loaded from: resources/audio/enemy-spawning.wav
+INFO: FILEIO: [resources/audio/enemy-exploding.wav] File loaded successfully
+INFO: WAVE: Data loaded successfully (48000 Hz, 16 bit, 1 channels)
+INFO: AUDIO: enemy-exploding sound loaded from: resources/audio/enemy-exploding.wav
+INFO: FILEIO: [resources/audio/base-exploding.wav] File loaded successfully
+INFO: WAVE: Data loaded successfully (48000 Hz, 16 bit, 1 channels)
+INFO: AUDIO: base-exploding sound loaded from: resources/audio/base-exploding.wav
+
+[PROFILE] frame=120 budget=16.667ms alloc(+0/-0, +0b/-0b, live=0b peak=56b)
+  frame.total                      avg= 17.092ms p95= 17.075ms max= 34.668ms calls(last=  1,total=120) (102.6% budget)
+  frame.render                     avg= 17.052ms p95= 17.036ms max= 34.598ms calls(last=  1,total=120) (102.3% budget)
+  frame.present                    avg= 17.044ms p95= 17.029ms max= 34.591ms calls(last=  1,total=120) (102.3% budget)
+  frame.input_poll                 avg=  0.028ms p95=  0.029ms max=  0.075ms calls(last=  1,total=120) (0.2% budget)
+  frame.fixed_step                 avg=  0.002ms p95=  0.003ms max=  0.026ms calls(last=  1,total=124) (0.0% budget)
+
+[PROFILE] frame=240 budget=16.667ms alloc(+0/-0, +0b/-0b, live=0b peak=488b)
+  frame.total                      avg= 16.924ms p95= 16.967ms max= 34.668ms calls(last=  1,total=240) (101.5% budget)
+  frame.render                     avg= 16.886ms p95= 16.929ms max= 34.598ms calls(last=  1,total=240) (101.3% budget)
+  frame.present                    avg= 16.878ms p95= 16.921ms max= 34.591ms calls(last=  1,total=240) (101.3% budget)
+  frame.input_poll                 avg=  0.027ms p95=  0.028ms max=  0.075ms calls(last=  1,total=240) (0.2% budget)
+  frame.fixed_step                 avg=  0.002ms p95=  0.003ms max=  0.026ms calls(last=  1,total=246) (0.0% budget)
+
+[PROFILE] frame=360 budget=16.667ms alloc(+4/-4, +187376b/-187376b, live=14560b peak=201936b)
+  frame.total                      avg= 17.549ms p95= 17.470ms max= 82.696ms calls(last=  1,total=360) (105.3% budget)
+  frame.render                     avg= 15.623ms p95= 16.930ms max= 82.659ms calls(last=  1,total=360) (93.7% budget)
+  frame.present                    avg= 15.616ms p95= 16.922ms max= 82.652ms calls(last=  1,total=360) (93.7% budget)
+  frame.render.world               avg=  2.885ms p95=  5.307ms max=  5.615ms calls(last=  1,total=68) (17.3% budget)
+  frame.fixed_step                 avg=  1.888ms p95=  3.252ms max= 12.066ms calls(last=  1,total=372) (11.3% budget)
+  game.update                      avg=  1.766ms p95=  3.055ms max= 11.461ms calls(last=  1,total=73) (10.6% budget)
+  system.ai_update                 avg=  1.729ms p95=  2.997ms max= 11.265ms calls(last=  1,total=73) (10.4% budget)
+  enemy.update                     avg=  1.726ms p95=  2.992ms max= 11.215ms calls(last=  1,total=73) (10.4% budget)
+  frame.render.overlay             avg=  1.331ms p95=  2.971ms max=  3.233ms calls(last=  1,total=68) (8.0% budget)
+  enemy.physics.frontal_collisions avg=  0.489ms p95=  0.864ms max=  3.218ms calls(last=  1,total=73) (2.9% budget)
+  enemy.physics.separation         avg=  0.327ms p95=  0.650ms max=  2.078ms calls(last=  1,total=73) (2.0% budget)
+  frame.input_poll                 avg=  0.027ms p95=  0.028ms max=  0.093ms calls(last=  1,total=360) (0.2% budget)
+  system.physics_collision         avg=  0.011ms p95=  0.018ms max=  0.080ms calls(last=  1,total=73) (0.1% budget)
+  system.spawner_update            avg=  0.005ms p95=  0.010ms max=  0.025ms calls(last=  1,total=73) (0.0% budget)
+  system.projectile_update         avg=  0.002ms p95=  0.004ms max=  0.008ms calls(last=  1,total=73) (0.0% budget)
+  system.maze_update               avg=  0.000ms p95=  0.001ms max=  0.003ms calls(last=  1,total=73) (0.0% budget)
+
+[PROFILE] frame=480 budget=16.667ms alloc(+100/-100, +769824b/-769824b, live=21864b peak=214160b)
+  frame.total                      avg= 38.869ms p95= 87.100ms max= 87.502ms calls(last=  1,total=480) (233.2% budget)
+  frame.fixed_step                 avg= 26.389ms p95= 76.880ms max= 77.305ms calls(last=  4,total=606) (158.3% budget)
+  game.update                      avg= 25.957ms p95= 75.923ms max= 76.359ms calls(last=  4,total=307) (155.7% budget)
+  system.ai_update                 avg= 25.784ms p95= 75.510ms max= 75.723ms calls(last=  4,total=307) (154.7% budget)
+  enemy.update                     avg= 25.774ms p95= 75.492ms max= 75.705ms calls(last=  4,total=307) (154.6% budget)
+  frame.render                     avg= 12.438ms p95= 14.147ms max= 82.659ms calls(last=  1,total=480) (74.6% budget)
+  frame.present                    avg= 12.431ms p95= 14.139ms max= 82.652ms calls(last=  1,total=480) (74.6% budget)
+  enemy.physics.frontal_collisions avg= 11.662ms p95= 35.262ms max= 35.362ms calls(last=  4,total=307) (70.0% budget)
+  enemy.physics.separation         avg= 11.059ms p95= 33.964ms max= 34.297ms calls(last=  4,total=307) (66.4% budget)
+  frame.render.world               avg=  5.111ms p95=  5.411ms max=  6.048ms calls(last=  1,total=188) (30.7% budget)
+  frame.render.overlay             avg=  2.404ms p95=  3.006ms max=  6.206ms calls(last=  1,total=188) (14.4% budget)
+  system.player_update             avg=  0.042ms p95=  0.115ms max=  0.128ms calls(last=  4,total=187) (0.3% budget)
+  enemy.type.drone                 avg=  0.036ms p95=  0.128ms max=  0.236ms calls(last= 16,total=312) (0.2% budget)
+  system.physics_collision         avg=  0.035ms p95=  0.078ms max=  0.096ms calls(last=  4,total=307) (0.2% budget)
+  system.spawner_update            avg=  0.035ms p95=  0.055ms max=  0.407ms calls(last=  4,total=307) (0.2% budget)
+  frame.input_poll                 avg=  0.027ms p95=  0.029ms max=  0.093ms calls(last=  1,total=480) (0.2% budget)
+
+[PROFILE] frame=600 budget=16.667ms alloc(+244/-244, +823616b/-823616b, live=43752b peak=248704b)
+  frame.total                      avg= 87.271ms p95= 89.082ms max= 90.046ms calls(last=  1,total=600) (523.6% budget)
+  frame.fixed_step                 avg= 77.102ms p95= 78.576ms max= 79.097ms calls(last=  4,total=1086) (462.6% budget)
+  game.update                      avg= 75.969ms p95= 77.304ms max= 77.761ms calls(last=  4,total=787) (455.8% budget)
+  system.ai_update                 avg= 75.539ms p95= 76.891ms max= 77.339ms calls(last=  4,total=787) (453.2% budget)
+  enemy.update                     avg= 75.520ms p95= 76.874ms max= 77.319ms calls(last=  4,total=787) (453.1% budget)
+  enemy.physics.frontal_collisions avg= 35.136ms p95= 35.729ms max= 36.141ms calls(last=  4,total=787) (210.8% budget)
+  enemy.physics.separation         avg= 33.597ms p95= 34.048ms max= 34.297ms calls(last=  4,total=787) (201.6% budget)
+  frame.render                     avg= 10.117ms p95= 10.826ms max= 82.659ms calls(last=  1,total=600) (60.7% budget)
+  frame.present                    avg= 10.110ms p95= 10.818ms max= 82.652ms calls(last=  1,total=600) (60.7% budget)
+  frame.render.world               avg=  5.295ms p95=  5.489ms max=  6.048ms calls(last=  1,total=308) (31.8% budget)
+  frame.render.overlay             avg=  2.454ms p95=  3.052ms max=  6.206ms calls(last=  1,total=308) (14.7% budget)
+  enemy.type.drone                 avg=  0.248ms p95=  0.357ms max=  0.448ms calls(last= 48,total=4548) (1.5% budget)
+  system.player_update             avg=  0.117ms p95=  0.131ms max=  0.163ms calls(last=  4,total=667) (0.7% budget)
+  system.spawner_update            avg=  0.098ms p95=  0.320ms max=  0.697ms calls(last=  4,total=787) (0.6% budget)
+  system.physics_collision         avg=  0.081ms p95=  0.089ms max=  0.113ms calls(last=  4,total=787) (0.5% budget)
+  enemy.type.torpedo               avg=  0.072ms p95=  0.199ms max=  0.291ms calls(last= 24,total=1538) (0.4% budget)
+
+[PROFILE] frame=720 budget=16.667ms alloc(+359/-359, +871288b/-871288b, live=43752b peak=260096b)
+  frame.total                      avg= 90.673ms p95= 92.726ms max= 93.225ms calls(last=  1,total=720) (544.0% budget)
+  frame.fixed_step                 avg= 80.145ms p95= 81.946ms max= 82.615ms calls(last=  4,total=1566) (480.9% budget)
+  game.update                      avg= 78.460ms p95= 80.050ms max= 80.718ms calls(last=  4,total=1267) (470.8% budget)
+  system.ai_update                 avg= 77.974ms p95= 79.480ms max= 80.258ms calls(last=  4,total=1267) (467.8% budget)
+  enemy.update                     avg= 77.954ms p95= 79.461ms max= 80.238ms calls(last=  4,total=1267) (467.7% budget)
+  enemy.physics.frontal_collisions avg= 35.855ms p95= 36.497ms max= 36.690ms calls(last=  4,total=1267) (215.1% budget)
+  enemy.physics.separation         avg= 33.949ms p95= 34.416ms max= 34.512ms calls(last=  4,total=1267) (203.7% budget)
+  frame.render                     avg= 10.477ms p95= 11.254ms max= 82.659ms calls(last=  1,total=720) (62.9% budget)
+  frame.present                    avg= 10.469ms p95= 11.247ms max= 82.652ms calls(last=  1,total=720) (62.8% budget)
+  frame.render.world               avg=  5.597ms p95=  5.879ms max=  6.102ms calls(last=  1,total=428) (33.6% budget)
+  frame.render.overlay             avg=  2.502ms p95=  3.181ms max=  6.206ms calls(last=  1,total=428) (15.0% budget)
+  enemy.type.torpedo               avg=  0.809ms p95=  1.710ms max=  2.199ms calls(last= 52,total=6197) (4.9% budget)
+  enemy.type.drone                 avg=  0.466ms p95=  0.557ms max=  0.671ms calls(last= 68,total=11709) (2.8% budget)
+  enemy.ai.decision                avg=  0.372ms p95=  1.082ms max=  1.622ms calls(last=  4,total=316) (2.2% budget)
+  enemy.ai.movement                avg=  0.146ms p95=  0.238ms max=  0.332ms calls(last=  4,total=316) (0.9% budget)
+  system.player_update             avg=  0.124ms p95=  0.143ms max=  0.213ms calls(last=  4,total=1147) (0.7% budget)
+
+[PROFILE] frame=840 budget=16.667ms alloc(+488/-488, +932416b/-932416b, live=72976b peak=303896b)
+  frame.total                      avg= 93.628ms p95= 95.411ms max= 96.157ms calls(last=  1,total=840) (561.8% budget)
+  frame.fixed_step                 avg= 82.877ms p95= 84.074ms max= 85.451ms calls(last=  4,total=2046) (497.3% budget)
+  game.update                      avg= 80.337ms p95= 81.403ms max= 82.727ms calls(last=  4,total=1747) (482.0% budget)
+  system.ai_update                 avg= 79.790ms p95= 80.807ms max= 82.232ms calls(last=  4,total=1747) (478.7% budget)
+  enemy.update                     avg= 79.769ms p95= 80.782ms max= 82.215ms calls(last=  4,total=1747) (478.6% budget)
+  enemy.physics.frontal_collisions avg= 36.290ms p95= 36.637ms max= 36.762ms calls(last=  4,total=1747) (217.7% budget)
+  enemy.physics.separation         avg= 34.169ms p95= 34.576ms max= 34.883ms calls(last=  4,total=1747) (205.0% budget)
+  frame.render                     avg= 10.698ms p95= 11.474ms max= 82.659ms calls(last=  1,total=840) (64.2% budget)
+  frame.present                    avg= 10.690ms p95= 11.467ms max= 82.652ms calls(last=  1,total=840) (64.1% budget)
+  frame.render.world               avg=  5.833ms p95=  6.299ms max=  6.460ms calls(last=  1,total=548) (35.0% budget)
+  frame.render.overlay             avg=  2.482ms p95=  3.121ms max=  6.206ms calls(last=  1,total=548) (14.9% budget)
+  enemy.type.torpedo               avg=  1.458ms p95=  2.680ms max=  3.975ms calls(last= 72,total=13838) (8.7% budget)
+  enemy.ai.decision                avg=  0.652ms p95=  1.595ms max=  2.877ms calls(last=  0,total=856) (3.9% budget)
+  enemy.type.drone                 avg=  0.631ms p95=  0.768ms max=  0.871ms calls(last=108,total=22141) (3.8% budget)
+  enemy.ai.movement                avg=  0.313ms p95=  0.552ms max=  0.589ms calls(last=  0,total=856) (1.9% budget)
+  system.spawner_update            avg=  0.155ms p95=  0.412ms max=  0.805ms calls(last=  4,total=1747) (0.9% budget)
+
+[PROFILE] frame=960 budget=16.667ms alloc(+568/-568, +972736b/-972736b, live=72976b peak=313240b)
+  frame.total                      avg= 96.077ms p95= 98.608ms max= 99.085ms calls(last=  1,total=960) (576.5% budget)
+  frame.fixed_step                 avg= 85.213ms p95= 87.546ms max= 88.236ms calls(last=  4,total=2526) (511.3% budget)
+  game.update                      avg= 81.610ms p95= 83.730ms max= 84.317ms calls(last=  4,total=2227) (489.7% budget)
+  system.ai_update                 avg= 81.053ms p95= 83.211ms max= 83.783ms calls(last=  4,total=2227) (486.3% budget)
+  enemy.update                     avg= 81.033ms p95= 83.192ms max= 83.762ms calls(last=  4,total=2227) (486.2% budget)
+  enemy.physics.frontal_collisions avg= 36.909ms p95= 37.488ms max= 37.725ms calls(last=  4,total=2227) (221.5% budget)
+  enemy.physics.separation         avg= 34.302ms p95= 34.716ms max= 35.294ms calls(last=  4,total=2227) (205.8% budget)
+  frame.render                     avg= 10.811ms p95= 11.517ms max= 82.659ms calls(last=  1,total=960) (64.9% budget)
+  frame.present                    avg= 10.804ms p95= 11.510ms max= 82.652ms calls(last=  1,total=960) (64.8% budget)
+  frame.render.world               avg=  5.910ms p95=  6.121ms max=  6.866ms calls(last=  1,total=668) (35.5% budget)
+  frame.render.overlay             avg=  2.490ms p95=  3.089ms max=  6.206ms calls(last=  1,total=668) (14.9% budget)
+  enemy.type.torpedo               avg=  1.515ms p95=  2.752ms max=  3.975ms calls(last= 92,total=23467) (9.1% budget)
+  enemy.type.drone                 avg=  0.842ms p95=  0.974ms max=  1.133ms calls(last=128,total=36431) (5.1% budget)
+  enemy.ai.decision                avg=  0.511ms p95=  1.424ms max=  2.877ms calls(last=  8,total=1414) (3.1% budget)
+  enemy.ai.movement                avg=  0.396ms p95=  0.702ms max=  0.763ms calls(last=  8,total=1414) (2.4% budget)
+  system.spawner_update            avg=  0.167ms p95=  0.418ms max=  0.805ms calls(last=  4,total=2227) (1.0% budget)
+
+[PROFILE] frame=1080 budget=16.667ms alloc(+628/-628, +1004640b/-1004640b, live=72976b peak=320968b)
+  frame.total                      avg= 98.608ms p95=100.504ms max=101.081ms calls(last=  1,total=1080) (591.6% budget)
+  frame.fixed_step                 avg= 87.605ms p95= 89.158ms max= 90.213ms calls(last=  4,total=3006) (525.6% budget)
+  game.update                      avg= 82.939ms p95= 84.567ms max= 85.603ms calls(last=  4,total=2707) (497.6% budget)
+  system.ai_update                 avg= 82.334ms p95= 84.018ms max= 85.033ms calls(last=  4,total=2707) (494.0% budget)
+  enemy.update                     avg= 82.313ms p95= 83.998ms max= 85.013ms calls(last=  4,total=2707) (493.9% budget)
+  enemy.physics.frontal_collisions avg= 37.277ms p95= 37.835ms max= 38.073ms calls(last=  4,total=2707) (223.7% budget)
+  enemy.physics.separation         avg= 34.391ms p95= 34.746ms max= 35.294ms calls(last=  4,total=2707) (206.3% budget)
+  frame.render                     avg= 10.951ms p95= 11.779ms max= 82.659ms calls(last=  1,total=1080) (65.7% budget)
+  frame.present                    avg= 10.943ms p95= 11.772ms max= 82.652ms calls(last=  1,total=1080) (65.7% budget)
+  frame.render.world               avg=  6.053ms p95=  6.476ms max=  6.866ms calls(last=  1,total=788) (36.3% budget)
+  frame.render.overlay             avg=  2.482ms p95=  3.098ms max=  6.206ms calls(last=  1,total=788) (14.9% budget)
+  enemy.type.torpedo               avg=  1.777ms p95=  3.274ms max=  3.975ms calls(last=104,total=35481) (10.7% budget)
+  enemy.type.drone                 avg=  1.163ms p95=  1.586ms max=  1.687ms calls(last=148,total=52926) (7.0% budget)
+  enemy.ai.decision                avg=  0.676ms p95=  1.758ms max=  2.877ms calls(last=  4,total=2146) (4.1% budget)
+  enemy.ai.movement                avg=  0.549ms p95=  0.780ms max=  0.843ms calls(last=  4,total=2146) (3.3% budget)
+  system.spawner_update            avg=  0.181ms p95=  0.437ms max=  0.805ms calls(last=  4,total=2707) (1.1% budget)
+
+[PROFILE] frame=1200 budget=16.667ms alloc(+668/-668, +1028704b/-1028704b, live=131344b peak=385016b)
+  frame.total                      avg= 99.796ms p95=101.853ms max=102.989ms calls(last=  1,total=1200) (598.8% budget)
+  frame.fixed_step                 avg= 88.694ms p95= 90.280ms max= 90.926ms calls(last=  4,total=3486) (532.2% budget)
+  game.update                      avg= 83.233ms p95= 84.705ms max= 85.603ms calls(last=  4,total=3187) (499.4% budget)
+  system.ai_update                 avg= 82.609ms p95= 84.030ms max= 85.033ms calls(last=  4,total=3187) (495.7% budget)
+  enemy.update                     avg= 82.589ms p95= 84.011ms max= 85.013ms calls(last=  4,total=3187) (495.5% budget)
+  enemy.physics.frontal_collisions avg= 37.571ms p95= 38.093ms max= 38.303ms calls(last=  4,total=3187) (225.4% budget)
+  enemy.physics.separation         avg= 34.541ms p95= 34.980ms max= 35.294ms calls(last=  4,total=3187) (207.2% budget)
+  frame.render                     avg= 11.049ms p95= 11.898ms max= 82.659ms calls(last=  1,total=1200) (66.3% budget)
+  frame.present                    avg= 11.042ms p95= 11.891ms max= 82.652ms calls(last=  1,total=1200) (66.2% budget)
+  frame.render.world               avg=  6.143ms p95=  6.566ms max=  6.866ms calls(last=  1,total=908) (36.9% budget)
+  frame.render.overlay             avg=  2.513ms p95=  3.167ms max=  6.206ms calls(last=  1,total=908) (15.1% budget)
+  enemy.type.drone                 avg=  1.346ms p95=  1.676ms max=  1.763ms calls(last=152,total=70703) (8.1% budget)
+  enemy.type.torpedo               avg=  1.277ms p95=  2.528ms max=  3.975ms calls(last=124,total=49091) (7.7% budget)
+  enemy.ai.movement                avg=  0.404ms p95=  0.808ms max=  0.857ms calls(last=  4,total=2610) (2.4% budget)
+  enemy.ai.decision                avg=  0.363ms p95=  1.269ms max=  2.877ms calls(last=  4,total=2610) (2.2% budget)
+  system.spawner_update            avg=  0.189ms p95=  0.209ms max=  0.805ms calls(last=  4,total=3187) (1.1% budget)
+
+[PROFILE] frame=1320 budget=16.667ms alloc(+664/-664, +1036864b/-1036864b, live=131344b peak=386784b)
+  frame.total                      avg=101.484ms p95=103.030ms max=104.003ms calls(last=  1,total=1320) (608.9% budget)
+  frame.fixed_step                 avg= 90.190ms p95= 91.291ms max= 91.869ms calls(last=  4,total=3966) (541.1% budget)
+  game.update                      avg= 84.057ms p95= 84.998ms max= 85.603ms calls(last=  4,total=3667) (504.3% budget)
+  system.ai_update                 avg= 83.435ms p95= 84.381ms max= 85.033ms calls(last=  4,total=3667) (500.6% budget)
+  enemy.update                     avg= 83.414ms p95= 84.362ms max= 85.013ms calls(last=  4,total=3667) (500.5% budget)
+  enemy.physics.frontal_collisions avg= 37.988ms p95= 38.361ms max= 38.470ms calls(last=  4,total=3667) (227.9% budget)
+  enemy.physics.separation         avg= 34.825ms p95= 35.164ms max= 35.506ms calls(last=  4,total=3667) (208.9% budget)
+  frame.render                     avg= 11.242ms p95= 12.235ms max= 82.659ms calls(last=  1,total=1320) (67.5% budget)
+  frame.present                    avg= 11.234ms p95= 12.227ms max= 82.652ms calls(last=  1,total=1320) (67.4% budget)
+  frame.render.world               avg=  6.236ms p95=  6.686ms max=  6.866ms calls(last=  1,total=1028) (37.4% budget)
+  frame.render.overlay             avg=  2.573ms p95=  3.217ms max=  6.206ms calls(last=  1,total=1028) (15.4% budget)
+  enemy.type.drone                 avg=  1.726ms p95=  2.254ms max=  2.335ms calls(last=156,total=89123) (10.4% budget)
+  enemy.type.torpedo               avg=  0.865ms p95=  0.961ms max=  3.975ms calls(last=128,total=64278) (5.2% budget)
+  enemy.ai.movement                avg=  0.465ms p95=  0.866ms max=  0.918ms calls(last=  8,total=3114) (2.8% budget)
+  system.spawner_update            avg=  0.188ms p95=  0.199ms max=  0.805ms calls(last=  4,total=3667) (1.1% budget)
+  system.physics_collision         avg=  0.144ms p95=  0.213ms max=  0.248ms calls(last=  4,total=3667) (0.9% budget)
+
+[PROFILE] frame=1440 budget=16.667ms alloc(+0/-0, +0b/-0b, live=131344b peak=387688b)
+  frame.total                      avg=100.339ms p95=105.564ms max=107.430ms calls(last=  1,total=1440) (602.0% budget)
+  frame.fixed_step                 avg= 88.877ms p95= 93.930ms max= 94.533ms calls(last=  1,total=4437) (533.3% budget)
+  game.update                      avg= 82.989ms p95= 87.865ms max= 88.350ms calls(last=  0,total=4131) (497.9% budget)
+  system.ai_update                 avg= 82.399ms p95= 87.276ms max= 87.731ms calls(last=  0,total=4131) (494.4% budget)
+  enemy.update                     avg= 82.380ms p95= 87.257ms max= 87.708ms calls(last=  0,total=4131) (494.3% budget)
+  enemy.physics.frontal_collisions avg= 36.798ms p95= 38.488ms max= 38.664ms calls(last=  0,total=4131) (220.8% budget)
+  enemy.physics.separation         avg= 33.719ms p95= 35.243ms max= 35.506ms calls(last=  0,total=4131) (202.3% budget)
+  frame.render                     avg= 11.408ms p95= 12.841ms max= 82.659ms calls(last=  1,total=1440) (68.5% budget)
+  frame.present                    avg= 11.401ms p95= 12.833ms max= 82.652ms calls(last=  1,total=1440) (68.4% budget)
+  frame.render.world               avg=  6.207ms p95=  6.587ms max=  6.866ms calls(last=  1,total=1148) (37.2% budget)
+  frame.render.overlay             avg=  2.610ms p95=  3.444ms max=  6.206ms calls(last=  2,total=1152) (15.7% budget)
+  enemy.type.drone                 avg=  2.331ms p95=  2.696ms max=  3.189ms calls(last=  0,total=107241) (14.0% budget)
+  enemy.type.torpedo               avg=  1.836ms p95=  3.312ms max=  3.975ms calls(last=  0,total=78516) (11.0% budget)
+  enemy.ai.movement                avg=  1.397ms p95=  2.433ms max=  2.557ms calls(last=  0,total=5012) (8.4% budget)
+  enemy.ai.decision                avg=  0.634ms p95=  1.280ms max=  2.877ms calls(last=  0,total=5012) (3.8% budget)
+  system.spawner_update            avg=  0.178ms p95=  0.202ms max=  0.805ms calls(last=  0,total=4131) (1.1% budget)
+
+[PROFILE] frame=1560 budget=16.667ms alloc(+0/-0, +0b/-0b, live=131344b peak=387688b)
+  frame.total                      avg= 16.944ms p95= 17.208ms max=107.430ms calls(last=  1,total=1560) (101.7% budget)
+  frame.render                     avg= 16.905ms p95= 17.170ms max= 82.659ms calls(last=  1,total=1560) (101.4% budget)
+  frame.present                    avg= 16.898ms p95= 17.163ms max= 82.652ms calls(last=  1,total=1560) (101.4% budget)
+  frame.render.world               avg=  3.061ms p95=  6.310ms max=  6.880ms calls(last=  0,total=1208) (18.4% budget)
+  frame.render.overlay             avg=  1.802ms p95=  4.326ms max=  6.206ms calls(last=  0,total=1272) (10.8% budget)
+  frame.input_poll                 avg=  0.028ms p95=  0.029ms max=  0.108ms calls(last=  1,total=1560) (0.2% budget)
+  frame.fixed_step                 avg=  0.003ms p95=  0.003ms max= 94.533ms calls(last=  1,total=4560) (0.0% budget)
+  system.ai_update                 avg=  0.000ms p95=  0.000ms max= 87.731ms calls(last=  0,total=4131) (0.0% budget)
+  system.maze_update               avg=  0.000ms p95=  0.000ms max=  0.004ms calls(last=  0,total=4131) (0.0% budget)
+  enemy.update                     avg=  0.000ms p95=  0.000ms max= 87.708ms calls(last=  0,total=4131) (0.0% budget)
+  enemy.type.drone                 avg=  0.000ms p95=  0.000ms max=  3.189ms calls(last=  0,total=107241) (0.0% budget)
+  enemy.type.torpedo               avg=  0.000ms p95=  0.000ms max=  3.975ms calls(last=  0,total=78516) (0.0% budget)
+  enemy.ai.perception              avg=  0.000ms p95=  0.000ms max=  0.096ms calls(last=  0,total=5012) (0.0% budget)
+  game.update                      avg=  0.000ms p95=  0.000ms max= 88.350ms calls(last=  0,total=4131) (0.0% budget)
+  enemy.ai.movement                avg=  0.000ms p95=  0.000ms max=  2.557ms calls(last=  0,total=5012) (0.0% budget)
+  enemy.ai.firing                  avg=  0.000ms p95=  0.000ms max=  0.100ms calls(last=  0,total=5012) (0.0% budget)
+INFO: TEXTURE: [ID 3] Unloaded texture data from VRAM (GPU)
+INFO: TEXTURE: [ID 4] Unloaded texture data from VRAM (GPU)
+INFO: AUDIO: Device closed successfully
+INFO: TEXTURE: [ID 2] Unloaded texture data from VRAM (GPU)
+INFO: SHADER: [ID 3] Default shader unloaded successfully
+INFO: TEXTURE: [ID 1] Default texture unloaded successfully
+INFO: Window closed successfully

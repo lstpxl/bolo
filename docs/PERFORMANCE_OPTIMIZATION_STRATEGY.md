@@ -171,6 +171,8 @@ Keeping related data contiguous (e.g. all positions in one array) improves cache
 |------|-------|--------|-----------|
 | **5.1** Profiling overhead | Profiling.cpp | Consider sampling (e.g., profile 1 in N frames) or fewer scopes in ship builds | Reduces profiling cost |
 | **5.2** Render culling | Renderer2D | Verify maze cell culling and entity culling; minimize draws | Already noted in GAME_DESIGN; audit if OH (overhead) high |
+| **5.3** Move debug overlay to HUD area | GameApp, DebugOverlayRenderer | Place perf/debug text over HUD band instead of gameplay field | Improves visual readability; avoids overlap with world action |
+| **5.4** HUD render caching | Renderer2D, GameApp | Cache static HUD layer in memory; refresh heavy HUD parts every 10 frames while keeping critical counters real-time | Reduces repeated per-frame draw overhead |
 
 ---
 

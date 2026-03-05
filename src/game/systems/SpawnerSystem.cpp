@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
-#include <cstdint>
 #include "core/AngleMath.h"
 #include "core/Random.h"
 #include "game/GameQueries.h"
@@ -11,6 +10,9 @@
 
 namespace {
 constexpr float kPi = 3.14159265358979323846F;
+constexpr float kDiagonalSpawnCoreShiftUnits = 0.5F;
+constexpr float kRequiredSpawnClearUnits = 6.0F;
+constexpr float kSpawnProbeMaxUnits = 8.0F;
 
 struct EnemySpawnEntry {
     EnemyType type;
@@ -44,8 +46,6 @@ struct SpawnRayChoice {
 SpawnRayChoice PickSpawnDirection(const WorldState& world, const Vec2f& baseCenter, Random& random) {
     constexpr std::array<float, 8> kHeadings{
         0.0F, kPi * 0.25F, kPi * 0.5F, kPi * 0.75F, kPi, kPi * 1.25F, kPi * 1.5F, kPi * 1.75F};
-    constexpr float kRequiredSpawnClearUnits = 6.0F;
-    constexpr float kProbeMaxUnits = 8.0F;
 
     std::array<SpawnRayChoice, 8> choices{};
     std::array<int, 8> validIndices{};
@@ -58,7 +58,7 @@ SpawnRayChoice PickSpawnDirection(const WorldState& world, const Vec2f& baseCent
             world,
             baseCenter,
             heading,
-            kProbeMaxUnits,
+            kSpawnProbeMaxUnits,
             GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
         choices[static_cast<std::size_t>(i)] = SpawnRayChoice{
             .heading = heading,
@@ -104,6 +104,14 @@ bool IsSpawnPositionFree(const GameState& state, const Vec2f& spawnPosition) {
     }
     return true;
 }
+
+bool IsDiagonalDirection(const Vec2f& dir) {
+    return std::fabs(dir.x) > 0.5F && std::fabs(dir.y) > 0.5F;
+}
+
+void ResetSpawnTimerAfterFailedAttempt(EnemyBase& base) {
+    base.enemyGenerationTimerSeconds = base.enemyGenerationIntervalSeconds;
+}
 }  // namespace
 
 void UpdateSpawnerSystem(GameState& state, float deltaSeconds, Random& random) {
@@ -143,19 +151,45 @@ void UpdateSpawnerSystem(GameState& state, float deltaSeconds, Random& random) {
         const EnemySpawnEntry spawnedEnemy = PickSpawnEnemyForLevel(state.menuSettings.levelNumber, random);
         const SpawnRayChoice spawnDirection = PickSpawnDirection(state.world, base.position, random);
         if (!spawnDirection.found) {
-            // Keep trying future ticks until the base has a clear 6-unit escape corridor.
+            // Failed attempt: wait a full interval before retrying.
+            ResetSpawnTimerAfterFailedAttempt(base);
             continue;
         }
         const Vec2f dir = core::angle::DirectionFromHeading(spawnDirection.heading);
-        const float spawnOffsetUnits =
-            GameplayConstants::kEnemyBaseSizeUnits * 0.5F +
+        const float baseHalfSizeUnits = GameplayConstants::kEnemyBaseSizeUnits * 0.5F;
+        const bool diagonalSpawn = IsDiagonalDirection(dir);
+        Vec2f noseAnchor = Vec2f{
+            .x = base.position.x + dir.x * baseHalfSizeUnits,
+            .y = base.position.y + dir.y * baseHalfSizeUnits,
+        };
+        if (diagonalSpawn) {
+            noseAnchor = Vec2f{
+                .x = base.position.x + (dir.x >= 0.0F ? baseHalfSizeUnits : -baseHalfSizeUnits),
+                .y = base.position.y + (dir.y >= 0.0F ? baseHalfSizeUnits : -baseHalfSizeUnits),
+            };
+        }
+        const float spawnBackoffUnits =
             GameplayConstants::kEntitySizeUnits * 0.5F +
-            GameplayConstants::kEnemyWallClearanceUnits;
+            (diagonalSpawn ? kDiagonalSpawnCoreShiftUnits : 0.0F);
         Vec2f spawnPosition{
-            .x = base.position.x + dir.x * spawnOffsetUnits,
-            .y = base.position.y + dir.y * spawnOffsetUnits,
+            .x = noseAnchor.x - dir.x * spawnBackoffUnits,
+            .y = noseAnchor.y - dir.y * spawnBackoffUnits,
         };
         if (!IsSpawnPositionFree(state, spawnPosition)) {
+            ResetSpawnTimerAfterFailedAttempt(base);
+            continue;
+        }
+        const float forwardClearWithEnemies = game::geometry::FreeDistanceAheadWithEnemies(
+            state.world,
+            state.world.enemies,
+            -1,
+            spawnPosition,
+            spawnDirection.heading,
+            kRequiredSpawnClearUnits,
+            GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
+        if (forwardClearWithEnemies < kRequiredSpawnClearUnits) {
+            // Failed attempt: wait a full interval before retrying.
+            ResetSpawnTimerAfterFailedAttempt(base);
             continue;
         }
 

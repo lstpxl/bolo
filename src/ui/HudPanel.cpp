@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include "core/Profiling.h"
 #include "platform/PlayerFigure.h"
 #include "raylib.h"
 
@@ -29,6 +30,90 @@ Color EnemyMapColor(EnemyType type) {
 }  // namespace
 
 void HudPanel::Render(const GameState& state, const AppConfig& config, const FrameInput& input) const {
+    const double nowSeconds = GetTime();
+    const std::uint64_t frameIndex = profiling::Profiler::Instance().FrameIndex();
+    const bool needEnemySnapshot =
+        !cacheInitialized_ || (nowSeconds - lastEnemySnapshotSeconds_) >= kEnemySnapshotIntervalSeconds;
+    if (needEnemySnapshot) {
+        cachedEnemyCount_ = 0;
+        for (const EnemyTank& enemy : state.world.enemies) {
+            if (!enemy.alive || cachedEnemyCount_ >= GameplayConstants::kMaxAliveEnemies) {
+                continue;
+            }
+            cachedEnemyPositions_[static_cast<std::size_t>(cachedEnemyCount_)] = enemy.position;
+            cachedEnemyTypes_[static_cast<std::size_t>(cachedEnemyCount_)] = enemy.type;
+            cachedEnemyCount_ += 1;
+        }
+        lastEnemySnapshotSeconds_ = nowSeconds;
+    }
+
+    const bool needFuelSnapshot =
+        !cacheInitialized_ || (nowSeconds - lastFuelSnapshotSeconds_) >= kFuelSnapshotIntervalSeconds;
+    if (needFuelSnapshot) {
+        cachedFuel_ = state.world.player.fuel;
+        lastFuelSnapshotSeconds_ = nowSeconds;
+    }
+
+    const bool needBaseRadarSnapshot =
+        !cacheInitialized_ || (nowSeconds - lastBaseRadarSnapshotSeconds_) >= kBaseRadarSnapshotIntervalSeconds;
+    if (needBaseRadarSnapshot) {
+        cachedHighlightedQuadrant_ = -1;
+        float nearestDistanceSq = 0.0F;
+        for (const EnemyBase& base : state.world.enemyBases) {
+            if (base.destroyed) {
+                continue;
+            }
+            const float dx = base.position.x - state.world.player.position.x;
+            const float dy = base.position.y - state.world.player.position.y;
+            const float distanceSq = dx * dx + dy * dy;
+            if (cachedHighlightedQuadrant_ == -1 || distanceSq < nearestDistanceSq) {
+                nearestDistanceSq = distanceSq;
+                const bool right = dx >= 0.0F;
+                const bool down = dy >= 0.0F;
+                if (!right && !down) {
+                    cachedHighlightedQuadrant_ = 0;  // top-left
+                } else if (right && !down) {
+                    cachedHighlightedQuadrant_ = 1;  // top-right
+                } else if (!right && down) {
+                    cachedHighlightedQuadrant_ = 2;  // bottom-left
+                } else {
+                    cachedHighlightedQuadrant_ = 3;  // bottom-right
+                }
+            }
+        }
+        lastBaseRadarSnapshotSeconds_ = nowSeconds;
+    }
+
+    const bool needJoystickSnapshot =
+        !cacheInitialized_ || frameIndex >= (lastJoystickSnapshotFrame_ + kJoystickSnapshotIntervalFrames);
+    if (needJoystickSnapshot) {
+        constexpr float joystickAxisRawMax = 32768.0F;
+        const float leftRawAxisX = static_cast<float>(input.gamepadAxis0Raw);
+        const float leftRawAxisY = static_cast<float>(input.gamepadAxis1Raw);
+        const float leftRawMagnitude = std::sqrt(leftRawAxisX * leftRawAxisX + leftRawAxisY * leftRawAxisY);
+        cachedLeftJoystickAmplitude_ = std::min(1.0F, leftRawMagnitude / joystickAxisRawMax);
+        cachedLeftJoystickDirX_ = 0.0F;
+        cachedLeftJoystickDirY_ = 0.0F;
+        if (leftRawMagnitude > 0.0F) {
+            cachedLeftJoystickDirX_ = leftRawAxisX / leftRawMagnitude;
+            cachedLeftJoystickDirY_ = leftRawAxisY / leftRawMagnitude;
+        }
+
+        const float rightRawAxisX = static_cast<float>(input.gamepadAxis2Raw);
+        const float rightRawAxisY = static_cast<float>(input.gamepadAxis3Raw);
+        const float rightRawMagnitude = std::sqrt(rightRawAxisX * rightRawAxisX + rightRawAxisY * rightRawAxisY);
+        cachedRightJoystickAmplitude_ = std::min(1.0F, rightRawMagnitude / joystickAxisRawMax);
+        cachedRightJoystickDirX_ = 0.0F;
+        cachedRightJoystickDirY_ = 0.0F;
+        if (rightRawMagnitude > 0.0F) {
+            cachedRightJoystickDirX_ = rightRawAxisX / rightRawMagnitude;
+            cachedRightJoystickDirY_ = rightRawAxisY / rightRawMagnitude;
+        }
+        lastJoystickSnapshotFrame_ = frameIndex;
+    }
+
+    cacheInitialized_ = true;
+
     const int hudWidth = ComputeHudWidth(config);
     const Rectangle panel = {
         .x = static_cast<float>(config.screenWidth - hudWidth),
@@ -92,7 +177,7 @@ void HudPanel::Render(const GameState& state, const AppConfig& config, const Fra
     cursorY += iconSize + 12;
 
     // 4) Fuel bar
-    const float fuelClamped = std::max(0.0F, std::min(100.0F, state.world.player.fuel));
+    const float fuelClamped = std::max(0.0F, std::min(100.0F, cachedFuel_));
     const int fuelWidth = static_cast<int>((fuelClamped / 100.0F) * static_cast<float>(contentWidth));
     DrawRectangle(contentX, cursorY, contentWidth, 12, DARKGRAY);
     DrawRectangle(contentX, cursorY, fuelWidth, 12, ORANGE);
@@ -134,13 +219,12 @@ void HudPanel::Render(const GameState& state, const AppConfig& config, const Fra
         const int py = mapPixelY(base.position.y);
         DrawRectangle(px - 1, py - 1, 3, 3, base.destroyed ? kDestroyedBaseMapColor : kBaseMapColor);
     }
-    for (const EnemyTank& enemy : state.world.enemies) {
-        if (!enemy.alive) {
-            continue;
-        }
-        const int px = mapPixelX(enemy.position.x);
-        const int py = mapPixelY(enemy.position.y);
-        DrawPixel(px, py, EnemyMapColor(enemy.type));
+    for (int i = 0; i < cachedEnemyCount_; ++i) {
+        const Vec2f& position = cachedEnemyPositions_[static_cast<std::size_t>(i)];
+        const EnemyType type = cachedEnemyTypes_[static_cast<std::size_t>(i)];
+        const int px = mapPixelX(position.x);
+        const int py = mapPixelY(position.y);
+        DrawPixel(px, py, EnemyMapColor(type));
     }
 
     const float normalizedX = mazeWidth > 0.0F ? state.world.player.position.x / mazeWidth : 0.5F;
@@ -158,30 +242,6 @@ void HudPanel::Render(const GameState& state, const AppConfig& config, const Fra
     DrawRectangle(contentX, blocksY, leftBlockSize, leftBlockSize, BLACK);
     DrawRectangleLines(contentX, blocksY, leftBlockSize, leftBlockSize, RAYWHITE);
     const int quadrantCell = leftBlockSize / 2;
-    int highlightedQuadrant = -1;
-    float nearestDistanceSq = 0.0F;
-    for (const EnemyBase& base : state.world.enemyBases) {
-        if (base.destroyed) {
-            continue;
-        }
-        const float dx = base.position.x - state.world.player.position.x;
-        const float dy = base.position.y - state.world.player.position.y;
-        const float distanceSq = dx * dx + dy * dy;
-        if (highlightedQuadrant == -1 || distanceSq < nearestDistanceSq) {
-            nearestDistanceSq = distanceSq;
-            const bool right = dx >= 0.0F;
-            const bool down = dy >= 0.0F;
-            if (!right && !down) {
-                highlightedQuadrant = 0;  // top-left
-            } else if (right && !down) {
-                highlightedQuadrant = 1;  // top-right
-            } else if (!right && down) {
-                highlightedQuadrant = 2;  // bottom-left
-            } else {
-                highlightedQuadrant = 3;  // bottom-right
-            }
-        }
-    }
     const Color dimQuadrant = Color{18, 60, 26, 255};
     const Color brightQuadrant = Color{160, 255, 120, 255};
     DrawRectangle(
@@ -189,25 +249,25 @@ void HudPanel::Render(const GameState& state, const AppConfig& config, const Fra
         blocksY + 2,
         quadrantCell - 3,
         quadrantCell - 3,
-        highlightedQuadrant == 0 ? brightQuadrant : dimQuadrant);
+        cachedHighlightedQuadrant_ == 0 ? brightQuadrant : dimQuadrant);
     DrawRectangle(
         contentX + quadrantCell + 1,
         blocksY + 2,
         quadrantCell - 3,
         quadrantCell - 3,
-        highlightedQuadrant == 1 ? brightQuadrant : dimQuadrant);
+        cachedHighlightedQuadrant_ == 1 ? brightQuadrant : dimQuadrant);
     DrawRectangle(
         contentX + 2,
         blocksY + quadrantCell + 1,
         quadrantCell - 3,
         quadrantCell - 3,
-        highlightedQuadrant == 2 ? brightQuadrant : dimQuadrant);
+        cachedHighlightedQuadrant_ == 2 ? brightQuadrant : dimQuadrant);
     DrawRectangle(
         contentX + quadrantCell + 1,
         blocksY + quadrantCell + 1,
         quadrantCell - 3,
         quadrantCell - 3,
-        highlightedQuadrant == 3 ? brightQuadrant : dimQuadrant);
+        cachedHighlightedQuadrant_ == 3 ? brightQuadrant : dimQuadrant);
 
     const int compassX = contentX + leftBlockSize + blockGap;
     DrawRectangle(compassX, blocksY, leftBlockSize, leftBlockSize, Color{237, 126, 188, 255});
@@ -226,27 +286,6 @@ void HudPanel::Render(const GameState& state, const AppConfig& config, const Fra
         BLACK);
     const float headingX = std::sin(state.world.player.hullHeadingRadians);
     const float headingY = -std::cos(state.world.player.hullHeadingRadians);
-    constexpr float joystickAxisRawMax = 32768.0F;
-    const float leftRawAxisX = static_cast<float>(input.gamepadAxis0Raw);
-    const float leftRawAxisY = static_cast<float>(input.gamepadAxis1Raw);
-    const float leftRawMagnitude = std::sqrt(leftRawAxisX * leftRawAxisX + leftRawAxisY * leftRawAxisY);
-    const float leftJoystickAmplitude = std::min(1.0F, leftRawMagnitude / joystickAxisRawMax);
-    float leftJoystickDirX = 0.0F;
-    float leftJoystickDirY = 0.0F;
-    if (leftRawMagnitude > 0.0F) {
-        leftJoystickDirX = leftRawAxisX / leftRawMagnitude;
-        leftJoystickDirY = leftRawAxisY / leftRawMagnitude;
-    }
-    const float rightRawAxisX = static_cast<float>(input.gamepadAxis2Raw);
-    const float rightRawAxisY = static_cast<float>(input.gamepadAxis3Raw);
-    const float rightRawMagnitude = std::sqrt(rightRawAxisX * rightRawAxisX + rightRawAxisY * rightRawAxisY);
-    const float rightJoystickAmplitude = std::min(1.0F, rightRawMagnitude / joystickAxisRawMax);
-    float rightJoystickDirX = 0.0F;
-    float rightJoystickDirY = 0.0F;
-    if (rightRawMagnitude > 0.0F) {
-        rightJoystickDirX = rightRawAxisX / rightRawMagnitude;
-        rightJoystickDirY = rightRawAxisY / rightRawMagnitude;
-    }
     const int centerX = compassX + leftBlockSize / 2;
     const int centerY = blocksY + leftBlockSize / 2;
     const float armLength = static_cast<float>(leftBlockSize) * 0.28F;
@@ -259,14 +298,14 @@ void HudPanel::Render(const GameState& state, const AppConfig& config, const Fra
     DrawLine(
         centerX,
         centerY,
-        static_cast<int>(static_cast<float>(centerX) + leftJoystickDirX * armLength * leftJoystickAmplitude),
-        static_cast<int>(static_cast<float>(centerY) + leftJoystickDirY * armLength * leftJoystickAmplitude),
+        static_cast<int>(static_cast<float>(centerX) + cachedLeftJoystickDirX_ * armLength * cachedLeftJoystickAmplitude_),
+        static_cast<int>(static_cast<float>(centerY) + cachedLeftJoystickDirY_ * armLength * cachedLeftJoystickAmplitude_),
         SKYBLUE);
     DrawLine(
         centerX,
         centerY,
-        static_cast<int>(static_cast<float>(centerX) + rightJoystickDirX * armLength * rightJoystickAmplitude),
-        static_cast<int>(static_cast<float>(centerY) + rightJoystickDirY * armLength * rightJoystickAmplitude),
+        static_cast<int>(static_cast<float>(centerX) + cachedRightJoystickDirX_ * armLength * cachedRightJoystickAmplitude_),
+        static_cast<int>(static_cast<float>(centerY) + cachedRightJoystickDirY_ * armLength * cachedRightJoystickAmplitude_),
         RED);
 
     if (state.world.levelCleared || state.world.levelClearMessageSeconds > 0.0F) {

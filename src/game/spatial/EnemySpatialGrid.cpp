@@ -2,13 +2,13 @@
 
 #include <algorithm>
 #include <cmath>
-#include "game/GameState.h"
-#include "game/model/GameplayConstants.h"
+#include "game/model/WorldState.h"
 
 namespace game::spatial {
 
 void EnemySpatialGrid::BuildFromPositions(const WorldState& world,
-    const std::vector<Vec2f>* positionsOverride) {
+    const std::vector<Vec2f>* positionsOverride,
+    const std::vector<std::uint8_t>* includeMask) {
     widthCells_ = world.maze.widthCells;
     heightCells_ = world.maze.heightCells;
     const int total = widthCells_ * heightCells_;
@@ -19,10 +19,16 @@ void EnemySpatialGrid::BuildFromPositions(const WorldState& world,
     for (auto& cell : cells_) {
         cell.clear();
     }
+    activeCells_.clear();
 
     const bool useOverride = positionsOverride != nullptr &&
         positionsOverride->size() == world.enemies.size();
+    const bool useMask = includeMask != nullptr &&
+        includeMask->size() == world.enemies.size();
     for (int i = 0; i < static_cast<int>(world.enemies.size()); ++i) {
+        if (useMask && (*includeMask)[static_cast<std::size_t>(i)] == 0U) {
+            continue;
+        }
         const EnemyTank& e = world.enemies[static_cast<std::size_t>(i)];
         if (!e.alive) {
             continue;
@@ -40,7 +46,8 @@ void EnemySpatialGrid::BuildFromPositions(const WorldState& world,
 }
 
 void EnemySpatialGrid::BuildFromSegments(const WorldState& world,
-    const std::vector<Vec2f>& frameStartPositions) {
+    const std::vector<Vec2f>& frameStartPositions,
+    const std::vector<std::uint8_t>* includeMask) {
     widthCells_ = world.maze.widthCells;
     heightCells_ = world.maze.heightCells;
     const int total = widthCells_ * heightCells_;
@@ -51,15 +58,27 @@ void EnemySpatialGrid::BuildFromSegments(const WorldState& world,
     for (auto& cell : cells_) {
         cell.clear();
     }
+    activeCells_.clear();
 
+    const bool useMask = includeMask != nullptr &&
+        includeMask->size() == world.enemies.size();
     for (int i = 0; i < static_cast<int>(world.enemies.size()); ++i) {
+        if (useMask && (*includeMask)[static_cast<std::size_t>(i)] == 0U) {
+            continue;
+        }
         const EnemyTank& e = world.enemies[static_cast<std::size_t>(i)];
         if (!e.alive) {
             continue;
         }
         const Vec2f& start = frameStartPositions[static_cast<std::size_t>(i)];
         InsertEnemyAt(i, start.x, start.y);
-        InsertEnemyAt(i, e.position.x, e.position.y);
+        const int startCx = WorldToCellX(start.x);
+        const int startCy = WorldToCellY(start.y);
+        const int endCx = WorldToCellX(e.position.x);
+        const int endCy = WorldToCellY(e.position.y);
+        if (startCx != endCx || startCy != endCy) {
+            InsertEnemyAt(i, e.position.x, e.position.y);
+        }
     }
 }
 
@@ -72,8 +91,7 @@ void EnemySpatialGrid::ForEachPairInSameOrAdjacentCell(
     }
     std::vector<bool> pairChecked(static_cast<std::size_t>(maxN * maxN), false);
 
-    const int total = widthCells_ * heightCells_;
-    for (int cellIdx = 0; cellIdx < total; ++cellIdx) {
+    for (int cellIdx : activeCells_) {
         const std::vector<int>& indices = cells_[static_cast<std::size_t>(cellIdx)];
         for (std::size_t a = 0; a < indices.size(); ++a) {
             const int i = indices[a];
@@ -223,7 +241,11 @@ void EnemySpatialGrid::InsertEnemyAt(int enemyIndex, float worldX, float worldY)
     const int cx = WorldToCellX(worldX);
     const int cy = WorldToCellY(worldY);
     const int idx = CellIndex(cx, cy);
-    cells_[static_cast<std::size_t>(idx)].push_back(enemyIndex);
+    std::vector<int>& cell = cells_[static_cast<std::size_t>(idx)];
+    if (cell.empty()) {
+        activeCells_.push_back(idx);
+    }
+    cell.push_back(enemyIndex);
 }
 
 void EnemySpatialGrid::VisitCellAndNeighbors(int cx, int cy,

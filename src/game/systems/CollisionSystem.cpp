@@ -41,6 +41,9 @@ void UpdateCollisionSystem(GameState& state, float deltaSeconds) {
                 if (!enemy.alive) {
                     continue;
                 }
+                if (enemy.simTier != EnemySimTier::Full) {
+                    continue;
+                }
                 if (DistanceSq(projectile.position, enemy.position) <=
                     GameplayConstants::kProjectileHitRadius * GameplayConstants::kProjectileHitRadius) {
                     enemy.alive = false;
@@ -92,6 +95,9 @@ void UpdateCollisionSystem(GameState& state, float deltaSeconds) {
 
     for (const EnemyTank& enemy : world.enemies) {
         if (!enemy.alive) {
+            continue;
+        }
+        if (enemy.simTier != EnemySimTier::Full) {
             continue;
         }
         if (DistanceSq(world.player.position, enemy.position) <=

@@ -43,7 +43,7 @@ struct GameplayConstants {
     static constexpr int kMaxAliveEnemies = 72;                      // enemies
     static constexpr int kMaxAliveEnemiesPerBase = 12;               // enemies / base
     static constexpr float kEnemyInitialFireCooldownSeconds = 0.2F;  // seconds
-    static constexpr float kBaseSpawnCooldownSeconds = 3.6F;         // seconds
+    static constexpr float kBaseSpawnCooldownSeconds = 0.9F;         // seconds
     static constexpr float kEnemyPreferredSeparationUnits = 1.0F;    // world-units
     static constexpr float kEnemyMutualKillDistanceUnits = 0.12F;    // world-units
     static constexpr float kEnemyLookaheadObstacleUnits = 1.0F;      // world-units
