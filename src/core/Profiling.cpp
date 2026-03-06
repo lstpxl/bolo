@@ -246,6 +246,13 @@ const std::array<const char*, kScopeCount> kScopeNames = {
     "frame.render.world.maze",
     "frame.render.world.enemies",
     "frame.render.world.effects",
+    "frame.render.hud",
+    "frame.render.hud.static",
+    "frame.render.hud.text",
+    "frame.render.hud.lives",
+    "frame.render.hud.bars",
+    "frame.render.hud.minimap",
+    "frame.render.hud.compass",
     "frame.render.overlay",
     "frame.present",
 };

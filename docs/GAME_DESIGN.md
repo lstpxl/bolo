@@ -121,7 +121,8 @@ Input is collected in `src/platform/Input.cpp`.
 - Change slider: Left/Right
 - Select: Enter/Space or gamepad south/east face button
 - `Invisibility` checkbox can be toggled via Left/Right or Select when focused.
-- Default menu values at app start are `Level = 4`, `Density = 1`, `Invisibility = On`.
+- `Debug info` checkbox can be toggled via Left/Right or Select when focused.
+- Default menu values at app start are `Level = 4`, `Density = 1`, `Invisibility = On`, `Debug info = Off`.
 
 ## Movement Model
 
@@ -217,10 +218,12 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
   - Chase keeps stand-off band `3..6` units (approach if farther, retreat if closer, stop inside band).
   - Scout obstacle handling: try `±45°`, then `±90°`; if no option yields `>=3` clear units, rotate clockwise until clear.
 - Assassin:
-  - Uses a player-directed maze flow-field (rebuilt only when player crosses a maze-cell border) for normal pursuit steering.
-  - Each assassin caches the latest player cell hash and expected next cell hash; flow steering remains valid while player hash is unchanged and the assassin stays on planned cells.
-  - If flow guidance is invalid/unavailable (e.g., stepped off planned cell), assassin falls back to the existing waypoint A* route builder.
-  - Repaths/fallback path builds when blocked within `2` units or when waypoint progression requires refresh.
+  - Uses a pure player-directed maze flow-field for pursuit steering (no waypoint A* path following in the active runtime branch).
+  - Each assassin computes and caches only the next flow-field step heading per current cell; cached heading is reused until the assassin leaves that cell.
+  - Flow-field initial build is requested by assassin when no build exists, or when assassin-spawn flow request becomes active.
+  - Assassin steering does not require player-cell-version freshness; cached flow-field data remains valid until scheduled cache refresh.
+  - Flow-field cache refresh runs only while cache is active and player crosses cell borders: cache `age` starts at `0`, increments on each refresh attempt, early-exits while `age <= 2`, and rebuilds when `age > 2` (effective rebuild cadence: once per 3 player-cell changes). On each early-exit transition `A -> B`, flow direction for cell `A` is patched to point to cell `B`.
+  - A* waypoint path builder remains in code as a disabled backup branch and is not wired into active assassin pursuit.
   - Avoids ramming by stopping/adjusting when player distance is under `3` units.
 
 ### Enemy Collision Broad Phase
@@ -250,8 +253,8 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
   - only torpedo `Move` mode can use cheap-tier segment movement.
   - offscreen torpedo player-detection checks run at a lower frequency than full simulation.
 - Assassin exception:
-  - while cheap-tier, assassin follows existing waypoint segment without offscreen repath.
-  - on `Cheap -> Full` transition, assassin path cache is invalidated and rebuilt by regular full logic.
+  - while cheap-tier, assassin uses cached offscreen segment movement like other enemy types.
+  - on `Cheap -> Full` transition, assassin flow-step cache is invalidated and resumed by regular full logic.
 
 ### Invisibility Mode
 
@@ -283,14 +286,13 @@ World rendering is in `src/platform/Renderer2D.cpp`.
 - Enemy sprite rendering uses pixel-snapped screen-space placement derived from world positions with integer sprite scaling (`9x9` source cells rendered at `18x18`, i.e. exact `2x`). Player gameplay footprint remains `kEntitySizeUnits = 1.0`, and the player sprite is rendered in pixel-snapped screen space at fixed `18x18` with per-frame pivot correction to avoid heading-frame jitter.
 - Compile-time presentation scaling: on macOS builds, the game renders to a logical `640x480` target and presents at `2x` (`1280x960`) with point filtering (each logical pixel becomes `2x2` physical pixels); handheld builds keep `1x` presentation.
 - HUD direction radar draws three lines: hull heading (white), move joystick vector from gamepad axes `0/1` (sky blue), and fire joystick vector from gamepad axes `2/3` (red). Joystick direction uses `(axisX, axisY)` and amplitude is normalized by raw max magnitude `32768`.
-- Gameplay view draws a top-left input debug line at font size `10`: `Axes:  0:...  1:...  2:...  3:...` using gamepad raw axis values (approximate signed 16-bit range).
-- Gameplay view draws a performance line below the axes line at font size `10`: `PERF FPS ... FT ...ms FS ...ms OH ...ms`, where `FT` is frame total average, `FS` is fixed-step average, and `OH` is non-fixed overhead estimate (`FT - FS`).
-- Gameplay view draws a profiling line below the performance line at font size `10`, showing rolling average fixed-step timings (`AI`, `PF`, `PH`) and allocation telemetry (`alloc/free counts`, `allocated/freed KB`, `live/peak KB`).
-- Gameplay view also draws a bottom-left single-line counter at font size `10`: alive bases and alive enemies by type (`B/D/T/H/A`).
+- HUD lives indicators use the same sprite source and color as the in-world player tank sprite, rendered at `36x36` (4x of the `9x9` source cell).
+- Gameplay view draws top-left debug text (axes/perf/profiling) only when menu `Debug info` is enabled.
+- HUD draws a single-line counter above the radar blocks at font size `10`: alive bases and alive enemies by type (`B/D/T/H/A`).
 - Debug-overlay text content is refreshed every `4` frames and cached between refreshes to reduce per-frame formatting/query overhead.
 - HUD minimap plots alive enemies as single-pixel markers in their corresponding colors, bases as `3x3` pixel squares, and player as a larger green marker.
 - HUD runtime sampling cadence:
-  - enemy minimap positions refresh every `0.5s`
+  - enemy minimap marker texture is updated incrementally (`1` enemy slot every `2` frames, cycling through stable enemy slots) using cached integer minimap coordinates per slot
   - fuel bar value refreshes every `0.5s`
   - nearest-base radar quadrant refreshes every `1.0s`
   - joystick direction vectors on compass refresh every `4` frames
@@ -324,6 +326,8 @@ Menu rendering is in `src/ui/MenuScreen.cpp`.
   - title
   - level slider (1..9)
   - density slider (1..5)
+  - invisibility checkbox
+  - debug info checkbox (positioned to the right of invisibility)
   - Start and Quit buttons
   - bottom-aligned build number text
 - Quit opens confirmation dialog.

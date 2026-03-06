@@ -187,6 +187,7 @@ int GameApp::Run() {
         UnloadRenderTexture(presentationTarget_);
         presentationTargetLoaded_ = false;
     }
+    debugOverlayRenderer_.ReleaseResources();
     renderer_.UnloadResources();
     if (audioReady_) {
         CloseAudioDevice();
@@ -241,7 +242,8 @@ void GameApp::Render(const FrameInput& input) {
                  result.quitRequested ||
                  result.menuSettings.levelNumber != previousSettings.levelNumber ||
                  result.menuSettings.mazeDensity != previousSettings.mazeDensity ||
-                 result.menuSettings.invisibility != previousSettings.invisibility)) {
+                 result.menuSettings.invisibility != previousSettings.invisibility ||
+                 result.menuSettings.debugInfo != previousSettings.debugInfo)) {
                 PlaySound(menuClickSound_);
             }
             if (result.startGameRequested) {
@@ -255,11 +257,8 @@ void GameApp::Render(const FrameInput& input) {
                 exitRequested_ = true;
             }
         } else {
-            {
-                profiling::ScopedProfile worldScope(profiling::Scope::RenderWorld);
-                game_.Render(renderer_, config_, input);
-            }
-            {
+            game_.Render(renderer_, config_, input);
+            if (game_.State().menuSettings.debugInfo) {
                 profiling::ScopedProfile overlayScope(profiling::Scope::RenderOverlay);
                 debugOverlayRenderer_.Draw(game_.State(), config_, input);
             }

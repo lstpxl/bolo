@@ -99,6 +99,19 @@ void PlayerFlowField::Rebuild(const MazeState& maze, const CellCoordCache& cellC
     hasBuild_ = true;
 }
 
+void PlayerFlowField::OverrideNextCellHash(int fromCellHash, int toCellHash) {
+    if (!hasBuild_) {
+        return;
+    }
+    if (fromCellHash < 0 || toCellHash < 0) {
+        return;
+    }
+    if (fromCellHash >= static_cast<int>(nextCellHash_.size()) || toCellHash >= static_cast<int>(nextCellHash_.size())) {
+        return;
+    }
+    nextCellHash_[static_cast<std::size_t>(fromCellHash)] = toCellHash;
+}
+
 bool PlayerFlowField::IsBuiltFor(std::uint32_t playerCellVersion) const {
     return hasBuild_ && builtForPlayerCellVersion_ == playerCellVersion;
 }

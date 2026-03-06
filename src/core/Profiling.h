@@ -47,6 +47,13 @@ enum class Scope : std::uint8_t {
     RenderWorldMaze,
     RenderWorldEnemies,
     RenderWorldEffects,
+    RenderHud,
+    RenderHudStatic,
+    RenderHudText,
+    RenderHudLives,
+    RenderHudBars,
+    RenderHudMinimap,
+    RenderHudCompass,
     RenderOverlay,
     FramePresent,
     Count

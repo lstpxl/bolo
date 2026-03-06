@@ -12,7 +12,9 @@ class PlayerFlowField {
 public:
     void EnsureCapacity(const MazeState& maze);
     void Rebuild(const MazeState& maze, const CellCoordCache& cellCache);
+    void OverrideNextCellHash(int fromCellHash, int toCellHash);
 
+    bool HasBuild() const { return hasBuild_; }
     bool IsBuiltFor(std::uint32_t playerCellVersion) const;
     int NextCellHash(int fromCellHash) const;
     Vec2f NextCellCenter(int fromCellHash, const CellCoordCache& cellCache) const;

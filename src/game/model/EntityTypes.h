@@ -109,6 +109,8 @@ struct EnemyTank {
     int pathWaypointIndex = 0;
     int cachedPlayerCellHash = -1;
     int expectedPathCellHash = -1;
+    int cachedFlowFromCellHash = -1;
+    float cachedFlowHeadingRadians = 0.0F;
     bool alive = true;
 };
 

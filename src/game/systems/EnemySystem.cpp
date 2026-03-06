@@ -39,6 +39,9 @@ constexpr float kOffscreenTorpedoSegmentLengthUnits = 12.0F;
 constexpr float kOffscreenTorpedoDetectIntervalSeconds = 0.6F;
 constexpr int kEnemyTypeTelemetryCount = 4;
 constexpr bool kUseFlowFieldPathGuidance = true;
+constexpr int kMaxFlowFieldAge = 2;
+constexpr bool kUseAssassinFlowFieldOnlyNavigation = true;
+constexpr bool kUseAssassinAStarBackupNavigation = false;
 constexpr bool kUseSweepPruneBroadPhase = true;
 
 int EnemyTypeTelemetryIndex(EnemyType type) {
@@ -766,12 +769,15 @@ bool BuildAssassinPathToFarRandomTarget(
     return BuildAssassinPathToTarget(state, cellCache, enemy, enemyIndex, fallbackTarget);
 }
 
-bool TrySelectAssassinFlowHeading(
+bool TrySelectAssassinFlowNextStep(
     const game::navigation::CellCoordCache& cellCache,
     const game::navigation::PlayerFlowField& flowField,
     EnemyTank& enemy,
+    bool& outNeedsInitialFlowBuild,
     float& outHeadingRadians) {
-    if (!flowField.IsBuiltFor(cellCache.PlayerCellVersion())) {
+    outNeedsInitialFlowBuild = false;
+    if (!flowField.HasBuild()) {
+        outNeedsInitialFlowBuild = true;
         gEnemyRuntimeWindowStats.navFlowMisses += 1;
         return false;
     }
@@ -782,16 +788,18 @@ bool TrySelectAssassinFlowHeading(
     if (enemy.cachedPlayerCellHash != playerHash) {
         enemy.cachedPlayerCellHash = playerHash;
         enemy.expectedPathCellHash = -1;
+        enemy.cachedFlowFromCellHash = -1;
     }
-    if (enemy.expectedPathCellHash >= 0 && enemyCellHash != enemy.expectedPathCellHash) {
-        enemy.expectedPathCellHash = -1;
-        gEnemyRuntimeWindowStats.navFlowMisses += 1;
-        return false;
+    if (enemy.cachedFlowFromCellHash == enemyCellHash && enemy.expectedPathCellHash >= 0) {
+        outHeadingRadians = enemy.cachedFlowHeadingRadians;
+        gEnemyRuntimeWindowStats.navFlowHeadingSelections += 1;
+        return true;
     }
 
     const int nextCellHash = flowField.NextCellHash(enemyCellHash);
     if (nextCellHash < 0 || nextCellHash == enemyCellHash) {
-        enemy.expectedPathCellHash = enemyCellHash;
+        enemy.expectedPathCellHash = -1;
+        enemy.cachedFlowFromCellHash = -1;
         gEnemyRuntimeWindowStats.navFlowMisses += 1;
         return false;
     }
@@ -803,13 +811,16 @@ bool TrySelectAssassinFlowHeading(
     };
     const Vec2f stepDir = NormalizeOrZero(toNext);
     if (stepDir.x == 0.0F && stepDir.y == 0.0F) {
-        enemy.expectedPathCellHash = nextCellHash;
+        enemy.expectedPathCellHash = -1;
+        enemy.cachedFlowFromCellHash = -1;
         gEnemyRuntimeWindowStats.navFlowMisses += 1;
         return false;
     }
 
     enemy.expectedPathCellHash = nextCellHash;
     outHeadingRadians = QuantizeToEightDirections(std::atan2(stepDir.x, -stepDir.y));
+    enemy.cachedFlowFromCellHash = enemyCellHash;
+    enemy.cachedFlowHeadingRadians = outHeadingRadians;
     gEnemyRuntimeWindowStats.navFlowHeadingSelections += 1;
     return true;
 }
@@ -1915,17 +1926,40 @@ void UpdateEnemySystem(GameState& state, const GameplayView& view, float deltaSe
         frameStartPositions.push_back(enemy.position);
     }
 
-    game::navigation::CellCoordCache& cellCache = state.world.navigationCache.cellCoords;
+    NavigationRuntimeCache& navigationCache = state.world.navigationCache;
+    game::navigation::CellCoordCache& cellCache = navigationCache.cellCoords;
     cellCache.ConfigureFromMaze(state.world.maze);
-    game::navigation::PlayerFlowField& playerFlowField = state.world.navigationCache.playerFlowField;
+    game::navigation::PlayerFlowField& playerFlowField = navigationCache.playerFlowField;
     if (kUseFlowFieldPathGuidance) {
+        const int previousPlayerCellHash = cellCache.PlayerCellHash();
         const bool playerCrossedCellBorder = cellCache.UpdatePlayerCell(state.world.player.position);
         if (playerCrossedCellBorder) {
             gEnemyRuntimeWindowStats.navPlayerCellChanges += 1;
+            if (navigationCache.playerFlowFieldCacheActive) {
+                navigationCache.playerFlowFieldAge += 1;
+                if (navigationCache.playerFlowFieldAge > kMaxFlowFieldAge) {
+                    playerFlowField.Rebuild(state.world.maze, cellCache);
+                    navigationCache.playerFlowFieldAge = 0;
+                    gEnemyRuntimeWindowStats.navFlowRebuilds += 1;
+                } else {
+                    const int currentPlayerCellHash = cellCache.PlayerCellHash();
+                    if (playerFlowField.HasBuild() &&
+                        previousPlayerCellHash >= 0 &&
+                        currentPlayerCellHash >= 0 &&
+                        previousPlayerCellHash != currentPlayerCellHash) {
+                        playerFlowField.OverrideNextCellHash(previousPlayerCellHash, currentPlayerCellHash);
+                    }
+                }
+            }
         }
-        if (playerCrossedCellBorder || !playerFlowField.IsBuiltFor(cellCache.PlayerCellVersion())) {
-            playerFlowField.Rebuild(state.world.maze, cellCache);
-            gEnemyRuntimeWindowStats.navFlowRebuilds += 1;
+        if (navigationCache.playerFlowFieldSpawnRequestActive) {
+            navigationCache.playerFlowFieldSpawnRequestActive = false;
+            navigationCache.playerFlowFieldCacheActive = true;
+            if (!playerFlowField.HasBuild()) {
+                playerFlowField.Rebuild(state.world.maze, cellCache);
+                navigationCache.playerFlowFieldAge = 0;
+                gEnemyRuntimeWindowStats.navFlowRebuilds += 1;
+            }
         }
     }
 
@@ -1952,6 +1986,7 @@ void UpdateEnemySystem(GameState& state, const GameplayView& view, float deltaSe
                 enemy.pathWaypointCount = 0;
                 enemy.pathWaypointIndex = 0;
                 enemy.expectedPathCellHash = -1;
+                enemy.cachedFlowFromCellHash = -1;
             }
         }
 
@@ -2200,56 +2235,92 @@ void UpdateEnemySystem(GameState& state, const GameplayView& view, float deltaSe
                     enemy.pathWaypointCount = 0;
                     enemy.pathWaypointIndex = 0;
                     enemy.expectedPathCellHash = -1;
+                    enemy.cachedFlowFromCellHash = -1;
                 } else {
-                    const float obstacleAhead = game::geometry::FreeDistanceAhead(
-                        state.world,
-                        enemy.position,
-                        enemy.headingRadians,
-                        2.0F,
-                        GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
-                        kEnemyPlanningClearanceScale);
-                    const bool needRepathObstacle = obstacleAhead < 2.0F;
-                    const bool needRepathEmpty = enemy.pathWaypointCount <= 0 || enemy.pathWaypointIndex >= enemy.pathWaypointCount;
-                    if (needRepathObstacle || needRepathEmpty) {
-                        if (playerInvisible) {
-                            BuildAssassinPathToFarRandomTarget(state, cellCache, enemy, enemyIndex, random);
-                        } else {
-                            BuildAssassinPath(state, cellCache, enemy, enemyIndex);
+                    if (kUseAssassinFlowFieldOnlyNavigation && !playerInvisible) {
+                        bool flowHeadingSelected = false;
+                        bool needsInitialFlowBuild = false;
+                        if (kUseFlowFieldPathGuidance) {
+                            flowHeadingSelected = TrySelectAssassinFlowNextStep(
+                                cellCache,
+                                playerFlowField,
+                                enemy,
+                                needsInitialFlowBuild,
+                                movementHeading);
+                            if (!flowHeadingSelected && needsInitialFlowBuild) {
+                                navigationCache.playerFlowFieldCacheActive = true;
+                                playerFlowField.Rebuild(state.world.maze, cellCache);
+                                navigationCache.playerFlowFieldAge = 0;
+                                gEnemyRuntimeWindowStats.navFlowRebuilds += 1;
+                                needsInitialFlowBuild = false;
+                                flowHeadingSelected = TrySelectAssassinFlowNextStep(
+                                    cellCache,
+                                    playerFlowField,
+                                    enemy,
+                                    needsInitialFlowBuild,
+                                    movementHeading);
+                            }
                         }
-                    }
 
-                    bool flowHeadingSelected = false;
-                    if (kUseFlowFieldPathGuidance && !playerInvisible) {
-                        flowHeadingSelected = TrySelectAssassinFlowHeading(
-                            cellCache,
-                            playerFlowField,
-                            enemy,
-                            movementHeading);
-                        if (flowHeadingSelected) {
-                            enemy.pathWaypointCount = 0;
-                            enemy.pathWaypointIndex = 0;
+                        enemy.pathWaypointCount = 0;
+                        enemy.pathWaypointIndex = 0;
+
+                        if (!flowHeadingSelected) {
+                            const Vec2f predicted{
+                                .x = state.world.player.position.x +
+                                    state.world.player.velocity.x * GameplayConstants::kEnemyAssassinPredictionSeconds,
+                                .y = state.world.player.position.y +
+                                    state.world.player.velocity.y * GameplayConstants::kEnemyAssassinPredictionSeconds,
+                            };
+                            movementHeading = QuantizeToEightDirections(
+                                std::atan2(predicted.x - enemy.position.x, -(predicted.y - enemy.position.y)));
                         }
-                    }
-
-                    if (!flowHeadingSelected &&
-                        enemy.pathWaypointCount > 0 &&
-                        enemy.pathWaypointIndex < enemy.pathWaypointCount) {
-                        const Vec2f waypoint = enemy.pathWaypoints[static_cast<std::size_t>(enemy.pathWaypointIndex)];
-                        const Vec2f toWaypoint{
-                            .x = waypoint.x - enemy.position.x,
-                            .y = waypoint.y - enemy.position.y,
-                        };
-                        if (DistanceSq(waypoint, enemy.position) <= 0.36F) {
-                            enemy.pathWaypointIndex += 1;
+                    } else if (kUseAssassinAStarBackupNavigation) {
+                        const float obstacleAhead = game::geometry::FreeDistanceAhead(
+                            state.world,
+                            enemy.position,
+                            enemy.headingRadians,
+                            2.0F,
+                            GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
+                            kEnemyPlanningClearanceScale);
+                        const bool needRepathObstacle = obstacleAhead < 2.0F;
+                        const bool needRepathEmpty = enemy.pathWaypointCount <= 0 || enemy.pathWaypointIndex >= enemy.pathWaypointCount;
+                        if (needRepathObstacle || needRepathEmpty) {
                             if (playerInvisible) {
                                 BuildAssassinPathToFarRandomTarget(state, cellCache, enemy, enemyIndex, random);
-                            } else if (enemy.pathWaypointIndex < enemy.pathWaypointCount) {
+                            } else {
                                 BuildAssassinPath(state, cellCache, enemy, enemyIndex);
                             }
                         }
-                        const Vec2f stepDir = NormalizeOrZero(toWaypoint);
-                        if (stepDir.x != 0.0F || stepDir.y != 0.0F) {
-                            movementHeading = QuantizeToEightDirections(std::atan2(stepDir.x, -stepDir.y));
+
+                        if (enemy.pathWaypointCount > 0 &&
+                            enemy.pathWaypointIndex < enemy.pathWaypointCount) {
+                            const Vec2f waypoint = enemy.pathWaypoints[static_cast<std::size_t>(enemy.pathWaypointIndex)];
+                            const Vec2f toWaypoint{
+                                .x = waypoint.x - enemy.position.x,
+                                .y = waypoint.y - enemy.position.y,
+                            };
+                            if (DistanceSq(waypoint, enemy.position) <= 0.36F) {
+                                enemy.pathWaypointIndex += 1;
+                                if (playerInvisible) {
+                                    BuildAssassinPathToFarRandomTarget(state, cellCache, enemy, enemyIndex, random);
+                                } else if (enemy.pathWaypointIndex < enemy.pathWaypointCount) {
+                                    BuildAssassinPath(state, cellCache, enemy, enemyIndex);
+                                }
+                            }
+                            const Vec2f stepDir = NormalizeOrZero(toWaypoint);
+                            if (stepDir.x != 0.0F || stepDir.y != 0.0F) {
+                                movementHeading = QuantizeToEightDirections(std::atan2(stepDir.x, -stepDir.y));
+                            }
+                        } else {
+                            const Vec2f predicted{
+                                .x = state.world.player.position.x +
+                                    state.world.player.velocity.x * GameplayConstants::kEnemyAssassinPredictionSeconds,
+                                .y = state.world.player.position.y +
+                                    state.world.player.velocity.y * GameplayConstants::kEnemyAssassinPredictionSeconds,
+                            };
+                            movementHeading = QuantizeToEightDirections(
+                                std::atan2(predicted.x - enemy.position.x, -(predicted.y - enemy.position.y)));
                         }
                     } else {
                         const Vec2f predicted{

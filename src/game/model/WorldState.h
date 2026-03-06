@@ -9,6 +9,9 @@
 struct NavigationRuntimeCache {
     game::navigation::CellCoordCache cellCoords{};
     game::navigation::PlayerFlowField playerFlowField{};
+    bool playerFlowFieldCacheActive = false;
+    bool playerFlowFieldSpawnRequestActive = false;
+    int playerFlowFieldAge = 0;
 };
 
 struct CollisionRuntimeCache {
@@ -51,6 +54,7 @@ struct GameState {
         .levelNumber = 4,
         .mazeDensity = 1,
         .invisibility = true,
+        .debugInfo = false,
     };
     WorldState world{};
 };

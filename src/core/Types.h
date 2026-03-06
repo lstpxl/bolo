@@ -9,4 +9,5 @@ struct MenuSettings {
     int levelNumber;
     int mazeDensity;
     bool invisibility;
+    bool debugInfo;
 };

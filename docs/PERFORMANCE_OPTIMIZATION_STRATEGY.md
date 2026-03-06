@@ -36,6 +36,59 @@ This document consolidates two independent analyses and serves as the canonical 
 
 ---
 
+## Render Findings and Handheld Strategy (2026-03-06)
+
+### Render scope breakdown observed in `handheld-profile-26.log`
+
+Render-related scopes currently emitted by the profiler:
+
+- `frame.render`
+- `frame.render.world`
+- `frame.render.world.maze`
+- `frame.render.world.enemies`
+- `frame.render.world.effects`
+- `frame.render.overlay`
+- `frame.present`
+
+Representative window around frame 4080:
+
+- `frame.render`: `12.964ms`
+- `frame.present`: `12.956ms`
+- `frame.render.world`: `5.739ms`
+- `frame.render.overlay`: `3.220ms`
+- `frame.render.world.effects`: `1.218ms`
+- `frame.render.world.enemies`: `1.157ms`
+- `frame.render.world.maze`: `1.021ms`
+
+Observation: in stressed handheld windows, overlay is a top render cost and present time is comparable to render time. Optimization should target both draw submission overhead and steady-state compositing efficiency.
+
+### Stack-specific guidance (raylib + handheld + dArkOS/PortMaster)
+
+- **Draw-call/state-change minimization is critical on GLES-class handhelds.**  
+  raylib `rlgl` batches flush on state changes; practical wins come from reducing draw call count, texture switches, and mode churn.
+- **Text rendering can be expensive.**  
+  Debug/HUD text is glyph-quad heavy, so repeated per-frame text draw should be cached when content is stable.
+- **Cache static layers in render textures.**  
+  Pre-render static UI/maze fragments and composite as textures; redraw cached targets only when invalidated.
+- **Prefer conservative overdraw control.**  
+  Keep scissor/culling active for world and avoid redundant full-screen re-draw paths where possible.
+- **Use platform-aware constraints.**  
+  PortMaster targets are GLES-focused with limited desktop GL features; CPU+GPU budgets are tighter than macOS dev runs, so low-risk batching/caching strategies should be prioritized.
+
+References:
+
+- [raylib rlgl internals](https://raw.githubusercontent.com/raysan5/raylib/master/src/rlgl.h)
+- [PortMaster constraints](https://portmaster.games/porting.html)
+
+### Immediate implementation priorities
+
+1. Clean scope attribution to remove nested/duplicated render envelopes.
+2. Cache debug overlay into a `RenderTexture2D` and refresh only on cadence/invalidations.
+3. Isolate HUD cost as its own render scope to guide next-pass caching.
+4. Re-profile on handheld and compare `frame.render.*` + `frame.present`.
+
+---
+
 ## 0. Performance and Optimization Ideas (Concepts)
 
 ### Why frame time matters
