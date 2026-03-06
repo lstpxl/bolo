@@ -1,6 +1,7 @@
 #include "ui/HudPanel.h"
 
 #include <algorithm>
+#include <cstdio>
 #include <cmath>
 #include <string>
 #include "core/Profiling.h"
@@ -34,6 +35,8 @@ constexpr int kSpriteSheetRows = 7;
 constexpr int kSpriteSheetCellSize = 9;
 constexpr int kPlayerBodyRowIndex = 0;
 constexpr int kPlayerBarrelRowIndex = 1;
+constexpr int kEnemySpriteFirstRowIndex = 3;
+constexpr int kEnemyCountIconSizePixels = 10;
 
 constexpr Color ColorFromHexRGB(std::uint32_t hex) {
     return Color{
@@ -65,6 +68,22 @@ Image ExtractSpriteCell(const Image& spriteSheet, int columnIndex, int rowIndex,
         .height = static_cast<float>(cellSizePx),
     };
     return ImageFromImage(spriteSheet, sourceRect);
+}
+
+void FillOpaquePixelsColor(Image& image, Color color) {
+    Color* pixels = static_cast<Color*>(image.data);
+    if (pixels == nullptr) {
+        return;
+    }
+    const int pixelCount = image.width * image.height;
+    for (int i = 0; i < pixelCount; ++i) {
+        if (pixels[i].a == 0) {
+            continue;
+        }
+        pixels[i].r = color.r;
+        pixels[i].g = color.g;
+        pixels[i].b = color.b;
+    }
 }
 
 Image CombineCellsXor(const Image& bodyCell, const Image& barrelCell, Color color) {
@@ -103,6 +122,34 @@ Color EnemyMapColor(EnemyType type) {
     }
     return kAssassinMapColor;
 }
+
+void DrawBasesRadarQuadrantsAt(int originX, int originY, int blockSize, int highlightedQuadrant) {
+    const int quadrantCell = blockSize / 2;
+    DrawRectangle(
+        originX + 2,
+        originY + 2,
+        quadrantCell - 3,
+        quadrantCell - 3,
+        highlightedQuadrant == 0 ? kQuadrantBrightColor : kQuadrantDimColor);
+    DrawRectangle(
+        originX + quadrantCell + 1,
+        originY + 2,
+        quadrantCell - 3,
+        quadrantCell - 3,
+        highlightedQuadrant == 1 ? kQuadrantBrightColor : kQuadrantDimColor);
+    DrawRectangle(
+        originX + 2,
+        originY + quadrantCell + 1,
+        quadrantCell - 3,
+        quadrantCell - 3,
+        highlightedQuadrant == 2 ? kQuadrantBrightColor : kQuadrantDimColor);
+    DrawRectangle(
+        originX + quadrantCell + 1,
+        originY + quadrantCell + 1,
+        quadrantCell - 3,
+        quadrantCell - 3,
+        highlightedQuadrant == 3 ? kQuadrantBrightColor : kQuadrantDimColor);
+}
 }  // namespace
 
 void HudPanel::ReleaseResources() {
@@ -116,20 +163,38 @@ void HudPanel::ReleaseResources() {
         minimapMarkersTarget_ = RenderTexture2D{};
         minimapMarkersTargetLoaded_ = false;
     }
+    if (basesRadarTargetLoaded_) {
+        UnloadRenderTexture(basesRadarTarget_);
+        basesRadarTarget_ = RenderTexture2D{};
+        basesRadarTargetLoaded_ = false;
+    }
     if (livesIconTextureLoaded_) {
         UnloadTexture(livesIconTexture_);
         livesIconTexture_ = Texture2D{};
         livesIconTextureLoaded_ = false;
     }
+    for (std::size_t i = 0; i < enemyCountIconTextures_.size(); ++i) {
+        if (!enemyCountIconTexturesLoaded_[i]) {
+            continue;
+        }
+        UnloadTexture(enemyCountIconTextures_[i]);
+        enemyCountIconTextures_[i] = Texture2D{};
+        enemyCountIconTexturesLoaded_[i] = false;
+    }
 
     livesIconTextureLoadAttempted_ = false;
+    enemyCountIconTexturesLoadAttempted_ = false;
     staticLayerWidth_ = 0;
     staticLayerHeight_ = 0;
     minimapMarkersSize_ = 0;
+    basesRadarSize_ = 0;
     staticLayerDirty_ = true;
     minimapMarkersDirty_ = true;
+    basesRadarDirty_ = true;
     boltMetricsWidth_ = -1;
     lastMinimapEnemyUpdateFrame_ = 0;
+    lastBasesRadarUpdateFrame_ = 0;
+    cachedBasesRadarQuadrant_ = -2;
 }
 
 HudPanel::HudLayout HudPanel::BuildHudLayout(int panelX, int hudWidth, int screenHeight) {
@@ -163,7 +228,8 @@ void HudPanel::EnsureBoltMetrics(int contentWidth) const {
 
     boltMetricsWidth_ = contentWidth;
     boltBaseWidth_ = MeasureText("BOLT", kBoltFontSize);
-    boltSpacing_ = std::max(1.0F, (static_cast<float>(contentWidth) - static_cast<float>(boltBaseWidth_)) / 3.0F);
+    boltSpacing_ = std::max(1.0F, (static_cast<float>(contentWidth) - static_cast<float>(boltBaseWidth_)) / 3.0F) +
+        4.0F;
     staticLayerDirty_ = true;
 }
 
@@ -224,6 +290,36 @@ void HudPanel::EnsureMinimapMarkersTarget(int mapSize) const {
     minimapMarkersDirty_ = true;
 }
 
+void HudPanel::EnsureBasesRadarTarget(int blockSize) const {
+    if (blockSize <= 0) {
+        return;
+    }
+
+    const bool sizeChanged = basesRadarTargetLoaded_ && basesRadarSize_ != blockSize;
+    if (sizeChanged) {
+        UnloadRenderTexture(basesRadarTarget_);
+        basesRadarTarget_ = RenderTexture2D{};
+        basesRadarTargetLoaded_ = false;
+        basesRadarSize_ = 0;
+    }
+
+    if (basesRadarTargetLoaded_) {
+        return;
+    }
+
+    basesRadarTarget_ = LoadRenderTexture(blockSize, blockSize);
+    basesRadarTargetLoaded_ = basesRadarTarget_.id != 0;
+    if (!basesRadarTargetLoaded_) {
+        return;
+    }
+
+    SetTextureFilter(basesRadarTarget_.texture, TEXTURE_FILTER_POINT);
+    basesRadarSize_ = blockSize;
+    basesRadarDirty_ = true;
+    lastBasesRadarUpdateFrame_ = 0;
+    cachedBasesRadarQuadrant_ = -2;
+}
+
 void HudPanel::EnsureLivesIconTexture() const {
     if (livesIconTextureLoaded_ || livesIconTextureLoadAttempted_) {
         return;
@@ -254,6 +350,38 @@ void HudPanel::EnsureLivesIconTexture() const {
     UnloadImage(playerFrame);
     UnloadImage(playerBarrelUp);
     UnloadImage(playerBodyUp);
+    UnloadImage(sourceSheet);
+}
+
+void HudPanel::EnsureEnemyCountIconTextures() const {
+    if (enemyCountIconTexturesLoadAttempted_) {
+        return;
+    }
+    enemyCountIconTexturesLoadAttempted_ = true;
+
+    Image sourceSheet{};
+    if (!TryLoadImageFromTextureDirectory(sourceSheet, "sprites.png")) {
+        return;
+    }
+    if (sourceSheet.width != kSpriteSheetColumns * kSpriteSheetCellSize ||
+        sourceSheet.height != kSpriteSheetRows * kSpriteSheetCellSize) {
+        UnloadImage(sourceSheet);
+        return;
+    }
+
+    FillOpaquePixelsColor(sourceSheet, WHITE);
+    for (int typeIndex = 0; typeIndex < 4; ++typeIndex) {
+        const int sourceRow = kEnemySpriteFirstRowIndex + typeIndex;
+        Image iconFrame = ExtractSpriteCell(sourceSheet, 0, sourceRow, kSpriteSheetCellSize);
+        ImageResizeNN(&iconFrame, kEnemyCountIconSizePixels, kEnemyCountIconSizePixels);
+        enemyCountIconTextures_[static_cast<std::size_t>(typeIndex)] = LoadTextureFromImage(iconFrame);
+        enemyCountIconTexturesLoaded_[static_cast<std::size_t>(typeIndex)] =
+            enemyCountIconTextures_[static_cast<std::size_t>(typeIndex)].id != 0;
+        if (enemyCountIconTexturesLoaded_[static_cast<std::size_t>(typeIndex)]) {
+            SetTextureFilter(enemyCountIconTextures_[static_cast<std::size_t>(typeIndex)], TEXTURE_FILTER_POINT);
+        }
+        UnloadImage(iconFrame);
+    }
     UnloadImage(sourceSheet);
 }
 
@@ -363,7 +491,49 @@ void HudPanel::UpdateOneMinimapEnemyMarker(const GameState& state, const HudLayo
     EndTextureMode();
 }
 
-void HudPanel::Render(const GameState& state, const AppConfig& config, const FrameInput& input) const {
+void HudPanel::UpdateBasesRadarLayer(int blockSize, int highlightedQuadrant) const {
+    if (!basesRadarTargetLoaded_ || blockSize <= 0) {
+        return;
+    }
+
+    BeginTextureMode(basesRadarTarget_);
+    ClearBackground(BLANK);
+    DrawBasesRadarQuadrantsAt(0, 0, blockSize, highlightedQuadrant);
+    EndTextureMode();
+    basesRadarDirty_ = false;
+    cachedBasesRadarQuadrant_ = highlightedQuadrant;
+}
+
+int HudPanel::ComputeHighlightedQuadrant(const GameState& state) {
+    int highlightedQuadrant = -1;
+    float nearestDistanceSq = 0.0F;
+    for (const EnemyBase& base : state.world.enemyBases) {
+        if (base.destroyed) {
+            continue;
+        }
+        const float dx = base.position.x - state.world.player.position.x;
+        const float dy = base.position.y - state.world.player.position.y;
+        const float distanceSq = dx * dx + dy * dy;
+        if (highlightedQuadrant == -1 || distanceSq < nearestDistanceSq) {
+            nearestDistanceSq = distanceSq;
+            const bool right = dx >= 0.0F;
+            const bool down = dy >= 0.0F;
+            if (!right && !down) {
+                highlightedQuadrant = 0;  // top-left
+            } else if (right && !down) {
+                highlightedQuadrant = 1;  // top-right
+            } else if (!right && down) {
+                highlightedQuadrant = 2;  // bottom-left
+            } else {
+                highlightedQuadrant = 3;  // bottom-right
+            }
+        }
+    }
+    return highlightedQuadrant;
+}
+
+void HudPanel::PrepareRenderTargets(const GameState& state, const AppConfig& config, const FrameInput& input) const {
+    (void)input;
     const double nowSeconds = GetTime();
     const std::uint64_t frameIndex = profiling::Profiler::Instance().FrameIndex();
     const bool needEnemySnapshot =
@@ -409,14 +579,45 @@ void HudPanel::Render(const GameState& state, const AppConfig& config, const Fra
     EnsureBoltMetrics(layout.contentWidth);
     EnsureStaticLayerTarget(hudWidth, config.screenHeight);
     EnsureMinimapMarkersTarget(layout.mapSize);
+    EnsureBasesRadarTarget(layout.leftBlockSize);
     EnsureLivesIconTexture();
+    EnsureEnemyCountIconTextures();
+
+    if (staticLayerTargetLoaded_ && staticLayerDirty_) {
+        RebuildStaticLayer(config);
+    }
+
+    if (minimapMarkersTargetLoaded_) {
+        const bool shouldUpdateEnemyLayer = minimapMarkersDirty_ ||
+            frameIndex >= (lastMinimapEnemyUpdateFrame_ + kMinimapEnemyUpdateIntervalFrames);
+        if (shouldUpdateEnemyLayer) {
+            UpdateOneMinimapEnemyMarker(state, layout);
+            lastMinimapEnemyUpdateFrame_ = frameIndex;
+        }
+    }
+
+    const int highlightedQuadrant = ComputeHighlightedQuadrant(state);
+    if (basesRadarTargetLoaded_) {
+        const bool shouldUpdateBasesRadar = basesRadarDirty_ ||
+            highlightedQuadrant != cachedBasesRadarQuadrant_ ||
+            frameIndex >= (lastBasesRadarUpdateFrame_ + kBasesRadarUpdateIntervalFrames);
+        if (shouldUpdateBasesRadar) {
+            UpdateBasesRadarLayer(layout.leftBlockSize, highlightedQuadrant);
+            lastBasesRadarUpdateFrame_ = frameIndex;
+        }
+    } else {
+        cachedBasesRadarQuadrant_ = highlightedQuadrant;
+    }
+}
+
+void HudPanel::DrawPrepared(const GameState& state, const AppConfig& config, const FrameInput& input) const {
+    const int hudWidth = ComputeHudWidth(config);
+    const int panelX = config.screenWidth - hudWidth;
+    const HudLayout layout = BuildHudLayout(panelX, hudWidth, config.screenHeight);
 
     {
         profiling::ScopedProfile staticScope(profiling::Scope::RenderHudStatic);
         if (staticLayerTargetLoaded_) {
-            if (staticLayerDirty_) {
-                RebuildStaticLayer(config);
-            }
             const Rectangle source{
                 .x = 0.0F,
                 .y = 0.0F,
@@ -444,7 +645,7 @@ void HudPanel::Render(const GameState& state, const AppConfig& config, const Fra
     {
         profiling::ScopedProfile livesScope(profiling::Scope::RenderHudLives);
         const int livesToRender = std::max(0, std::min(4, state.world.player.lives));
-        const int livesStartX = layout.contentX;
+        const int livesStartX = layout.contentX - 2;
         const Rectangle sourceRect{
             .x = 0.0F,
             .y = 0.0F,
@@ -495,18 +696,52 @@ void HudPanel::Render(const GameState& state, const AppConfig& config, const Fra
 
     {
         profiling::ScopedProfile minimapScope(profiling::Scope::RenderHudMinimap);
-        DrawText(
-            TextFormat(
-                "B:%d D:%d T:%d H:%d A:%d",
-                cachedAliveBases_,
-                cachedDronesAlive_,
-                cachedTorpedoesAlive_,
-                cachedHuntersAlive_,
-                cachedAssassinsAlive_),
-            layout.contentX,
-            layout.blocksY - 16,
-            10,
-            RAYWHITE);
+        constexpr int iconTextGapPixels = 4;
+        const int countersY = layout.blocksY - 16;
+        const int slotWidth = std::max(1, layout.contentWidth / 5);
+        const int baseIconY = countersY;
+        const int enemyIconY = countersY - 1;
+        char countBuffer[16]{};
+        const int counterValues[5] = {
+            cachedAliveBases_,
+            cachedDronesAlive_,
+            cachedTorpedoesAlive_,
+            cachedHuntersAlive_,
+            cachedAssassinsAlive_,
+        };
+        const Color counterColors[5] = {
+            kBaseMapColor,
+            EnemyMapColor(EnemyType::Drone),
+            EnemyMapColor(EnemyType::Torpedo),
+            EnemyMapColor(EnemyType::Hunter),
+            EnemyMapColor(EnemyType::Assassin),
+        };
+        for (int slotIndex = 0; slotIndex < 5; ++slotIndex) {
+            const int slotX = layout.contentX + slotIndex * slotWidth;
+            const int iconX = slotX;
+            const int countX = iconX + kEnemyCountIconSizePixels + iconTextGapPixels;
+            if (slotIndex == 0) {
+                DrawRectangle(iconX, baseIconY, kEnemyCountIconSizePixels - 2, kEnemyCountIconSizePixels - 2, kBaseMapColor);
+            } else {
+                const int enemyTypeIndex = slotIndex - 1;
+                if (enemyCountIconTexturesLoaded_[static_cast<std::size_t>(enemyTypeIndex)]) {
+                    DrawTexture(
+                        enemyCountIconTextures_[static_cast<std::size_t>(enemyTypeIndex)],
+                        iconX,
+                        enemyIconY,
+                        counterColors[slotIndex]);
+                } else {
+                    DrawRectangle(
+                        iconX,
+                        enemyIconY + 1,
+                        kEnemyCountIconSizePixels,
+                        kEnemyCountIconSizePixels - 2,
+                        counterColors[slotIndex]);
+                }
+            }
+            std::snprintf(countBuffer, sizeof(countBuffer), "%d", counterValues[slotIndex]);
+            DrawText(countBuffer, countX, countersY, 10, counterColors[slotIndex]);
+        }
 
         const float mazeWidth = static_cast<float>(state.world.maze.widthCells * state.world.maze.cellSizeUnits);
         const float mazeHeight = static_cast<float>(state.world.maze.heightCells * state.world.maze.cellSizeUnits);
@@ -528,12 +763,6 @@ void HudPanel::Render(const GameState& state, const AppConfig& config, const Fra
         }
 
         if (minimapMarkersTargetLoaded_) {
-            const bool shouldUpdateEnemyLayer = minimapMarkersDirty_ ||
-                frameIndex >= (lastMinimapEnemyUpdateFrame_ + kMinimapEnemyUpdateIntervalFrames);
-            if (shouldUpdateEnemyLayer) {
-                UpdateOneMinimapEnemyMarker(state, layout);
-                lastMinimapEnemyUpdateFrame_ = frameIndex;
-            }
             const Rectangle source{
                 .x = 0.0F,
                 .y = 0.0F,
@@ -572,30 +801,8 @@ void HudPanel::Render(const GameState& state, const AppConfig& config, const Fra
 
     {
         profiling::ScopedProfile compassScope(profiling::Scope::RenderHudCompass);
-        int highlightedQuadrant = -1;
-        float nearestDistanceSq = 0.0F;
-        for (const EnemyBase& base : state.world.enemyBases) {
-            if (base.destroyed) {
-                continue;
-            }
-            const float dx = base.position.x - state.world.player.position.x;
-            const float dy = base.position.y - state.world.player.position.y;
-            const float distanceSq = dx * dx + dy * dy;
-            if (highlightedQuadrant == -1 || distanceSq < nearestDistanceSq) {
-                nearestDistanceSq = distanceSq;
-                const bool right = dx >= 0.0F;
-                const bool down = dy >= 0.0F;
-                if (!right && !down) {
-                    highlightedQuadrant = 0;  // top-left
-                } else if (right && !down) {
-                    highlightedQuadrant = 1;  // top-right
-                } else if (!right && down) {
-                    highlightedQuadrant = 2;  // bottom-left
-                } else {
-                    highlightedQuadrant = 3;  // bottom-right
-                }
-            }
-        }
+        const int highlightedQuadrant =
+            cachedBasesRadarQuadrant_ >= -1 ? cachedBasesRadarQuadrant_ : ComputeHighlightedQuadrant(state);
 
         constexpr float joystickAxisRawMax = 32768.0F;
         const float leftRawAxisX = static_cast<float>(input.gamepadAxis0Raw);
@@ -620,53 +827,42 @@ void HudPanel::Render(const GameState& state, const AppConfig& config, const Fra
             rightJoystickDirY = rightRawAxisY / rightRawMagnitude;
         }
 
-        const int quadrantCell = layout.leftBlockSize / 2;
-        DrawRectangle(
-            layout.contentX + 2,
-            layout.blocksY + 2,
-            quadrantCell - 3,
-            quadrantCell - 3,
-            highlightedQuadrant == 0 ? kQuadrantBrightColor : kQuadrantDimColor);
-        DrawRectangle(
-            layout.contentX + quadrantCell + 1,
-            layout.blocksY + 2,
-            quadrantCell - 3,
-            quadrantCell - 3,
-            highlightedQuadrant == 1 ? kQuadrantBrightColor : kQuadrantDimColor);
-        DrawRectangle(
-            layout.contentX + 2,
-            layout.blocksY + quadrantCell + 1,
-            quadrantCell - 3,
-            quadrantCell - 3,
-            highlightedQuadrant == 2 ? kQuadrantBrightColor : kQuadrantDimColor);
-        DrawRectangle(
-            layout.contentX + quadrantCell + 1,
-            layout.blocksY + quadrantCell + 1,
-            quadrantCell - 3,
-            quadrantCell - 3,
-            highlightedQuadrant == 3 ? kQuadrantBrightColor : kQuadrantDimColor);
+        if (basesRadarTargetLoaded_) {
+            const Rectangle source{
+                .x = 0.0F,
+                .y = 0.0F,
+                .width = static_cast<float>(basesRadarSize_),
+                .height = -static_cast<float>(basesRadarSize_),
+            };
+            const Rectangle destination{
+                .x = static_cast<float>(layout.contentX),
+                .y = static_cast<float>(layout.blocksY),
+                .width = static_cast<float>(basesRadarSize_),
+                .height = static_cast<float>(basesRadarSize_),
+            };
+            DrawTexturePro(basesRadarTarget_.texture, source, destination, Vector2{0.0F, 0.0F}, 0.0F, WHITE);
+        } else {
+            DrawBasesRadarQuadrantsAt(layout.contentX, layout.blocksY, layout.leftBlockSize, highlightedQuadrant);
+        }
 
         const float headingX = std::sin(state.world.player.hullHeadingRadians);
         const float headingY = -std::cos(state.world.player.hullHeadingRadians);
         const int centerX = layout.compassX + layout.leftBlockSize / 2;
         const int centerY = layout.blocksY + layout.leftBlockSize / 2;
         const float armLength = static_cast<float>(layout.leftBlockSize) * 0.28F;
-        const Vector2 center{static_cast<float>(centerX), static_cast<float>(centerY)};
-        const Vector2 headingTo{
-            center.x + headingX * armLength,
-            center.y + headingY * armLength,
-        };
-        const Vector2 leftTo{
-            center.x + leftJoystickDirX * armLength * leftJoystickAmplitude,
-            center.y + leftJoystickDirY * armLength * leftJoystickAmplitude,
-        };
-        const Vector2 rightTo{
-            center.x + rightJoystickDirX * armLength * rightJoystickAmplitude,
-            center.y + rightJoystickDirY * armLength * rightJoystickAmplitude,
-        };
-        DrawLineEx(center, headingTo, 1.0F, RAYWHITE);
-        DrawLineEx(center, leftTo, 1.0F, SKYBLUE);
-        DrawLineEx(center, rightTo, 1.0F, RED);
+        const int headingToX = static_cast<int>(std::lround(static_cast<float>(centerX) + headingX * armLength));
+        const int headingToY = static_cast<int>(std::lround(static_cast<float>(centerY) + headingY * armLength));
+        const int leftToX = static_cast<int>(std::lround(
+            static_cast<float>(centerX) + leftJoystickDirX * armLength * leftJoystickAmplitude));
+        const int leftToY = static_cast<int>(std::lround(
+            static_cast<float>(centerY) + leftJoystickDirY * armLength * leftJoystickAmplitude));
+        const int rightToX = static_cast<int>(std::lround(
+            static_cast<float>(centerX) + rightJoystickDirX * armLength * rightJoystickAmplitude));
+        const int rightToY = static_cast<int>(std::lround(
+            static_cast<float>(centerY) + rightJoystickDirY * armLength * rightJoystickAmplitude));
+        DrawLine(centerX, centerY, headingToX, headingToY, RAYWHITE);
+        DrawLine(centerX, centerY, leftToX, leftToY, SKYBLUE);
+        DrawLine(centerX, centerY, rightToX, rightToY, RED);
 
         if (state.world.levelCleared || state.world.levelClearMessageSeconds > 0.0F) {
             DrawText("LEVEL CLEARED", layout.contentX + 6, layout.blocksY - 26, 20, LIME);

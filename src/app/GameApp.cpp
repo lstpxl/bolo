@@ -229,6 +229,10 @@ void GameApp::RenderGameplayPauseDialog(const FrameInput& input) {
 }
 
 void GameApp::Render(const FrameInput& input) {
+    if (game_.Mode() == GameMode::Playing) {
+        renderer_.PrepareGameplayRender(game_.State(), config_, input);
+    }
+
     const auto drawLogicalFrame = [&]() {
         ClearBackground(BLACK);
 

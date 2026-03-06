@@ -157,7 +157,7 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
 - Enemy projectile firing heading is quantized to the same 8-way (45-degree) directions.
 - Player and enemy collision shape is treated as a disc with `9px` diameter.
 - Enemy wall movement keeps additional margin: enemy disc edge stays at least `2px` away from maze walls.
-- Start mode: at game start (and level restart after all bases are destroyed), player enters a `2s` lock where movement/fire are disabled and fuel fills from `0` to max on HUD.
+- Start mode: at game start (and level restart after all bases are destroyed), player enters a `1.5s` lock where movement/fire are disabled and fuel fills from `0` to max on HUD.
 - Death mode: when player dies, player enters a `3s` lock with movement/fire disabled and a simple explosion animation before life loss + respawn resolution.
 - Respawn safety: respawn placement requires at least `30` world-units distance from every undestroyed base; if random placement cannot satisfy this, fallback chooses the farthest cell center from alive bases.
 
@@ -289,13 +289,13 @@ World rendering is in `src/platform/Renderer2D.cpp`.
 - HUD lives indicators use the same sprite source and color as the in-world player tank sprite, rendered at `36x36` (4x of the `9x9` source cell).
 - HUD lives indicators are left-aligned in the lives row; as lives decrease, icons disappear from the right.
 - Gameplay view draws top-left debug text (axes/perf/profiling) only when menu `Debug info` is enabled.
-- HUD draws a single-line counter above the radar blocks at font size `10`: alive bases and alive enemies by type (`B/D/T/H/A`).
+- HUD draws an icon counter strip above the radar blocks at font size `10`: base rectangle icon plus enemy type sprites (`Drone/Torpedo/Hunter/Assassin`) with per-type alive counts, tinted by corresponding minimap colors.
 - Debug-overlay text content is refreshed every `4` frames and cached between refreshes to reduce per-frame formatting/query overhead.
 - HUD minimap plots alive enemies as single-pixel markers in their corresponding colors, bases as `3x3` pixel squares, and player as a larger green marker.
 - HUD runtime sampling cadence:
-  - enemy minimap marker texture is fully rebuilt every `2` frames (alive enemies only)
+  - enemy minimap marker texture is fully rebuilt every frame (alive enemies only)
   - fuel bar value refreshes every `0.5s`
-  - nearest-base radar quadrant refreshes every frame
+  - nearest-base radar uses a persistent texture layer; content is rebuilt every frame, then the layer is blitted every frame
   - joystick direction vectors on compass refresh every frame
 
 ### Runtime Profiling

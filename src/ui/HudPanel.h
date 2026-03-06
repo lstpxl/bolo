@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include "app/AppConfig.h"
 #include "game/model/GameplayConstants.h"
@@ -11,12 +12,14 @@ struct GameState;
 class HudPanel {
 public:
     void ReleaseResources();
-    void Render(const GameState& state, const AppConfig& config, const FrameInput& input) const;
+    void PrepareRenderTargets(const GameState& state, const AppConfig& config, const FrameInput& input) const;
+    void DrawPrepared(const GameState& state, const AppConfig& config, const FrameInput& input) const;
 
 private:
     static constexpr double kEnemySnapshotIntervalSeconds = 0.5;
     static constexpr double kFuelSnapshotIntervalSeconds = 0.5;
-    static constexpr std::uint64_t kMinimapEnemyUpdateIntervalFrames = 2;
+    static constexpr std::uint64_t kMinimapEnemyUpdateIntervalFrames = 1;
+    static constexpr std::uint64_t kBasesRadarUpdateIntervalFrames = 1;
     static constexpr int kLivesIconSizePixels = 36;
     static constexpr int kLivesIconGapPixels = 1;
 
@@ -39,10 +42,14 @@ private:
     void EnsureBoltMetrics(int contentWidth) const;
     void EnsureStaticLayerTarget(int hudWidth, int screenHeight) const;
     void EnsureMinimapMarkersTarget(int mapSize) const;
+    void EnsureBasesRadarTarget(int blockSize) const;
     void EnsureLivesIconTexture() const;
+    void EnsureEnemyCountIconTextures() const;
     void RebuildStaticLayer(const AppConfig& config) const;
     void ResetMinimapMarkersLayer() const;
     void UpdateOneMinimapEnemyMarker(const GameState& state, const HudLayout& layout) const;
+    void UpdateBasesRadarLayer(int blockSize, int highlightedQuadrant) const;
+    static int ComputeHighlightedQuadrant(const GameState& state);
 
     mutable int boltMetricsWidth_ = -1;
     mutable int boltBaseWidth_ = 0;
@@ -72,7 +79,17 @@ private:
     mutable int minimapMarkersSize_ = 0;
     mutable std::uint64_t lastMinimapEnemyUpdateFrame_ = 0;
 
+    mutable bool basesRadarDirty_ = true;
+    mutable RenderTexture2D basesRadarTarget_{};
+    mutable bool basesRadarTargetLoaded_ = false;
+    mutable int basesRadarSize_ = 0;
+    mutable std::uint64_t lastBasesRadarUpdateFrame_ = 0;
+    mutable int cachedBasesRadarQuadrant_ = -2;
+
     mutable bool livesIconTextureLoadAttempted_ = false;
     mutable Texture2D livesIconTexture_{};
     mutable bool livesIconTextureLoaded_ = false;
+    mutable bool enemyCountIconTexturesLoadAttempted_ = false;
+    mutable std::array<Texture2D, 4> enemyCountIconTextures_{};
+    mutable std::array<bool, 4> enemyCountIconTexturesLoaded_{};
 };
