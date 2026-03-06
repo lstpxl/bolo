@@ -58,6 +58,8 @@ constexpr Color kPlayerShellColor = ColorFromHexRGB(kPlayerShellHex);
 constexpr Color kEnemyShellColor = ColorFromHexRGB(kEnemyShellHex);
 constexpr float kEnemyRenderCullMarginUnits = 2.0F;
 constexpr float kProjectileRenderCullMarginUnits = 1.0F;
+constexpr float kProjectileRenderSizeUnits = 2.0F / static_cast<float>(GameplayConstants::kPixelsPerUnit);
+constexpr float kProjectileRenderHalfSizeUnits = kProjectileRenderSizeUnits * 0.5F;
 
 Vector2 SnapWorldToPixelGrid(const Vec2f& worldPosition) {
     const float pixelsPerUnit = static_cast<float>(GameplayConstants::kPixelsPerUnit);
@@ -610,7 +612,15 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
                 continue;
             }
             const Color color = projectile.owner == ProjectileOwner::Player ? kPlayerShellColor : kEnemyShellColor;
-            DrawCircleV(Vector2{projectile.position.x, projectile.position.y}, 0.18F, color);
+            const Vector2 snappedPosition = SnapWorldToPixelGrid(projectile.position);
+            DrawRectangleRec(
+                Rectangle{
+                    .x = snappedPosition.x - kProjectileRenderHalfSizeUnits,
+                    .y = snappedPosition.y - kProjectileRenderHalfSizeUnits,
+                    .width = kProjectileRenderSizeUnits,
+                    .height = kProjectileRenderSizeUnits,
+                },
+                color);
         }
 
         if (state.world.deathExplosionRemainingSeconds > 0.0F) {
