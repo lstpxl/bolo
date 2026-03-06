@@ -287,15 +287,16 @@ World rendering is in `src/platform/Renderer2D.cpp`.
 - Compile-time presentation scaling: on macOS builds, the game renders to a logical `640x480` target and presents at `2x` (`1280x960`) with point filtering (each logical pixel becomes `2x2` physical pixels); handheld builds keep `1x` presentation.
 - HUD direction radar draws three lines: hull heading (white), move joystick vector from gamepad axes `0/1` (sky blue), and fire joystick vector from gamepad axes `2/3` (red). Joystick direction uses `(axisX, axisY)` and amplitude is normalized by raw max magnitude `32768`.
 - HUD lives indicators use the same sprite source and color as the in-world player tank sprite, rendered at `36x36` (4x of the `9x9` source cell).
+- HUD lives indicators are left-aligned in the lives row; as lives decrease, icons disappear from the right.
 - Gameplay view draws top-left debug text (axes/perf/profiling) only when menu `Debug info` is enabled.
 - HUD draws a single-line counter above the radar blocks at font size `10`: alive bases and alive enemies by type (`B/D/T/H/A`).
 - Debug-overlay text content is refreshed every `4` frames and cached between refreshes to reduce per-frame formatting/query overhead.
 - HUD minimap plots alive enemies as single-pixel markers in their corresponding colors, bases as `3x3` pixel squares, and player as a larger green marker.
 - HUD runtime sampling cadence:
-  - enemy minimap marker texture is updated incrementally (`1` enemy slot every `2` frames, cycling through stable enemy slots) using cached integer minimap coordinates per slot
+  - enemy minimap marker texture is fully rebuilt every `2` frames (alive enemies only)
   - fuel bar value refreshes every `0.5s`
-  - nearest-base radar quadrant refreshes every `1.0s`
-  - joystick direction vectors on compass refresh every `4` frames
+  - nearest-base radar quadrant refreshes every frame
+  - joystick direction vectors on compass refresh every frame
 
 ### Runtime Profiling
 

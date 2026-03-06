@@ -1,6 +1,5 @@
 #pragma once
 
-#include <array>
 #include <cstdint>
 #include "app/AppConfig.h"
 #include "game/model/GameplayConstants.h"
@@ -17,8 +16,6 @@ public:
 private:
     static constexpr double kEnemySnapshotIntervalSeconds = 0.5;
     static constexpr double kFuelSnapshotIntervalSeconds = 0.5;
-    static constexpr double kBaseRadarSnapshotIntervalSeconds = 1.0;
-    static constexpr std::uint64_t kJoystickSnapshotIntervalFrames = 4;
     static constexpr std::uint64_t kMinimapEnemyUpdateIntervalFrames = 2;
     static constexpr int kLivesIconSizePixels = 36;
     static constexpr int kLivesIconGapPixels = 1;
@@ -54,8 +51,6 @@ private:
     mutable bool cacheInitialized_ = false;
     mutable double lastEnemySnapshotSeconds_ = 0.0;
     mutable double lastFuelSnapshotSeconds_ = 0.0;
-    mutable double lastBaseRadarSnapshotSeconds_ = 0.0;
-    mutable std::uint64_t lastJoystickSnapshotFrame_ = 0;
 
     mutable float cachedFuel_ = GameplayConstants::kFuelMax;
     mutable int cachedEnemyCount_ = 0;
@@ -64,14 +59,6 @@ private:
     mutable int cachedTorpedoesAlive_ = 0;
     mutable int cachedHuntersAlive_ = 0;
     mutable int cachedAssassinsAlive_ = 0;
-    mutable int cachedHighlightedQuadrant_ = -1;
-
-    mutable float cachedLeftJoystickDirX_ = 0.0F;
-    mutable float cachedLeftJoystickDirY_ = 0.0F;
-    mutable float cachedLeftJoystickAmplitude_ = 0.0F;
-    mutable float cachedRightJoystickDirX_ = 0.0F;
-    mutable float cachedRightJoystickDirY_ = 0.0F;
-    mutable float cachedRightJoystickAmplitude_ = 0.0F;
 
     mutable bool staticLayerDirty_ = true;
     mutable RenderTexture2D staticLayerTarget_{};
@@ -83,11 +70,7 @@ private:
     mutable RenderTexture2D minimapMarkersTarget_{};
     mutable bool minimapMarkersTargetLoaded_ = false;
     mutable int minimapMarkersSize_ = 0;
-    mutable int minimapEnemyCursor_ = 0;
     mutable std::uint64_t lastMinimapEnemyUpdateFrame_ = 0;
-    mutable std::array<int, GameplayConstants::kMaxAliveEnemies> minimapEnemyX_{};
-    mutable std::array<int, GameplayConstants::kMaxAliveEnemies> minimapEnemyY_{};
-    mutable std::array<bool, GameplayConstants::kMaxAliveEnemies> minimapEnemyActive_{};
 
     mutable bool livesIconTextureLoadAttempted_ = false;
     mutable Texture2D livesIconTexture_{};
