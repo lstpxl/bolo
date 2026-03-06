@@ -107,6 +107,8 @@ struct EnemyTank {
     std::array<Vec2f, kMaxPathWaypoints> pathWaypoints{};
     int pathWaypointCount = 0;
     int pathWaypointIndex = 0;
+    int cachedPlayerCellHash = -1;
+    int expectedPathCellHash = -1;
     bool alive = true;
 };
 

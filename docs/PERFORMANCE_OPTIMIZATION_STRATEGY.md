@@ -31,6 +31,7 @@ This document consolidates two independent analyses and serves as the canonical 
 |------|--------|-------|
 | 3.1 Repath throttling | Pending | |
 | 3.2 Adaptive ray sampling | Done | `AdaptiveStepAt`; finer 0.08 near origin, coarser 0.20 far; applied to `FreeDistanceAhead`, `FreeDistanceAheadWithEnemies`, `IsSegmentObscuredByWall` |
+| 3.4 Grid traversal clearance | Done | Added `FreeDistanceAheadGrid` (DDA cell traversal) and renamed sampled method to `FreeDistanceAheadContinuous`; default `FreeDistanceAhead` now routes to grid method |
 | 3.3 Occupancy incremental update | Pending | |
 
 ---
@@ -59,7 +60,7 @@ With 63 enemies:
 
 ### Raycasting cost and sampling
 
-`FreeDistanceAhead` samples every 0.12 units along a ray (Phase 1.2). For 6 units: 6/0.12 ≈ 50 samples. Each sample: cell lookup + wall check. Torpedo AI may call this many times per frame with `FreeDistanceAheadWithEnemies`, which adds an inner loop over all 63 enemies. Reducing samples (e.g. 0.12 → ~50) or filtering enemies before the inner loop cuts work proportionally.
+`FreeDistanceAhead` now defaults to a grid-traversal method (`FreeDistanceAheadGrid`) that walks maze cells along the ray and finds first wall/base hit distance without fixed sampling. The sampled method is retained as `FreeDistanceAheadContinuous` for offline comparison only and is not called by gameplay runtime. `FreeDistanceAheadWithEnemies` still adds an enemy-proximity inner loop, so candidate filtering remains important for torpedo-heavy scenes.
 
 ### DistanceSq vs Distance
 
@@ -119,6 +120,7 @@ Keeping related data contiguous (e.g. all positions in one array) improves cache
 - **Hierarchical A*:** Coarse graph (e.g., room/corridor) then refine locally.
 - **Repath throttling:** Limit repath frequency per assassin; reuse path when still valid.
 - **Off-main-thread:** Precompute routes on worker thread per ARCHITECTURE.md TODO; main thread uses cached result when ready.
+- **Flow-field fallback observation (current telemetry):** Recent handheld logs show fallback-heavy behavior when assassins become active (`ENEMY_NAV_CACHE` hit rate around ~16-17% with large `pathFallback.calls`). Treat this as a primary optimization target: reduce flow misses before expecting major net gains from flow-field wiring.
 
 ### Occupancy / spatial queries
 - **Persistent grid:** Maintain occupancy grid; update incrementally when enemies move instead of full rebuild.
@@ -231,6 +233,14 @@ After each phase:
 - [ ] Gameplay unchanged (or documented in `GAME_DESIGN.md`)
 - [ ] RG353V build tested if available
 - [ ] Profile report confirms expected scope reductions
+
+For handheld A/B sessions, use:
+
+```bash
+python3 scripts/compare-handheld-profiles.py docs/handheld-profile-old.log docs/handheld-profile-new.log
+```
+
+This script aggregates key `ENEMY_*` telemetry and helps compare old/new wiring quickly.
 
 ---
 

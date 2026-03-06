@@ -15,6 +15,19 @@ bool IsPointInUndestroyedBase(const WorldState& world, const Vec2f& point, float
 bool SegmentIntersectsWall(const WorldState& world, const Vec2f& from, const Vec2f& to, float clearanceUnits);
 bool IsSegmentObscuredByWall(const WorldState& world, const Vec2f& from, const Vec2f& to);
 
+// Legacy sampled clearance method (adaptive samples along ray).
+float FreeDistanceAheadContinuous(const WorldState& world, const Vec2f& from, float headingRadians,
+    float maxDistance, float clearanceUnits, float planningClearanceScale = 1.0F);
+
+// Grid-traversal clearance method (cell-by-cell traversal in maze grid).
+float FreeDistanceAheadGrid(const WorldState& world, const Vec2f& from, float headingRadians,
+    float maxDistance, float clearanceUnits, float planningClearanceScale = 1.0F);
+
+// Grid traversal against maze walls and boundary only (ignores enemy bases).
+float FreeDistanceAheadGridWallsOnly(const WorldState& world, const Vec2f& from, float headingRadians,
+    float maxDistance, float clearanceUnits, float planningClearanceScale = 1.0F);
+
+// Default static-obstacle clearance method used by gameplay code.
 float FreeDistanceAhead(const WorldState& world, const Vec2f& from, float headingRadians,
     float maxDistance, float clearanceUnits, float planningClearanceScale = 1.0F);
 

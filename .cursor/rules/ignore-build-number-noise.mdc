@@ -1,0 +1,10 @@
+---
+description: Ignore auto-generated build number changes
+alwaysApply: true
+---
+
+# Ignore Build Number Noise
+
+- Treat `build/build_number.txt` as auto-generated build output.
+- Do not spend time reverting, correcting, or calling out changes in this file unless explicitly requested.
+- When summarizing modified files, ignore `build/build_number.txt` by default.

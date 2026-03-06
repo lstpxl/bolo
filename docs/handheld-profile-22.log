@@ -1,0 +1,1278 @@
+ark@rg353v:/roms2/ports/bolt$ cat profile.log
+INFO: Initializing raylib 5.6-dev
+INFO: Platform backend: DESKTOP (SDL)
+INFO: Supported raylib modules:
+INFO:     > rcore:..... loaded (mandatory)
+INFO:     > rlgl:...... loaded (mandatory)
+INFO:     > rshapes:... loaded (optional)
+INFO:     > rtextures:. loaded (optional)
+INFO:     > rtext:..... loaded (optional)
+INFO:     > rmodels:... loaded (optional)
+INFO:     > raudio:.... loaded (optional)
+arm_release_ver: g13p0-01eac0, rk_so_ver: 11
+INFO: DISPLAY: Device initialized successfully
+INFO:     > Display size: 640 x 480
+INFO:     > Screen size:  640 x 480
+INFO:     > Render size:  640 x 480
+INFO:     > Viewport offsets: 0, 0
+INFO: GLAD: OpenGL ES 2.0 loaded successfully
+INFO: GL: Supported extensions count: 99
+INFO: GL: OpenGL device information:
+INFO:     > Vendor:   ARM
+INFO:     > Renderer: Mali-G52
+INFO:     > Version:  OpenGL ES 3.2 v1.g13p0-01eac0.fdf91928d758c45c1787782175b35c6a
+INFO:     > GLSL:     OpenGL ES GLSL ES 3.20
+INFO: GL: VAO extension detected, VAO functions loaded successfully
+INFO: GL: NPOT textures extension detected, full NPOT textures supported
+INFO: GL: ETC1 compressed textures supported
+INFO: GL: ASTC compressed textures supported
+INFO: PLATFORM: DESKTOP (SDL2): Initialized successfully
+INFO: TEXTURE: [ID 1] Texture loaded successfully (1x1 | R8G8B8A8 | 1 mipmaps)
+INFO: TEXTURE: [ID 1] Default texture loaded successfully
+INFO: SHADER: [ID 1] Vertex shader compiled successfully
+INFO: SHADER: [ID 2] Fragment shader compiled successfully
+INFO: SHADER: [ID 3] Program shader loaded successfully
+INFO: SHADER: [ID 3] Default shader loaded successfully
+INFO: RLGL: Render batch vertex buffers loaded successfully in RAM (CPU)
+INFO: RLGL: Render batch vertex buffers loaded successfully in VRAM (GPU)
+INFO: RLGL: Default OpenGL state initialized successfully
+INFO: TEXTURE: [ID 2] Texture loaded successfully (128x128 | GRAY_ALPHA | 1 mipmaps)
+INFO: FONT: Default font loaded successfully (224 glyphs)
+INFO: SYSTEM: Working Directory: /roms2/ports/bolt
+INFO: TIMER: Target time per frame: 16.667 milliseconds
+INFO: FILEIO: [resources/textures/sprites.png] File loaded successfully
+INFO: IMAGE: Data loaded successfully (18x63 | R8G8B8A8 | 1 mipmaps)
+INFO: TEXTURE: [ID 3] Texture loaded successfully (72x9 | R8G8B8A8 | 1 mipmaps)
+INFO: TEXTURE: [ID 4] Texture loaded successfully (72x36 | R8G8B8A8 | 1 mipmaps)
+INFO: AUDIO: Device initialized successfully
+INFO:     > Backend:       miniaudio | ALSA
+INFO:     > Format:        32-bit IEEE Floating Point -> 32-bit IEEE Floating Point
+INFO:     > Channels:      2 -> 2
+INFO:     > Sample rate:   44100 -> 44100
+INFO:     > Periods size:  3072
+INFO: FILEIO: [resources/audio/keyboard-click.wav] File loaded successfully
+INFO: WAVE: Data loaded successfully (48000 Hz, 16 bit, 1 channels)
+INFO: AUDIO: menu click sound loaded from: resources/audio/keyboard-click.wav
+INFO: FILEIO: [resources/audio/power-up.wav] File loaded successfully
+INFO: WAVE: Data loaded successfully (48000 Hz, 16 bit, 1 channels)
+INFO: AUDIO: power-up sound loaded from: resources/audio/power-up.wav
+INFO: FILEIO: [resources/audio/player-shot.wav] File loaded successfully
+INFO: WAVE: Data loaded successfully (48000 Hz, 16 bit, 1 channels)
+INFO: AUDIO: player-shot sound loaded from: resources/audio/player-shot.wav
+INFO: FILEIO: [resources/audio/enemy-shot.wav] File loaded successfully
+INFO: WAVE: Data loaded successfully (48000 Hz, 16 bit, 1 channels)
+INFO: AUDIO: enemy-shot sound loaded from: resources/audio/enemy-shot.wav
+INFO: FILEIO: [resources/audio/enemy-spawning.wav] File loaded successfully
+INFO: WAVE: Data loaded successfully (48000 Hz, 16 bit, 1 channels)
+INFO: AUDIO: enemy-spawning sound loaded from: resources/audio/enemy-spawning.wav
+INFO: FILEIO: [resources/audio/enemy-exploding.wav] File loaded successfully
+INFO: WAVE: Data loaded successfully (48000 Hz, 16 bit, 1 channels)
+INFO: AUDIO: enemy-exploding sound loaded from: resources/audio/enemy-exploding.wav
+INFO: FILEIO: [resources/audio/base-exploding.wav] File loaded successfully
+INFO: WAVE: Data loaded successfully (48000 Hz, 16 bit, 1 channels)
+INFO: AUDIO: base-exploding sound loaded from: resources/audio/base-exploding.wav
+
+[PROFILE] frame=120 budget=16.667ms alloc(+0/-0, +0b/-0b, live=0b peak=56b)
+  frame.total                      win= 17.084ms avg= 17.084ms p95= 16.975ms max= 35.319ms calls(last=  1,win= 120,total=120) (win 102.5% | avg 102.5% budget)
+  frame.render                     win= 17.045ms avg= 17.045ms p95= 16.936ms max= 35.250ms calls(last=  1,win= 120,total=120) (win 102.3% | avg 102.3% budget)
+  frame.present                    win= 17.038ms avg= 17.038ms p95= 16.929ms max= 35.242ms calls(last=  1,win= 120,total=120) (win 102.2% | avg 102.2% budget)
+  frame.input_poll                 win=  0.027ms avg=  0.027ms p95=  0.029ms max=  0.058ms calls(last=  1,win= 120,total=120) (win 0.2% | avg 0.2% budget)
+  frame.fixed_step                 win=  0.002ms avg=  0.002ms p95=  0.003ms max=  0.005ms calls(last=  1,win= 124,total=124) (win 0.0% | avg 0.0% budget)
+
+[PROFILE] frame=240 budget=16.667ms alloc(+0/-0, +0b/-0b, live=0b peak=488b)
+  frame.total                      win= 16.907ms avg= 16.907ms p95= 16.968ms max= 35.319ms calls(last=  1,win= 120,total=240) (win 101.4% | avg 101.4% budget)
+  frame.render                     win= 16.868ms avg= 16.868ms p95= 16.929ms max= 35.250ms calls(last=  1,win= 120,total=240) (win 101.2% | avg 101.2% budget)
+  frame.present                    win= 16.861ms avg= 16.861ms p95= 16.921ms max= 35.242ms calls(last=  1,win= 120,total=240) (win 101.2% | avg 101.2% budget)
+  frame.input_poll                 win=  0.027ms avg=  0.027ms p95=  0.028ms max=  0.058ms calls(last=  1,win= 120,total=240) (win 0.2% | avg 0.2% budget)
+  frame.fixed_step                 win=  0.002ms avg=  0.002ms p95=  0.003ms max=  0.008ms calls(last=  1,win= 122,total=246) (win 0.0% | avg 0.0% budget)
+
+[PROFILE] frame=360 budget=16.667ms alloc(+0/-0, +0b/-0b, live=0b peak=488b)
+  frame.total                      win= 16.907ms avg= 16.907ms p95= 16.968ms max= 35.319ms calls(last=  1,win= 120,total=360) (win 101.4% | avg 101.4% budget)
+  frame.render                     win= 16.868ms avg= 16.868ms p95= 16.928ms max= 35.250ms calls(last=  1,win= 120,total=360) (win 101.2% | avg 101.2% budget)
+  frame.present                    win= 16.861ms avg= 16.861ms p95= 16.920ms max= 35.242ms calls(last=  1,win= 120,total=360) (win 101.2% | avg 101.2% budget)
+  frame.input_poll                 win=  0.027ms avg=  0.027ms p95=  0.028ms max=  0.058ms calls(last=  1,win= 120,total=360) (win 0.2% | avg 0.2% budget)
+  frame.fixed_step                 win=  0.002ms avg=  0.002ms p95=  0.003ms max=  0.008ms calls(last=  1,win= 123,total=369) (win 0.0% | avg 0.0% budget)
+
+[PROFILE] frame=480 budget=16.667ms alloc(+0/-0, +0b/-0b, live=0b peak=488b)
+  frame.total                      win= 16.905ms avg= 16.905ms p95= 16.962ms max= 35.319ms calls(last=  1,win= 120,total=480) (win 101.4% | avg 101.4% budget)
+  frame.render                     win= 16.866ms avg= 16.866ms p95= 16.923ms max= 35.250ms calls(last=  1,win= 120,total=480) (win 101.2% | avg 101.2% budget)
+  frame.present                    win= 16.859ms avg= 16.859ms p95= 16.915ms max= 35.242ms calls(last=  1,win= 120,total=480) (win 101.2% | avg 101.2% budget)
+  frame.input_poll                 win=  0.027ms avg=  0.027ms p95=  0.028ms max=  0.058ms calls(last=  1,win= 120,total=480) (win 0.2% | avg 0.2% budget)
+  frame.fixed_step                 win=  0.002ms avg=  0.002ms p95=  0.003ms max=  0.008ms calls(last=  1,win= 122,total=491) (win 0.0% | avg 0.0% budget)
+
+[PROFILE] frame=600 budget=16.667ms alloc(+0/-0, +0b/-0b, live=0b peak=488b)
+  frame.total                      win= 16.907ms avg= 16.907ms p95= 16.961ms max= 35.319ms calls(last=  1,win= 120,total=600) (win 101.4% | avg 101.4% budget)
+  frame.render                     win= 16.868ms avg= 16.868ms p95= 16.922ms max= 35.250ms calls(last=  1,win= 120,total=600) (win 101.2% | avg 101.2% budget)
+  frame.present                    win= 16.861ms avg= 16.861ms p95= 16.915ms max= 35.242ms calls(last=  1,win= 120,total=600) (win 101.2% | avg 101.2% budget)
+  frame.input_poll                 win=  0.027ms avg=  0.027ms p95=  0.028ms max=  0.058ms calls(last=  1,win= 120,total=600) (win 0.2% | avg 0.2% budget)
+  frame.fixed_step                 win=  0.002ms avg=  0.002ms p95=  0.003ms max=  0.008ms calls(last=  1,win= 122,total=613) (win 0.0% | avg 0.0% budget)
+
+[PROFILE] frame=720 budget=16.667ms alloc(+25/-25, +110328b/-110328b, live=21928b peak=136400b)
+  frame.total                      win= 17.514ms avg= 17.514ms p95= 17.310ms max= 88.274ms calls(last=  1,win= 120,total=720) (win 105.1% | avg 105.1% budget)
+  frame.render                     win= 16.302ms avg= 16.302ms p95= 17.010ms max= 88.235ms calls(last=  1,win= 120,total=720) (win 97.8% | avg 97.8% budget)
+  frame.present                    win= 16.295ms avg= 16.295ms p95= 17.002ms max= 88.228ms calls(last=  1,win= 120,total=720) (win 97.8% | avg 97.8% budget)
+  frame.render.world               win=  3.989ms avg=  5.651ms p95=  8.319ms max=  9.516ms calls(last=  2,win= 170,total=170) (win 23.9% | avg 33.9% budget)
+  frame.render.overlay             win=  2.921ms avg=  2.069ms p95=  3.516ms max=  3.625ms calls(last=  1,win=  85,total=85) (win 17.5% | avg 12.4% budget)
+  game.update                      win=  1.320ms avg=  0.990ms p95=  1.580ms max=  4.969ms calls(last=  1,win=  90,total=90) (win 7.9% | avg 5.9% budget)
+  system.ai_update                 win=  1.250ms avg=  0.937ms p95=  1.416ms max=  4.814ms calls(last=  1,win=  90,total=90) (win 7.5% | avg 5.6% budget)
+  enemy.update                     win=  1.243ms avg=  0.932ms p95=  1.410ms max=  4.756ms calls(last=  1,win=  90,total=90) (win 7.5% | avg 5.6% budget)
+  frame.fixed_step                 win=  1.118ms avg=  1.174ms p95=  1.865ms max=  5.671ms calls(last=  1,win= 126,total=739) (win 6.7% | avg 7.0% budget)
+  frame.render.world.enemies       win=  1.114ms avg=  0.789ms p95=  1.188ms max=  1.479ms calls(last=  1,win=  85,total=85) (win 6.7% | avg 4.7% budget)
+  frame.render.world.maze          win=  0.671ms avg=  0.476ms p95=  0.722ms max=  0.997ms calls(last=  1,win=  85,total=85) (win 4.0% | avg 2.9% budget)
+  frame.render.world.effects       win=  0.388ms avg=  0.275ms p95=  0.474ms max=  0.812ms calls(last=  1,win=  85,total=85) (win 2.3% | avg 1.7% budget)
+  enemy.cheap.segment_build        win=  0.071ms avg=  0.004ms p95=  0.000ms max=  0.078ms calls(last=  0,win=   6,total=6) (win 0.4% | avg 0.0% budget)
+  frame.input_poll                 win=  0.027ms avg=  0.027ms p95=  0.029ms max=  0.058ms calls(last=  1,win= 120,total=720) (win 0.2% | avg 0.2% budget)
+  system.spawner_update            win=  0.021ms avg=  0.016ms p95=  0.024ms max=  0.183ms calls(last=  1,win=  90,total=90) (win 0.1% | avg 0.1% budget)
+  enemy.type.hunter                win=  0.016ms avg=  0.011ms p95=  0.032ms max=  0.110ms calls(last=  3,win=  84,total=84) (win 0.1% | avg 0.1% budget)
+  system.physics_collision         win=  0.016ms avg=  0.012ms p95=  0.019ms max=  0.042ms calls(last=  1,win=  90,total=90) (win 0.1% | avg 0.1% budget)
+  enemy.type.assassin              win=  0.008ms avg=  0.003ms p95=  0.010ms max=  0.085ms calls(last=  3,win=  43,total=43) (win 0.1% | avg 0.0% budget)
+  system.projectile_update         win=  0.003ms avg=  0.002ms p95=  0.004ms max=  0.008ms calls(last=  1,win=  90,total=90) (win 0.0% | avg 0.0% budget)
+  system.maze_update               win=  0.001ms avg=  0.001ms p95=  0.001ms max=  0.004ms calls(last=  1,win=  90,total=90) (win 0.0% | avg 0.0% budget)
+[ENEMY_STATS] frame=720 alive=6 visible=0 full=0 cheap=6 fullInBase=0 pairs(frontal=0 checks=0 separation=0 resolved=0)
+[ENEMY_WINDOW] steps=91 alive[min=0 max=6] visible[min=0 max=0] full[min=0 max=0] collisionPasses[runs=0 skips=91]
+[ENEMY_SEGMENTS] window=1.517s D{b/s=0.00 avgLen=0.00 fail=0} T{b/s=0.00 avgLen=0.00 fail=0} H{b/s=1.98 avgLen=4.02 fail=0} A{b/s=1.98 avgLen=4.59 fail=0}
+[ENEMY_GRID] frontal{cand/s=0.0 xcell/s=0.0 ins/s=0.0} separation{cand/s=0.0}
+[ENEMY_COLLISION_WINDOW] frontal{pairs/s=0.0 checks/s=0.0 baseSkip=0 kill=0(0.0%)} separation{pairs/s=0.0 resolved/s=0.0(0.0%) baseSkip=0 kill=0 wallBlock=0}
+[ENEMY_NAV_CACHE] playerCell{changes=0 flowRebuilds=0} flow{hit=0 miss=0 hit%=0.0} pathFallback{calls=0 ok=0 ok%=0.0}
+[ENEMY_SAP] updates=0 active=0 pairs=0 repairs{x=0 y=0}
+[ENEMY_PAIR_TYPES] frontal DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0 separation DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0
+
+[PROFILE] frame=840 budget=16.667ms alloc(+33/-33, +117096b/-117096b, live=29288b peak=142728b)
+  frame.total                      win= 16.903ms avg= 16.903ms p95= 17.387ms max= 88.274ms calls(last=  1,win= 120,total=840) (win 101.4% | avg 101.4% budget)
+  frame.render                     win= 15.067ms avg= 15.067ms p95= 15.591ms max= 88.235ms calls(last=  1,win= 120,total=840) (win 90.4% | avg 90.4% budget)
+  frame.present                    win= 15.060ms avg= 15.060ms p95= 15.585ms max= 88.228ms calls(last=  1,win= 120,total=840) (win 90.4% | avg 90.4% budget)
+  frame.render.world               win=  4.003ms avg=  8.005ms p95=  8.394ms max=  9.516ms calls(last=  2,win= 240,total=410) (win 24.0% | avg 48.0% budget)
+  frame.render.overlay             win=  2.941ms avg=  2.941ms p95=  3.562ms max=  3.792ms calls(last=  1,win= 120,total=205) (win 17.6% | avg 17.6% budget)
+  frame.fixed_step                 win=  1.767ms avg=  1.796ms p95=  1.911ms max=  5.671ms calls(last=  1,win= 122,total=861) (win 10.6% | avg 10.8% budget)
+  game.update                      win=  1.467ms avg=  1.491ms p95=  1.611ms max=  4.969ms calls(last=  1,win= 122,total=212) (win 8.8% | avg 8.9% budget)
+  system.ai_update                 win=  1.367ms avg=  1.390ms p95=  1.464ms max=  4.814ms calls(last=  1,win= 122,total=212) (win 8.2% | avg 8.3% budget)
+  enemy.update                     win=  1.361ms avg=  1.384ms p95=  1.459ms max=  4.756ms calls(last=  1,win= 122,total=212) (win 8.2% | avg 8.3% budget)
+  frame.render.world.enemies       win=  1.110ms avg=  1.110ms p95=  1.159ms max=  1.479ms calls(last=  1,win= 120,total=205) (win 6.7% | avg 6.7% budget)
+  frame.render.world.maze          win=  0.666ms avg=  0.666ms p95=  0.728ms max=  0.997ms calls(last=  1,win= 120,total=205) (win 4.0% | avg 4.0% budget)
+  frame.render.world.effects       win=  0.382ms avg=  0.382ms p95=  0.465ms max=  0.812ms calls(last=  1,win= 120,total=205) (win 2.3% | avg 2.3% budget)
+  enemy.cheap.segment_build        win=  0.072ms avg=  0.007ms p95=  0.070ms max=  0.094ms calls(last=  1,win=  12,total=18) (win 0.4% | avg 0.0% budget)
+  system.spawner_update            win=  0.029ms avg=  0.029ms p95=  0.171ms max=  0.195ms calls(last=  1,win= 122,total=212) (win 0.2% | avg 0.2% budget)
+  frame.input_poll                 win=  0.028ms avg=  0.028ms p95=  0.029ms max=  0.058ms calls(last=  1,win= 120,total=840) (win 0.2% | avg 0.2% budget)
+  system.player_update             win=  0.025ms avg=  0.019ms p95=  0.027ms max=  0.092ms calls(last=  1,win=  92,total=92) (win 0.2% | avg 0.1% budget)
+  system.physics_collision         win=  0.018ms avg=  0.019ms p95=  0.021ms max=  0.049ms calls(last=  1,win= 122,total=212) (win 0.1% | avg 0.1% budget)
+  enemy.type.hunter                win=  0.009ms avg=  0.041ms p95=  0.106ms max=  0.134ms calls(last=  6,win= 578,total=662) (win 0.1% | avg 0.2% budget)
+  enemy.type.assassin              win=  0.004ms avg=  0.015ms p95=  0.018ms max=  0.092ms calls(last=  7,win= 492,total=535) (win 0.0% | avg 0.1% budget)
+  system.projectile_update         win=  0.003ms avg=  0.003ms p95=  0.004ms max=  0.008ms calls(last=  1,win= 122,total=212) (win 0.0% | avg 0.0% budget)
+  system.maze_update               win=  0.001ms avg=  0.001ms p95=  0.001ms max=  0.004ms calls(last=  1,win= 122,total=212) (win 0.0% | avg 0.0% budget)
+[ENEMY_STATS] frame=840 alive=13 visible=0 full=0 cheap=13 fullInBase=0 pairs(frontal=0 checks=0 separation=0 resolved=0)
+[ENEMY_WINDOW] steps=122 alive[min=6 max=13] visible[min=0 max=0] full[min=0 max=0] collisionPasses[runs=0 skips=122]
+[ENEMY_SEGMENTS] window=2.033s D{b/s=0.00 avgLen=0.00 fail=0} T{b/s=0.00 avgLen=0.00 fail=0} H{b/s=3.93 avgLen=4.60 fail=0} A{b/s=1.97 avgLen=4.92 fail=0}
+[ENEMY_GRID] frontal{cand/s=0.0 xcell/s=0.0 ins/s=0.0} separation{cand/s=0.0}
+[ENEMY_COLLISION_WINDOW] frontal{pairs/s=0.0 checks/s=0.0 baseSkip=0 kill=0(0.0%)} separation{pairs/s=0.0 resolved/s=0.0(0.0%) baseSkip=0 kill=0 wallBlock=0}
+[ENEMY_NAV_CACHE] playerCell{changes=0 flowRebuilds=0} flow{hit=0 miss=0 hit%=0.0} pathFallback{calls=0 ok=0 ok%=0.0}
+[ENEMY_SAP] updates=0 active=0 pairs=0 repairs{x=0 y=0}
+[ENEMY_PAIR_TYPES] frontal DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0 separation DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0
+
+[PROFILE] frame=960 budget=16.667ms alloc(+41/-41, +124072b/-124072b, live=44008b peak=164264b)
+  frame.total                      win= 16.913ms avg= 16.913ms p95= 17.431ms max= 88.274ms calls(last=  1,win= 120,total=960) (win 101.5% | avg 101.5% budget)
+  frame.render                     win= 14.870ms avg= 14.870ms p95= 15.387ms max= 88.235ms calls(last=  1,win= 120,total=960) (win 89.2% | avg 89.2% budget)
+  frame.present                    win= 14.863ms avg= 14.863ms p95= 15.379ms max= 88.228ms calls(last=  1,win= 120,total=960) (win 89.2% | avg 89.2% budget)
+  frame.render.world               win=  4.464ms avg=  8.927ms p95=  9.389ms max=  9.612ms calls(last=  2,win= 240,total=650) (win 26.8% | avg 53.6% budget)
+  frame.render.overlay             win=  3.051ms avg=  3.051ms p95=  3.778ms max=  7.566ms calls(last=  1,win= 120,total=325) (win 18.3% | avg 18.3% budget)
+  frame.fixed_step                 win=  1.954ms avg=  2.003ms p95=  2.180ms max=  5.671ms calls(last=  1,win= 123,total=984) (win 11.7% | avg 12.0% budget)
+  game.update                      win=  1.589ms avg=  1.628ms p95=  1.786ms max=  4.969ms calls(last=  1,win= 123,total=335) (win 9.5% | avg 9.8% budget)
+  system.ai_update                 win=  1.473ms avg=  1.510ms p95=  1.664ms max=  4.814ms calls(last=  1,win= 123,total=335) (win 8.8% | avg 9.1% budget)
+  enemy.update                     win=  1.467ms avg=  1.503ms p95=  1.658ms max=  4.756ms calls(last=  1,win= 123,total=335) (win 8.8% | avg 9.0% budget)
+  frame.render.world.enemies       win=  1.127ms avg=  1.127ms p95=  1.272ms max=  1.479ms calls(last=  1,win= 120,total=325) (win 6.8% | avg 6.8% budget)
+  frame.render.world.maze          win=  1.023ms avg=  1.023ms p95=  1.175ms max=  1.348ms calls(last=  1,win= 120,total=325) (win 6.1% | avg 6.1% budget)
+  frame.render.world.effects       win=  0.387ms avg=  0.387ms p95=  0.495ms max=  0.812ms calls(last=  1,win= 120,total=325) (win 2.3% | avg 2.3% budget)
+  enemy.cheap.segment_build        win=  0.065ms avg=  0.011ms p95=  0.073ms max=  0.109ms calls(last=  0,win=  20,total=38) (win 0.4% | avg 0.1% budget)
+  system.spawner_update            win=  0.032ms avg=  0.033ms p95=  0.185ms max=  0.289ms calls(last=  1,win= 123,total=335) (win 0.2% | avg 0.2% budget)
+  frame.input_poll                 win=  0.028ms avg=  0.028ms p95=  0.029ms max=  0.062ms calls(last=  1,win= 120,total=960) (win 0.2% | avg 0.2% budget)
+  system.player_update             win=  0.027ms avg=  0.027ms p95=  0.035ms max=  0.092ms calls(last=  1,win= 123,total=215) (win 0.2% | avg 0.2% budget)
+  system.physics_collision         win=  0.020ms avg=  0.021ms p95=  0.031ms max=  0.057ms calls(last=  1,win= 123,total=335) (win 0.1% | avg 0.1% budget)
+  enemy.type.hunter                win=  0.007ms avg=  0.050ms p95=  0.115ms max=  0.155ms calls(last=  8,win= 836,total=1498) (win 0.0% | avg 0.3% budget)
+  enemy.type.drone                 win=  0.005ms avg=  0.001ms p95=  0.003ms max=  0.074ms calls(last=  1,win=  31,total=31) (win 0.0% | avg 0.0% budget)
+  enemy.type.torpedo               win=  0.004ms avg=  0.002ms p95=  0.004ms max=  0.071ms calls(last=  1,win=  63,total=63) (win 0.0% | avg 0.0% budget)
+  enemy.type.assassin              win=  0.004ms avg=  0.034ms p95=  0.097ms max=  0.133ms calls(last= 10,win=1164,total=1699) (win 0.0% | avg 0.2% budget)
+  system.projectile_update         win=  0.003ms avg=  0.003ms p95=  0.004ms max=  0.008ms calls(last=  1,win= 123,total=335) (win 0.0% | avg 0.0% budget)
+  system.maze_update               win=  0.001ms avg=  0.001ms p95=  0.002ms max=  0.004ms calls(last=  1,win= 123,total=335) (win 0.0% | avg 0.0% budget)
+[ENEMY_STATS] frame=960 alive=20 visible=0 full=0 cheap=20 fullInBase=0 pairs(frontal=0 checks=0 separation=0 resolved=0)
+[ENEMY_WINDOW] steps=123 alive[min=13 max=20] visible[min=0 max=0] full[min=0 max=0] collisionPasses[runs=0 skips=123]
+[ENEMY_SEGMENTS] window=2.050s D{b/s=0.49 avgLen=7.81 fail=0} T{b/s=0.49 avgLen=3.14 fail=0} H{b/s=5.37 avgLen=4.20 fail=0} A{b/s=3.41 avgLen=4.53 fail=0}
+[ENEMY_GRID] frontal{cand/s=0.0 xcell/s=0.0 ins/s=0.0} separation{cand/s=0.0}
+[ENEMY_COLLISION_WINDOW] frontal{pairs/s=0.0 checks/s=0.0 baseSkip=0 kill=0(0.0%)} separation{pairs/s=0.0 resolved/s=0.0(0.0%) baseSkip=0 kill=0 wallBlock=0}
+[ENEMY_NAV_CACHE] playerCell{changes=0 flowRebuilds=0} flow{hit=0 miss=0 hit%=0.0} pathFallback{calls=0 ok=0 ok%=0.0}
+[ENEMY_SAP] updates=0 active=0 pairs=0 repairs{x=0 y=0}
+[ENEMY_PAIR_TYPES] frontal DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0 separation DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0
+
+[PROFILE] frame=1080 budget=16.667ms alloc(+50/-50, +132784b/-132784b, live=44008b peak=172824b)
+  frame.total                      win= 16.912ms avg= 16.912ms p95= 17.429ms max= 88.274ms calls(last=  1,win= 120,total=1080) (win 101.5% | avg 101.5% budget)
+  frame.render                     win= 14.706ms avg= 14.706ms p95= 15.214ms max= 88.235ms calls(last=  1,win= 120,total=1080) (win 88.2% | avg 88.2% budget)
+  frame.present                    win= 14.699ms avg= 14.699ms p95= 15.206ms max= 88.228ms calls(last=  1,win= 120,total=1080) (win 88.2% | avg 88.2% budget)
+  frame.render.world               win=  4.374ms avg=  8.749ms p95=  9.047ms max=  9.612ms calls(last=  2,win= 240,total=890) (win 26.2% | avg 52.5% budget)
+  frame.render.overlay             win=  2.988ms avg=  2.988ms p95=  3.606ms max=  7.566ms calls(last=  1,win= 120,total=445) (win 17.9% | avg 17.9% budget)
+  frame.fixed_step                 win=  2.132ms avg=  2.168ms p95=  2.342ms max=  5.671ms calls(last=  1,win= 122,total=1106) (win 12.8% | avg 13.0% budget)
+  game.update                      win=  1.670ms avg=  1.698ms p95=  1.853ms max=  4.969ms calls(last=  1,win= 122,total=457) (win 10.0% | avg 10.2% budget)
+  system.ai_update                 win=  1.550ms avg=  1.576ms p95=  1.675ms max=  4.814ms calls(last=  1,win= 122,total=457) (win 9.3% | avg 9.5% budget)
+  enemy.update                     win=  1.544ms avg=  1.570ms p95=  1.668ms max=  4.756ms calls(last=  1,win= 122,total=457) (win 9.3% | avg 9.4% budget)
+  frame.render.world.enemies       win=  1.121ms avg=  1.121ms p95=  1.207ms max=  1.479ms calls(last=  1,win= 120,total=445) (win 6.7% | avg 6.7% budget)
+  frame.render.world.maze          win=  0.908ms avg=  0.908ms p95=  1.010ms max=  1.348ms calls(last=  1,win= 120,total=445) (win 5.4% | avg 5.4% budget)
+  frame.render.world.effects       win=  0.386ms avg=  0.386ms p95=  0.470ms max=  0.812ms calls(last=  1,win= 120,total=445) (win 2.3% | avg 2.3% budget)
+  enemy.cheap.segment_build        win=  0.066ms avg=  0.017ms p95=  0.074ms max=  0.186ms calls(last=  1,win=  31,total=69) (win 0.4% | avg 0.1% budget)
+  system.spawner_update            win=  0.038ms avg=  0.038ms p95=  0.197ms max=  0.289ms calls(last=  1,win= 122,total=457) (win 0.2% | avg 0.2% budget)
+  frame.input_poll                 win=  0.027ms avg=  0.027ms p95=  0.028ms max=  0.062ms calls(last=  1,win= 120,total=1080) (win 0.2% | avg 0.2% budget)
+  system.player_update             win=  0.027ms avg=  0.027ms p95=  0.028ms max=  0.092ms calls(last=  1,win= 122,total=337) (win 0.2% | avg 0.2% budget)
+  system.physics_collision         win=  0.021ms avg=  0.021ms p95=  0.023ms max=  0.057ms calls(last=  1,win= 122,total=457) (win 0.1% | avg 0.1% budget)
+  enemy.type.hunter                win=  0.006ms avg=  0.064ms p95=  0.127ms max=  0.165ms calls(last= 11,win=1292,total=2790) (win 0.0% | avg 0.4% budget)
+  enemy.type.torpedo               win=  0.004ms avg=  0.011ms p95=  0.016ms max=  0.206ms calls(last=  4,win= 311,total=374) (win 0.0% | avg 0.1% budget)
+  enemy.type.assassin              win=  0.004ms avg=  0.037ms p95=  0.104ms max=  0.133ms calls(last= 12,win=1264,total=2963) (win 0.0% | avg 0.2% budget)
+  enemy.type.drone                 win=  0.003ms avg=  0.003ms p95=  0.003ms max=  0.076ms calls(last=  2,win= 123,total=154) (win 0.0% | avg 0.0% budget)
+  system.projectile_update         win=  0.003ms avg=  0.003ms p95=  0.004ms max=  0.008ms calls(last=  1,win= 122,total=457) (win 0.0% | avg 0.0% budget)
+  system.maze_update               win=  0.001ms avg=  0.001ms p95=  0.001ms max=  0.004ms calls(last=  1,win= 122,total=457) (win 0.0% | avg 0.0% budget)
+[ENEMY_STATS] frame=1080 alive=29 visible=0 full=0 cheap=29 fullInBase=0 pairs(frontal=0 checks=0 separation=0 resolved=0)
+[ENEMY_WINDOW] steps=122 alive[min=20 max=29] visible[min=0 max=0] full[min=0 max=0] collisionPasses[runs=0 skips=122]
+[ENEMY_SEGMENTS] window=2.033s D{b/s=0.49 avgLen=6.06 fail=0} T{b/s=1.97 avgLen=5.72 fail=0} H{b/s=7.87 avgLen=4.80 fail=0} A{b/s=4.92 avgLen=4.89 fail=0}
+[ENEMY_GRID] frontal{cand/s=0.0 xcell/s=0.0 ins/s=0.0} separation{cand/s=0.0}
+[ENEMY_COLLISION_WINDOW] frontal{pairs/s=0.0 checks/s=0.0 baseSkip=0 kill=0(0.0%)} separation{pairs/s=0.0 resolved/s=0.0(0.0%) baseSkip=0 kill=0 wallBlock=0}
+[ENEMY_NAV_CACHE] playerCell{changes=0 flowRebuilds=0} flow{hit=0 miss=0 hit%=0.0} pathFallback{calls=0 ok=0 ok%=0.0}
+[ENEMY_SAP] updates=0 active=0 pairs=0 repairs{x=0 y=0}
+[ENEMY_PAIR_TYPES] frontal DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0 separation DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0
+
+[PROFILE] frame=1200 budget=16.667ms alloc(+55/-55, +137720b/-137720b, live=73448b peak=207160b)
+  frame.total                      win= 16.921ms avg= 16.921ms p95= 17.460ms max= 88.274ms calls(last=  1,win= 120,total=1200) (win 101.5% | avg 101.5% budget)
+  frame.render                     win= 14.520ms avg= 14.520ms p95= 15.111ms max= 88.235ms calls(last=  1,win= 120,total=1200) (win 87.1% | avg 87.1% budget)
+  frame.present                    win= 14.513ms avg= 14.513ms p95= 15.105ms max= 88.228ms calls(last=  1,win= 120,total=1200) (win 87.1% | avg 87.1% budget)
+  frame.render.world               win=  4.350ms avg=  8.700ms p95=  9.054ms max=  9.612ms calls(last=  2,win= 240,total=1130) (win 26.1% | avg 52.2% budget)
+  frame.render.overlay             win=  3.017ms avg=  3.017ms p95=  3.621ms max=  7.566ms calls(last=  1,win= 120,total=565) (win 18.1% | avg 18.1% budget)
+  frame.fixed_step                 win=  2.303ms avg=  2.361ms p95=  2.520ms max=  5.671ms calls(last=  1,win= 123,total=1229) (win 13.8% | avg 14.2% budget)
+  game.update                      win=  1.739ms avg=  1.783ms p95=  1.939ms max=  4.969ms calls(last=  1,win= 123,total=580) (win 10.4% | avg 10.7% budget)
+  system.ai_update                 win=  1.616ms avg=  1.657ms p95=  1.806ms max=  4.814ms calls(last=  1,win= 123,total=580) (win 9.7% | avg 9.9% budget)
+  enemy.update                     win=  1.610ms avg=  1.650ms p95=  1.798ms max=  4.756ms calls(last=  1,win= 123,total=580) (win 9.7% | avg 9.9% budget)
+  frame.render.world.enemies       win=  1.117ms avg=  1.117ms p95=  1.199ms max=  1.479ms calls(last=  1,win= 120,total=565) (win 6.7% | avg 6.7% budget)
+  frame.render.world.maze          win=  0.845ms avg=  0.845ms p95=  0.923ms max=  1.348ms calls(last=  1,win= 120,total=565) (win 5.1% | avg 5.1% budget)
+  frame.render.world.effects       win=  0.377ms avg=  0.377ms p95=  0.448ms max=  0.812ms calls(last=  1,win= 120,total=565) (win 2.3% | avg 2.3% budget)
+  enemy.cheap.segment_build        win=  0.061ms avg=  0.016ms p95=  0.073ms max=  0.186ms calls(last=  0,win=  31,total=100) (win 0.4% | avg 0.1% budget)
+  system.spawner_update            win=  0.037ms avg=  0.038ms p95=  0.186ms max=  0.289ms calls(last=  1,win= 123,total=580) (win 0.2% | avg 0.2% budget)
+  frame.input_poll                 win=  0.029ms avg=  0.029ms p95=  0.031ms max=  0.112ms calls(last=  1,win= 120,total=1200) (win 0.2% | avg 0.2% budget)
+  system.player_update             win=  0.026ms avg=  0.027ms p95=  0.030ms max=  0.092ms calls(last=  1,win= 123,total=460) (win 0.2% | avg 0.2% budget)
+  system.physics_collision         win=  0.022ms avg=  0.023ms p95=  0.027ms max=  0.057ms calls(last=  1,win= 123,total=580) (win 0.1% | avg 0.1% budget)
+  enemy.type.hunter                win=  0.006ms avg=  0.067ms p95=  0.128ms max=  0.176ms calls(last= 11,win=1353,total=4143) (win 0.0% | avg 0.4% budget)
+  enemy.type.torpedo               win=  0.003ms avg=  0.020ms p95=  0.032ms max=  0.206ms calls(last=  6,win= 686,total=1060) (win 0.0% | avg 0.1% budget)
+  enemy.type.assassin              win=  0.003ms avg=  0.044ms p95=  0.110ms max=  0.152ms calls(last= 14,win=1564,total=4527) (win 0.0% | avg 0.3% budget)
+  system.projectile_update         win=  0.003ms avg=  0.003ms p95=  0.004ms max=  0.008ms calls(last=  1,win= 123,total=580) (win 0.0% | avg 0.0% budget)
+  enemy.type.drone                 win=  0.003ms avg=  0.007ms p95=  0.009ms max=  0.076ms calls(last=  3,win= 280,total=434) (win 0.0% | avg 0.0% budget)
+  system.maze_update               win=  0.001ms avg=  0.001ms p95=  0.001ms max=  0.004ms calls(last=  1,win= 123,total=580) (win 0.0% | avg 0.0% budget)
+[ENEMY_STATS] frame=1200 alive=34 visible=0 full=0 cheap=34 fullInBase=0 pairs(frontal=0 checks=0 separation=0 resolved=0)
+[ENEMY_WINDOW] steps=123 alive[min=29 max=34] visible[min=0 max=0] full[min=0 max=0] collisionPasses[runs=0 skips=123]
+[ENEMY_SEGMENTS] window=2.050s D{b/s=0.49 avgLen=4.91 fail=0} T{b/s=2.93 avgLen=5.11 fail=0} H{b/s=7.80 avgLen=4.69 fail=0} A{b/s=4.39 avgLen=4.80 fail=0}
+[ENEMY_GRID] frontal{cand/s=0.0 xcell/s=0.0 ins/s=0.0} separation{cand/s=0.0}
+[ENEMY_COLLISION_WINDOW] frontal{pairs/s=0.0 checks/s=0.0 baseSkip=0 kill=0(0.0%)} separation{pairs/s=0.0 resolved/s=0.0(0.0%) baseSkip=0 kill=0 wallBlock=0}
+[ENEMY_NAV_CACHE] playerCell{changes=0 flowRebuilds=0} flow{hit=0 miss=0 hit%=0.0} pathFallback{calls=0 ok=0 ok%=0.0}
+[ENEMY_SAP] updates=0 active=0 pairs=0 repairs{x=0 y=0}
+[ENEMY_PAIR_TYPES] frontal DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0 separation DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0
+
+[PROFILE] frame=1320 budget=16.667ms alloc(+63/-63, +143992b/-143992b, live=73448b peak=213056b)
+  frame.total                      win= 16.910ms avg= 16.910ms p95= 17.414ms max= 88.274ms calls(last=  1,win= 120,total=1320) (win 101.5% | avg 101.5% budget)
+  frame.render                     win= 14.371ms avg= 14.371ms p95= 15.008ms max= 88.235ms calls(last=  1,win= 120,total=1320) (win 86.2% | avg 86.2% budget)
+  frame.present                    win= 14.364ms avg= 14.364ms p95= 15.001ms max= 88.228ms calls(last=  1,win= 120,total=1320) (win 86.2% | avg 86.2% budget)
+  frame.render.world               win=  4.314ms avg=  8.628ms p95=  9.003ms max=  9.612ms calls(last=  2,win= 240,total=1370) (win 25.9% | avg 51.8% budget)
+  frame.render.overlay             win=  3.051ms avg=  3.051ms p95=  3.688ms max=  7.566ms calls(last=  1,win= 120,total=685) (win 18.3% | avg 18.3% budget)
+  frame.fixed_step                 win=  2.459ms avg=  2.500ms p95=  2.743ms max=  5.671ms calls(last=  1,win= 122,total=1351) (win 14.8% | avg 15.0% budget)
+  game.update                      win=  1.809ms avg=  1.839ms p95=  2.017ms max=  4.969ms calls(last=  1,win= 122,total=702) (win 10.9% | avg 11.0% budget)
+  system.ai_update                 win=  1.681ms avg=  1.709ms p95=  1.848ms max=  4.814ms calls(last=  1,win= 122,total=702) (win 10.1% | avg 10.3% budget)
+  enemy.update                     win=  1.675ms avg=  1.703ms p95=  1.842ms max=  4.756ms calls(last=  1,win= 122,total=702) (win 10.1% | avg 10.2% budget)
+  frame.render.world.enemies       win=  1.124ms avg=  1.124ms p95=  1.219ms max=  1.479ms calls(last=  1,win= 120,total=685) (win 6.7% | avg 6.7% budget)
+  frame.render.world.maze          win=  0.778ms avg=  0.778ms p95=  0.878ms max=  1.348ms calls(last=  1,win= 120,total=685) (win 4.7% | avg 4.7% budget)
+  frame.render.world.effects       win=  0.382ms avg=  0.382ms p95=  0.495ms max=  0.812ms calls(last=  1,win= 120,total=685) (win 2.3% | avg 2.3% budget)
+  enemy.cheap.segment_build        win=  0.069ms avg=  0.021ms p95=  0.074ms max=  0.186ms calls(last=  2,win=  36,total=136) (win 0.4% | avg 0.1% budget)
+  system.spawner_update            win=  0.041ms avg=  0.042ms p95=  0.172ms max=  0.294ms calls(last=  1,win= 122,total=702) (win 0.2% | avg 0.3% budget)
+  frame.input_poll                 win=  0.028ms avg=  0.028ms p95=  0.028ms max=  0.112ms calls(last=  1,win= 120,total=1320) (win 0.2% | avg 0.2% budget)
+  system.player_update             win=  0.027ms avg=  0.027ms p95=  0.030ms max=  0.092ms calls(last=  1,win= 122,total=582) (win 0.2% | avg 0.2% budget)
+  system.physics_collision         win=  0.023ms avg=  0.023ms p95=  0.027ms max=  0.057ms calls(last=  1,win= 122,total=702) (win 0.1% | avg 0.1% budget)
+  enemy.type.hunter                win=  0.006ms avg=  0.069ms p95=  0.134ms max=  0.211ms calls(last= 13,win=1390,total=5533) (win 0.0% | avg 0.4% budget)
+  enemy.type.torpedo               win=  0.004ms avg=  0.024ms p95=  0.085ms max=  0.206ms calls(last=  8,win= 779,total=1839) (win 0.0% | avg 0.1% budget)
+  enemy.type.assassin              win=  0.003ms avg=  0.051ms p95=  0.117ms max=  0.152ms calls(last= 15,win=1786,total=6313) (win 0.0% | avg 0.3% budget)
+  system.projectile_update         win=  0.003ms avg=  0.003ms p95=  0.004ms max=  0.008ms calls(last=  1,win= 122,total=702) (win 0.0% | avg 0.0% budget)
+  enemy.type.drone                 win=  0.003ms avg=  0.011ms p95=  0.012ms max=  0.080ms calls(last=  4,win= 438,total=872) (win 0.0% | avg 0.1% budget)
+  system.maze_update               win=  0.001ms avg=  0.001ms p95=  0.001ms max=  0.004ms calls(last=  1,win= 122,total=702) (win 0.0% | avg 0.0% budget)
+[ENEMY_STATS] frame=1320 alive=40 visible=0 full=0 cheap=40 fullInBase=0 pairs(frontal=0 checks=0 separation=0 resolved=0)
+[ENEMY_WINDOW] steps=122 alive[min=34 max=40] visible[min=0 max=0] full[min=0 max=0] collisionPasses[runs=0 skips=122]
+[ENEMY_SEGMENTS] window=2.033s D{b/s=0.49 avgLen=7.60 fail=0} T{b/s=3.44 avgLen=5.07 fail=0} H{b/s=7.87 avgLen=4.43 fail=0} A{b/s=5.41 avgLen=4.79 fail=0}
+[ENEMY_GRID] frontal{cand/s=0.0 xcell/s=0.0 ins/s=0.0} separation{cand/s=0.0}
+[ENEMY_COLLISION_WINDOW] frontal{pairs/s=0.0 checks/s=0.0 baseSkip=0 kill=0(0.0%)} separation{pairs/s=0.0 resolved/s=0.0(0.0%) baseSkip=0 kill=0 wallBlock=0}
+[ENEMY_NAV_CACHE] playerCell{changes=0 flowRebuilds=0} flow{hit=0 miss=0 hit%=0.0} pathFallback{calls=0 ok=0 ok%=0.0}
+[ENEMY_SAP] updates=0 active=0 pairs=0 repairs{x=0 y=0}
+[ENEMY_PAIR_TYPES] frontal DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0 separation DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0
+
+[PROFILE] frame=1440 budget=16.667ms alloc(+66/-66, +147760b/-147760b, live=73448b peak=217064b)
+  frame.total                      win= 16.903ms avg= 16.903ms p95= 17.307ms max= 88.274ms calls(last=  1,win= 120,total=1440) (win 101.4% | avg 101.4% budget)
+  frame.render                     win= 14.176ms avg= 14.176ms p95= 14.673ms max= 88.235ms calls(last=  1,win= 120,total=1440) (win 85.1% | avg 85.1% budget)
+  frame.present                    win= 14.168ms avg= 14.168ms p95= 14.665ms max= 88.228ms calls(last=  1,win= 120,total=1440) (win 85.0% | avg 85.0% budget)
+  frame.render.world               win=  4.313ms avg=  8.627ms p95=  8.978ms max= 10.944ms calls(last=  2,win= 240,total=1610) (win 25.9% | avg 51.8% budget)
+  frame.render.overlay             win=  3.007ms avg=  3.007ms p95=  3.615ms max=  7.566ms calls(last=  1,win= 120,total=805) (win 18.0% | avg 18.0% budget)
+  frame.fixed_step                 win=  2.624ms avg=  2.690ms p95=  2.858ms max=  5.671ms calls(last=  1,win= 123,total=1474) (win 15.7% | avg 16.1% budget)
+  game.update                      win=  1.864ms avg=  1.910ms p95=  2.078ms max=  4.969ms calls(last=  1,win= 123,total=825) (win 11.2% | avg 11.5% budget)
+  system.ai_update                 win=  1.735ms avg=  1.778ms p95=  1.951ms max=  4.814ms calls(last=  1,win= 123,total=825) (win 10.4% | avg 10.7% budget)
+  enemy.update                     win=  1.729ms avg=  1.772ms p95=  1.945ms max=  4.756ms calls(last=  1,win= 123,total=825) (win 10.4% | avg 10.6% budget)
+  frame.render.world.enemies       win=  1.116ms avg=  1.116ms p95=  1.159ms max=  1.479ms calls(last=  1,win= 120,total=805) (win 6.7% | avg 6.7% budget)
+  frame.render.world.maze          win=  0.762ms avg=  0.762ms p95=  0.869ms max=  1.348ms calls(last=  1,win= 120,total=805) (win 4.6% | avg 4.6% budget)
+  frame.render.world.effects       win=  0.383ms avg=  0.383ms p95=  0.474ms max=  0.812ms calls(last=  1,win= 120,total=805) (win 2.3% | avg 2.3% budget)
+  enemy.cheap.segment_build        win=  0.062ms avg=  0.020ms p95=  0.093ms max=  0.186ms calls(last=  0,win=  39,total=175) (win 0.4% | avg 0.1% budget)
+  system.spawner_update            win=  0.040ms avg=  0.041ms p95=  0.170ms max=  0.294ms calls(last=  1,win= 123,total=825) (win 0.2% | avg 0.2% budget)
+  system.player_update             win=  0.027ms avg=  0.028ms p95=  0.031ms max=  0.092ms calls(last=  1,win= 123,total=705) (win 0.2% | avg 0.2% budget)
+  frame.input_poll                 win=  0.027ms avg=  0.027ms p95=  0.028ms max=  0.112ms calls(last=  1,win= 120,total=1440) (win 0.2% | avg 0.2% budget)
+  system.physics_collision         win=  0.023ms avg=  0.024ms p95=  0.027ms max=  0.057ms calls(last=  1,win= 123,total=825) (win 0.1% | avg 0.1% budget)
+  enemy.type.hunter                win=  0.005ms avg=  0.078ms p95=  0.142ms max=  0.211ms calls(last= 16,win=1708,total=7241) (win 0.0% | avg 0.5% budget)
+  system.projectile_update         win=  0.003ms avg=  0.003ms p95=  0.004ms max=  0.021ms calls(last=  1,win= 123,total=825) (win 0.0% | avg 0.0% budget)
+  enemy.type.torpedo               win=  0.003ms avg=  0.027ms p95=  0.045ms max=  0.206ms calls(last=  8,win= 984,total=2823) (win 0.0% | avg 0.2% budget)
+  enemy.type.assassin              win=  0.003ms avg=  0.049ms p95=  0.115ms max=  0.157ms calls(last= 15,win=1845,total=8158) (win 0.0% | avg 0.3% budget)
+  enemy.type.drone                 win=  0.003ms avg=  0.015ms p95=  0.024ms max=  0.086ms calls(last=  5,win= 569,total=1441) (win 0.0% | avg 0.1% budget)
+  system.maze_update               win=  0.001ms avg=  0.001ms p95=  0.001ms max=  0.004ms calls(last=  1,win= 123,total=825) (win 0.0% | avg 0.0% budget)
+[ENEMY_STATS] frame=1440 alive=44 visible=0 full=0 cheap=44 fullInBase=0 pairs(frontal=0 checks=0 separation=0 resolved=0)
+[ENEMY_WINDOW] steps=123 alive[min=40 max=44] visible[min=0 max=0] full[min=0 max=0] collisionPasses[runs=0 skips=123]
+[ENEMY_SEGMENTS] window=2.050s D{b/s=1.46 avgLen=6.78 fail=0} T{b/s=1.95 avgLen=8.02 fail=0} H{b/s=11.22 avgLen=4.38 fail=0} A{b/s=4.39 avgLen=4.98 fail=0}
+[ENEMY_GRID] frontal{cand/s=0.0 xcell/s=0.0 ins/s=0.0} separation{cand/s=0.0}
+[ENEMY_COLLISION_WINDOW] frontal{pairs/s=0.0 checks/s=0.0 baseSkip=0 kill=0(0.0%)} separation{pairs/s=0.0 resolved/s=0.0(0.0%) baseSkip=0 kill=0 wallBlock=0}
+[ENEMY_NAV_CACHE] playerCell{changes=0 flowRebuilds=0} flow{hit=0 miss=0 hit%=0.0} pathFallback{calls=0 ok=0 ok%=0.0}
+[ENEMY_SAP] updates=0 active=0 pairs=0 repairs{x=0 y=0}
+[ENEMY_PAIR_TYPES] frontal DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0 separation DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0
+
+[PROFILE] frame=1560 budget=16.667ms alloc(+73/-73, +154472b/-154472b, live=73448b peak=223640b)
+  frame.total                      win= 16.906ms avg= 16.906ms p95= 17.424ms max= 88.274ms calls(last=  1,win= 120,total=1560) (win 101.4% | avg 101.4% budget)
+  frame.render                     win= 13.990ms avg= 13.990ms p95= 14.515ms max= 88.235ms calls(last=  1,win= 120,total=1560) (win 83.9% | avg 83.9% budget)
+  frame.present                    win= 13.982ms avg= 13.982ms p95= 14.507ms max= 88.228ms calls(last=  1,win= 120,total=1560) (win 83.9% | avg 83.9% budget)
+  frame.render.world               win=  4.336ms avg=  8.672ms p95=  9.047ms max= 10.944ms calls(last=  2,win= 240,total=1850) (win 26.0% | avg 52.0% budget)
+  frame.render.overlay             win=  3.042ms avg=  3.042ms p95=  3.739ms max=  7.566ms calls(last=  1,win= 120,total=925) (win 18.3% | avg 18.3% budget)
+  frame.fixed_step                 win=  2.829ms avg=  2.876ms p95=  3.058ms max=  5.671ms calls(last=  1,win= 122,total=1596) (win 17.0% | avg 17.3% budget)
+  game.update                      win=  1.924ms avg=  1.956ms p95=  2.099ms max=  4.969ms calls(last=  1,win= 122,total=947) (win 11.5% | avg 11.7% budget)
+  system.ai_update                 win=  1.790ms avg=  1.819ms p95=  1.951ms max=  4.814ms calls(last=  1,win= 122,total=947) (win 10.7% | avg 10.9% budget)
+  enemy.update                     win=  1.784ms avg=  1.814ms p95=  1.944ms max=  4.756ms calls(last=  1,win= 122,total=947) (win 10.7% | avg 10.9% budget)
+  frame.render.world.enemies       win=  1.120ms avg=  1.120ms p95=  1.204ms max=  1.479ms calls(last=  1,win= 120,total=925) (win 6.7% | avg 6.7% budget)
+  frame.render.world.maze          win=  0.755ms avg=  0.755ms p95=  0.881ms max=  1.348ms calls(last=  1,win= 120,total=925) (win 4.5% | avg 4.5% budget)
+  frame.render.world.effects       win=  0.368ms avg=  0.368ms p95=  0.476ms max=  0.812ms calls(last=  1,win= 120,total=925) (win 2.2% | avg 2.2% budget)
+  enemy.cheap.segment_build        win=  0.064ms avg=  0.024ms p95=  0.096ms max=  0.186ms calls(last=  0,win=  44,total=219) (win 0.4% | avg 0.1% budget)
+  system.spawner_update            win=  0.044ms avg=  0.045ms p95=  0.206ms max=  0.294ms calls(last=  1,win= 122,total=947) (win 0.3% | avg 0.3% budget)
+  frame.input_poll                 win=  0.028ms avg=  0.028ms p95=  0.029ms max=  0.112ms calls(last=  1,win= 120,total=1560) (win 0.2% | avg 0.2% budget)
+  system.player_update             win=  0.027ms avg=  0.028ms p95=  0.035ms max=  0.092ms calls(last=  1,win= 122,total=827) (win 0.2% | avg 0.2% budget)
+  system.physics_collision         win=  0.024ms avg=  0.024ms p95=  0.030ms max=  0.057ms calls(last=  1,win= 122,total=947) (win 0.1% | avg 0.1% budget)
+  enemy.type.hunter                win=  0.005ms avg=  0.087ms p95=  0.148ms max=  0.211ms calls(last= 18,win=2074,total=9315) (win 0.0% | avg 0.5% budget)
+  enemy.type.torpedo               win=  0.003ms avg=  0.033ms p95=  0.067ms max=  0.206ms calls(last= 11,win=1155,total=3978) (win 0.0% | avg 0.2% budget)
+  system.projectile_update         win=  0.003ms avg=  0.003ms p95=  0.004ms max=  0.021ms calls(last=  1,win= 122,total=947) (win 0.0% | avg 0.0% budget)
+  enemy.type.assassin              win=  0.003ms avg=  0.052ms p95=  0.115ms max=  0.161ms calls(last= 16,win=1913,total=10071) (win 0.0% | avg 0.3% budget)
+  enemy.type.drone                 win=  0.003ms avg=  0.017ms p95=  0.019ms max=  0.092ms calls(last=  6,win= 699,total=2140) (win 0.0% | avg 0.1% budget)
+  system.maze_update               win=  0.001ms avg=  0.001ms p95=  0.001ms max=  0.004ms calls(last=  1,win= 122,total=947) (win 0.0% | avg 0.0% budget)
+[ENEMY_STATS] frame=1560 alive=51 visible=0 full=0 cheap=51 fullInBase=0 pairs(frontal=0 checks=0 separation=0 resolved=0)
+[ENEMY_WINDOW] steps=122 alive[min=44 max=51] visible[min=0 max=0] full[min=0 max=0] collisionPasses[runs=0 skips=122]
+[ENEMY_SEGMENTS] window=2.033s D{b/s=0.98 avgLen=5.74 fail=0} T{b/s=3.93 avgLen=6.56 fail=0} H{b/s=12.79 avgLen=4.89 fail=0} A{b/s=4.43 avgLen=5.68 fail=0}
+[ENEMY_GRID] frontal{cand/s=0.0 xcell/s=0.0 ins/s=0.0} separation{cand/s=0.0}
+[ENEMY_COLLISION_WINDOW] frontal{pairs/s=0.0 checks/s=0.0 baseSkip=0 kill=0(0.0%)} separation{pairs/s=0.0 resolved/s=0.0(0.0%) baseSkip=0 kill=0 wallBlock=0}
+[ENEMY_NAV_CACHE] playerCell{changes=0 flowRebuilds=0} flow{hit=0 miss=0 hit%=0.0} pathFallback{calls=0 ok=0 ok%=0.0}
+[ENEMY_SAP] updates=0 active=0 pairs=0 repairs{x=0 y=0}
+[ENEMY_PAIR_TYPES] frontal DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0 separation DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0
+
+[PROFILE] frame=1680 budget=16.667ms alloc(+81/-81, +162168b/-162168b, live=73448b peak=231128b)
+  frame.total                      win= 16.924ms avg= 16.924ms p95= 17.503ms max= 88.274ms calls(last=  1,win= 120,total=1680) (win 101.5% | avg 101.5% budget)
+  frame.render                     win= 13.640ms avg= 13.640ms p95= 14.395ms max= 88.235ms calls(last=  1,win= 120,total=1680) (win 81.8% | avg 81.8% budget)
+  frame.present                    win= 13.633ms avg= 13.633ms p95= 14.389ms max= 88.228ms calls(last=  1,win= 120,total=1680) (win 81.8% | avg 81.8% budget)
+  frame.render.world               win=  4.416ms avg=  8.831ms p95=  9.224ms max= 11.131ms calls(last=  2,win= 240,total=2090) (win 26.5% | avg 53.0% budget)
+  frame.fixed_step                 win=  3.166ms avg=  3.245ms p95=  3.431ms max=  6.415ms calls(last=  1,win= 123,total=1719) (win 19.0% | avg 19.5% budget)
+  frame.render.overlay             win=  3.051ms avg=  3.051ms p95=  3.698ms max=  7.566ms calls(last=  1,win= 120,total=1045) (win 18.3% | avg 18.3% budget)
+  game.update                      win=  2.024ms avg=  2.075ms p95=  2.261ms max=  4.969ms calls(last=  1,win= 123,total=1070) (win 12.1% | avg 12.4% budget)
+  system.ai_update                 win=  1.882ms avg=  1.929ms p95=  2.136ms max=  4.814ms calls(last=  1,win= 123,total=1070) (win 11.3% | avg 11.6% budget)
+  enemy.update                     win=  1.876ms avg=  1.923ms p95=  2.129ms max=  4.756ms calls(last=  1,win= 123,total=1070) (win 11.3% | avg 11.5% budget)
+  frame.render.world.enemies       win=  1.129ms avg=  1.129ms p95=  1.242ms max=  1.479ms calls(last=  1,win= 120,total=1045) (win 6.8% | avg 6.8% budget)
+  frame.render.world.maze          win=  0.751ms avg=  0.751ms p95=  0.855ms max=  1.348ms calls(last=  1,win= 120,total=1045) (win 4.5% | avg 4.5% budget)
+  frame.render.world.effects       win=  0.378ms avg=  0.378ms p95=  0.473ms max=  0.812ms calls(last=  1,win= 120,total=1045) (win 2.3% | avg 2.3% budget)
+  enemy.cheap.segment_build        win=  0.063ms avg=  0.026ms p95=  0.095ms max=  0.186ms calls(last=  0,win=  49,total=268) (win 0.4% | avg 0.2% budget)
+  system.spawner_update            win=  0.050ms avg=  0.051ms p95=  0.205ms max=  0.294ms calls(last=  1,win= 123,total=1070) (win 0.3% | avg 0.3% budget)
+  frame.input_poll                 win=  0.027ms avg=  0.027ms p95=  0.028ms max=  0.112ms calls(last=  1,win= 120,total=1680) (win 0.2% | avg 0.2% budget)
+  system.player_update             win=  0.027ms avg=  0.027ms p95=  0.030ms max=  0.092ms calls(last=  1,win= 123,total=950) (win 0.2% | avg 0.2% budget)
+  system.physics_collision         win=  0.026ms avg=  0.027ms p95=  0.044ms max=  0.069ms calls(last=  1,win= 123,total=1070) (win 0.2% | avg 0.2% budget)
+  enemy.type.hunter                win=  0.005ms avg=  0.093ms p95=  0.159ms max=  0.289ms calls(last= 20,win=2391,total=11706) (win 0.0% | avg 0.6% budget)
+  system.projectile_update         win=  0.003ms avg=  0.004ms p95=  0.004ms max=  0.035ms calls(last=  1,win= 123,total=1070) (win 0.0% | avg 0.0% budget)
+  enemy.type.assassin              win=  0.003ms avg=  0.058ms p95=  0.124ms max=  0.161ms calls(last= 17,win=2016,total=12087) (win 0.0% | avg 0.3% budget)
+  enemy.type.torpedo               win=  0.003ms avg=  0.038ms p95=  0.077ms max=  0.206ms calls(last= 12,win=1373,total=5351) (win 0.0% | avg 0.2% budget)
+  enemy.type.drone                 win=  0.003ms avg=  0.029ms p95=  0.057ms max=  0.099ms calls(last= 10,win=1138,total=3278) (win 0.0% | avg 0.2% budget)
+  system.maze_update               win=  0.001ms avg=  0.001ms p95=  0.002ms max=  0.004ms calls(last=  1,win= 123,total=1070) (win 0.0% | avg 0.0% budget)
+[ENEMY_STATS] frame=1680 alive=59 visible=0 full=0 cheap=59 fullInBase=0 pairs(frontal=0 checks=0 separation=0 resolved=0)
+[ENEMY_WINDOW] steps=123 alive[min=51 max=59] visible[min=0 max=0] full[min=0 max=0] collisionPasses[runs=0 skips=123]
+[ENEMY_SEGMENTS] window=2.050s D{b/s=2.44 avgLen=5.18 fail=0} T{b/s=3.90 avgLen=6.22 fail=0} H{b/s=10.73 avgLen=5.42 fail=0} A{b/s=6.83 avgLen=4.39 fail=0}
+[ENEMY_GRID] frontal{cand/s=0.0 xcell/s=0.0 ins/s=0.0} separation{cand/s=0.0}
+[ENEMY_COLLISION_WINDOW] frontal{pairs/s=0.0 checks/s=0.0 baseSkip=0 kill=0(0.0%)} separation{pairs/s=0.0 resolved/s=0.0(0.0%) baseSkip=0 kill=0 wallBlock=0}
+[ENEMY_NAV_CACHE] playerCell{changes=0 flowRebuilds=0} flow{hit=0 miss=0 hit%=0.0} pathFallback{calls=0 ok=0 ok%=0.0}
+[ENEMY_SAP] updates=0 active=0 pairs=0 repairs{x=0 y=0}
+[ENEMY_PAIR_TYPES] frontal DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0 separation DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0
+
+[PROFILE] frame=1800 budget=16.667ms alloc(+86/-86, +166992b/-166992b, live=73448b peak=236016b)
+  frame.total                      win= 16.950ms avg= 16.950ms p95= 17.522ms max= 88.274ms calls(last=  1,win= 120,total=1800) (win 101.7% | avg 101.7% budget)
+  frame.render                     win= 13.475ms avg= 13.475ms p95= 13.930ms max= 88.235ms calls(last=  1,win= 120,total=1800) (win 80.8% | avg 80.8% budget)
+  frame.present                    win= 13.468ms avg= 13.468ms p95= 13.922ms max= 88.228ms calls(last=  1,win= 120,total=1800) (win 80.8% | avg 80.8% budget)
+  frame.render.world               win=  4.466ms avg=  8.931ms p95=  9.390ms max= 16.535ms calls(last=  2,win= 240,total=2330) (win 26.8% | avg 53.6% budget)
+  frame.fixed_step                 win=  3.380ms avg=  3.436ms p95=  3.619ms max=  6.629ms calls(last=  1,win= 122,total=1841) (win 20.3% | avg 20.6% budget)
+  frame.render.overlay             win=  3.076ms avg=  3.076ms p95=  3.759ms max=  7.566ms calls(last=  1,win= 120,total=1165) (win 18.5% | avg 18.5% budget)
+  game.update                      win=  2.091ms avg=  2.126ms p95=  2.298ms max=  4.969ms calls(last=  1,win= 122,total=1192) (win 12.5% | avg 12.8% budget)
+  system.ai_update                 win=  1.946ms avg=  1.978ms p95=  2.108ms max=  4.814ms calls(last=  1,win= 122,total=1192) (win 11.7% | avg 11.9% budget)
+  enemy.update                     win=  1.940ms avg=  1.972ms p95=  2.102ms max=  4.756ms calls(last=  1,win= 122,total=1192) (win 11.6% | avg 11.8% budget)
+  frame.render.world.enemies       win=  1.168ms avg=  1.168ms p95=  1.416ms max=  3.156ms calls(last=  1,win= 120,total=1165) (win 7.0% | avg 7.0% budget)
+  frame.render.world.maze          win=  0.720ms avg=  0.720ms p95=  0.816ms max=  2.208ms calls(last=  1,win= 120,total=1165) (win 4.3% | avg 4.3% budget)
+  frame.render.world.effects       win=  0.384ms avg=  0.384ms p95=  0.487ms max=  0.812ms calls(last=  1,win= 120,total=1165) (win 2.3% | avg 2.3% budget)
+  enemy.cheap.segment_build        win=  0.063ms avg=  0.029ms p95=  0.103ms max=  0.186ms calls(last=  0,win=  55,total=323) (win 0.4% | avg 0.2% budget)
+  system.spawner_update            win=  0.052ms avg=  0.052ms p95=  0.194ms max=  0.352ms calls(last=  1,win= 122,total=1192) (win 0.3% | avg 0.3% budget)
+  frame.input_poll                 win=  0.028ms avg=  0.028ms p95=  0.029ms max=  0.112ms calls(last=  1,win= 120,total=1800) (win 0.2% | avg 0.2% budget)
+  system.physics_collision         win=  0.027ms avg=  0.028ms p95=  0.032ms max=  0.069ms calls(last=  1,win= 122,total=1192) (win 0.2% | avg 0.2% budget)
+  system.player_update             win=  0.027ms avg=  0.028ms p95=  0.029ms max=  0.092ms calls(last=  1,win= 122,total=1072) (win 0.2% | avg 0.2% budget)
+  enemy.type.hunter                win=  0.005ms avg=  0.102ms p95=  0.168ms max=  0.289ms calls(last= 21,win=2540,total=14246) (win 0.0% | avg 0.6% budget)
+  enemy.type.torpedo               win=  0.003ms avg=  0.041ms p95=  0.107ms max=  0.206ms calls(last= 13,win=1466,total=6817) (win 0.0% | avg 0.2% budget)
+  enemy.type.assassin              win=  0.003ms avg=  0.060ms p95=  0.126ms max=  0.177ms calls(last= 19,win=2150,total=14237) (win 0.0% | avg 0.4% budget)
+  system.projectile_update         win=  0.003ms avg=  0.003ms p95=  0.004ms max=  0.035ms calls(last=  1,win= 122,total=1192) (win 0.0% | avg 0.0% budget)
+  enemy.type.drone                 win=  0.003ms avg=  0.034ms p95=  0.068ms max=  0.106ms calls(last= 11,win=1317,total=4595) (win 0.0% | avg 0.2% budget)
+  system.maze_update               win=  0.001ms avg=  0.001ms p95=  0.001ms max=  0.004ms calls(last=  1,win= 122,total=1192) (win 0.0% | avg 0.0% budget)
+[ENEMY_STATS] frame=1800 alive=64 visible=0 full=0 cheap=64 fullInBase=0 pairs(frontal=0 checks=0 separation=0 resolved=0)
+[ENEMY_WINDOW] steps=122 alive[min=59 max=64] visible[min=0 max=0] full[min=0 max=0] collisionPasses[runs=0 skips=122]
+[ENEMY_SEGMENTS] window=2.033s D{b/s=2.95 avgLen=5.21 fail=0} T{b/s=4.43 avgLen=5.27 fail=0} H{b/s=14.26 avgLen=4.55 fail=0} A{b/s=4.92 avgLen=4.77 fail=0}
+[ENEMY_GRID] frontal{cand/s=0.0 xcell/s=0.0 ins/s=0.0} separation{cand/s=0.0}
+[ENEMY_COLLISION_WINDOW] frontal{pairs/s=0.0 checks/s=0.0 baseSkip=0 kill=0(0.0%)} separation{pairs/s=0.0 resolved/s=0.0(0.0%) baseSkip=0 kill=0 wallBlock=0}
+[ENEMY_NAV_CACHE] playerCell{changes=0 flowRebuilds=0} flow{hit=0 miss=0 hit%=0.0} pathFallback{calls=0 ok=0 ok%=0.0}
+[ENEMY_SAP] updates=0 active=0 pairs=0 repairs{x=0 y=0}
+[ENEMY_PAIR_TYPES] frontal DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0 separation DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0
+
+[PROFILE] frame=1920 budget=16.667ms alloc(+93/-93, +173688b/-173688b, live=132328b peak=301504b)
+  frame.total                      win= 16.955ms avg= 16.955ms p95= 17.468ms max= 88.274ms calls(last=  1,win= 120,total=1920) (win 101.7% | avg 101.7% budget)
+  frame.render                     win= 13.176ms avg= 13.176ms p95= 13.753ms max= 88.235ms calls(last=  1,win= 120,total=1920) (win 79.1% | avg 79.1% budget)
+  frame.present                    win= 13.169ms avg= 13.169ms p95= 13.745ms max= 88.228ms calls(last=  1,win= 120,total=1920) (win 79.0% | avg 79.0% budget)
+  frame.render.world               win=  4.397ms avg=  8.795ms p95=  9.292ms max= 16.535ms calls(last=  2,win= 240,total=2570) (win 26.4% | avg 52.8% budget)
+  frame.fixed_step                 win=  3.648ms avg=  3.739ms p95=  3.932ms max=  7.164ms calls(last=  1,win= 123,total=1964) (win 21.9% | avg 22.4% budget)
+  frame.render.overlay             win=  3.079ms avg=  3.079ms p95=  3.791ms max=  7.566ms calls(last=  1,win= 120,total=1285) (win 18.5% | avg 18.5% budget)
+  game.update                      win=  2.147ms avg=  2.200ms p95=  2.368ms max=  4.969ms calls(last=  1,win= 123,total=1315) (win 12.9% | avg 13.2% budget)
+  system.ai_update                 win=  1.997ms avg=  2.047ms p95=  2.184ms max=  4.814ms calls(last=  1,win= 123,total=1315) (win 12.0% | avg 12.3% budget)
+  enemy.update                     win=  1.991ms avg=  2.040ms p95=  2.177ms max=  4.756ms calls(last=  1,win= 123,total=1315) (win 11.9% | avg 12.2% budget)
+  frame.render.world.enemies       win=  1.137ms avg=  1.137ms p95=  1.242ms max=  3.156ms calls(last=  1,win= 120,total=1285) (win 6.8% | avg 6.8% budget)
+  frame.render.world.maze          win=  0.669ms avg=  0.669ms p95=  0.739ms max=  2.208ms calls(last=  1,win= 120,total=1285) (win 4.0% | avg 4.0% budget)
+  frame.render.world.effects       win=  0.372ms avg=  0.372ms p95=  0.449ms max=  0.812ms calls(last=  1,win= 120,total=1285) (win 2.2% | avg 2.2% budget)
+  enemy.cheap.segment_build        win=  0.060ms avg=  0.034ms p95=  0.102ms max=  0.189ms calls(last=  1,win=  68,total=391) (win 0.4% | avg 0.2% budget)
+  system.spawner_update            win=  0.054ms avg=  0.055ms p95=  0.224ms max=  0.369ms calls(last=  1,win= 123,total=1315) (win 0.3% | avg 0.3% budget)
+  system.physics_collision         win=  0.028ms avg=  0.028ms p95=  0.037ms max=  0.081ms calls(last=  1,win= 123,total=1315) (win 0.2% | avg 0.2% budget)
+  system.player_update             win=  0.028ms avg=  0.028ms p95=  0.030ms max=  0.124ms calls(last=  1,win= 123,total=1195) (win 0.2% | avg 0.2% budget)
+  frame.input_poll                 win=  0.027ms avg=  0.027ms p95=  0.028ms max=  0.112ms calls(last=  1,win= 120,total=1920) (win 0.2% | avg 0.2% budget)
+  enemy.type.hunter                win=  0.005ms avg=  0.107ms p95=  0.191ms max=  0.301ms calls(last= 24,win=2699,total=16945) (win 0.0% | avg 0.6% budget)
+  enemy.type.assassin              win=  0.003ms avg=  0.071ms p95=  0.136ms max=  0.177ms calls(last= 22,win=2514,total=16751) (win 0.0% | avg 0.4% budget)
+  system.projectile_update         win=  0.003ms avg=  0.003ms p95=  0.004ms max=  0.035ms calls(last=  1,win= 123,total=1315) (win 0.0% | avg 0.0% budget)
+  enemy.type.torpedo               win=  0.003ms avg=  0.044ms p95=  0.083ms max=  0.206ms calls(last= 13,win=1599,total=8416) (win 0.0% | avg 0.3% budget)
+  enemy.type.drone                 win=  0.003ms avg=  0.039ms p95=  0.074ms max=  0.111ms calls(last= 12,win=1468,total=6063) (win 0.0% | avg 0.2% budget)
+  system.maze_update               win=  0.001ms avg=  0.001ms p95=  0.002ms max=  0.022ms calls(last=  1,win= 123,total=1315) (win 0.0% | avg 0.0% budget)
+[ENEMY_STATS] frame=1920 alive=71 visible=0 full=0 cheap=71 fullInBase=0 pairs(frontal=0 checks=0 separation=0 resolved=0)
+[ENEMY_WINDOW] steps=123 alive[min=64 max=71] visible[min=0 max=0] full[min=0 max=0] collisionPasses[runs=0 skips=123]
+[ENEMY_SEGMENTS] window=2.050s D{b/s=2.93 avgLen=4.92 fail=0} T{b/s=4.88 avgLen=4.78 fail=0} H{b/s=16.59 avgLen=4.62 fail=0} A{b/s=8.78 avgLen=4.51 fail=0}
+[ENEMY_GRID] frontal{cand/s=0.0 xcell/s=0.0 ins/s=0.0} separation{cand/s=0.0}
+[ENEMY_COLLISION_WINDOW] frontal{pairs/s=0.0 checks/s=0.0 baseSkip=0 kill=0(0.0%)} separation{pairs/s=0.0 resolved/s=0.0(0.0%) baseSkip=0 kill=0 wallBlock=0}
+[ENEMY_NAV_CACHE] playerCell{changes=0 flowRebuilds=0} flow{hit=0 miss=0 hit%=0.0} pathFallback{calls=0 ok=0 ok%=0.0}
+[ENEMY_SAP] updates=0 active=0 pairs=0 repairs{x=0 y=0}
+[ENEMY_PAIR_TYPES] frontal DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0 separation DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0
+
+[PROFILE] frame=2040 budget=16.667ms alloc(+99/-99, +179048b/-179048b, live=132328b peak=306640b)
+  frame.total                      win= 16.960ms avg= 16.960ms p95= 17.562ms max= 88.274ms calls(last=  1,win= 120,total=2040) (win 101.8% | avg 101.8% budget)
+  frame.render                     win= 12.907ms avg= 12.907ms p95= 13.592ms max= 88.235ms calls(last=  1,win= 120,total=2040) (win 77.4% | avg 77.4% budget)
+  frame.present                    win= 12.900ms avg= 12.900ms p95= 13.586ms max= 88.228ms calls(last=  1,win= 120,total=2040) (win 77.4% | avg 77.4% budget)
+  frame.render.world               win=  4.390ms avg=  8.779ms p95=  9.165ms max= 16.535ms calls(last=  2,win= 240,total=2810) (win 26.3% | avg 52.7% budget)
+  frame.fixed_step                 win=  3.916ms avg=  4.014ms p95=  4.192ms max=  7.876ms calls(last=  1,win= 123,total=2087) (win 23.5% | avg 24.1% budget)
+  frame.render.overlay             win=  3.076ms avg=  3.076ms p95=  3.748ms max=  7.566ms calls(last=  1,win= 120,total=1405) (win 18.5% | avg 18.5% budget)
+  game.update                      win=  2.207ms avg=  2.262ms p95=  2.414ms max=  4.969ms calls(last=  1,win= 123,total=1438) (win 13.2% | avg 13.6% budget)
+  system.ai_update                 win=  2.058ms avg=  2.110ms p95=  2.268ms max=  4.814ms calls(last=  1,win= 123,total=1438) (win 12.3% | avg 12.7% budget)
+  enemy.update                     win=  2.052ms avg=  2.104ms p95=  2.252ms max=  4.756ms calls(last=  1,win= 123,total=1438) (win 12.3% | avg 12.6% budget)
+  frame.render.world.enemies       win=  1.121ms avg=  1.121ms p95=  1.204ms max=  3.156ms calls(last=  1,win= 120,total=1405) (win 6.7% | avg 6.7% budget)
+  frame.render.world.maze          win=  0.631ms avg=  0.631ms p95=  0.759ms max=  2.208ms calls(last=  1,win= 120,total=1405) (win 3.8% | avg 3.8% budget)
+  frame.render.world.effects       win=  0.362ms avg=  0.362ms p95=  0.470ms max=  0.812ms calls(last=  1,win= 120,total=1405) (win 2.2% | avg 2.2% budget)
+  enemy.cheap.segment_build        win=  0.068ms avg=  0.034ms p95=  0.099ms max=  0.189ms calls(last=  0,win=  60,total=451) (win 0.4% | avg 0.2% budget)
+  system.spawner_update            win=  0.053ms avg=  0.054ms p95=  0.199ms max=  0.369ms calls(last=  1,win= 123,total=1438) (win 0.3% | avg 0.3% budget)
+  system.physics_collision         win=  0.028ms avg=  0.029ms p95=  0.031ms max=  0.134ms calls(last=  1,win= 123,total=1438) (win 0.2% | avg 0.2% budget)
+  frame.input_poll                 win=  0.027ms avg=  0.027ms p95=  0.028ms max=  0.112ms calls(last=  1,win= 120,total=2040) (win 0.2% | avg 0.2% budget)
+  system.player_update             win=  0.027ms avg=  0.028ms p95=  0.030ms max=  0.124ms calls(last=  1,win= 123,total=1318) (win 0.2% | avg 0.2% budget)
+  enemy.type.hunter                win=  0.005ms avg=  0.111ms p95=  0.169ms max=  0.301ms calls(last= 25,win=2962,total=19907) (win 0.0% | avg 0.7% budget)
+  enemy.type.torpedo               win=  0.004ms avg=  0.051ms p95=  0.116ms max=  0.222ms calls(last= 14,win=1711,total=10127) (win 0.0% | avg 0.3% budget)
+  enemy.type.assassin              win=  0.003ms avg=  0.077ms p95=  0.144ms max=  0.298ms calls(last= 24,win=2810,total=19561) (win 0.0% | avg 0.5% budget)
+  system.projectile_update         win=  0.003ms avg=  0.003ms p95=  0.004ms max=  0.035ms calls(last=  1,win= 123,total=1438) (win 0.0% | avg 0.0% budget)
+  enemy.type.drone                 win=  0.003ms avg=  0.039ms p95=  0.065ms max=  0.113ms calls(last= 13,win=1570,total=7633) (win 0.0% | avg 0.2% budget)
+  system.maze_update               win=  0.001ms avg=  0.001ms p95=  0.001ms max=  0.022ms calls(last=  1,win= 123,total=1438) (win 0.0% | avg 0.0% budget)
+[ENEMY_STATS] frame=2040 alive=76 visible=0 full=0 cheap=76 fullInBase=0 pairs(frontal=0 checks=0 separation=0 resolved=0)
+[ENEMY_WINDOW] steps=123 alive[min=71 max=76] visible[min=0 max=0] full[min=0 max=0] collisionPasses[runs=0 skips=123]
+[ENEMY_SEGMENTS] window=2.050s D{b/s=1.95 avgLen=5.43 fail=0} T{b/s=5.85 avgLen=7.40 fail=0} H{b/s=13.66 avgLen=5.03 fail=0} A{b/s=7.80 avgLen=4.85 fail=0}
+[ENEMY_GRID] frontal{cand/s=0.0 xcell/s=0.0 ins/s=0.0} separation{cand/s=0.0}
+[ENEMY_COLLISION_WINDOW] frontal{pairs/s=0.0 checks/s=0.0 baseSkip=0 kill=0(0.0%)} separation{pairs/s=0.0 resolved/s=0.0(0.0%) baseSkip=0 kill=0 wallBlock=0}
+[ENEMY_NAV_CACHE] playerCell{changes=0 flowRebuilds=0} flow{hit=0 miss=0 hit%=0.0} pathFallback{calls=0 ok=0 ok%=0.0}
+[ENEMY_SAP] updates=0 active=0 pairs=0 repairs{x=0 y=0}
+[ENEMY_PAIR_TYPES] frontal DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0 separation DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0
+
+[PROFILE] frame=2160 budget=16.667ms alloc(+105/-105, +184808b/-184808b, live=132328b peak=312264b)
+  frame.total                      win= 17.003ms avg= 17.003ms p95= 17.573ms max= 88.274ms calls(last=  1,win= 120,total=2160) (win 102.0% | avg 102.0% budget)
+  frame.render                     win= 12.685ms avg= 12.685ms p95= 13.391ms max= 88.235ms calls(last=  1,win= 120,total=2160) (win 76.1% | avg 76.1% budget)
+  frame.present                    win= 12.678ms avg= 12.678ms p95= 13.384ms max= 88.228ms calls(last=  1,win= 120,total=2160) (win 76.1% | avg 76.1% budget)
+  frame.render.world               win=  4.477ms avg=  8.954ms p95=  9.345ms max= 17.973ms calls(last=  2,win= 240,total=3050) (win 26.9% | avg 53.7% budget)
+  frame.fixed_step                 win=  4.174ms avg=  4.279ms p95=  4.482ms max=  8.331ms calls(last=  1,win= 123,total=2210) (win 25.0% | avg 25.7% budget)
+  frame.render.overlay             win=  3.078ms avg=  3.078ms p95=  3.755ms max=  7.566ms calls(last=  1,win= 120,total=1525) (win 18.5% | avg 18.5% budget)
+  game.update                      win=  2.280ms avg=  2.337ms p95=  2.523ms max=  4.969ms calls(last=  1,win= 123,total=1561) (win 13.7% | avg 14.0% budget)
+  system.ai_update                 win=  2.124ms avg=  2.177ms p95=  2.273ms max=  4.814ms calls(last=  1,win= 123,total=1561) (win 12.7% | avg 13.1% budget)
+  enemy.update                     win=  2.118ms avg=  2.171ms p95=  2.267ms max=  4.756ms calls(last=  1,win= 123,total=1561) (win 12.7% | avg 13.0% budget)
+  frame.render.world.enemies       win=  1.169ms avg=  1.169ms p95=  1.366ms max=  3.890ms calls(last=  1,win= 120,total=1525) (win 7.0% | avg 7.0% budget)
+  frame.render.world.maze          win=  0.648ms avg=  0.648ms p95=  0.733ms max=  2.208ms calls(last=  1,win= 120,total=1525) (win 3.9% | avg 3.9% budget)
+  frame.render.world.effects       win=  0.371ms avg=  0.371ms p95=  0.525ms max=  0.976ms calls(last=  1,win= 120,total=1525) (win 2.2% | avg 2.2% budget)
+  enemy.cheap.segment_build        win=  0.061ms avg=  0.040ms p95=  0.102ms max=  0.189ms calls(last=  2,win=  79,total=530) (win 0.4% | avg 0.2% budget)
+  system.spawner_update            win=  0.059ms avg=  0.060ms p95=  0.205ms max=  0.369ms calls(last=  1,win= 123,total=1561) (win 0.4% | avg 0.4% budget)
+  system.physics_collision         win=  0.028ms avg=  0.029ms p95=  0.035ms max=  0.134ms calls(last=  1,win= 123,total=1561) (win 0.2% | avg 0.2% budget)
+  frame.input_poll                 win=  0.028ms avg=  0.028ms p95=  0.028ms max=  0.112ms calls(last=  1,win= 120,total=2160) (win 0.2% | avg 0.2% budget)
+  system.player_update             win=  0.027ms avg=  0.028ms p95=  0.033ms max=  0.124ms calls(last=  1,win= 123,total=1441) (win 0.2% | avg 0.2% budget)
+  enemy.type.hunter                win=  0.005ms avg=  0.126ms p95=  0.204ms max=  0.301ms calls(last= 27,win=3219,total=23126) (win 0.0% | avg 0.8% budget)
+  enemy.type.torpedo               win=  0.003ms avg=  0.051ms p95=  0.117ms max=  0.222ms calls(last= 16,win=1814,total=11941) (win 0.0% | avg 0.3% budget)
+  enemy.type.assassin              win=  0.003ms avg=  0.081ms p95=  0.146ms max=  0.298ms calls(last= 26,win=2998,total=22559) (win 0.0% | avg 0.5% budget)
+  system.projectile_update         win=  0.003ms avg=  0.003ms p95=  0.004ms max=  0.035ms calls(last=  1,win= 123,total=1561) (win 0.0% | avg 0.0% budget)
+  enemy.type.drone                 win=  0.003ms avg=  0.042ms p95=  0.105ms max=  0.170ms calls(last= 13,win=1599,total=9232) (win 0.0% | avg 0.3% budget)
+  system.maze_update               win=  0.001ms avg=  0.001ms p95=  0.001ms max=  0.022ms calls(last=  1,win= 123,total=1561) (win 0.0% | avg 0.0% budget)
+[ENEMY_STATS] frame=2160 alive=82 visible=0 full=0 cheap=82 fullInBase=0 pairs(frontal=0 checks=0 separation=0 resolved=0)
+[ENEMY_WINDOW] steps=123 alive[min=76 max=82] visible[min=0 max=0] full[min=0 max=0] collisionPasses[runs=0 skips=123]
+[ENEMY_SEGMENTS] window=2.050s D{b/s=3.41 avgLen=4.79 fail=0} T{b/s=4.88 avgLen=5.79 fail=0} H{b/s=18.05 avgLen=4.89 fail=9} A{b/s=8.29 avgLen=5.29 fail=0}
+[ENEMY_GRID] frontal{cand/s=0.0 xcell/s=0.0 ins/s=0.0} separation{cand/s=0.0}
+[ENEMY_COLLISION_WINDOW] frontal{pairs/s=0.0 checks/s=0.0 baseSkip=0 kill=0(0.0%)} separation{pairs/s=0.0 resolved/s=0.0(0.0%) baseSkip=0 kill=0 wallBlock=0}
+[ENEMY_NAV_CACHE] playerCell{changes=0 flowRebuilds=0} flow{hit=0 miss=0 hit%=0.0} pathFallback{calls=0 ok=0 ok%=0.0}
+[ENEMY_SAP] updates=0 active=0 pairs=0 repairs{x=0 y=0}
+[ENEMY_PAIR_TYPES] frontal DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0 separation DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0
+
+[PROFILE] frame=2280 budget=16.667ms alloc(+217/-217, +379688b/-379688b, live=132328b peak=319000b)
+  frame.total                      win= 17.072ms avg= 17.072ms p95= 17.599ms max= 88.274ms calls(last=  1,win= 120,total=2280) (win 102.4% | avg 102.4% budget)
+  frame.render                     win= 12.276ms avg= 12.276ms p95= 12.869ms max= 88.235ms calls(last=  1,win= 120,total=2280) (win 73.7% | avg 73.7% budget)
+  frame.present                    win= 12.268ms avg= 12.268ms p95= 12.862ms max= 88.228ms calls(last=  1,win= 120,total=2280) (win 73.6% | avg 73.6% budget)
+  frame.fixed_step                 win=  4.602ms avg=  4.756ms p95=  5.096ms max=  9.428ms calls(last=  2,win= 124,total=2334) (win 27.6% | avg 28.5% budget)
+  frame.render.world               win=  4.435ms avg=  8.870ms p95=  9.186ms max= 17.973ms calls(last=  2,win= 240,total=3290) (win 26.6% | avg 53.2% budget)
+  frame.render.overlay             win=  3.088ms avg=  3.088ms p95=  3.775ms max=  7.566ms calls(last=  1,win= 120,total=1645) (win 18.5% | avg 18.5% budget)
+  game.update                      win=  2.421ms avg=  2.502ms p95=  2.776ms max=  5.202ms calls(last=  2,win= 124,total=1685) (win 14.5% | avg 15.0% budget)
+  system.ai_update                 win=  2.265ms avg=  2.340ms p95=  2.555ms max=  4.925ms calls(last=  2,win= 124,total=1685) (win 13.6% | avg 14.0% budget)
+  enemy.update                     win=  2.259ms avg=  2.334ms p95=  2.550ms max=  4.909ms calls(last=  2,win= 124,total=1685) (win 13.6% | avg 14.0% budget)
+  frame.render.world.enemies       win=  1.121ms avg=  1.121ms p95=  1.194ms max=  3.890ms calls(last=  1,win= 120,total=1645) (win 6.7% | avg 6.7% budget)
+  frame.render.world.maze          win=  0.630ms avg=  0.630ms p95=  0.675ms max=  2.208ms calls(last=  1,win= 120,total=1645) (win 3.8% | avg 3.8% budget)
+  frame.render.world.effects       win=  0.352ms avg=  0.352ms p95=  0.444ms max=  0.976ms calls(last=  1,win= 120,total=1645) (win 2.1% | avg 2.1% budget)
+  system.spawner_update            win=  0.059ms avg=  0.061ms p95=  0.209ms max=  0.383ms calls(last=  2,win= 124,total=1685) (win 0.4% | avg 0.4% budget)
+  enemy.cheap.segment_build        win=  0.045ms avg=  0.074ms p95=  0.135ms max=  0.231ms calls(last=  5,win= 197,total=727) (win 0.3% | avg 0.4% budget)
+  system.physics_collision         win=  0.028ms avg=  0.029ms p95=  0.036ms max=  0.134ms calls(last=  2,win= 124,total=1685) (win 0.2% | avg 0.2% budget)
+  frame.input_poll                 win=  0.028ms avg=  0.028ms p95=  0.029ms max=  0.112ms calls(last=  1,win= 120,total=2280) (win 0.2% | avg 0.2% budget)
+  system.player_update             win=  0.027ms avg=  0.028ms p95=  0.031ms max=  0.124ms calls(last=  2,win= 124,total=1565) (win 0.2% | avg 0.2% budget)
+  enemy.type.hunter                win=  0.006ms avg=  0.177ms p95=  0.262ms max=  0.410ms calls(last= 60,win=3438,total=26564) (win 0.0% | avg 1.1% budget)
+  system.projectile_update         win=  0.003ms avg=  0.003ms p95=  0.004ms max=  0.035ms calls(last=  2,win= 124,total=1685) (win 0.0% | avg 0.0% budget)
+  enemy.type.torpedo               win=  0.003ms avg=  0.054ms p95=  0.093ms max=  0.222ms calls(last= 32,win=1984,total=13925) (win 0.0% | avg 0.3% budget)
+  enemy.type.assassin              win=  0.003ms avg=  0.093ms p95=  0.152ms max=  0.298ms calls(last= 58,win=3413,total=25972) (win 0.0% | avg 0.6% budget)
+  enemy.type.drone                 win=  0.003ms avg=  0.047ms p95=  0.081ms max=  0.256ms calls(last= 28,win=1733,total=10965) (win 0.0% | avg 0.3% budget)
+  system.maze_update               win=  0.001ms avg=  0.001ms p95=  0.002ms max=  0.022ms calls(last=  2,win= 124,total=1685) (win 0.0% | avg 0.0% budget)
+[ENEMY_STATS] frame=2280 alive=89 visible=0 full=0 cheap=89 fullInBase=0 pairs(frontal=0 checks=0 separation=0 resolved=0)
+[ENEMY_WINDOW] steps=124 alive[min=82 max=89] visible[min=0 max=0] full[min=0 max=0] collisionPasses[runs=0 skips=124]
+[ENEMY_SEGMENTS] window=2.067s D{b/s=2.42 avgLen=5.31 fail=0} T{b/s=4.84 avgLen=7.13 fail=0} H{b/s=18.87 avgLen=4.16 fail=124} A{b/s=9.19 avgLen=4.70 fail=0}
+[ENEMY_GRID] frontal{cand/s=0.0 xcell/s=0.0 ins/s=0.0} separation{cand/s=0.0}
+[ENEMY_COLLISION_WINDOW] frontal{pairs/s=0.0 checks/s=0.0 baseSkip=0 kill=0(0.0%)} separation{pairs/s=0.0 resolved/s=0.0(0.0%) baseSkip=0 kill=0 wallBlock=0}
+[ENEMY_NAV_CACHE] playerCell{changes=0 flowRebuilds=0} flow{hit=0 miss=0 hit%=0.0} pathFallback{calls=0 ok=0 ok%=0.0}
+[ENEMY_SAP] updates=0 active=0 pairs=0 repairs{x=0 y=0}
+[ENEMY_PAIR_TYPES] frontal DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0 separation DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0
+
+[PROFILE] frame=2400 budget=16.667ms alloc(+118/-118, +197312b/-197312b, live=132328b peak=324672b)
+  frame.total                      win= 17.220ms avg= 17.220ms p95= 18.682ms max= 88.274ms calls(last=  1,win= 120,total=2400) (win 103.3% | avg 103.3% budget)
+  frame.render                     win= 12.023ms avg= 12.023ms p95= 12.963ms max= 88.235ms calls(last=  1,win= 120,total=2400) (win 72.1% | avg 72.1% budget)
+  frame.present                    win= 12.016ms avg= 12.016ms p95= 12.956ms max= 88.228ms calls(last=  1,win= 120,total=2400) (win 72.1% | avg 72.1% budget)
+  frame.fixed_step                 win=  4.988ms avg=  5.154ms p95=  5.341ms max= 10.284ms calls(last=  1,win= 124,total=2458) (win 29.9% | avg 30.9% budget)
+  frame.render.world               win=  4.639ms avg=  9.278ms p95=  9.532ms max= 17.973ms calls(last=  2,win= 240,total=3530) (win 27.8% | avg 55.7% budget)
+  frame.render.overlay             win=  3.102ms avg=  3.102ms p95=  3.740ms max=  7.566ms calls(last=  1,win= 120,total=1765) (win 18.6% | avg 18.6% budget)
+  game.update                      win=  2.499ms avg=  2.582ms p95=  2.745ms max=  5.217ms calls(last=  1,win= 124,total=1809) (win 15.0% | avg 15.5% budget)
+  system.ai_update                 win=  2.338ms avg=  2.416ms p95=  2.594ms max=  4.925ms calls(last=  1,win= 124,total=1809) (win 14.0% | avg 14.5% budget)
+  enemy.update                     win=  2.331ms avg=  2.409ms p95=  2.588ms max=  4.909ms calls(last=  1,win= 124,total=1809) (win 14.0% | avg 14.5% budget)
+  frame.render.world.enemies       win=  1.135ms avg=  1.135ms p95=  1.186ms max=  3.890ms calls(last=  1,win= 120,total=1765) (win 6.8% | avg 6.8% budget)
+  frame.render.world.maze          win=  0.745ms avg=  0.745ms p95=  0.862ms max=  2.208ms calls(last
+                                                                                                     =  1,win= 120,total=1765) (win 4.5% | avg 4.5% budget)
+  frame.render.world.effects       win=  0.366ms avg=  0.366ms p95=  0.465ms max=  0.976ms calls(last=  1,win= 120,total=1765) (win 2.2% | avg 2.2% budget)
+  system.spawner_update            win=  0.059ms avg=  0.061ms p95=  0.181ms max=  0.383ms calls(last=  1,win= 124,total=1809) (win 0.4% | avg 0.4% budget)
+  enemy.cheap.segment_build        win=  0.044ms avg=  0.076ms p95=  0.148ms max=  0.231ms calls(last=  2,win= 207,total=934) (win 0.3% | avg 0.5% budget)
+  system.physics_collision         win=  0.031ms avg=  0.032ms p95=  0.043ms max=  0.134ms calls(last=  1,win= 124,total=1809) (win 0.2% | avg 0.2% budget)
+  frame.input_poll                 win=  0.029ms avg=  0.029ms p95=  0.029ms max=  0.121ms calls(last=  1,win= 120,total=2400) (win 0.2% | avg 0.2% budget)
+  system.player_update             win=  0.026ms avg=  0.027ms p95=  0.030ms max=  0.124ms calls(last=  1,win= 124,total=1689) (win 0.2% | avg 0.2% budget)
+  enemy.type.hunter                win=  0.006ms avg=  0.183ms p95=  0.245ms max=  0.410ms calls(last= 32,win=3836,total=30400) (win 0.0% | avg 1.1% budget)
+  system.projectile_update         win=  0.003ms avg=  0.004ms p95=  0.004ms max=  0.035ms calls(last=  1,win= 124,total=1809) (win 0.0% | avg 0.0% budget)
+  enemy.type.torpedo               win=  0.003ms avg=  0.055ms p95=  0.096ms max=  0.222ms calls(last= 17,win=2017,total=15942) (win 0.0% | avg 0.3% budget)
+  enemy.type.assassin              win=  0.003ms avg=  0.100ms p95=  0.166ms max=  0.298ms calls(last= 31,win=3746,total=29718) (win 0.0% | avg 0.6% budget)
+  enemy.type.drone                 win=  0.003ms avg=  0.046ms p95=  0.081ms max=  0.256ms calls(last= 15,win=1797,total=12762) (win 0.0% | avg 0.3% budget)
+  system.maze_update               win=  0.001ms avg=  0.001ms p95=  0.001ms max=  0.022ms calls(last=  1,win= 124,total=1809) (win 0.0% | avg 0.0% budget)
+[ENEMY_STATS] frame=2400 alive=95 visible=0 full=0 cheap=95 fullInBase=0 pairs(frontal=0 checks=0 separation=0 resolved=0)
+[ENEMY_WINDOW] steps=124 alive[min=89 max=95] visible[min=0 max=0] full[min=0 max=0] collisionPasses[runs=0 skips=124]
+[ENEMY_SEGMENTS] window=2.067s D{b/s=4.35 avgLen=4.10 fail=0} T{b/s=5.81 avgLen=6.21 fail=0} H{b/s=19.84 avgLen=5.15 fail=124} A{b/s=10.16 avgLen=4.95 fail=0}
+[ENEMY_GRID] frontal{cand/s=0.0 xcell/s=0.0 ins/s=0.0} separation{cand/s=0.0}
+[ENEMY_COLLISION_WINDOW] frontal{pairs/s=0.0 checks/s=0.0 baseSkip=0 kill=0(0.0%)} separation{pairs/s=0.0 resolved/s=0.0(0.0%) baseSkip=0 kill=0 wallBlock=0}
+[ENEMY_NAV_CACHE] playerCell{changes=0 flowRebuilds=0} flow{hit=0 miss=0 hit%=0.0} pathFallback{calls=0 ok=0 ok%=0.0}
+[ENEMY_SAP] updates=0 active=0 pairs=0 repairs{x=0 y=0}
+[ENEMY_PAIR_TYPES] frontal DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0 separation DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0
+
+[PROFILE] frame=2520 budget=16.667ms alloc(+124/-124, +203072b/-203072b, live=132328b peak=330504b)
+  frame.total                      win= 17.794ms avg= 17.794ms p95= 22.020ms max= 88.274ms calls(last=  1,win= 120,total=2520) (win 106.8% | avg 106.8% budget)
+  frame.render                     win= 11.957ms avg= 11.957ms p95= 12.789ms max= 88.235ms calls(last=  1,win= 120,total=2520) (win 71.7% | avg 71.7% budget)
+  frame.present                    win= 11.949ms avg= 11.949ms p95= 12.780ms max= 88.228ms calls(last=  1,win= 120,total=2520) (win 71.7% | avg 71.7% budget)
+  frame.fixed_step                 win=  5.392ms avg=  5.796ms p95= 10.316ms max= 11.202ms calls(last=  1,win= 129,total=2587) (win 32.3% | avg 34.8% budget)
+  frame.render.world               win=  4.823ms avg=  9.646ms p95= 10.053ms max= 17.973ms calls(last=  2,win= 240,total=3770) (win 28.9% | avg 57.9% budget)
+  frame.render.overlay             win=  3.149ms avg=  3.149ms p95=  3.820ms max=  7.566ms calls(last=  1,win= 120,total=1885) (win 18.9% | avg 18.9% budget)
+  game.update                      win=  2.593ms avg=  2.787ms p95=  4.849ms max=  5.435ms calls(last=  1,win= 129,total=1938) (win 15.6% | avg 16.7% budget)
+  system.ai_update                 win=  2.423ms avg=  2.605ms p95=  4.573ms max=  4.964ms calls(last=  1,win= 129,total=1938) (win 14.5% | avg 15.6% budget)
+  enemy.update                     win=  2.417ms avg=  2.598ms p95=  4.564ms max=  4.955ms calls(last=  1,win= 129,total=1938) (win 14.5% | avg 15.6% budget)
+  frame.render.world.enemies       win=  1.123ms avg=  1.123ms p95=  1.192ms max=  3.890ms calls(last=  1,win= 120,total=1885) (win 6.7% | avg 6.7% budget)
+  frame.render.world.maze          win=  0.923ms avg=  0.923ms p95=  1.049ms max=  2.208ms calls(last=  1,win= 120,total=1885) (win 5.5% | avg 5.5% budget)
+  frame.render.world.effects       win=  0.366ms avg=  0.366ms p95=  0.454ms max=  0.976ms calls(last=  1,win= 120,total=1885) (win 2.2% | avg 2.2% budget)
+  system.spawner_update            win=  0.066ms avg=  0.071ms p95=  0.236ms max=  0.383ms calls(last=  1,win= 129,total=1938) (win 0.4% | avg 0.4% budget)
+  enemy.cheap.segment_build        win=  0.043ms avg=  0.092ms p95=  0.186ms max=  0.231ms calls(last=  3,win= 256,total=1190) (win 0.3% | avg 0.5% budget)
+  system.physics_collision         win=  0.033ms avg=  0.036ms p95=  0.058ms max=  0.152ms calls(last=  1,win= 129,total=1938) (win 0.2% | avg 0.2% budget)
+  frame.input_poll                 win=  0.028ms avg=  0.028ms p95=  0.028ms max=  0.121ms calls(last=  1,win= 120,total=2520) (win 0.2% | avg 0.2% budget)
+  system.player_update             win=  0.026ms avg=  0.028ms p95=  0.044ms max=  0.124ms calls(last=  1,win= 129,total=1818) (win 0.2% | avg 0.2% budget)
+  enemy.type.hunter                win=  0.006ms avg=  0.208ms p95=  0.335ms max=  0.468ms calls(last= 35,win=4407,total=34807) (win 0.0% | avg 1.2% budget)
+  enemy.type.assassin              win=  0.004ms avg=  0.122ms p95=  0.209ms max=  0.308ms calls(last= 32,win=4037,total=33755) (win 0.0% | avg 0.7% budget)
+  enemy.type.torpedo               win=  0.003ms avg=  0.061ms p95=  0.103ms max=  0.222ms calls(last= 17,win=2193,total=18135) (win 0.0% | avg 0.4% budget)
+  system.projectile_update         win=  0.003ms avg=  0.003ms p95=  0.006ms max=  0.035ms calls(last=  1,win= 129,total=1938) (win 0.0% | avg 0.0% budget)
+  enemy.type.drone                 win=  0.003ms avg=  0.053ms p95=  0.093ms max=  0.256ms calls(last= 17,win=2077,total=14839) (win 0.0% | avg 0.3% budget)
+  system.maze_update               win=  0.001ms avg=  0.001ms p95=  0.002ms max=  0.022ms calls(last=  1,win= 129,total=1938) (win 0.0% | avg 0.0% budget)
+[ENEMY_STATS] frame=2520 alive=101 visible=0 full=0 cheap=101 fullInBase=0 pairs(frontal=0 checks=0 separation=0 resolved=0)
+[ENEMY_WINDOW] steps=129 alive[min=95 max=101] visible[min=0 max=0] full[min=0 max=0] collisionPasses[runs=0 skips=129]
+[ENEMY_SEGMENTS] window=2.150s D{b/s=3.72 avgLen=5.42 fail=0} T{b/s=6.05 avgLen=5.99 fail=0} H{b/s=20.47 avgLen=5.18 fail=129} A{b/s=10.23 avgLen=5.18 fail=41}
+[ENEMY_GRID] frontal{cand/s=0.0 xcell/s=0.0 ins/s=0.0} separation{cand/s=0.0}
+[ENEMY_COLLISION_WINDOW] frontal{pairs/s=0.0 checks/s=0.0 baseSkip=0 kill=0(0.0%)} separation{pairs/s=0.0 resolved/s=0.0(0.0%) baseSkip=0 kill=0 wallBlock=0}
+[ENEMY_NAV_CACHE] playerCell{changes=0 flowRebuilds=0} flow{hit=0 miss=0 hit%=0.0} pathFallback{calls=0 ok=0 ok%=0.0}
+[ENEMY_SAP] updates=0 active=0 pairs=0 repairs{x=0 y=0}
+[ENEMY_PAIR_TYPES] frontal DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0 separation DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0
+
+[PROFILE] frame=2640 budget=16.667ms alloc(+130/-130, +208848b/-208848b, live=132328b peak=336160b)
+  frame.total                      win= 18.396ms avg= 18.396ms p95= 23.342ms max= 88.274ms calls(last=  1,win= 120,total=2640) (win 110.4% | avg 110.4% budget)
+  frame.render                     win= 12.026ms avg= 12.026ms p95= 12.803ms max= 88.235ms calls(last=  1,win= 120,total=2640) (win 72.2% | avg 72.2% budget)
+  frame.present                    win= 12.018ms avg= 12.018ms p95= 12.797ms max= 88.228ms calls(last=  1,win= 120,total=2640) (win 72.1% | avg 72.1% budget)
+  frame.fixed_step                 win=  5.711ms avg=  6.329ms p95= 11.315ms max= 11.705ms calls(last=  1,win= 133,total=2720) (win 34.3% | avg 38.0% budget)
+  frame.render.world               win=  4.845ms avg=  9.691ms p95= 10.006ms max= 17.973ms calls(last=  2,win= 240,total=4010) (win 29.1% | avg 58.1% budget)
+  frame.render.overlay             win=  3.158ms avg=  3.158ms p95=  3.794ms max=  7.566ms calls(last=  1,win= 120,total=2005) (win 18.9% | avg 18.9% budget)
+  game.update                      win=  2.633ms avg=  2.918ms p95=  5.147ms max=  5.499ms calls(last=  1,win= 133,total=2071) (win 15.8% | avg 17.5% budget)
+  system.ai_update                 win=  2.461ms avg=  2.728ms p95=  4.779ms max=  5.009ms calls(last=  1,win= 133,total=2071) (win 14.8% | avg 16.4% budget)
+  enemy.update                     win=  2.455ms avg=  2.721ms p95=  4.767ms max=  4.999ms calls(last=  1,win= 133,total=2071) (win 14.7% | avg 16.3% budget)
+  frame.render.world.enemies       win=  1.122ms avg=  1.122ms p95=  1.156ms max=  3.890ms calls(last=  1,win= 120,total=2005) (win 6.7% | avg 6.7% budget)
+  frame.render.world.maze          win=  0.928ms avg=  0.928ms p95=  1.049ms max=  2.615ms calls(last=  1,win= 120,total=2005) (win 5.6% | avg 5.6% budget)
+  frame.render.world.effects       win=  0.365ms avg=  0.365ms p95=  0.456ms max=  0.976ms calls(last=  1,win= 120,total=2005) (win 2.2% | avg 2.2% budget)
+  system.spawner_update            win=  0.068ms avg=  0.075ms p95=  0.212ms max=  0.383ms calls(last=  1,win= 133,total=2071) (win 0.4% | avg 0.5% budget)
+  enemy.cheap.segment_build        win=  0.038ms avg=  0.114ms p95=  0.202ms max=  0.239ms calls(last=  2,win= 358,total=1548) (win 0.2% | avg 0.7% budget)
+  system.physics_collision         win=  0.032ms avg=  0.035ms p95=  0.059ms max=  0.152ms calls(last=  1,win= 133,total=2071) (win 0.2% | avg 0.2% budget)
+  frame.input_poll                 win=  0.027ms avg=  0.027ms p95=  0.029ms max=  0.121ms calls(last=  1,win= 120,total=2640) (win 0.2% | avg 0.2% budget)
+  system.player_update             win=  0.027ms avg=  0.030ms p95=  0.049ms max=  0.124ms calls(last=  1,win= 133,total=1951) (win 0.2% | avg 0.2% budget)
+  enemy.type.hunter                win=  0.005ms avg=  0.225ms p95=  0.391ms max=  0.468ms calls(last= 40,win=5002,total=39809) (win 0.0% | avg 1.4% budget)
+  enemy.type.assassin              win=  0.004ms avg=  0.145ms p95=  0.242ms max=  0.308ms calls(last= 32,win=4256,total=38011) (win 0.0% | avg 0.9% budget)
+  enemy.type.torpedo               win=  0.003ms avg=  0.061ms p95=  0.117ms max=  0.222ms calls(last= 17,win=2261,total=20396) (win 0.0% | avg 0.4% budget)
+  system.projectile_update         win=  0.003ms avg=  0.004ms p95=  0.006ms max=  0.035ms calls(last=  1,win= 133,total=2071) (win 0.0% | avg 0.0% budget)
+  enemy.type.drone                 win=  0.003ms avg=  0.057ms p95=  0.095ms max=  0.256ms calls(last= 18,win=2288,total=17127) (win 0.0% | avg 0.3% budget)
+  system.maze_update               win=  0.001ms avg=  0.001ms p95=  0.002ms max=  0.022ms calls(last=  1,win= 133,total=2071) (win 0.0% | avg 0.0% budget)
+[ENEMY_STATS] frame=2640 alive=107 visible=0 full=0 cheap=107 fullInBase=0 pairs(frontal=0 checks=0 separation=0 resolved=0)
+[ENEMY_WINDOW] steps=133 alive[min=101 max=107] visible[min=0 max=0] full[min=0 max=0] collisionPasses[runs=0 skips=133]
+[ENEMY_SEGMENTS] window=2.217s D{b/s=3.61 avgLen=5.23 fail=0} T{b/s=4.51 avgLen=6.28 fail=0} H{b/s=24.81 avgLen=4.85 fail=133} A{b/s=9.02 avgLen=5.20 fail=133}
+[ENEMY_GRID] frontal{cand/s=0.0 xcell/s=0.0 ins/s=0.0} separation{cand/s=0.0}
+[ENEMY_COLLISION_WINDOW] frontal{pairs/s=0.0 checks/s=0.0 baseSkip=0 kill=0(0.0%)} separation{pairs/s=0.0 resolved/s=0.0(0.0%) baseSkip=0 kill=0 wallBlock=0}
+[ENEMY_NAV_CACHE] playerCell{changes=0 flowRebuilds=0} flow{hit=0 miss=0 hit%=0.0} pathFallback{calls=0 ok=0 ok%=0.0}
+[ENEMY_SAP] updates=0 active=0 pairs=0 repairs{x=0 y=0}
+[ENEMY_PAIR_TYPES] frontal DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0 separation DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0
+
+[PROFILE] frame=2760 budget=16.667ms alloc(+138/-138, +216528b/-216528b, live=132328b peak=343672b)
+  frame.total                      win= 19.373ms avg= 19.373ms p95= 24.686ms max= 88.274ms calls(last=  1,win= 120,total=2760) (win 116.2% | avg 116.2% budget)
+  frame.render                     win= 12.206ms avg= 12.206ms p95= 13.027ms max= 88.235ms calls(last=  1,win= 120,total=2760) (win 73.2% | avg 73.2% budget)
+  frame.present                    win= 12.199ms avg= 12.199ms p95= 13.020ms max= 88.228ms calls(last=  1,win= 120,total=2760) (win 73.2% | avg 73.2% budget)
+  frame.fixed_step                 win=  6.107ms avg=  7.125ms p95= 12.144ms max= 12.774ms calls(last=  1,win= 140,total=2860) (win 36.6% | avg 42.7% budget)
+  frame.render.world               win=  5.027ms avg= 10.055ms p95= 10.481ms max= 17.973ms calls(last=  2,win= 240,total=4250) (win 30.2% | avg 60.3% budget)
+  frame.render.overlay             win=  3.163ms avg=  3.163ms p95=  3.876ms max=  7.566ms calls(last=  1,win= 120,total=2125) (win 19.0% | avg 19.0% budget)
+  game.update                      win=  2.728ms avg=  3.183ms p95=  5.346ms max=  5.651ms calls(last=  1,win= 140,total=2211) (win 16.4% | avg 19.1% budget)
+  system.ai_update                 win=  2.551ms avg=  2.976ms p95=  4.981ms max=  5.151ms calls(last=  1,win= 140,total=2211) (win 15.3% | avg 17.9% budget)
+  enemy.update                     win=  2.545ms avg=  2.969ms p95=  4.970ms max=  5.140ms calls(last=  1,win= 140,total=2211) (win 15.3% | avg 17.8% budget)
+  frame.render.world.enemies       win=  1.130ms avg=  1.130ms p95=  1.199ms max=  3.890ms calls(last=  1,win= 120,total=2125) (win 6.8% | avg 6.8% budget)
+  frame.render.world.maze          win=  1.049ms avg=  1.049ms p95=  1.182ms max=  2.615ms calls(last=  1,win= 120,total=2125) (win 6.3% | avg 6.3% budget)
+  frame.render.world.effects       win=  0.372ms avg=  0.372ms p95=  0.455ms max=  0.976ms calls(last=  1,win= 120,total=2125) (win 2.2% | avg 2.2% budget)
+  system.spawner_update            win=  0.072ms avg=  0.084ms p95=  0.229ms max=  0.383ms calls(last=  1,win= 140,total=2211) (win 0.4% | avg 0.5% budget)
+  enemy.cheap.segment_build        win=  0.037ms avg=  0.121ms p95=  0.197ms max=  0.239ms calls(last=  4,win= 392,total=1940) (win 0.2% | avg 0.7% budget)
+  system.physics_collision         win=  0.036ms avg=  0.042ms p95=  0.068ms max=  0.152ms calls(last=  1,win= 140,total=2211) (win 0.2% | avg 0.3% budget)
+  frame.input_poll                 win=  0.028ms avg=  0.028ms p95=  0.029ms max=  0.121ms calls(last=  1,win= 120,total=2760) (win 0.2% | avg 0.2% budget)
+  system.player_update             win=  0.025ms avg=  0.029ms p95=  0.046ms max=  0.124ms calls(last=  1,win= 140,total=2091) (win 0.2% | avg 0.2% budget)
+  enemy.type.hunter                win=  0.005ms avg=  0.245ms p95=  0.397ms max=  0.468ms calls(last= 41,win=5603,total=45412) (win 0.0% | avg 1.5% budget)
+  enemy.type.assassin              win=  0.004ms avg=  0.160ms p95=  0.269ms max=  0.313ms calls(last= 36,win=4676,total=42687) (win 0.0% | avg 1.0% budget)
+  enemy.type.torpedo               win=  0.003ms avg=  0.065ms p95=  0.107ms max=  0.222ms calls(last= 18,win=2387,total=22783) (win 0.0% | avg 0.4% budget)
+  system.projectile_update         win=  0.003ms avg=  0.004ms p95=  0.006ms max=  0.035ms calls(last=  1,win= 140,total=2211) (win 0.0% | avg 0.0% budget)
+  enemy.type.drone                 win=  0.003ms avg=  0.066ms p95=  0.109ms max=  0.256ms calls(last= 20,win=2652,total=19779) (win 0.0% | avg 0.4% budget)
+  system.maze_update               win=  0.001ms avg=  0.001ms p95=  0.002ms max=  0.022ms calls(last=  1,win= 140,total=2211) (win 0.0% | avg 0.0% budget)
+[ENEMY_STATS] frame=2760 alive=115 visible=0 full=0 cheap=115 fullInBase=0 pairs(frontal=0 checks=0 separation=0 resolved=0)
+[ENEMY_WINDOW] steps=140 alive[min=107 max=115] visible[min=0 max=0] full[min=0 max=0] collisionPasses[runs=0 skips=140]
+[ENEMY_SEGMENTS] window=2.333s D{b/s=3.86 avgLen=5.46 fail=0} T{b/s=7.71 avgLen=5.40 fail=0} H{b/s=26.14 avgLen=4.93 fail=140} A{b/s=10.29 avgLen=4.76 fail=140}
+[ENEMY_GRID] frontal{cand/s=0.0 xcell/s=0.0 ins/s=0.0} separation{cand/s=0.0}
+[ENEMY_COLLISION_WINDOW] frontal{pairs/s=0.0 checks/s=0.0 baseSkip=0 kill=0(0.0%)} separation{pairs/s=0.0 resolved/s=0.0(0.0%) baseSkip=0 kill=0 wallBlock=0}
+[ENEMY_NAV_CACHE] playerCell{changes=0 flowRebuilds=0} flow{hit=0 miss=0 hit%=0.0} pathFallback{calls=0 ok=0 ok%=0.0}
+[ENEMY_SAP] updates=0 active=0 pairs=0 repairs{x=0 y=0}
+[ENEMY_PAIR_TYPES] frontal DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0 separation DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0
+
+[PROFILE] frame=2880 budget=16.667ms alloc(+145/-145, +223288b/-223288b, live=132328b peak=350296b)
+  frame.total                      win= 20.859ms avg= 20.859ms p95= 25.697ms max= 88.274ms calls(last=  1,win= 120,total=2880) (win 125.2% | avg 125.2% budget)
+  frame.render                     win= 12.427ms avg= 12.427ms p95= 13.231ms max= 88.235ms calls(last=  1,win= 120,total=2880) (win 74.6% | avg 74.6% budget)
+  frame.present                    win= 12.419ms avg= 12.419ms p95= 13.224ms max= 88.228ms calls(last=  1,win= 120,total=2880) (win 74.5% | avg 74.5% budget)
+  frame.fixed_step                 win=  6.667ms avg=  8.389ms p95= 13.391ms max= 13.733ms calls(last=  1,win= 151,total=3011) (win 40.0% | avg 50.3% budget)
+  frame.render.world               win=  5.159ms avg= 10.318ms p95= 10.710ms max= 17.973ms calls(last=  2,win= 240,total=4490) (win 31.0% | avg 61.9% budget)
+  frame.render.overlay             win=  3.166ms avg=  3.166ms p95=  3.841ms max=  7.566ms calls(last=  1,win= 120,total=2245) (win 19.0% | avg 19.0% budget)
+  game.update                      win=  2.800ms avg=  3.524ms p95=  5.678ms max=  5.766ms calls(last=  1,win= 151,total=2362) (win 16.8% | avg 21.1% budget)
+  system.ai_update                 win=  2.622ms avg=  3.299ms p95=  5.258ms max=  5.402ms calls(last=  1,win= 151,total=2362) (win 15.7% | avg 19.8% budget)
+  enemy.update                     win=  2.616ms avg=  3.292ms p95=  5.248ms max=  5.389ms calls(last=  1,win= 151,total=2362) (win 15.7% | avg 19.7% budget)
+  frame.render.world.enemies       win=  1.138ms avg=  1.138ms p95=  1.222ms max=  3.890ms calls(last=  1,win= 120,total=2245) (win 6.8% | avg 6.8% budget)
+  frame.render.world.maze          win=  1.133ms avg=  1.133ms p95=  1.387ms max=  2.615ms calls(last=  1,win= 120,total=2245) (win 6.8% | avg 6.8% budget)
+  frame.render.world.effects       win=  0.382ms avg=  0.382ms p95=  0.468ms max=  0.976ms calls(last=  1,win= 120,total=2245) (win 2.3% | avg 2.3% budget)
+  system.spawner_update            win=  0.073ms avg=  0.092ms p95=  0.245ms max=  0.383ms calls(last=  1,win= 151,total=2362) (win 0.4% | avg 0.6% budget)
+  enemy.cheap.segment_build        win=  0.037ms avg=  0.140ms p95=  0.241ms max=  0.255ms calls(last=  3,win= 460,total=2400) (win 0.2% | avg 0.8% budget)
+  system.physics_collision         win=  0.036ms avg=  0.045ms p95=  0.070ms max=  0.152ms calls(last=  1,win= 151,total=2362) (win 0.2% | avg 0.3% budget)
+  frame.input_poll                 win=  0.028ms avg=  0.028ms p95=  0.029ms max=  0.121ms calls(last=  1,win= 120,total=2880) (win 0.2% | avg 0.2% budget)
+  system.player_update             win=  0.025ms avg=  0.031ms p95=  0.049ms max=  0.124ms calls(last=  1,win= 151,total=2242) (win 0.2% | avg 0.2% budget)
+  enemy.type.hunter                win=  0.005ms avg=  0.276ms p95=  0.454ms max=  0.516ms calls(last= 46,win=6499,total=51911) (win 0.0% | avg 1.7% budget)
+  enemy.type.assassin              win=  0.004ms avg=  0.197ms p95=  0.335ms max=  0.435ms calls(last= 36,win=5436,total=48123) (win 0.0% | avg 1.2% budget)
+  enemy.type.torpedo               win=  0.003ms avg=  0.073ms p95=  0.137ms max=  0.222ms calls(last= 18,win=2718,total=25501) (win 0.0% | avg 0.4% budget)
+  system.projectile_update         win=  0.003ms avg=  0.004ms p95=  0.007ms max=  0.035ms calls(last=  1,win= 151,total=2362) (win 0.0% | avg 0.0% budget)
+  enemy.type.drone                 win=  0.003ms avg=  0.081ms p95=  0.143ms max=  0.256ms calls(last= 22,win=3188,total=22967) (win 0.0% | avg 0.5% budget)
+  system.maze_update               win=  0.001ms avg=  0.001ms p95=  0.002ms max=  0.022ms calls(last=  1,win= 151,total=2362) (win 0.0% | avg 0.0% budget)
+[ENEMY_STATS] frame=2880 alive=122 visible=0 full=0 cheap=122 fullInBase=0 pairs(frontal=0 checks=0 separation=0 resolved=0)
+[ENEMY_WINDOW] steps=151 alive[min=115 max=122] visible[min=0 max=0] full[min=0 max=0] collisionPasses[runs=0 skips=151]
+[ENEMY_SEGMENTS] window=2.517s D{b/s=4.37 avgLen=4.63 fail=0} T{b/s=5.56 avgLen=5.29 fail=0} H{b/s=28.21 avgLen=4.67 fail=151} A{b/s=12.32 avgLen=4.66 fail=182}
+[ENEMY_GRID] frontal{cand/s=0.0 xcell/s=0.0 ins/s=0.0} separation{cand/s=0.0}
+[ENEMY_COLLISION_WINDOW] frontal{pairs/s=0.0 checks/s=0.0 baseSkip=0 kill=0(0.0%)} separation{pairs/s=0.0 resolved/s=0.0(0.0%) baseSkip=0 kill=0 wallBlock=0}
+[ENEMY_NAV_CACHE] playerCell{changes=0 flowRebuilds=0} flow{hit=0 miss=0 hit%=0.0} pathFallback{calls=0 ok=0 ok%=0.0}
+[ENEMY_SAP] updates=0 active=0 pairs=0 repairs{x=0 y=0}
+[ENEMY_PAIR_TYPES] frontal DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0 separation DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0
+
+[PROFILE] frame=3000 budget=16.667ms alloc(+297/-297, +456552b/-456552b, live=250088b peak=500184b)
+  frame.total                      win= 21.804ms avg= 21.804ms p95= 27.343ms max= 88.274ms calls(last=  1,win= 120,total=3000) (win 130.8% | avg 130.8% budget)
+  frame.render                     win= 12.371ms avg= 12.371ms p95= 13.194ms max= 88.235ms calls(last=  1,win= 120,total=3000) (win 74.2% | avg 74.2% budget)
+  frame.present                    win= 12.363ms avg= 12.363ms p95= 13.186ms max= 88.228ms calls(last=  1,win= 120,total=3000) (win 74.2% | avg 74.2% budget)
+  frame.fixed_step                 win=  7.133ms avg=  9.392ms p95= 14.616ms max= 16.578ms calls(last=  2,win= 158,total=3169) (win 42.8% | avg 56.3% budget)
+  frame.render.world               win=  5.116ms avg= 10.231ms p95= 10.548ms max= 17.973ms calls(last=  2,win= 240,total=4730) (win 30.7% | avg 61.4% budget)
+  frame.render.overlay             win=  3.138ms avg=  3.138ms p95=  3.801ms max=  7.566ms calls(last=  1,win= 120,total=2365) (win 18.8% | avg 18.8% budget)
+  game.update                      win=  2.879ms avg=  3.790ms p95=  5.787ms max=  7.846ms calls(last=  2,win= 158,total=2520) (win 17.3% | avg 22.7% budget)
+  system.ai_update                 win=  2.697ms avg=  3.551ms p95=  5.407ms max=  7.511ms calls(last=  2,win= 158,total=2520) (win 16.2% | avg 21.3% budget)
+  enemy.update                     win=  2.691ms avg=  3.543ms p95=  5.395ms max=  7.499ms calls(last=  2,win= 158,total=2520) (win 16.1% | avg 21.3% budget)
+  frame.render.world.enemies       win=  1.129ms avg=  1.129ms p95=  1.196ms max=  3.890ms calls(last=  1,win= 120,total=2365) (win 6.8% | avg 6.8% budget)
+  frame.render.world.maze          win=  1.092ms avg=  1.092ms p95=  1.171ms max=  2.615ms calls(last=  1,win= 120,total=2365) (win 6.6% | avg 6.6% budget)
+  frame.render.world.effects       win=  0.372ms avg=  0.372ms p95=  0.454ms max=  0.976ms calls(last=  1,win= 120,total=2365) (win 2.2% | avg 2.2% budget)
+  system.spawner_update            win=  0.074ms avg=  0.098ms p95=  0.270ms max=  0.486ms calls(last=  2,win= 158,total=2520) (win 0.4% | avg 0.6% budget)
+  system.physics_collision         win=  0.036ms avg=  0.048ms p95=  0.074ms max=  0.152ms calls(last=  2,win= 158,total=2520) (win 0.2% | avg 0.3% budget)
+  enemy.cheap.segment_build        win=  0.033ms avg=  0.168ms p95=  0.284ms max=  0.389ms calls(last=  6,win= 614,total=3014) (win 0.2% | avg 1.0% budget)
+  frame.input_poll                 win=  0.027ms avg=  0.027ms p95=  0.028ms max=  0.121ms calls(last=  1,win= 120,total=3000) (win 0.2% | avg 0.2% budget)
+  system.player_update             win=  0.025ms avg=  0.033ms p95=  0.050ms max=  0.124ms calls(last=  2,win= 158,total=2400) (win 0.2% | avg 0.2% budget)
+  enemy.type.assassin              win=  0.005ms avg=  0.254ms p95=  0.407ms max=  0.470ms calls(last= 72,win=5688,total=53811) (win 0.0% | avg 1.5% budget)
+  enemy.type.hunter                win=  0.004ms avg=  0.274ms p95=  0.429ms max=  0.550ms calls(last= 98,win=7530,total=59441) (win 0.0% | avg 1.6% budget)
+  system.projectile_update         win=  0.003ms avg=  0.004ms p95=  0.007ms max=  0.035ms calls(last=  2,win= 158,total=2520) (win 0.0% | avg 0.0% budget)
+  enemy.type.torpedo               win=  0.003ms avg=  0.076ms p95=  0.136ms max=  0.222ms calls(last= 38,win=2856,total=28357) (win 0.0% | avg 0.5% budget)
+  enemy.type.drone                 win=  0.003ms avg=  0.093ms p95=  0.165ms max=  0.256ms calls(last= 50,win=3672,total=26639) (win 0.0% | avg 0.6% budget)
+  system.maze_update               win=  0.001ms avg=  0.001ms p95=  0.002ms max=  0.022ms calls(last=  2,win= 158,total=2520) (win 0.0% | avg 0.0% budget)
+[ENEMY_STATS] frame=3000 alive=129 visible=0 full=0 cheap=129 fullInBase=0 pairs(frontal=0 checks=0 separation=0 resolved=0)
+[ENEMY_WINDOW] steps=158 alive[min=122 max=129] visible[min=0 max=0] full[min=0 max=0] collisionPasses[runs=0 skips=158]
+[ENEMY_SEGMENTS] window=2.633s D{b/s=6.08 avgLen=4.60 fail=0} T{b/s=6.46 avgLen=7.11 fail=0} H{b/s=31.14 avgLen=4.96 fail=158} A{b/s=9.87 avgLen=5.59 fail=316}
+[ENEMY_GRID] frontal{cand/s=0.0 xcell/s=0.0 ins/s=0.0} separation{cand/s=0.0}
+[ENEMY_COLLISION_WINDOW] frontal{pairs/s=0.0 checks/s=0.0 baseSkip=0 kill=0(0.0%)} separation{pairs/s=0.0 resolved/s=0.0(0.0%) baseSkip=0 kill=0 wallBlock=0}
+[ENEMY_NAV_CACHE] playerCell{changes=0 flowRebuilds=0} flow{hit=0 miss=0 hit%=0.0} pathFallback{calls=0 ok=0 ok%=0.0}
+[ENEMY_SAP] updates=0 active=0 pairs=0 repairs{x=0 y=0}
+[ENEMY_PAIR_TYPES] frontal DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0 separation DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0
+
+[PROFILE] frame=3120 budget=16.667ms alloc(+157/-157, +234808b/-234808b, live=250088b peak=500184b)
+  frame.total                      win= 23.009ms avg= 23.009ms p95= 28.108ms max= 88.274ms calls(last=  1,win= 120,total=3120) (win 138.1% | avg 138.1% budget)
+  frame.render                     win= 12.489ms avg= 12.489ms p95= 13.256ms max= 88.235ms calls(last=  1,win= 120,total=3120) (win 74.9% | avg 74.9% budget)
+  frame.present                    win= 12.482ms avg= 12.482ms p95= 13.250ms max= 88.228ms calls(last=  1,win= 120,total=3120) (win 74.9% | avg 74.9% budget)
+  frame.fixed_step                 win=  7.573ms avg= 10.477ms p95= 15.198ms max= 16.578ms calls(last=  1,win= 166,total=3335) (win 45.4% | avg 62.9% budget)
+  frame.render.world               win=  5.151ms avg= 10.303ms p95= 10.653ms max= 17.973ms calls(last=  2,win= 240,total=4970) (win 30.9% | avg 61.8% budget)
+  frame.render.overlay             win=  3.172ms avg=  3.172ms p95=  3.839ms max=  7.566ms calls(last=  1,win= 120,total=2485) (win 19.0% | avg 19.0% budget)
+  game.update                      win=  2.928ms avg=  4.050ms p95=  5.914ms max=  7.846ms calls(last=  1,win= 166,total=2686) (win 17.6% | avg 24.3% budget)
+  system.ai_update                 win=  2.750ms avg=  3.805ms p95=  5.581ms max=  7.511ms calls(last=  1,win= 166,total=2686) (win 16.5% | avg 22.8% budget)
+  enemy.update                     win=  2.745ms avg=  3.797ms p95=  5.569ms max=  7.499ms calls(last=  1,win= 166,total=2686) (win 16.5% | avg 22.8% budget)
+  frame.render.world.enemies       win=  1.139ms avg=  1.139ms p95=  1.196ms max=  3.890ms calls(last=  1,win= 120,total=2485) (win 6.8% | avg 6.8% budget)
+  frame.render.world.maze          win=  1.043ms avg=  1.043ms p95=  1.221ms max=  2.615ms calls(last=  1,win= 120,total=2485) (win 6.3% | avg 6.3% budget)
+  frame.render.world.effects       win=  0.391ms avg=  0.391ms p95=  0.491ms max=  0.976ms calls(last=  1,win= 120,total=2485) (win 2.3% | avg 2.3% budget)
+  system.spawner_update            win=  0.069ms avg=  0.096ms p95=  0.130ms max=  0.486ms calls(last=  1,win= 166,total=2686) (win 0.4% | avg 0.6% budget)
+  system.physics_collision         win=  0.036ms avg=  0.050ms p95=  0.073ms max=  0.152ms calls(last=  1,win= 166,total=2686) (win 0.2% | avg 0.3% budget)
+  enemy.cheap.segment_build        win=  0.032ms avg=  0.172ms p95=  0.284ms max=  0.403ms calls(last=  3,win= 640,total=3654) (win 0.2% | avg 1.0% budget)
+  frame.input_poll                 win=  0.028ms avg=  0.028ms p95=  0.028ms max=  0.121ms calls(last=  1,win= 120,total=3120) (win 0.2% | avg 0.2% budget)
+  system.player_update             win=  0.025ms avg=  0.035ms p95=  0.049ms max=  0.124ms calls(last=  1,win= 166,total=2566) (win 0.1% | avg 0.2% budget)
+  enemy.type.assassin              win=  0.005ms avg=  0.264ms p95=  0.414ms max=  0.479ms calls(last= 37,win=6010,total=59821) (win 0.0% | avg 1.6% budget)
+  enemy.type.hunter                win=  0.004ms avg=  0.286ms p95=  0.449ms max=  0.570ms calls(last= 50,win=8160,total=67601) (win 0.0% | avg 1.7% budget)
+  system.projectile_update         win=  0.003ms avg=  0.004ms p95=  0.007ms max=  0.035ms calls(last=  1,win= 166,total=2686) (win 0.0% | avg 0.0% budget)
+  enemy.type.torpedo               win=  0.003ms avg=  0.087ms p95=  0.148ms max=  0.222ms calls(last= 20,win=3285,total=31642) (win 0.0% | avg 0.5% budget)
+  enemy.type.drone                 win=  0.003ms avg=  0.107ms p95=  0.190ms max=  0.265ms calls(last= 27,win=4320,total=30959) (win 0.0% | avg 0.6% budget)
+  system.maze_update               win=  0.001ms avg=  0.001ms p95=  0.002ms max=  0.022ms calls(last=  1,win= 166,total=2686) (win 0.0% | avg 0.0% budget)
+[ENEMY_STATS] frame=3120 alive=134 visible=0 full=0 cheap=134 fullInBase=0 pairs(frontal=0 checks=0 separation=0 resolved=0)
+[ENEMY_WINDOW] steps=166 alive[min=129 max=134] visible[min=0 max=0] full[min=0 max=0] collisionPasses[runs=0 skips=166]
+[ENEMY_SEGMENTS] window=2.767s D{b/s=7.23 avgLen=4.94 fail=0} T{b/s=5.42 avgLen=6.70 fail=3} H{b/s=29.28 avgLen=4.70 fail=166} A{b/s=8.67 avgLen=5.68 fail=332}
+[ENEMY_GRID] frontal{cand/s=0.0 xcell/s=0.0 ins/s=0.0} separation{cand/s=0.0}
+[ENEMY_COLLISION_WINDOW] frontal{pairs/s=0.0 checks/s=0.0 baseSkip=0 kill=0(0.0%)} separation{pairs/s=0.0 resolved/s=0.0(0.0%) baseSkip=0 kill=0 wallBlock=0}
+[ENEMY_NAV_CACHE] playerCell{changes=0 flowRebuilds=0} flow{hit=0 miss=0 hit%=0.0} pathFallback{calls=0 ok=0 ok%=0.0}
+[ENEMY_SAP] updates=0 active=0 pairs=0 repairs{x=0 y=0}
+[ENEMY_PAIR_TYPES] frontal DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0 separation DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0
+
+[PROFILE] frame=3240 budget=16.667ms alloc(+313/-313, +472072b/-472072b, live=250088b peak=500184b)
+  frame.total                      win= 23.739ms avg= 23.739ms p95= 28.892ms max= 88.274ms calls(last=  1,win= 120,total=3240) (win 142.4% | avg 142.4% budget)
+  frame.render                     win= 12.362ms avg= 12.362ms p95= 13.228ms max= 88.235ms calls(last=  1,win= 120,total=3240) (win 74.2% | avg 74.2% budget)
+  frame.present                    win= 12.355ms avg= 12.355ms p95= 13.222ms max= 88.228ms calls(last=  1,win= 120,total=3240) (win 74.1% | avg 74.1% budget)
+  frame.fixed_step                 win=  7.906ms avg= 11.332ms p95= 15.996ms max= 16.578ms calls(last=  2,win= 172,total=3507) (win 47.4% | avg 68.0% budget)
+  frame.render.world               win=  5.046ms avg= 10.093ms p95= 10.464ms max= 17.973ms calls(last=  2,win= 240,total=5210) (win 30.3% | avg 60.6% budget)
+  frame.render.overlay             win=  3.159ms avg=  3.159ms p95=  3.841ms max=  7.566ms calls(last=  1,win= 120,total=2605) (win 19.0% | avg 19.0% budget)
+  game.update                      win=  2.989ms avg=  4.285ms p95=  6.099ms max=  7.846ms calls(last=  2,win= 172,total=2858) (win 17.9% | avg 25.7% budget)
+  system.ai_update                 win=  2.809ms avg=  4.026ms p95=  5.721ms max=  7.511ms calls(last=  2,win= 172,total=2858) (win 16.9% | avg 24.2% budget)
+  enemy.update                     win=  2.803ms avg=  4.017ms p95=  5.710ms max=  7.499ms calls(last=  2,win= 172,total=2858) (win 16.8% | avg 24.1% budget)
+  frame.render.world.enemies       win=  1.140ms avg=  1.140ms p95=  1.231ms max=  3.890ms calls(last=  1,win= 120,total=2605) (win 6.8% | avg 6.8% budget)
+  frame.render.world.maze          win=  0.917ms avg=  0.917ms p95=  1.003ms max=  2.615ms calls(last=  1,win= 120,total=2605) (win 5.5% | avg 5.5% budget)
+  frame.render.world.effects       win=  0.383ms avg=  0.383ms p95=  0.467ms max=  0.976ms calls(last=  1,win= 120,total=2605) (win 2.3% | avg 2.3% budget)
+  system.spawner_update            win=  0.070ms avg=  0.100ms p95=  0.144ms max=  0.486ms calls(last=  2,win= 172,total=2858) (win 0.4% | avg 0.6% budget)
+  system.physics_collision         win=  0.038ms avg=  0.055ms p95=  0.080ms max=  0.163ms calls(last=  2,win= 172,total=2858) (win 0.2% | avg 0.3% budget)
+  enemy.cheap.segment_build        win=  0.033ms avg=  0.188ms p95=  0.319ms max=  0.514ms calls(last=  8,win= 682,total=4336) (win 0.2% | avg 1.1% budget)
+  frame.input_poll                 win=  0.029ms avg=  0.029ms p95=  0.030ms max=  0.121ms calls(last=  1,win= 120,total=3240) (win 0.2% | avg 0.2% budget)
+  system.player_update             win=  0.025ms avg=  0.036ms p95=  0.051ms max=  0.142ms calls(last=  2,win= 172,total=2738) (win 0.2% | avg 0.2% budget)
+  enemy.type.assassin              win=  0.005ms avg=  0.288ms p95=  0.476ms max=  0.632ms calls(last= 76,win=6448,total=66269) (win 0.0% | avg 1.7% budget)
+  enemy.type.hunter                win=  0.004ms avg=  0.309ms p95=  0.478ms max=  0.792ms calls(last=100,win=8600,total=76201) (win 0.0% | avg 1.9% budget)
+  enemy.type.torpedo               win=  0.003ms avg=  0.096ms p95=  0.158ms max=  0.239ms calls(last= 42,win=3562,total=35204) (win 0.0% | avg 0.6% budget)
+  system.projectile_update         win=  0.003ms avg=  0.005ms p95=  0.007ms max=  0.035ms calls(last=  2,win= 172,total=2858) (win 0.0% | avg 0.0% budget)
+  enemy.type.drone                 win=  0.003ms avg=  0.112ms p95=  0.182ms max=  0.372ms calls(last= 54,win=4644,total=35603) (win 0.0% | avg 0.7% budget)
+  system.maze_update               win=  0.001ms avg=  0.001ms p95=  0.002ms max=  0.022ms calls(last=  2,win= 172,total=2858) (win 0.0% | avg 0.0% budget)
+[ENEMY_STATS] frame=3240 alive=136 visible=0 full=0 cheap=136 fullInBase=0 pairs(frontal=0 checks=0 separation=0 resolved=0)
+[ENEMY_WINDOW] steps=172 alive[min=134 max=136] visible[min=0 max=0] full[min=0 max=0] collisionPasses[runs=0 skips=172]
+[ENEMY_SEGMENTS] window=2.867s D{b/s=3.84 avgLen=5.16 fail=0} T{b/s=7.67 avgLen=6.75 fail=0} H{b/s=33.49 avgLen=4.90 fail=172} A{b/s=12.21 avgLen=4.65 fail=344}
+[ENEMY_GRID] frontal{cand/s=0.0 xcell/s=0.0 ins/s=0.0} separation{cand/s=0.0}
+[ENEMY_COLLISION_WINDOW] frontal{pairs/s=0.0 checks/s=0.0 baseSkip=0 kill=0(0.0%)} separation{pairs/s=0.0 resolved/s=0.0(0.0%) baseSkip=0 kill=0 wallBlock=0}
+[ENEMY_NAV_CACHE] playerCell{changes=0 flowRebuilds=0} flow{hit=0 miss=0 hit%=0.0} pathFallback{calls=0 ok=0 ok%=0.0}
+[ENEMY_SAP] updates=0 active=0 pairs=0 repairs{x=0 y=0}
+[ENEMY_PAIR_TYPES] frontal DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0 separation DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0
+
+[PROFILE] frame=3360 budget=16.667ms alloc(+317/-317, +476040b/-476040b, live=250088b peak=500184b)
+  frame.total                      win= 24.385ms avg= 24.385ms p95= 29.439ms max= 88.274ms calls(last=  1,win= 120,total=3360) (win 146.3% | avg 146.3% budget)
+  frame.render                     win= 12.370ms avg= 12.370ms p95= 13.254ms max= 88.235ms calls(last=  1,win= 120,total=3360) (win 74.2% | avg 74.2% budget)
+  frame.present                    win= 12.362ms avg= 12.362ms p95= 13.246ms max= 88.228ms calls(last=  1,win= 120,total=3360) (win 74.2% | avg 74.2% budget)
+  frame.fixed_step                 win=  8.162ms avg= 11.972ms p95= 16.699ms max= 17.258ms calls(last=  2,win= 176,total=3683) (win 49.0% | avg 71.8% budget)
+  frame.render.world               win=  5.076ms avg= 10.152ms p95= 10.514ms max= 17.973ms calls(last=  2,win= 240,total=5450) (win 30.5% | avg 60.9% budget)
+  frame.render.overlay             win=  3.152ms avg=  3.152ms p95=  3.845ms max=  7.566ms calls(last=  1,win= 120,total=2725) (win 18.9% | avg 18.9% budget)
+  game.update                      win=  3.128ms avg=  4.588ms p95=  6.595ms max=  7.846ms calls(last=  2,win= 176,total=3034) (win 18.8% | avg 27.5% budget)
+  system.ai_update                 win=  2.946ms avg=  4.321ms p95=  6.248ms max=  7.511ms calls(last=  2,win= 176,total=3034) (win 17.7% | avg 25.9% budget)
+  enemy.update                     win=  2.940ms avg=  4.312ms p95=  6.236ms max=  7.499ms calls(last=  2,win= 176,total=3034) (win 17.6% | avg 25.9% budget)
+  frame.render.world.enemies       win=  1.154ms avg=  1.154ms p95=  1.237ms max=  3.890ms calls(last=  1,win= 120,total=2725) (win 6.9% | avg 6.9% budget)
+  frame.render.world.maze          win=  0.944ms avg=  0.944ms p95=  1.017ms max=  2.615ms calls(last=  1,win= 120,total=2725) (win 5.7% | avg 5.7% budget)
+  frame.render.world.effects       win=  0.377ms avg=  0.377ms p95=  0.462ms max=  0.976ms calls(last=  1,win= 120,total=2725) (win 2.3% | avg 2.3% budget)
+  enemy.ai.movement                win=  0.205ms avg=  0.108ms p95=  0.410ms max=  0.422ms calls(last=  2,win=  63,total=63) (win 1.2% | avg 0.6% budget)
+  enemy.ai.perception              win=  0.123ms avg=  0.064ms p95=  0.253ms max=  0.295ms calls(last=  2,win=  63,total=63) (win 0.7% | avg 0.4% budget)
+  system.spawner_update            win=  0.070ms avg=  0.102ms p95=  0.160ms max=  0.486ms calls(last=  2,win= 176,total=3034) (win 0.4% | avg 0.6% budget)
+  system.physics_collision         win=  0.039ms avg=  0.056ms p95=  0.082ms max=  0.282ms calls(last=  2,win= 176,total=3034) (win 0.2% | avg 0.3% budget)
+  enemy.cheap.segment_build        win=  0.033ms avg=  0.187ms p95=  0.327ms max=  0.514ms calls(last=  8,win= 689,total=5025) (win 0.2% | avg 1.1% budget)
+  frame.input_poll                 win=  0.027ms avg=  0.027ms p95=  0.028ms max=  0.121ms calls(last=  1,win= 120,total=3360) (win 0.2% | avg 0.2% budget)
+  system.player_update             win=  0.026ms avg=  0.038ms p95=  0.053ms max=  0.142ms calls(last=  2,win= 176,total=2914) (win 0.2% | avg 0.2% budget)
+  enemy.ai.decision                win=  0.023ms avg=  0.012ms p95=  0.045ms max=  0.071ms calls(last=  2,win=  63,total=63) (win 0.1% | avg 0.1% budget)
+  enemy.type.hunter                win=  0.007ms avg=  0.502ms p95=  1.174ms max=  1.244ms calls(last=102,win=8841,total=85042) (win 0.0% | avg 3.0% budget)
+  enemy.type.assassin              win=  0.005ms avg=  0.297ms p95=  0.440ms max=  0.632ms calls(last= 78,win=6834,total=73103) (win 0.0% | avg 1.8% budget)
+  enemy.ai.firing                  win=  0.004ms avg=  0.002ms p95=  0.008ms max=  0.008ms calls(last=  2,win=  63,total=63) (win 0.0% | avg 0.0% budget)
+  system.projectile_update         win=  0.003ms avg=  0.005ms p95=  0.008ms max=  0.035ms calls(last=  2,win= 176,total=3034) (win 0.0% | avg 0.0% budget)
+[ENEMY_STATS] frame=3360 alive=138 visible=0 full=1 cheap=137 fullInBase=0 pairs(frontal=0 checks=0 separation=0 resolved=0)
+[ENEMY_WINDOW] steps=176 alive[min=136 max=138] visible[min=0 max=0] full[min=0 max=1] collisionPasses[runs=0 skips=176]
+[ENEMY_SEGMENTS] window=2.933s D{b/s=6.48 avgLen=4.77 fail=0} T{b/s=6.48 avgLen=6.92 fail=0} H{b/s=29.66 avgLen=4.84 fail=176} A{b/s=12.61 avgLen=5.21 fail=352}
+[ENEMY_GRID] frontal{cand/s=0.0 xcell/s=0.0 ins/s=0.0} separation{cand/s=0.0}
+[ENEMY_COLLISION_WINDOW] frontal{pairs/s=0.0 checks/s=0.0 baseSkip=0 kill=0(0.0%)} separation{pairs/s=0.0 resolved/s=0.0(0.0%) baseSkip=0 kill=0 wallBlock=0}
+[ENEMY_NAV_CACHE] playerCell{changes=0 flowRebuilds=0} flow{hit=0 miss=0 hit%=0.0} pathFallback{calls=0 ok=0 ok%=0.0}
+[ENEMY_SAP] updates=0 active=0 pairs=0 repairs{x=0 y=0}
+[ENEMY_PAIR_TYPES] frontal DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0 separation DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0
+
+[PROFILE] frame=3480 budget=16.667ms alloc(+341/-341, +666920b/-666920b, live=250128b peak=576920b)
+  frame.total                      win= 29.075ms avg= 29.075ms p95= 44.910ms max= 88.274ms calls(last=  1,win= 120,total=3480) (win 174.5% | avg 174.5% budget)
+  frame.render                     win= 12.561ms avg= 12.561ms p95= 13.619ms max= 88.235ms calls(last=  1,win= 120,total=3480) (win 75.4% | avg 75.4% budget)
+  frame.present                    win= 12.554ms avg= 12.554ms p95= 13.611ms max= 88.228ms calls(last=  1,win= 120,total=3480) (win 75.3% | avg 75.3% budget)
+  frame.fixed_step                 win=  9.456ms avg= 16.470ms p95= 32.372ms max= 32.817ms calls(last=  2,win= 209,total=3892) (win 56.7% | avg 98.8% budget)
+  frame.render.world               win=  5.240ms avg= 10.480ms p95= 11.201ms max= 17.973ms calls(last=  2,win= 240,total=5690) (win 31.4% | avg 62.9% budget)
+  game.update                      win=  4.186ms avg=  7.290ms p95= 16.278ms max= 16.693ms calls(last=  2,win= 209,total=3243) (win 25.1% | avg 43.7% budget)
+  system.ai_update                 win=  3.995ms avg=  6.958ms p95= 15.699ms max= 16.070ms calls(last=  2,win= 209,total=3243) (win 24.0% | avg 41.7% budget)
+  enemy.update                     win=  3.989ms avg=  6.948ms p95= 15.682ms max= 16.054ms calls(last=  2,win= 209,total=3243) (win 23.9% | avg 41.7% budget)
+  frame.render.overlay             win=  3.150ms avg=  3.150ms p95=  3.852ms max=  7.566ms calls(last=  1,win= 120,total=2845) (win 18.9% | avg 18.9% budget)
+  frame.render.world.enemies       win=  1.164ms avg=  1.164ms p95=  1.233ms max=  3.890ms calls(last=  1,win= 120,total=2845) (win 7.0% | avg 7.0% budget)
+  enemy.physics.frontal_collisions win=  0.929ms avg=  0.650ms p95=  2.725ms max=  2.845ms calls(last=  2,win=  84,total=84) (win 5.6% | avg 3.9% budget)
+  frame.render.world.maze          win=  0.921ms avg=  0.921ms p95=  0.979ms max=  2.615ms calls(last=  1,win= 120,total=2845) (win 5.5% | avg 5.5% budget)
+  enemy.physics.frontal_grid_build win=  0.848ms avg=  0.594ms p95=  2.488ms max=  2.600ms calls(last=  2,win=  84,total=84) (win 5.1% | avg 3.6% budget)
+  enemy.physics.separation         win=  0.599ms avg=  0.419ms p95=  1.757ms max=  1.867ms calls(last=  2,win=  84,total=84) (win 3.6% | avg 2.5% budget)
+  frame.render.world.effects       win=  0.555ms avg=  0.555ms p95=  0.952ms max=  1.022ms calls(last=  1,win= 120,total=2845) (win 3.3% | avg 3.3% budget)
+  enemy.physics.separation_grid_build win=  0.548ms avg=  0.384ms p95=  1.610ms max=  1.697ms calls(last=  2,win=  84,total=84) (win 3.3% | avg 2.3% budget)
+  enemy.ai.movement                win=  0.209ms avg=  0.511ms p95=  1.226ms max=  1.272ms calls(last=  4,win= 293,total=356) (win 1.3% | avg 3.1% budget)
+  enemy.ai.perception              win=  0.073ms avg=  0.179ms p95=  0.417ms max=  0.593ms calls(last=  4,win= 293,total=356) (win 0.4% | avg 1.1% budget)
+  system.spawner_update            win=  0.072ms avg=  0.125ms p95=  0.210ms max=  0.486ms calls(last=  2,win= 209,total=3243) (win 0.4% | avg 0.7% budget)
+  enemy.physics.frontal_pair_traverse win=  0.051ms avg=  0.036ms p95=  0.147ms max=  0.184ms calls(last=  2,win=  84,total=84) (win 0.3% | avg 0.2% budget)
+  system.physics_collision         win=  0.042ms avg=  0.074ms p95=  0.161ms max=  0.282ms calls(last=  2,win= 209,total=3243) (win 0.3% | avg 0.4% budget)
+  enemy.cheap.segment_build        win=  0.031ms avg=  0.211ms p95=  0.311ms max=  0.514ms calls(last=  6,win= 817,total=5842) (win 0.2% | avg 1.3% budget)
+  enemy.physics.separation_pair_traverse win=  0.030ms avg=  0.021ms p95=  0.086ms max=  0.091ms calls(last=  2,win=  84,total=84) (win 0.2% | avg 0.1% budget)
+  system.player_update             win=  0.027ms avg=  0.047ms p95=  0.084ms max=  0.142ms calls(last=  2,win= 209,total=3123) (win 0.2% | avg 0.3% budget)
+[ENEMY_STATS] frame=3480 alive=142 visible=0 full=2 cheap=140 fullInBase=0 pairs(frontal=0 checks=0 separation=0 resolved=0)
+[ENEMY_WINDOW] steps=209 alive[min=138 max=142] visible[min=0 max=1] full[min=1 max=2] collisionPasses[runs=85 skips=124]
+[ENEMY_SEGMENTS] window=3.483s D{b/s=6.03 avgLen=5.59 fail=0} T{b/s=6.32 avgLen=6.37 fail=0} H{b/s=29.86 avgLen=5.35 fail=209} A{b/s=12.06 avgLen=4.79 fail=418}
+[ENEMY_GRID] frontal{cand/s=48.8 xcell/s=0.6 ins/s=49.4} separation{cand/s=48.8}
+[ENEMY_COLLISION_WINDOW] frontal{pairs/s=0.0 checks/s=0.0 baseSkip=0 kill=0(0.0%)} separation{pairs/s=0.0 resolved/s=0.0(0.0%) baseSkip=0 kill=0 wallBlock=0}
+[ENEMY_NAV_CACHE] playerCell{changes=0 flowRebuilds=0} flow{hit=0 miss=0 hit%=0.0} pathFallback{calls=0 ok=0 ok%=0.0}
+[ENEMY_SAP] updates=0 active=0 pairs=0 repairs{x=0 y=0}
+[ENEMY_PAIR_TYPES] frontal DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0 separation DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0
+
+[PROFILE] frame=3600 budget=16.667ms alloc(+345/-345, +671000b/-671000b, live=250128b peak=578968b)
+  frame.total                      win= 37.667ms avg= 37.667ms p95= 46.442ms max= 88.274ms calls(last=  1,win= 120,total=3600) (win 226.0% | avg 226.0% budget)
+  frame.render                     win= 12.705ms avg= 12.705ms p95= 13.543ms max= 88.235ms calls(last=  1,win= 120,total=3600) (win 76.2% | avg 76.2% budget)
+  frame.present                    win= 12.697ms avg= 12.697ms p95= 13.536ms max= 88.228ms calls(last=  1,win= 120,total=3600) (win 76.2% | avg 76.2% budget)
+  frame.fixed_step                 win= 10.992ms avg= 24.914ms p95= 33.329ms max= 34.288ms calls(last=  2,win= 272,total=4164) (win 65.9% | avg 149.5% budget)
+  game.update                      win=  5.584ms avg= 12.657ms p95= 17.056ms max= 17.945ms calls(last=  2,win= 272,total=3515) (win 33.5% | avg 75.9% budget)
+  system.ai_update                 win=  5.382ms avg= 12.200ms p95= 16.403ms max= 17.278ms calls(last=  2,win= 272,total=3515) (win 32.3% | avg 73.2% budget)
+  enemy.update                     win=  5.376ms avg= 12.186ms p95= 16.386ms max= 17.255ms calls(last=  2,win= 272,total=3515) (win 32.3% | avg 73.1% budget)
+  frame.render.world               win=  5.303ms avg= 10.605ms p95= 11.309ms max= 17.973ms calls(last=  2,win= 240,total=5930) (win 31.8% | avg 63.6% budget)
+  frame.render.overlay             win=  3.187ms avg=  3.187ms p95=  3.876ms max=  7.566ms calls(last=  1,win= 120,total=2965) (win 19.1% | avg 19.1% budget)
+  frame.render.world.enemies       win=  1.158ms avg=  1.158ms p95=  1.220ms max=  3.890ms calls(last=  1,win= 120,total=2965) (win 6.9% | avg 6.9% budget)
+  frame.render.world.maze          win=  0.961ms avg=  0.961ms p95=  1.007ms max=  2.615ms calls(last=  1,win= 120,total=2965) (win 5.8% | avg 5.8% budget)
+  enemy.physics.frontal_collisions win=  0.937ms avg=  2.123ms p95=  2.815ms max=  2.952ms calls(last=  2,win= 272,total=356) (win 5.6% | avg 12.7% budget)
+  enemy.physics.frontal_grid_build win=  0.854ms avg=  1.936ms p95=  2.565ms max=  2.715ms calls(last=  2,win= 272,total=356) (win 5.1% | avg 11.6% budget)
+  enemy.physics.separation         win=  0.600ms avg=  1.359ms p95=  1.809ms max=  2.005ms calls(last=  2,win= 272,total=356) (win 3.6% | avg 8.2% budget)
+  frame.render.world.effects       win=  0.591ms avg=  0.591ms p95=  1.029ms max=  1.205ms calls(last=  1,win= 120,total=2965) (win 3.5% | avg 3.5% budget)
+  enemy.physics.separation_grid_build win=  0.548ms avg=  1.241ms p95=  1.649ms max=  1.842ms calls(last=  2,win= 272,total=356) (win 3.3% | avg 7.4% budget)
+  enemy.ai.movement                win=  0.210ms avg=  1.030ms p95=  1.479ms max=  1.883ms calls(last=  4,win= 588,total=944) (win 1.3% | avg 6.2% budget)
+  system.spawner_update            win=  0.074ms avg=  0.168ms p95=  0.242ms max=  0.513ms calls(last=  2,win= 272,total=3515) (win 0.4% | avg 1.0% budget)
+  enemy.ai.perception              win=  0.069ms avg=  0.338ms p95=  0.530ms max=  0.675ms calls(last=  4,win= 588,total=944) (win 0.4% | avg 2.0% budget)
+  enemy.physics.frontal_pair_traverse win=  0.053ms avg=  0.119ms p95=  0.163ms max=  0.184ms calls(last=  2,win= 272,total=356) (win 0.3% | avg 0.7% budget)
+  system.physics_collision         win=  0.050ms avg=  0.113ms p95=  0.163ms max=  0.282ms calls(last=  2,win= 272,total=3515) (win 0.3% | avg 0.7% budget)
+  enemy.physics.separation_pair_traverse win=  0.031ms avg=  0.070ms p95=  0.101ms max=  0.116ms calls(last=  2,win= 272,total=356) (win 0.2% | avg 0.4% budget)
+  enemy.cheap.segment_build        win=  0.029ms avg=  0.255ms p95=  0.397ms max=  0.514ms calls(last=  9,win=1070,total=6912) (win 0.2% | avg 1.5% budget)
+  system.player_update             win=  0.028ms avg=  0.064ms p95=  0.086ms max=  0.142ms calls(last=  2,win= 272,total=3395) (win 0.2% | avg 0.4% budget)
+[ENEMY_STATS] frame=3600 alive=144 visible=2 full=2 cheap=142 fullInBase=0 pairs(frontal=0 checks=0 separation=0 resolved=0)
+[ENEMY_WINDOW] steps=272 alive[min=142 max=144] visible[min=0 max=2] full[min=2 max=3] collisionPasses[runs=272 skips=0]
+[ENEMY_SEGMENTS] window=4.533s D{b/s=5.07 avgLen=4.77 fail=0} T{b/s=7.50 avgLen=6.61 fail=0} H{b/s=31.99 avgLen=5.00 fail=272} A{b/s=11.47 avgLen=4.73 fail=544}
+[ENEMY_GRID] frontal{cand/s=129.7 xcell/s=1.3 ins/s=131.0} separation{cand/s=129.7}
+[ENEMY_COLLISION_WINDOW] frontal{pairs/s=0.0 checks/s=0.0 baseSkip=0 kill=0(0.0%)} separation{pairs/s=0.0 resolved/s=0.0(0.0%) baseSkip=0 kill=0 wallBlock=0}
+[ENEMY_NAV_CACHE] playerCell{changes=0 flowRebuilds=0} flow{hit=0 miss=0 hit%=0.0} pathFallback{calls=0 ok=0 ok%=0.0}
+[ENEMY_SAP] updates=0 active=0 pairs=0 repairs{x=0 y=0}
+[ENEMY_PAIR_TYPES] frontal DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0 separation DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0
+
+[PROFILE] frame=3720 budget=16.667ms alloc(+345/-345, +671080b/-671080b, live=250160b peak=579064b)
+  frame.total                      win= 33.793ms avg= 33.793ms p95= 46.086ms max= 88.274ms calls(last=  1,win= 120,total=3720) (win 202.8% | avg 202.8% budget)
+  frame.render                     win= 13.100ms avg= 13.100ms p95= 13.982ms max= 88.235ms calls(last=  1,win= 120,total=3720) (win 78.6% | avg 78.6% budget)
+  frame.present                    win= 13.092ms avg= 13.092ms p95= 13.974ms max= 88.228ms calls(last=  1,win= 120,total=3720) (win 78.6% | avg 78.6% budget)
+  frame.fixed_step                 win= 10.154ms avg= 20.646ms p95= 33.088ms max= 34.288ms calls(last=  2,win= 244,total=4408) (win 60.9% | avg 123.9% budget)
+  frame.render.world               win=  5.642ms avg= 11.284ms p95= 11.711ms max= 17.973ms calls(last=  2,win= 240,total=6170) (win 33.9% | avg 67.7% budget)
+  game.update                      win=  4.650ms avg=  9.455ms p95= 16.595ms max= 17.945ms calls(last=  2,win= 244,total=3759) (win 27.9% | avg 56.7% budget)
+  system.ai_update                 win=  4.449ms avg=  9.047ms p95= 15.982ms max= 17.278ms calls(last=  2,win= 244,total=3759) (win 26.7% | avg 54.3% budget)
+  enemy.update                     win=  4.443ms avg=  9.035ms p95= 15.965ms max= 17.255ms calls(last=  2,win= 244,total=3759) (win 26.7% | avg 54.2% budget)
+  frame.render.overlay             win=  3.213ms avg=  3.213ms p95=  3.979ms max=  7.566ms calls(last=  1,win= 120,total=3085) (win 19.3% | avg 19.3% budget)
+  frame.render.world.enemies       win=  1.181ms avg=  1.181ms p95=  1.243ms max=  3.890ms calls(last=  1,win= 120,total=3085) (win 7.1% | avg 7.1% budget)
+  frame.render.world.effects       win=  1.007ms avg=  1.007ms p95=  1.137ms max=  1.295ms calls(last=  1,win= 120,total=3085) (win 6.0% | avg 6.0% budget)
+  enemy.physics.frontal_collisions win=  0.933ms avg=  1.112ms p95=  2.797ms max=  2.952ms calls(last=  2,win= 143,total=499) (win 5.6% | avg 6.7% budget)
+  frame.render.world.maze          win=  0.908ms avg=  0.908ms p95=  1.049ms max=  2.615ms calls(last=  1,win= 120,total=3085) (win 5.4% | avg 5.4% budget)
+  enemy.physics.frontal_grid_build win=  0.854ms avg=  1.017ms p95=  2.556ms max=  2.715ms calls(last=  2,win= 143,total=499) (win 5.1% | avg 6.1% budget)
+  enemy.physics.separation         win=  0.599ms avg=  0.714ms p95=  1.798ms max=  2.005ms calls(last=  2,win= 143,total=499) (win 3.6% | avg 4.3% budget)
+  enemy.physics.separation_grid_build win=  0.548ms avg=  0.653ms p95=  1.645ms max=  1.842ms calls(last=  2,win= 143,total=499) (win 3.3% | avg 3.9% budget)
+  enemy.ai.movement                win=  0.216ms avg=  0.697ms p95=  1.290ms max=  1.883ms calls(last=  4,win= 387,total=1331) (win 1.3% | avg 4.2% budget)
+  system.spawner_update            win=  0.071ms avg=  0.145ms p95=  0.215ms max=  0.513ms calls(last=  2,win= 244,total=3759) (win 0.4% | avg 0.9% budget)
+  enemy.ai.perception              win=  0.067ms avg=  0.215ms p95=  0.445ms max=  0.675ms calls(last=  4,win= 387,total=1331) (win 0.4% | avg 1.3% budget)
+  enemy.physics.frontal_pair_traverse win=  0.051ms avg=  0.060ms p95=  0.152ms max=  0.184ms calls(last=  2,win= 143,total=499) (win 0.3% | avg 0.4% budget)
+  system.physics_collision         win=  0.050ms avg=  0.102ms p95=  0.175ms max=  0.282ms calls(last=  2,win= 244,total=3759) (win 0.3% | avg 0.6% budget)
+  enemy.cheap.segment_build        win=  0.030ms avg=  0.243ms p95=  0.374ms max=  0.514ms calls(last=  9,win= 971,total=7883) (win 0.2% | avg 1.5% budget)
+  enemy.physics.separation_pair_traverse win=  0.030ms avg=  0.036ms p95=  0.089ms max=  0.116ms calls(last=  2,win= 143,total=499) (win 0.2% | avg 0.2% budget)
+  frame.input_poll                 win=  0.028ms avg=  0.028ms p95=  0.029ms max=  0.121ms calls(last=  1,win= 120,total=3720) (win 0.2% | avg 0.2% budget)
+[ENEMY_STATS] frame=3720 alive=144 visible=1 full=2 cheap=142 fullInBase=0 pairs(frontal=0 checks=0 separation=0 resolved=0)
+[ENEMY_WINDOW] steps=244 alive[min=144 max=144] visible[min=1 max=2] full[min=1 max=2] collisionPasses[runs=143 skips=101]
+[ENEMY_SEGMENTS] window=4.067s D{b/s=6.15 avgLen=5.00 fail=0} T{b/s=7.13 avgLen=5.76 fail=0} H{b/s=32.95 avgLen=4.87 fail=244} A{b/s=12.79 avgLen=4.65 fail=488}
+[ENEMY_GRID] frontal{cand/s=70.3 xcell/s=0.7 ins/s=71.1} separation{cand/s=70.3}
+[ENEMY_COLLISION_WINDOW] frontal{pairs/s=0.0 checks/s=0.0 baseSkip=0 kill=0(0.0%)} separation{pairs/s=0.0 resolved/s=0.0(0.0%) baseSkip=0 kill=0 wallBlock=0}
+[ENEMY_NAV_CACHE] playerCell{changes=0 flowRebuilds=0} flow{hit=0 miss=0 hit%=0.0} pathFallback{calls=0 ok=0 ok%=0.0}
+[ENEMY_SAP] updates=0 active=0 pairs=0 repairs{x=0 y=0}
+[ENEMY_PAIR_TYPES] frontal DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0 separation DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0
+
+[PROFILE] frame=3840 budget=16.667ms alloc(+541/-541, +1005768b/-1005768b, live=318560b peak=647624b)
+  frame.total                      win= 54.221ms avg= 54.221ms p95= 67.669ms max= 88.274ms calls(last=  1,win= 120,total=3840) (win 325.3% | avg 325.3% budget)
+  frame.render                     win= 13.119ms avg= 13.119ms p95= 13.934ms max= 88.235ms calls(last=  1,win= 120,total=3840) (win 78.7% | avg 78.7% budget)
+  frame.present                    win= 13.112ms avg= 13.112ms p95= 13.928ms max= 88.228ms calls(last=  1,win= 120,total=3840) (win 78.7% | avg 78.7% budget)
+  frame.fixed_step                 win= 12.663ms avg= 41.049ms p95= 54.734ms max= 56.261ms calls(last=  3,win= 389,total=4797) (win 76.0% | avg 246.3% budget)
+  game.update                      win=  7.175ms avg= 23.257ms p95= 32.807ms max= 34.224ms calls(last=  3,win= 389,total=4148) (win 43.0% | avg 139.5% budget)
+  system.ai_update                 win=  6.996ms avg= 22.680ms p95= 32.126ms max= 33.439ms calls(last=  3,win= 389,total=4148) (win 42.0% | avg 136.1% budget)
+  enemy.update                     win=  6.990ms avg= 22.660ms p95= 32.097ms max= 33.409ms calls(last=  3,win= 389,total=4148) (win 41.9% | avg 136.0% budget)
+  frame.render.world               win=  5.680ms avg= 11.361ms p95= 12.016ms max= 17.973ms calls(last=  2,win= 240,total=6410) (win 34.1% | avg 68.2% budget)
+  frame.render.overlay             win=  3.221ms avg=  3.221ms p95=  3.965ms max=  7.566ms calls(last=  1,win= 120,total=3205) (win 19.3% | avg 19.3% budget)
+  enemy.pathfinding.total          win=  1.232ms avg=  0.010ms p95=  0.000ms max=  1.232ms calls(last=  0,win=   1,total=1) (win 7.4% | avg 0.1% budget)
+  frame.render.world.enemies       win=  1.198ms avg=  1.198ms p95=  1.281ms max=  3.890ms calls(last=  1,win= 120,total=3205) (win 7.2% | avg 7.2% budget)
+  frame.render.world.effects       win=  1.049ms avg=  1.049ms p95=  1.287ms max=  1.366ms calls(last=  1,win= 120,total=3205) (win 6.3% | avg 6.3% budget)
+  frame.render.world.maze          win=  1.043ms avg=  1.043ms p95=  1.104ms max=  2.615ms calls(last=  1,win= 120,total=3205) (win 6.3% | avg 6.3% budget)
+  enemy.physics.frontal_collisions win=  0.995ms avg=  3.225ms p95=  4.200ms max=  4.850ms calls(last=  3,win= 389,total=888) (win 6.0% | avg 19.3% budget)
+  enemy.physics.frontal_grid_build win=  0.872ms avg=  2.826ms p95=  3.608ms max=  4.068ms calls(last=  3,win= 389,total=888) (win 5.2% | avg 17.0% budget)
+  enemy.physics.separation         win=  0.645ms avg=  2.092ms p95=  2.759ms max=  3.542ms calls(last=  3,win= 389,total=888) (win 3.9% | avg 12.6% budget)
+  enemy.physics.separation_grid_build win=  0.552ms avg=  1.789ms p95=  2.253ms max=  2.952ms calls(last=  3,win= 389,total=888) (win 3.3% | avg 10.7% budget)
+  enemy.pathfinding.search         win=  0.406ms avg=  0.003ms p95=  0.000ms max=  0.406ms calls(last=  0,win=   1,total=1) (win 2.4% | avg 0.0% budget)
+  enemy.torpedo.select_heading     win=  0.326ms avg=  0.016ms p95=  0.000ms max=  0.689ms calls(last=  0,win=   6,total=6) (win 2.0% | avg 0.1% budget)
+  enemy.ai.movement                win=  0.200ms avg=  4.267ms p95=  7.428ms max=  7.983ms calls(last= 12,win=2564,total=3895) (win 1.2% | avg 25.6% budget)
+  enemy.pathfinding.occupancy      win=  0.128ms avg=  0.001ms p95=  0.000ms max=  0.128ms calls(last=  0,win=   1,total=1) (win 0.8% | avg 0.0% budget)
+  enemy.physics.frontal_pair_traverse win=  0.088ms avg=  0.287ms p95=  0.485ms max=  0.678ms calls(last=  3,win= 389,total=888) (win 0.5% | avg 1.7% budget)
+  system.spawner_update            win=  0.081ms avg=  0.262ms p95=  0.393ms max=  0.557ms calls(last=  3,win= 389,total=4148) (win 0.5% | avg 1.6% budget)
+  enemy.ai.perception              win=  0.080ms avg=  1.702ms p95=  2.907ms max=  3.046ms calls(last= 12,win=2564,total=3895) (win 0.5% | avg 10.2% budget)
+[ENEMY_STATS] frame=3840 alive=144 visible=0 full=4 cheap=140 fullInBase=0 pairs(frontal=0 checks=0 separation=0 resolved=0)
+[ENEMY_WINDOW] steps=389 alive[min=144 max=144] visible[min=0 max=4] full[min=2 max=10] collisionPasses[runs=389 skips=0]
+[ENEMY_SEGMENTS] window=6.483s D{b/s=6.17 avgLen=4.75 fail=0} T{b/s=8.33 avgLen=5.69 fail=2} H{b/s=33.01 avgLen=4.93 fail=389} A{b/s=12.80 avgLen=4.73 fail=892}
+[ENEMY_GRID] frontal{cand/s=395.8 xcell/s=2.2 ins/s=397.9} separation{cand/s=395.8}
+[ENEMY_COLLISION_WINDOW] frontal{pairs/s=149.2 checks/s=149.2 baseSkip=0 kill=0(0.0%)} separation{pairs/s=148.8 resolved/s=0.2(0.1%) baseSkip=0 kill=0 wallBlock=0}
+[ENEMY_NAV_CACHE] playerCell{changes=0 flowRebuilds=0} flow{hit=0 miss=0 hit%=0.0} pathFallback{calls=1 ok=1 ok%=100.0}
+[ENEMY_SAP] updates=0 active=0 pairs=0 repairs{x=0 y=0}
+[ENEMY_PAIR_TYPES] frontal DD=270 DT=417 DH=226 DA=0 TT=0 TH=0 TA=0 HH=0 HA=54 AA=0 separation DD=270 DT=417 DH=224 DA=0 TT=0 TH=0 TA=0 HH=0 HA=54 AA=0
+[TORPEDO_HEADING] eval/s=0.93 retreat/s=0.15 pick[straight=66.7% left=0.0% right=33.3%] clear[best=13.19 chosen=13.19]
+
+[PROFILE] frame=3960 budget=16.667ms alloc(+544/-544, +1005808b/-1005808b, live=318560b peak=647624b)
+  frame.total                      win= 49.255ms avg= 49.255ms p95= 51.133ms max= 88.274ms calls(last=  1,win= 120,total=3960) (win 295.5% | avg 295.5% budget)
+  frame.render                     win= 12.627ms avg= 12.627ms p95= 13.477ms max= 88.235ms calls(last=  1,win= 120,total=3960) (win 75.8% | avg 75.8% budget)
+  frame.present                    win= 12.620ms avg= 12.620ms p95= 13.470ms max= 88.228ms calls(last=  1,win= 120,total=3960) (win 75.7% | avg 75.7% budget)
+  frame.fixed_step                 win= 12.364ms avg= 36.575ms p95= 38.186ms max= 56.261ms calls(last=  3,win= 355,total=5152) (win 74.2% | avg 219.5% budget)
+  game.update                      win=  6.858ms avg= 20.290ms p95= 21.656ms max= 34.224ms calls(last=  3,win= 355,total=4503) (win 41.2% | avg 121.7% budget)
+  system.ai_update                 win=  6.667ms avg= 19.723ms p95= 21.082ms max= 33.439ms calls(last=  3,win= 355,total=4503) (win 40.0% | avg 118.3% budget)
+  enemy.update                     win=  6.661ms avg= 19.706ms p95= 21.066ms max= 33.409ms calls(last=  3,win= 355,total=4503) (win 40.0% | avg 118.2% budget)
+  frame.render.world               win=  5.259ms avg= 10.517ms p95= 11.016ms max= 17.973ms calls(last=  2,win= 240,total=6650) (win 31.6% | avg 63.1% budget)
+  frame.render.overlay             win=  3.226ms avg=  3.226ms p95=  3.948ms max=  7.566ms calls(last=  1,win= 120,total=3325) (win 19.4% | avg 19.4% budget)
+  frame.render.world.enemies       win=  1.177ms avg=  1.177ms p95=  1.247ms max=  3.890ms calls(last=  1,win= 120,total=3325) (win 7.1% | avg 7.1% budget)
+  enemy.physics.frontal_collisions win=  0.963ms avg=  2.849ms p95=  3.090ms max=  4.850ms calls(last=  3,win= 355,total=1243) (win 5.8% | avg 17.1% budget)
+  frame.render.world.maze          win=  0.912ms avg=  0.912ms p95=  1.117ms max=  2.615ms calls(last=  1,win= 120,total=3325) (win 5.5% | avg 5.5% budget)
+  enemy.physics.frontal_grid_build win=  0.869ms avg=  2.571ms p95=  2.780ms max=  4.068ms calls(last=  3,win= 355,total=1243) (win 5.2% | avg 15.4% budget)
+  frame.render.world.effects       win=  0.656ms avg=  0.656ms p95=  0.986ms max=  1.366ms calls(last=  1,win= 120,total=3325) (win 3.9% | avg 3.9% budget)
+  enemy.physics.separation         win=  0.623ms avg=  1.842ms p95=  1.989ms max=  3.542ms calls(last=  3,win= 355,total=1243) (win 3.7% | avg 11.1% budget)
+  enemy.physics.separation_grid_build win=  0.552ms avg=  1.632ms p95=  1.721ms max=  2.952ms calls(last=  3,win= 355,total=1243) (win 3.3% | avg 9.8% budget)
+  enemy.torpedo.select_heading     win=  0.368ms avg=  0.006ms p95=  0.000ms max=  0.689ms calls(last=  0,win=   2,total=8) (win 2.2% | avg 0.0% budget)
+  enemy.ai.movement                win=  0.208ms avg=  3.061ms p95=  3.316ms max=  7.983ms calls(last= 15,win=1770,total=5665) (win 1.2% | avg 18.4% budget)
+  enemy.ai.perception              win=  0.106ms avg=  1.561ms p95=  2.522ms max=  3.421ms calls(last= 15,win=1770,total=5665) (win 0.6% | avg 9.4% budget)
+  system.spawner_update            win=  0.072ms avg=  0.212ms p95=  0.242ms max=  0.557ms calls(last=  3,win= 355,total=4503) (win 0.4% | avg 1.3% budget)
+  enemy.physics.frontal_pair_traverse win=  0.061ms avg=  0.181ms p95=  0.217ms max=  0.678ms calls(last=  3,win= 355,total=1243) (win 0.4% | avg 1.1% budget)
+  system.physics_collision         win=  0.051ms avg=  0.150ms p95=  0.196ms max=  0.282ms calls(last=  3,win= 355,total=4503) (win 0.3% | avg 0.9% budget)
+  enemy.physics.separation_pair_traverse win=  0.050ms avg=  0.147ms p95=  0.198ms max=  0.669ms calls(last=  3,win= 355,total=1243) (win 0.3% | avg 0.9% budget)
+  enemy.ai.decision                win=  0.045ms avg=  0.658ms p95=  0.813ms max=  1.925ms calls(last= 15,win=1770,total=5665) (win 0.3% | avg 3.9% budget)
+[ENEMY_STATS] frame=3960 alive=144 visible=0 full=5 cheap=139 fullInBase=0 pairs(frontal=0 checks=0 separation=0 resolved=0)
+[ENEMY_WINDOW] steps=355 alive[min=144 max=144] visible[min=0 max=1] full[min=4 max=5] collisionPasses[runs=355 skips=0]
+[ENEMY_SEGMENTS] window=5.917s D{b/s=5.07 avgLen=5.08 fail=1} T{b/s=7.61 avgLen=5.75 fail=0} H{b/s=31.77 avgLen=4.90 fail=355} A{b/s=11.49 avgLen=5.23 fail=1065}
+[ENEMY_GRID] frontal{cand/s=299.3 xcell/s=2.0 ins/s=301.4} separation{cand/s=299.3}
+[ENEMY_COLLISION_WINDOW] frontal{pairs/s=29.7 checks/s=29.7 baseSkip=0 kill=0(0.0%)} separation{pairs/s=29.6 resolved/s=0.0(0.0%) baseSkip=0 kill=0 wallBlock=0}
+[ENEMY_NAV_CACHE] playerCell{changes=0 flowRebuilds=0} flow{hit=0 miss=0 hit%=0.0} pathFallback{calls=0 ok=0 ok%=0.0}
+[ENEMY_SAP] updates=0 active=0 pairs=0 repairs{x=0 y=0}
+[ENEMY_PAIR_TYPES] frontal DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=176 HA=0 AA=0 separation DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=175 HA=0 AA=0
+[TORPEDO_HEADING] eval/s=0.34 retreat/s=0.00 pick[straight=50.0% left=50.0% right=0.0%] clear[best=15.00 chosen=15.00]
+
+[PROFILE] frame=4080 budget=16.667ms alloc(+361/-361, +671544b/-671544b, live=318560b peak=647624b)
+  frame.total                      win= 48.807ms avg= 48.807ms p95= 53.577ms max= 88.274ms calls(last=  1,win= 120,total=4080) (win 292.8% | avg 292.8% budget)
+  frame.render                     win= 12.831ms avg= 12.831ms p95= 13.774ms max= 88.235ms calls(last=  1,win= 120,total=4080) (win 77.0% | avg 77.0% budget)
+  frame.present                    win= 12.824ms avg= 12.824ms p95= 13.767ms max= 88.228ms calls(last=  1,win= 120,total=4080) (win 76.9% | avg 76.9% budget)
+  frame.fixed_step                 win= 12.212ms avg= 35.923ms p95= 40.997ms max= 56.261ms calls(last=  2,win= 353,total=5505) (win 73.3% | avg 215.5% budget)
+  game.update                      win=  6.703ms avg= 19.719ms p95= 24.451ms max= 34.224ms calls(last=  2,win= 353,total=4856) (win 40.2% | avg 118.3% budget)
+  system.ai_update                 win=  6.499ms avg= 19.119ms p95= 23.891ms max= 33.439ms calls(last=  2,win= 353,total=4856) (win 39.0% | avg 114.7% budget)
+  enemy.update                     win=  6.493ms avg= 19.099ms p95= 23.873ms max= 33.409ms calls(last=  2,win= 353,total=4856) (win 39.0% | avg 114.6% budget)
+  frame.render.world               win=  5.457ms avg= 10.914ms p95= 11.635ms max= 17.973ms calls(last=  2,win= 240,total=6890) (win 32.7% | avg 65.5% budget)
+  frame.render.overlay             win=  3.203ms avg=  3.203ms p95=  3.871ms max=  7.566ms calls(last=  1,win= 120,total=3445) (win 19.2% | avg 19.2% budget)
+  frame.render.world.enemies       win=  1.203ms avg=  1.203ms p95=  1.326ms max=  3.890ms calls(last=  1,win= 120,total=3445) (win 7.2% | avg 7.2% budget)
+  enemy.physics.frontal_collisions win=  0.968ms avg=  2.847ms p95=  3.790ms max=  4.850ms calls(last=  2,win= 353,total=1596) (win 5.8% | avg 17.1% budget)
+  frame.render.world.maze          win=  0.934ms avg=  0.934ms p95=  1.025ms max=  2.615ms calls(last=  1,win= 120,total=3445) (win 5.6% | avg 5.6% budget)
+  enemy.physics.frontal_grid_build win=  0.871ms avg=  2.563ms p95=  3.433ms max=  4.305ms calls(last=  2,win= 353,total=1596) (win 5.2% | avg 15.4% budget)
+  frame.render.world.effects       win=  0.833ms avg=  0.833ms p95=  1.202ms max=  1.366ms calls(last=  1,win= 120,total=3445) (win 5.0% | avg 5.0% budget)
+  enemy.physics.separation         win=  0.627ms avg=  1.846ms p95=  2.441ms max=  3.542ms calls(last=  2,win= 353,total=1596) (win 3.8% | avg 11.1% budget)
+  enemy.physics.separation_grid_build win=  0.555ms avg=  1.632ms p95=  2.161ms max=  2.952ms calls(last=  2,win= 353,total=1596) (win 3.3% | avg 9.8% budget)
+  enemy.torpedo.select_heading     win=  0.216ms avg=  0.004ms p95=  0.000ms max=  0.689ms calls(last=  0,win=   2,total=10) (win 1.3% | avg 0.0% budget)
+  enemy.ai.movement                win=  0.194ms avg=  2.552ms p95=  3.240ms max=  7.983ms calls(last=  6,win=1576,total=7241) (win 1.2% | avg 15.3% budget)
+  enemy.ai.perception              win=  0.120ms avg=  1.569ms p95=  2.543ms max=  3.649ms calls(last=  6,win=1576,total=7241) (win 0.7% | avg 9.4% budget)
+  system.spawner_update            win=  0.073ms avg=  0.214ms p95=  0.280ms max=  0.557ms calls(last=  2,win= 353,total=4856) (win 0.4% | avg 1.3% budget)
+  enemy.physics.frontal_pair_traverse win=  0.064ms avg=  0.189ms p95=  0.262ms max=  0.678ms calls(last=  2,win= 353,total=1596) (win 0.4% | avg 1.1% budget)
+  system.physics_collision         win=  0.053ms avg=  0.155ms p95=  0.200ms max=  0.346ms calls(last=  2,win= 353,total=4856) (win 0.3% | avg 0.9% budget)
+  enemy.physics.separation_pair_traverse win=  0.051ms avg=  0.151ms p95=  0.194ms max=  0.669ms calls(last=  2,win= 353,total=1596) (win 0.3% | avg 0.9% budget)
+  enemy.type.torpedo               win=  0.049ms avg=  3.307ms p95=  4.489ms max=  5.808ms calls(last= 46,win=8119,total=80330) (win 0.3% | avg 19.8% budget)
+[ENEMY_STATS] frame=4080 alive=144 visible=1 full=3 cheap=141 fullInBase=0 pairs(frontal=0 checks=0 separation=0 resolved=0)
+[ENEMY_WINDOW] steps=353 alive[min=144 max=144] visible[min=0 max=2] full[min=3 max=5] collisionPasses[runs=353 skips=0]
+[ENEMY_SEGMENTS] window=5.883s D{b/s=4.93 avgLen=4.54 fail=0} T{b/s=7.31 avgLen=5.91 fail=0} H{b/s=32.46 avgLen=4.86 fail=353} A{b/s=10.03 avgLen=5.14 fail=1059}
+[ENEMY_GRID] frontal{cand/s=267.5 xcell/s=1.2 ins/s=268.7} separation{cand/s=267.5}
+[ENEMY_COLLISION_WINDOW] frontal{pairs/s=43.9 checks/s=43.9 baseSkip=0 kill=0(0.0%)} separation{pairs/s=43.9 resolved/s=0.0(0.0%) baseSkip=0 kill=0 wallBlock=0}
+[ENEMY_NAV_CACHE] playerCell{changes=0 flowRebuilds=0} flow{hit=0 miss=0 hit%=0.0} pathFallback{calls=0 ok=0 ok%=0.0}
+[ENEMY_SAP] updates=0 active=0 pairs=0 repairs{x=0 y=0}
+[ENEMY_PAIR_TYPES] frontal DD=0 DT=0 DH=0 DA=0 TT=0 TH=258 TA=0 HH=0 HA=0 AA=0 separation DD=0 DT=0 DH=0 DA=0 TT=0 TH=258 TA=0 HH=0 HA=0 AA=0
+[TORPEDO_HEADING] eval/s=0.34 retreat/s=0.17 pick[straight=50.0% left=0.0% right=50.0%] clear[best=8.99 chosen=8.99]
+
+[PROFILE] frame=4200 budget=16.667ms alloc(+559/-559, +1006504b/-1006504b, live=318560b peak=647624b)
+  frame.total                      win= 42.549ms avg= 42.549ms p95= 49.463ms max= 88.274ms calls(last=  1,win= 120,total=4200) (win 255.3% | avg 255.3% budget)
+  frame.render                     win= 12.947ms avg= 12.947ms p95= 13.787ms max= 88.235ms calls(last=  1,win= 120,total=4200) (win 77.7% | avg 77.7% budget)
+  frame.present                    win= 12.939ms avg= 12.939ms p95= 13.780ms max= 88.228ms calls(last=  1,win= 120,total=4200) (win 77.6% | avg 77.6% budget)
+  frame.fixed_step                 win= 11.551ms avg= 29.552ms p95= 36.286ms max= 56.261ms calls(last=  3,win= 307,total=5812) (win 69.3% | avg 177.3% budget)
+  game.update                      win=  6.048ms avg= 15.473ms p95= 19.719ms max= 34.224ms calls(last=  3,win= 307,total=5163) (win 36.3% | avg 92.8% budget)
+  system.ai_update                 win=  5.843ms avg= 14.948ms p95= 19.080ms max= 33.439ms calls(last=  3,win= 307,total=5163) (win 35.1% | avg 89.7% budget)
+  enemy.update                     win=  5.837ms avg= 14.933ms p95= 19.062ms max= 33.409ms calls(last=  3,win= 307,total=5163) (win 35.0% | avg 89.6% budget)
+  frame.render.world               win=  5.604ms avg= 11.207ms p95= 11.704ms max= 17.973ms calls(last=  2,win= 240,total=7130) (win 33.6% | avg 67.2% budget)
+  frame.render.overlay             win=  3.208ms avg=  3.208ms p95=  3.918ms max=  7.566ms calls(last=  1,win= 120,total=3565) (win 19.2% | avg 19.2% budget)
+  frame.render.world.enemies       win=  1.202ms avg=  1.202ms p95=  1.263ms max=  3.890ms calls(last=  1,win= 120,total=3565) (win 7.2% | avg 7.2% budget)
+  frame.render.world.effects       win=  0.985ms avg=  0.985ms p95=  1.142ms max=  1.878ms calls(last=  1,win= 120,total=3565) (win 5.9% | avg 5.9% budget)
+  frame.render.world.maze          win=  0.977ms avg=  0.977ms p95=  1.039ms max=  2.615ms calls(last=  1,win= 120,total=3565) (win 5.9% | avg 5.9% budget)
+  enemy.physics.frontal_collisions win=  0.937ms avg=  2.398ms p95=  2.900ms max=  4.850ms calls(last=  3,win= 307,total=1903) (win 5.6% | avg 14.4% budget)
+  enemy.physics.frontal_grid_build win=  0.860ms avg=  2.201ms p95=  2.673ms max=  4.305ms calls(last=  3,win= 307,total=1903) (win 5.2% | avg 13.2% budget)
+  enemy.physics.separation         win=  0.604ms avg=  1.546ms p95=  1.835ms max=  3.542ms calls(last=  3,win= 307,total=1903) (win 3.6% | avg 9.3% budget)
+  enemy.physics.separation_grid_build win=  0.549ms avg=  1.405ms p95=  1.668ms max=  2.952ms calls(last=  3,win= 307,total=1903) (win 3.3% | avg 8.4% budget)
+  enemy.torpedo.select_heading     win=  0.326ms avg=  0.005ms p95=  0.000ms max=  0.689ms calls(last=  0,win=   2,total=12) (win 2.0% | avg 0.0% budget)
+  enemy.ai.movement                win=  0.202ms avg=  1.625ms p95=  2.514ms max=  7.983ms calls(last= 15,win= 964,total=8205) (win 1.2% | avg 9.7% budget)
+  enemy.ai.perception              win=  0.077ms avg=  0.615ms p95=  1.204ms max=  3.649ms calls(last= 15,win= 964,total=8205) (win 0.5% | avg 3.7% budget)
+  system.spawner_update            win=  0.072ms avg=  0.183ms p95=  0.223ms max=  0.557ms calls(last=  3,win= 307,total=5163) (win 0.4% | avg 1.1% budget)
+  system.physics_collision         win=  0.053ms avg=  0.137ms p95=  0.187ms max=  0.346ms calls(last=  3,win= 307,total=5163) (win 0.3% | avg 0.8% budget)
+  enemy.ai.decision                win=  0.049ms avg=  0.392ms p95=  0.591ms max=  1.925ms calls(last= 15,win= 964,total=8205) (win 0.3% | avg 2.4% budget)
+  enemy.physics.frontal_pair_traverse win=  0.046ms avg=  0.118ms p95=  0.165ms max=  0.678ms calls(last=  3,win= 307,total=1903) (win 0.3% | avg 0.7% budget)
+  enemy.type.torpedo               win=  0.039ms avg=  2.322ms p95=  3.912ms max=  5.808ms calls(last= 69,win=7061,total=87391) (win 0.2% | avg 13.9% budget)
+[ENEMY_STATS] frame=4200 alive=144 visible=1 full=5 cheap=139 fullInBase=0 pairs(frontal=0 checks=0 separation=0 resolved=0)
+[ENEMY_WINDOW] steps=307 alive[min=144 max=144] visible[min=1 max=2] full[min=3 max=5] collisionPasses[runs=307 skips=0]
+[ENEMY_SEGMENTS] window=5.117s D{b/s=6.06 avgLen=5.16 fail=0} T{b/s=6.84 avgLen=6.26 fail=0} H{b/s=31.47 avgLen=4.99 fail=385} A{b/s=11.92 avgLen=5.19 fail=921}
+[ENEMY_GRID] frontal{cand/s=188.8 xcell/s=1.0 ins/s=189.8} separation{cand/s=188.8}
+[ENEMY_COLLISION_WINDOW] frontal{pairs/s=0.0 checks/s=0.0 baseSkip=0 kill=0(0.0%)} separation{pairs/s=0.0 resolved/s=0.0(0.0%) baseSkip=0 kill=0 wallBlock=0}
+[ENEMY_NAV_CACHE] playerCell{changes=0 flowRebuilds=0} flow{hit=0 miss=0 hit%=0.0} pathFallback{calls=0 ok=0 ok%=0.0}
+[ENEMY_SAP] updates=0 active=0 pairs=0 repairs{x=0 y=0}
+[ENEMY_PAIR_TYPES] frontal DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0 separation DD=0 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0
+[TORPEDO_HEADING] eval/s=0.39 retreat/s=0.00 pick[straight=0.0% left=100.0% right=0.0%] clear[best=15.00 chosen=15.00]
+
+[PROFILE] frame=4320 budget=16.667ms alloc(+544/-544, +1005984b/-1005984b, live=318560b peak=647624b)
+  frame.total                      win= 49.343ms avg= 49.343ms p95= 51.677ms max= 88.274ms calls(last=  1,win= 120,total=4320) (win 296.1% | avg 296.1% budget)
+  frame.render                     win= 12.869ms avg= 12.869ms p95= 13.905ms max= 88.235ms calls(last=  1,win= 120,total=4320) (win 77.2% | avg 77.2% budget)
+  frame.present                    win= 12.862ms avg= 12.862ms p95= 13.898ms max= 88.228ms calls(last=  1,win= 120,total=4320) (win 77.2% | avg 77.2% budget)
+  frame.fixed_step                 win= 12.277ms avg= 36.423ms p95= 38.005ms max= 56.261ms calls(last=  3,win= 356,total=6168) (win 73.7% | avg 218.5% budget)
+  game.update                      win=  6.772ms avg= 20.090ms p95= 21.512ms max= 34.224ms calls(last=  3,win= 356,total=5519) (win 40.6% | avg 120.5% budget)
+  system.ai_update                 win=  6.567ms avg= 19.483ms p95= 20.876ms max= 33.439ms calls(last=  3,win= 356,total=5519) (win 39.4% | avg 116.9% budget)
+  enemy.update                     win=  6.561ms avg= 19.465ms p95= 20.857ms max= 33.409ms calls(last=  3,win= 356,total=5519) (win 39.4% | avg 116.8% budget)
+  frame.render.world               win=  5.508ms avg= 11.017ms p95= 11.549ms max= 17.973ms calls(last=  2,win= 240,total=7370) (win 33.1% | avg 66.1% budget)
+  frame.render.overlay             win=  3.193ms avg=  3.193ms p95=  3.878ms max=  7.566ms calls(last=  1,win= 120,total=3685) (win 19.2% | avg 19.2% budget)
+  frame.render.world.enemies       win=  1.204ms avg=  1.204ms p95=  1.264ms max=  3.890ms calls(last=  1,win= 120,total=3685) (win 7.2% | avg 7.2% budget)
+  enemy.physics.frontal_collisions win=  0.955ms avg=  2.833ms p95=  2.944ms max=  4.850ms calls(last=  3,win= 356,total=2259) (win 5.7% | avg 17.0% budget)
+  frame.render.world.effects       win=  0.950ms avg=  0.950ms p95=  1.157ms max=  1.878ms calls(last=  1,win= 120,total=3685) (win 5.7% | avg 5.7% budget)
+  frame.render.world.maze          win=  0.903ms avg=  0.903ms p95=  0.979ms max=  2.615ms calls(last=  1,win= 120,total=3685) (win 5.4% | avg 5.4% budget)
+  enemy.physics.frontal_grid_build win=  0.864ms avg=  2.565ms p95=  2.672ms max=  4.305ms calls(last=  3,win= 356,total=2259) (win 5.2% | avg 15.4% budget)
+  enemy.physics.separation         win=  0.616ms avg=  1.827ms p95=  1.909ms max=  3.542ms calls(last=  3,win= 356,total=2259) (win 3.7% | avg 11.0% budget)
+  enemy.physics.separation_grid_build win=  0.549ms avg=  1.629ms p95=  1.688ms max=  2.952ms calls(last=  3,win= 356,total=2259) (win 3.3% | avg 9.8% budget)
+  enemy.torpedo.select_heading     win=  0.361ms avg=  0.018ms p95=  0.000ms max=  0.689ms calls(last=  0,win=   6,total=18) (win 2.2% | avg 0.1% budget)
+  enemy.ai.movement                win=  0.204ms avg=  3.087ms p95=  3.715ms max=  7.983ms calls(last= 18,win=1817,total=10022) (win 1.2% | avg 18.5% budget)
+  enemy.ai.perception              win=  0.076ms avg=  1.147ms p95=  1.718ms max=  3.649ms calls(last= 18,win=1817,total=10022) (win 0.5% | avg 6.9% budget)
+  system.spawner_update            win=  0.072ms avg=  0.214ms p95=  0.248ms max=  0.557ms calls(last=  3,win= 356,total=5519) (win 0.4% | avg 1.3% budget)
+  enemy.physics.frontal_pair_traverse win=  0.058ms avg=  0.172ms p95=  0.222ms max=  0.678ms calls(last=  3,win= 356,total=2259) (win 0.3% | avg 1.0% budget)
+  enemy.type.torpedo               win=  0.056ms avg=  3.824ms p95=  4.834ms max=  6.267ms calls(last= 69,win=8188,total=95579) (win 0.3% | avg 22.9% budget)
+  system.physics_collision         win=  0.053ms avg=  0.157ms p95=  0.190ms max=  0.346ms calls(last=  3,win= 356,total=5519) (win 0.3% | avg 0.9% budget)
+  enemy.ai.decision                win=  0.047ms avg=  0.705ms p95=  0.856ms max=  1.925ms calls(last= 18,win=1817,total=10022) (win 0.3% | avg 4.2% budget)
+[ENEMY_STATS] frame=4320 alive=144 visible=2 full=6 cheap=138 fullInBase=0 pairs(frontal=0 checks=0 separation=0 resolved=0)
+[ENEMY_WINDOW] steps=356 alive[min=144 max=144] visible[min=0 max=3] full[min=4 max=6] collisionPasses[runs=356 skips=0]
+[ENEMY_SEGMENTS] window=5.933s D{b/s=5.06 avgLen=4.59 fail=4} T{b/s=6.74 avgLen=6.43 fail=0} H{b/s=31.52 avgLen=4.98 fail=798} A{b/s=10.62 avgLen=5.37 fail=1068}
+[ENEMY_GRID] frontal{cand/s=306.4 xcell/s=2.2 ins/s=308.6} separation{cand/s=306.4}
+[ENEMY_COLLISION_WINDOW] frontal{pairs/s=17.0 checks/s=17.0 baseSkip=0 kill=0(0.0%)} separation{pairs/s=16.9 resolved/s=0.0(0.0%) baseSkip=0 kill=0 wallBlock=0}
+[ENEMY_NAV_CACHE] playerCell{changes=0 flowRebuilds=0} flow{hit=0 miss=0 hit%=0.0} pathFallback{calls=0 ok=0 ok%=0.0}
+[ENEMY_SAP] updates=0 active=0 pairs=0 repairs{x=0 y=0}
+[ENEMY_PAIR_TYPES] frontal DD=0 DT=0 DH=0 DA=0 TT=0 TH=101 TA=0 HH=0 HA=0 AA=0 separation DD=0 DT=0 DH=0 DA=0 TT=0 TH=100 TA=0 HH=0 HA=0 AA=0
+[TORPEDO_HEADING] eval/s=1.01 retreat/s=0.00 pick[straight=50.0% left=33.3% right=16.7%] clear[best=15.00 chosen=15.00]
+
+[PROFILE] frame=4440 budget=16.667ms alloc(+537/-537, +1006136b/-1006136b, live=318704b peak=647824b)
+  frame.total                      win= 53.269ms avg= 53.269ms p95= 66.184ms max= 88.274ms calls(last=  1,win= 120,total=4440) (win 319.6% | avg 319.6% budget)
+  frame.render                     win= 13.219ms avg= 13.219ms p95= 14.177ms max= 88.235ms calls(last=  1,win= 120,total=4440) (win 79.3% | avg 79.3% budget)
+  frame.present                    win= 13.212ms avg= 13.212ms p95= 14.170ms max= 88.228ms calls(last=  1,win= 120,total=4440) (win 79.3% | avg 79.3% budget)
+  frame.fixed_step                 win= 12.531ms avg= 39.996ms p95= 53.015ms max= 56.261ms calls(last=  3,win= 383,total=6551) (win 75.2% | avg 240.0% budget)
+  game.update                      win=  7.018ms avg= 22.399ms p95= 30.798ms max= 34.224ms calls(last=  3,win= 383,total=5902) (win 42.1% | avg 134.4% budget)
+  system.ai_update                 win=  6.807ms avg= 21.726ms p95= 29.945ms max= 33.439ms calls(last=  3,win= 383,total=5902) (win 40.8% | avg 130.4% budget)
+  enemy.update                     win=  6.801ms avg= 21.707ms p95= 29.923ms max= 33.409ms calls(last=  3,win= 383,total=5902) (win 40.8% | avg 130.2% budget)
+  frame.render.world               win=  5.870ms avg= 11.740ms p95= 12.518ms max= 17.973ms calls(last=  2,win= 240,total=7610) (win 35.2% | avg 70.4% budget)
+  frame.render.overlay             win=  3.221ms avg=  3.221ms p95=  3.981ms max=  7.566ms calls(last=  1,win= 120,total=3805) (win 19.3% | avg 19.3% budget)
+  frame.render.world.enemies       win=  1.221ms avg=  1.221ms p95=  1.317ms max=  3.890ms calls(last=  1,win= 120,total=3805) (win 7.3% | avg 7.3% budget)
+  frame.render.world.effects       win=  1.190ms avg=  1.190ms p95=  1.520ms max=  1.878ms calls(last=  1,win= 120,total=3805) (win 7.1% | avg 7.1% budget)
+  frame.render.world.maze          win=  1.030ms avg=  1.030ms p95=  1.119ms max=  2.615ms calls(last=  1,win= 120,total=3805) (win 6.2% | avg 6.2% budget)
+  enemy.physics.frontal_collisions win=  1.006ms avg=  3.212ms p95=  4.051ms max=  4.850ms calls(last=  3,win= 383,total=2642) (win 6.0% | avg 19.3% budget)
+  enemy.physics.frontal_grid_build win=  0.878ms avg=  2.802ms p95=  3.532ms max=  4.305ms calls(last=  3,win= 383,total=2642) (win 5.3% | avg 16.8% budget)
+  enemy.physics.separation         win=  0.646ms avg=  2.061ms p95=  2.628ms max=  3.542ms calls(last=  3,win= 383,total=2642) (win 3.9% | avg 12.4% budget)
+  enemy.physics.separation_grid_build win=  0.551ms avg=  1.760ms p95=  2.212ms max=  2.952ms calls(last=  3,win= 383,total=2642) (win 3.3% | avg 10.6% budget)
+  enemy.torpedo.select_heading     win=  0.454ms avg=  0.004ms p95=  0.000ms max=  0.689ms calls(last=  0,win=   1,total=19) (win 2.7% | avg 0.0% budget)
+  enemy.ai.movement                win=  0.193ms avg=  3.877ms p95=  6.430ms max=  7.983ms calls(last= 21,win=2408,total=12430) (win 1.2% | avg 23.3% budget)
+  enemy.physics.frontal_pair_traverse win=  0.095ms avg=  0.302ms p95=  0.391ms max=  0.678ms calls(last=  3,win= 383,total=2642) (win 0.6% | avg 1.8% budget)
+  enemy.physics.separation_pair_traverse win=  0.073ms avg=  0.234ms p95=  0.327ms max=  0.669ms calls(last=  3,win= 383,total=2642) (win 0.4% | avg 1.4% budget)
+  system.spawner_update            win=  0.072ms avg=  0.229ms p95=  0.286ms max=  0.557ms calls(last=  3,win= 383,total=5902) (win 0.4% | avg 1.4% budget)
+  enemy.ai.perception              win=  0.066ms avg=  1.332ms p95=  2.466ms max=  3.649ms calls(last= 21,win=2408,total=12430) (win 0.4% | avg 8.0% budget)
+  system.physics_collision         win=  0.057ms avg=  0.182ms p95=  0.238ms max=  0.394ms calls(last=  3,win= 383,total=5902) (win 0.3% | avg 1.1% budget)
+  enemy.type.drone                 win=  0.043ms avg=  3.686ms p95=  5.320ms max=  5.562ms calls(last= 81,win=10341,total=117791) (win 0.3% | avg 22.1% budget)
+[ENEMY_STATS] frame=4440 alive=144 visible=4 full=7 cheap=137 fullInBase=0 pairs(frontal=3 checks=3 separation=3 resolved=0)
+[ENEMY_WINDOW] steps=383 alive[min=144 max=144] visible[min=1 max=4] full[min=5 max=8] collisionPasses[runs=383 skips=0]
+[ENEMY_SEGMENTS] window=6.383s D{b/s=5.64 avgLen=4.60 fail=0} T{b/s=7.52 avgLen=6.17 fail=0} H{b/s=33.84 avgLen=4.55 fail=1268} A{b/s=10.81 avgLen=5.13 fail=1149}
+[ENEMY_GRID] frontal{cand/s=377.4 xcell/s=1.9 ins/s=379.3} separation{cand/s=377.4}
+[ENEMY_COLLISION_WINDOW] frontal{pairs/s=162.5 checks/s=162.5 baseSkip=0 kill=0(0.0%)} separation{pairs/s=162.3 resolved/s=0.0(0.0%) baseSkip=0 kill=0 wallBlock=0}
+[ENEMY_NAV_CACHE] playerCell{changes=0 flowRebuilds=0} flow{hit=0 miss=0 hit%=0.0} pathFallback{calls=0 ok=0 ok%=0.0}
+[ENEMY_SAP] updates=0 active=0 pairs=0 repairs{x=0 y=0}
+[ENEMY_PAIR_TYPES] frontal DD=1037 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0 separation DD=1036 DT=0 DH=0 DA=0 TT=0 TH=0 TA=0 HH=0 HA=0 AA=0
+[TORPEDO_HEADING] eval/s=0.16 retreat/s=0.00 pick[straight=100.0% left=0.0% right=0.0%] clear[best=15.00 chosen=15.00]
+
+[PROFILE] frame=4560 budget=16.667ms alloc(+715/-715, +1339688b/-1339688b, live=318704b peak=648016b)
+  frame.total                      win= 60.341ms avg= 60.341ms p95= 66.917ms max= 88.274ms calls(last=  1,win= 120,total=4560) (win 362.0% | avg 362.0% budget)
+  frame.render                     win= 13.579ms avg= 13.579ms p95= 14.601ms max= 88.235ms calls(last=  1,win= 120,total=4560) (win 81.5% | avg 81.5% budget)
+  frame.present                    win= 13.571ms avg= 13.571ms p95= 14.593ms max= 88.228ms calls(last=  1,win= 120,total=4560) (win 81.4% | avg 81.4% budget)
+  frame.fixed_step                 win= 12.884ms avg= 46.703ms p95= 53.184ms max= 56.261ms calls(last=  4,win= 435,total=6986) (win 77.3% | avg 280.2% budget)
+  game.update                      win=  7.352ms avg= 26.650ms p95= 31.064ms max= 34.224ms calls(last=  4,win= 435,total=6337) (win 44.1% | avg 159.9% budget)
+  system.ai_update                 win=  7.141ms avg= 25.885ms p95= 30.227ms max= 33.439ms calls(last=  4,win= 435,total=6337) (win 42.8% | avg 155.3% budget)
+  enemy.update                     win=  7.135ms avg= 25.864ms p95= 30.199ms max= 33.409ms calls(last=  4,win= 435,total=6337) (win 42.8% | avg 155.2% budget)
+  frame.render.world               win=  6.154ms avg= 12.307ms p95= 13.373ms max= 17.973ms calls(last=  2,win= 240,total=7850) (win 36.9% | avg 73.8% budget)
+  frame.render.overlay             win=  3.241ms avg=  3.241ms p95=  3.991ms max=  7.566ms calls(last=  1,win= 120,total=3925) (win 19.4% | avg 19.4% budget)
+  frame.render.world.effects       win=  1.421ms avg=  1.421ms p95=  1.837ms max=  1.969ms calls(last=  1,win= 120,total=3925) (win 8.5% | avg 8.5% budget)
+  frame.render.world.enemies       win=  1.286ms avg=  1.286ms p95=  1.382ms max=  3.890ms calls(last=  1,win= 120,total=3925) (win 7.7% | avg 7.7% budget)
+  enemy.physics.frontal_collisions win=  1.050ms avg=  3.808ms p95=  4.380ms max=  4.850ms calls(last=  4,win= 435,total=3077) (win 6.3% | avg 22.8% budget)
+  frame.render.world.maze          win=  0.991ms avg=  0.991ms p95=  1.094ms max=  2.615ms calls(last=  1,win= 120,total=3925) (win 5.9% | avg 5.9% budget)
+  enemy.pathfinding.total          win=  0.903ms avg=  0.008ms p95=  0.000ms max=  1.232ms calls(last=  0,win=   1,total=2) (win 5.4% | avg 0.0% budget)
+  enemy.physics.frontal_grid_build win=  0.888ms avg=  3.219ms p95=  3.617ms max=  4.305ms calls(last=  4,win= 435,total=3077) (win 5.3% | avg 19.3% budget)
+  enemy.physics.separation         win=  0.678ms avg=  2.457ms p95=  2.854ms max=  3.542ms calls(last=  4,win= 435,total=3077) (win 4.1% | avg 14.7% budget)
+  enemy.physics.separation_grid_build win=  0.558ms avg=  2.022ms p95=  2.318ms max=  2.952ms calls(last=  4,win= 435,total=3077) (win 3.3% | avg 12.1% budget)
+  enemy.pathfinding.search         win=  0.461ms avg=  0.004ms p95=  0.000ms max=  0.461ms calls(last=  0,win=   1,total=2) (win 2.8% | avg 0.0% budget)
+  enemy.ai.movement                win=  0.177ms avg=  5.101ms p95=  6.742ms max=  7.983ms calls(last= 32,win=3464,total=15894) (win 1.1% | avg 30.6% budget)
+  enemy.pathfinding.occupancy      win=  0.132ms avg=  0.001ms p95=  0.000ms max=  0.132ms calls(last=  0,win=   1,total=2) (win 0.8% | avg 0.0% budget)
+  enemy.physics.frontal_pair_traverse win=  0.127ms avg=  0.459ms p95=  0.630ms max=  0.678ms calls(last=  4,win= 435,total=3077) (win 0.8% | avg 2.8% budget)
+  enemy.physics.separation_pair_traverse win=  0.099ms avg=  0.358ms p95=  0.510ms max=  0.669ms calls(last=  4,win= 435,total=3077) (win 0.6% | avg 2.1% budget)
+  system.spawner_update            win=  0.072ms avg=  0.260ms p95=  0.289ms max=  0.557ms calls(last=  4,win= 435,total=6337) (win 0.4% | avg 1.6% budget)
+  system.physics_collision         win=  0.058ms avg=  0.210ms p95=  0.252ms max=  0.394ms calls(last=  4,win= 435,total=6337) (win 0.3% | avg 1.3% budget)
+[ENEMY_STATS] frame=4560 alive=144 visible=2 full=8 cheap=136 fullInBase=0 pairs(frontal=2 checks=2 separation=2 resolved=0)
+[ENEMY_WINDOW] steps=435 alive[min=144 max=144] visible[min=2 max=7] full[min=7 max=9] collisionPasses[runs=435 skips=0]
+[ENEMY_SEGMENTS] window=7.250s D{b/s=5.79 avgLen=4.27 fail=0} T{b/s=7.17 avgLen=6.68 fail=0} H{b/s=30.34 avgLen=4.85 fail=1740} A{b/s=12.00 avgLen=5.14 fail=1305}
+[ENEMY_GRID] frontal{cand/s=477.9 xcell/s=2.6 ins/s=480.5} separation{cand/s=477.9}
+[ENEMY_COLLISION_WINDOW] frontal{pairs/s=319.3 checks/s=319.3 baseSkip=0 kill=0(0.0%)} separation{pairs/s=318.2 resolved/s=0.0(0.0%) baseSkip=0 kill=0 wallBlock=0}
+[ENEMY_NAV_CACHE] playerCell{changes=0 flowRebuilds=0} flow{hit=0 miss=0 hit%=0.0} pathFallback{calls=1 ok=1 ok%=100.0}
+[ENEMY_SAP] updates=0 active=0 pairs=0 repairs{x=0 y=0}
+[ENEMY_PAIR_TYPES] frontal DD=823 DT=0 DH=1364 DA=0 TT=0 TH=0 TA=0 HH=128 HA=0 AA=0 separation DD=821 DT=0 DH=1358 DA=0 TT=0 TH=0 TA=0 HH=128 HA=0 AA=0
+
+[PROFILE] frame=4680 budget=16.667ms alloc(+550/-550, +1006512b/-1006512b, live=318704b peak=648016b)
+  frame.total                      win= 53.124ms avg= 53.124ms p95= 64.403ms max= 88.274ms calls(last=  1,win= 120,total=4680) (win 318.7% | avg 318.7% budget)
+  frame.render                     win= 13.184ms avg= 13.184ms p95= 14.014ms max= 88.235ms calls(last=  1,win= 120,total=4680) (win 79.1% | avg 79.1% budget)
+  frame.present                    win= 13.176ms avg= 13.176ms p95= 14.005ms max= 88.228ms calls(last=  1,win= 120,total=4680) (win 79.1% | avg 79.1% budget)
+  frame.fixed_step                 win= 12.497ms avg= 39.887ms p95= 50.888ms max= 56.261ms calls(last=  3,win= 383,total=7369) (win 75.0% | avg 239.3% budget)
+  game.update                      win=  6.985ms avg= 22.295ms p95= 28.849ms max= 34.224ms calls(last=  3,win= 383,total=6720) (win 41.9% | avg 133.8% budget)
+  system.ai_update                 win=  6.775ms avg= 21.623ms p95= 28.017ms max= 33.439ms calls(last=  3,win= 383,total=6720) (win 40.6% | avg 129.7% budget)
+  enemy.update                     win=  6.769ms avg= 21.603ms p95= 27.992ms max= 33.409ms calls(last=  3,win= 383,total=6720) (win 40.6% | avg 129.6% budget)
+  frame.render.world               win=  5.835ms avg= 11.671ms p95= 12.478ms max= 20.580ms calls(last=  2,win= 240,total=8090) (win 35.0% | avg 70.0% budget)
+  frame.render.overlay             win=  3.204ms avg=  3.204ms p95=  3.876ms max=  7.566ms calls(last=  1,win= 120,total=4045) (win 19.2% | avg 19.2% budget)
+  frame.render.world.enemies       win=  1.276ms avg=  1.276ms p95=  1.462ms max=  3.911ms calls(last=  1,win= 120,total=4045) (win 7.7% | avg 7.7% budget)
+  frame.render.world.effects       win=  1.227ms avg=  1.227ms p95=  1.639ms max=  2.773ms calls(last=  1,win= 120,total=4045) (win 7.4% | avg 7.4% budget)
+  enemy.physics.frontal_collisions win=  1.016ms avg=  3.243ms p95=  4.070ms max=  4.850ms calls(last=  3,win= 383,total=3460) (win 6.1% | avg 19.5% budget)
+  enemy.physics.frontal_grid_build win=  0.877ms avg=  2.800ms p95=  3.514ms max=  4.305ms calls(last=  3,win= 383,total=3460) (win 5.3% | avg 16.8% budget)
+  frame.render.world.maze          win=  0.877ms avg=  0.877ms p95=  0.962ms max=  2.615ms calls(last=  1,win= 120,total=4045) (win 5.3% | avg 5.3% budget)
+  enemy.physics.separation         win=  0.656ms avg=  2.094ms p95=  2.658ms max=  3.542ms calls(last=  3,win= 383,total=3460) (win 3.9% | avg 12.6% budget)
+  enemy.physics.separation_grid_build win=  0.555ms avg=  1.771ms p95=  2.232ms max=  2.952ms calls(last=  3,win= 383,total=3460) (win 3.3% | avg 10.6% budget)
+  enemy.ai.movement                win=  0.200ms avg=  3.821ms p95=  5.222ms max=  7.983ms calls(last= 18,win=2292,total=18186) (win 1.2% | avg 22.9% budget)
+  enemy.physics.frontal_pair_traverse win=  0.105ms avg=  0.336ms p95=  0.456ms max=  0.678ms calls(last=  3,win= 383,total=3460) (win 0.6% | avg 2.0% budget)
+  enemy.physics.separation_pair_traverse win=  0.081ms avg=  0.257ms p95=  0.371ms max=  0.669ms calls(last=  3,win= 383,total=3460) (win 0.5% | avg 1.5% budget)
+  system.spawner_update            win=  0.073ms avg=  0.233ms p95=  0.299ms max=  0.557ms calls(last=  3,win= 383,total=6720) (win 0.4% | avg 1.4% budget)
+  enemy.ai.perception              win=  0.063ms avg=  1.201ms p95=  1.760ms max=  3.649ms calls(last= 18,win=2292,total=18186) (win 0.4% | avg 7.2% budget)
+  system.physics_collision         win=  0.056ms avg=  0.180ms p95=  0.243ms max=  0.394ms calls(last=  3,win= 383,total=6720) (win 0.3% | avg 1.1% budget)
+  system.player_update             win=  0.028ms avg=  0.089ms p95=  0.113ms max=  0.355ms calls(last=  3,win= 383,total=6299) (win 0.2% | avg 0.5% budget)
+  enemy.cheap.segment_build        win=  0.027ms avg=  0.689ms p95=  0.893ms max=  1.086ms calls(last= 22,win=3026,total=26080) (win 0.2% | avg 4.1% budget)
+[ENEMY_STATS] frame=4680 alive=144 visible=4 full=6 cheap=138 fullInBase=0 pairs(frontal=5 checks=5 separation=5 resolved=0)
+[ENEMY_WINDOW] steps=383 alive[min=144 max=144] visible[min=1 max=4] full[min=5 max=8] collisionPasses[runs=383 skips=0]
+[ENEMY_SEGMENTS] window=6.383s D{b/s=5.95 avgLen=5.01 fail=1} T{b/s=7.05 avgLen=6.13 fail=0} H{b/s=29.45 avgLen=4.76 fail=1532} A{b/s=11.28 avgLen=4.68 fail=1149}
+[ENEMY_GRID] frontal{cand/s=358.7 xcell/s=2.3 ins/s=361.1} separation{cand/s=358.7}
+[ENEMY_COLLISION_WINDOW] frontal{pairs/s=239.4 checks/s=239.4 baseSkip=0 kill=0(0.0%)} separation{pairs/s=238.9 resolved/s=0.0(0.0%) baseSkip=0 kill=0 wallBlock=0}
+[ENEMY_NAV_CACHE] playerCell{changes=0 flowRebuilds=0} flow{hit=0 miss=0 hit%=0.0} pathFallback{calls=0 ok=0 ok%=0.0}
+[ENEMY_SAP] updates=0 active=0 pairs=0 repairs{x=0 y=0}
+[ENEMY_PAIR_TYPES] frontal DD=23 DT=198 DH=654 DA=0 TT=0 TH=0 TA=0 HH=653 HA=0 AA=0 separation DD=22 DT=198 DH=654 DA=0 TT=0 TH=0 TA=0 HH=651 HA=0 AA=0
+
+[PROFILE] frame=4800 budget=16.667ms alloc(+0/-0, +0b/-0b, live=318704b peak=648016b)
+  frame.total                      win= 33.947ms avg= 33.947ms p95= 63.540ms max= 88.274ms calls(last=  1,win= 120,total=4800) (win 203.7% | avg 203.7% budget)
+  frame.render                     win= 15.297ms avg= 15.297ms p95= 17.412ms max= 88.235ms calls(last=  1,win= 120,total=4800) (win 91.8% | avg 91.8% budget)
+  frame.present                    win= 15.290ms avg= 15.290ms p95= 17.405ms max= 88.228ms calls(last=  1,win= 120,total=4800) (win 91.7% | avg 91.7% budget)
+  frame.fixed_step                 win=  9.002ms avg= 18.604ms p95= 50.154ms max= 56.261ms calls(last=  1,win= 248,total=7617) (win 54.0% | avg 111.6% budget)
+  game.update                      win=  6.963ms avg= 10.386ms p95= 28.097ms max= 34.224ms calls(last=  0,win= 179,total=6899) (win 41.8% | avg 62.3% budget)
+  system.ai_update                 win=  6.753ms avg= 10.074ms p95= 27.300ms max= 33.439ms calls(last=  0,win= 179,total=6899) (win 40.5% | avg 60.4% budget)
+  enemy.update                     win=  6.747ms avg= 10.065ms p95= 27.277ms max= 33.409ms calls(last=  0,win= 179,total=6899) (win 40.5% | avg 60.4% budget)
+  frame.render.world               win=  6.041ms avg=  9.565ms p95= 12.511ms max= 20.580ms calls(last=  0,win= 190,total=8280) (win 36.2% | avg 57.4% budget)
+  frame.render.overlay             win=  2.573ms avg=  2.895ms p95=  4.910ms max=  7.566ms calls(last=  0,win= 135,total=4180) (win 15.4% | avg 17.4% budget)
+  frame.render.world.effects       win=  1.388ms avg=  1.099ms p95=  1.586ms max=  2.773ms calls(last=  0,win=  95,total=4140) (win 8.3% | avg 6.6% budget)
+  frame.render.world.enemies       win=  1.237ms avg=  0.979ms p95=  1.314ms max=  3.911ms calls(last=  0,win=  95,total=4140) (win 7.4% | avg 5.9% budget)
+  enemy.physics.frontal_collisions win=  1.005ms avg=  1.500ms p95=  4.017ms max=  4.850ms calls(last=  0,win= 179,total=3639) (win 6.0% | avg 9.0% budget)
+  frame.render.world.maze          win=  0.968ms avg=  0.766ms p95=  1.034ms max=  2.615ms calls(last=  0,win=  95,total=4140) (win 5.8% | avg 4.6% budget)
+  enemy.physics.frontal_grid_build win=  0.872ms avg=  1.301ms p95=  3.468ms max=  4.305ms calls(last=  0,win= 179,total=3639) (win 5.2% | avg 7.8% budget)
+  enemy.physics.separation         win=  0.651ms avg=  0.971ms p95=  2.614ms max=  3.542ms calls(last=  0,win= 179,total=3639) (win 3.9% | avg 5.8% budget)
+  enemy.physics.separation_grid_build win=  0.551ms avg=  0.821ms p95=  2.207ms max=  2.952ms calls(last=  0,win= 179,total=3639) (win 3.3% | avg 4.9% budget)
+  enemy.torpedo.select_heading     win=  0.348ms avg=  0.003ms p95=  0.000ms max=  0.689ms calls(last=  0,win=   1,total=20) (win 2.1% | avg 0.0% budget)
+  enemy.ai.movement                win=  0.194ms avg=  1.671ms p95=  4.805ms max=  7.983ms calls(last=  0,win=1032,total=19218) (win 1.2% | avg 10.0% budget)
+  enemy.physics.frontal_pair_traverse win=  0.100ms avg=  0.149ms p95=  0.425ms max=  0.678ms calls(last=  0,win= 179,total=3639) (win 0.6% | avg 0.9% budget)
+  enemy.physics.separation_pair_traverse win=  0.080ms avg=  0.119ms p95=  0.344ms max=  0.669ms calls(last=  0,win= 179,total=3639) (win 0.5% | avg 0.7% budget)
+  system.spawner_update            win=  0.073ms avg=  0.108ms p95=  0.286ms max=  0.557ms calls(last=  0,win= 179,total=6899) (win 0.4% | avg 0.6% budget)
+  enemy.ai.perception              win=  0.067ms avg=  0.576ms p95=  1.616ms max=  3.649ms calls(last=  0,win=1032,total=19218) (win 0.4% | avg 3.5% budget)
+  system.physics_collision         win=  0.057ms avg=  0.085ms p95=  0.222ms max=  0.394ms calls(last=  0,win= 179,total=6899) (win 0.3% | avg 0.5% budget)
+  enemy.ai.decision                win=  0.030ms avg=  0.256ms p95=  0.704ms max=  1.925ms calls(last=  0,win=1032,total=19218) (win 0.2% | avg 1.5% budget)
+INFO: TEXTURE: [ID 3] Unloaded texture data from VRAM (GPU)
+INFO: TEXTURE: [ID 4] Unloaded texture data from VRAM (GPU)
+INFO: AUDIO: Device closed successfully
+INFO: TEXTURE: [ID 2] Unloaded texture data from VRAM (GPU)
+INFO: SHADER: [ID 3] Default shader unloaded successfully
+INFO: TEXTURE: [ID 1] Default texture unloaded successfully
+INFO: Window closed successfully
+ark@rg353v:/roms2/ports/bolt$

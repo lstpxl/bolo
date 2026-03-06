@@ -116,6 +116,19 @@ exec ./bolt
 
 App exit combo: `START + SELECT`.
 
+## Compare handheld profiling logs
+
+Use the reusable comparison script to summarize A/B telemetry from two captured logs:
+
+```bash
+python3 scripts/compare-handheld-profiles.py docs/handheld-profile-22.log docs/handheld-profile-23.log
+```
+
+Convention:
+
+- first arg = baseline (usually old wiring)
+- second arg = candidate (usually new wiring)
+
 ## Links
 
 [Fire Bullets](https://bdragon1727.itch.io/fire-pixel-bullet-16x16)

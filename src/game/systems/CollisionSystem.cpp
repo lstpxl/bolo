@@ -3,6 +3,9 @@
 #include <algorithm>
 #include <cstddef>
 #include <cmath>
+#include <cstdint>
+#include <cstdio>
+#include "core/Profiling.h"
 #include "game/geometry/WorldGeometry.h"
 
 namespace {
@@ -21,6 +24,14 @@ void DecrementOriginBaseAliveCount(WorldState& world, EnemyTank& enemy) {
     origin.activeEnemies = std::max(0, origin.activeEnemies - 1);
     enemy.originBaseIndex = -1;
 }
+
+struct EnemyCollisionDeathDebugWindowStats {
+    std::uint64_t projectileKills = 0;
+    std::uint64_t projectileKillWallContact = 0;
+};
+
+EnemyCollisionDeathDebugWindowStats gEnemyCollisionDeathDebugWindowStats{};
+std::uint64_t gLastEnemyCollisionDebugPrintedFrame = 0;
 }  // namespace
 
 void UpdateCollisionSystem(GameState& state, float deltaSeconds) {
@@ -46,6 +57,13 @@ void UpdateCollisionSystem(GameState& state, float deltaSeconds) {
                 }
                 if (DistanceSq(projectile.position, enemy.position) <=
                     GameplayConstants::kProjectileHitRadius * GameplayConstants::kProjectileHitRadius) {
+                    gEnemyCollisionDeathDebugWindowStats.projectileKills += 1;
+                    if (game::geometry::IsPointInWall(
+                            world,
+                            enemy.position,
+                            GameplayConstants::kTankCollisionRadiusUnits)) {
+                        gEnemyCollisionDeathDebugWindowStats.projectileKillWallContact += 1;
+                    }
                     enemy.alive = false;
                     DecrementOriginBaseAliveCount(world, enemy);
                     projectile.alive = false;
@@ -81,6 +99,17 @@ void UpdateCollisionSystem(GameState& state, float deltaSeconds) {
                 world.playerTurnLostPending = true;
             }
         }
+    }
+
+    const auto& profiler = profiling::Profiler::Instance();
+    const std::uint64_t frameIndex = profiler.FrameIndex();
+    if (profiler.ShouldEmitPeriodicReport() && frameIndex != gLastEnemyCollisionDebugPrintedFrame) {
+        gLastEnemyCollisionDebugPrintedFrame = frameIndex;
+        std::printf(
+            "[ENEMY_KILL_DEBUG_COLLISION] projectile{kills=%llu wallContact=%llu}\n",
+            static_cast<unsigned long long>(gEnemyCollisionDeathDebugWindowStats.projectileKills),
+            static_cast<unsigned long long>(gEnemyCollisionDeathDebugWindowStats.projectileKillWallContact));
+        gEnemyCollisionDeathDebugWindowStats = EnemyCollisionDeathDebugWindowStats{};
     }
 
     if (!world.player.alive) {

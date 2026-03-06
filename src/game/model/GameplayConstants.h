@@ -23,10 +23,10 @@ struct GameplayConstants {
     static constexpr float kPlayerFireCooldownSeconds = 0.22F;       // seconds
 
     // Enemy tuning.
-    static constexpr float kEnemyDroneSpeed = 2.0F;                  // world-units / second
-    static constexpr float kEnemyTorpedoSpeed = 4.0F;                // world-units / second
-    static constexpr float kEnemyHunterSpeed = 6.0F;                 // world-units / second
-    static constexpr float kEnemyAssassinSpeed = 8.0F;               // world-units / second
+    static constexpr float kEnemyDroneSpeed = 1.0F;                  // world-units / second
+    static constexpr float kEnemyTorpedoSpeed = 2.0F;                // world-units / second
+    static constexpr float kEnemyHunterSpeed = 3.0F;                 // world-units / second
+    static constexpr float kEnemyAssassinSpeed = 4.0F;               // world-units / second
     static constexpr float kEnemyDroneFireInterval = 3.0F;           // seconds
     static constexpr float kEnemyTorpedoFireInterval = 2.0F;         // seconds
     static constexpr float kEnemyHunterFireInterval = 1.5F;          // seconds
@@ -40,12 +40,12 @@ struct GameplayConstants {
     static constexpr float kEnemyAssassinPredictionSeconds = 0.8F;   // seconds
     static constexpr float kEnemyAiRetargetMinSeconds = 0.7F;        // seconds
     static constexpr float kEnemyAiRetargetRandomSeconds = 0.9F;     // seconds
-    static constexpr int kMaxAliveEnemies = 72;                      // enemies
-    static constexpr int kMaxAliveEnemiesPerBase = 12;               // enemies / base
+    static constexpr int kMaxAliveEnemies = 999;                     // enemies
+    static constexpr int kMaxAliveEnemiesPerBase = 24;               // enemies / base
     static constexpr float kEnemyInitialFireCooldownSeconds = 0.2F;  // seconds
     static constexpr float kBaseSpawnCooldownSeconds = 0.9F;         // seconds
-    static constexpr float kEnemyPreferredSeparationUnits = 1.0F;    // world-units
-    static constexpr float kEnemyMutualKillDistanceUnits = 0.12F;    // world-units
+    static constexpr float kEnemyPreferredSeparationUnits = 2.0F;    // center distance world-units (clearance 1.0 with r1=r2=0.5)
+    static constexpr float kEnemyMutualKillDistanceUnits = 1.0F;    // world-units (r1+r2, with enemy r=0.5)
     static constexpr float kEnemyLookaheadObstacleUnits = 1.0F;      // world-units
     static constexpr float kEnemyRequiredClearRunUnits = 3.0F;       // world-units
     static constexpr float kSlowRotateFullTurnSeconds = 4.0F;        // seconds

@@ -2,6 +2,18 @@
 
 #include "core/Types.h"
 #include "game/model/EntityTypes.h"
+#include "game/navigation/CellCoordCache.h"
+#include "game/navigation/PlayerFlowField.h"
+#include "game/spatial/SweepPruneBroadPhase.h"
+
+struct NavigationRuntimeCache {
+    game::navigation::CellCoordCache cellCoords{};
+    game::navigation::PlayerFlowField playerFlowField{};
+};
+
+struct CollisionRuntimeCache {
+    game::spatial::SweepPruneBroadPhase sweepPrune{};
+};
 
 struct WorldState {
     MazeState maze{};
@@ -30,6 +42,8 @@ struct WorldState {
     bool levelCleared = false;
     bool gameOver = false;
     float levelClearMessageSeconds = 0.0F;
+    NavigationRuntimeCache navigationCache{};
+    CollisionRuntimeCache collisionCache{};
 };
 
 struct GameState {

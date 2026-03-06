@@ -108,6 +108,9 @@ void EnemySpatialGrid::ForEachPairInSameOrAdjacentCell(
                 }
                 const int lo = std::min(i, j);
                 const int hi = std::max(i, j);
+                if (lo == hi) {
+                    continue;
+                }
                 const std::size_t key = static_cast<std::size_t>(lo * maxN + hi);
                 if (pairChecked[key]) {
                     continue;
@@ -146,6 +149,9 @@ void EnemySpatialGrid::ForEachPairInSameOrAdjacentCell(
                         }
                         const int lo = std::min(i, j);
                         const int hi = std::max(i, j);
+                        if (lo == hi) {
+                            continue;
+                        }
                         const std::size_t key = static_cast<std::size_t>(lo * maxN + hi);
                         if (pairChecked[key]) {
                             continue;

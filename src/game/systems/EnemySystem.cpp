@@ -11,7 +11,10 @@
 #include "core/Profiling.h"
 #include "core/Random.h"
 #include "game/geometry/WorldGeometry.h"
+#include "game/navigation/CellCoordCache.h"
+#include "game/navigation/PlayerFlowField.h"
 #include "game/spatial/EnemySpatialGrid.h"
+#include "game/spatial/SweepPruneBroadPhase.h"
 #include "game/systems/ProjectileSystem.h"
 
 namespace {
@@ -34,6 +37,38 @@ constexpr float kSegmentBuildMinLengthUnits = 2.0F;
 constexpr float kOffscreenSegmentLengthUnits = 8.0F;
 constexpr float kOffscreenTorpedoSegmentLengthUnits = 12.0F;
 constexpr float kOffscreenTorpedoDetectIntervalSeconds = 0.6F;
+constexpr int kEnemyTypeTelemetryCount = 4;
+constexpr bool kUseFlowFieldPathGuidance = true;
+constexpr bool kUseSweepPruneBroadPhase = true;
+
+int EnemyTypeTelemetryIndex(EnemyType type) {
+    switch (type) {
+    case EnemyType::Drone:
+        return 0;
+    case EnemyType::Torpedo:
+        return 1;
+    case EnemyType::Hunter:
+        return 2;
+    case EnemyType::Assassin:
+        return 3;
+    }
+    return 0;
+}
+
+const char* EnemyTypeTelemetryLabel(int idx) {
+    switch (idx) {
+    case 0:
+        return "D";
+    case 1:
+        return "T";
+    case 2:
+        return "H";
+    case 3:
+        return "A";
+    default:
+        return "?";
+    }
+}
 
 EnemyRuntimeStats gEnemyRuntimeStats{};
 std::uint64_t gLastEnemyStatsPrintedFrame = 0;
@@ -45,10 +80,111 @@ struct EnemyRuntimeWindowStats {
     int minFullTierCount = std::numeric_limits<int>::max();
     int maxFullTierCount = 0;
     std::uint64_t fixedSteps = 0;
+    float windowSeconds = 0.0F;
     std::uint64_t collisionPassRuns = 0;
     std::uint64_t collisionPassSkips = 0;
+    std::uint64_t frontalGridCandidates = 0;
+    std::uint64_t frontalGridCellTransitions = 0;
+    std::uint64_t frontalGridInsertEstimate = 0;
+    std::uint64_t separationGridCandidates = 0;
+    std::uint64_t frontalPairsVisited = 0;
+    std::uint64_t frontalPairsDistanceChecks = 0;
+    std::uint64_t separationPairsVisited = 0;
+    std::uint64_t separationPairsResolved = 0;
+    std::uint64_t frontalPairsBaseSkipped = 0;
+    std::uint64_t separationPairsBaseSkipped = 0;
+    std::uint64_t frontalPairsMutualKills = 0;
+    std::uint64_t separationPairsMutualKills = 0;
+    std::uint64_t separationPairsWallBlockedPushes = 0;
+    std::array<std::uint64_t, kEnemyTypeTelemetryCount * kEnemyTypeTelemetryCount> frontalPairsByType{};
+    std::array<std::uint64_t, kEnemyTypeTelemetryCount * kEnemyTypeTelemetryCount> separationPairsByType{};
+    std::array<std::uint64_t, kEnemyTypeTelemetryCount> segmentsBuiltByType{};
+    std::array<float, kEnemyTypeTelemetryCount> segmentLengthSumByType{};
+    std::array<std::uint64_t, kEnemyTypeTelemetryCount> segmentBuildFailsByType{};
+    std::uint64_t torpedoHeadingEvalCalls = 0;
+    std::uint64_t torpedoHeadingRetreatStarts = 0;
+    std::uint64_t torpedoHeadingChosenStraight = 0;
+    std::uint64_t torpedoHeadingChosenLeft = 0;
+    std::uint64_t torpedoHeadingChosenRight = 0;
+    double torpedoHeadingBestClearSum = 0.0;
+    double torpedoHeadingChosenClearSum = 0.0;
+    std::uint64_t navPlayerCellChanges = 0;
+    std::uint64_t navFlowRebuilds = 0;
+    std::uint64_t navFlowHeadingSelections = 0;
+    std::uint64_t navFlowMisses = 0;
+    std::uint64_t navPathBuildCalls = 0;
+    std::uint64_t navPathBuildSuccesses = 0;
+    std::uint64_t sapUpdateCalls = 0;
+    std::uint64_t sapActiveItems = 0;
+    std::uint64_t sapCandidatePairs = 0;
+    std::uint64_t sapXRepairs = 0;
+    std::uint64_t sapYRepairs = 0;
+    std::uint64_t killDebugEnemyEnemyEvents = 0;
+    std::uint64_t killDebugEnemyEnemyFrontalEvents = 0;
+    std::uint64_t killDebugEnemyEnemySeparationEvents = 0;
+    std::uint64_t killDebugEnemyEnemyReenterEither = 0;
+    std::uint64_t killDebugEnemyEnemyReenterBoth = 0;
+    std::uint64_t killDebugEnemyEnemyWallContact = 0;
+    std::uint64_t killDebugEnemyEnemySamplesPrinted = 0;
+    float killDebugEnemyEnemyMinDistance = std::numeric_limits<float>::max();
+    float killDebugEnemyEnemyMaxDistance = 0.0F;
+    double killDebugEnemyEnemyDistanceSum = 0.0;
 };
 EnemyRuntimeWindowStats gEnemyRuntimeWindowStats{};
+
+void RecordEnemyEnemyMutualKillDebug(
+    const WorldState& world,
+    int i,
+    int j,
+    const EnemyTank& a,
+    const EnemyTank& b,
+    float centerDistance,
+    bool reenteredA,
+    bool reenteredB,
+    bool frontalPass) {
+    EnemyRuntimeWindowStats& stats = gEnemyRuntimeWindowStats;
+    stats.killDebugEnemyEnemyEvents += 1;
+    if (frontalPass) {
+        stats.killDebugEnemyEnemyFrontalEvents += 1;
+    } else {
+        stats.killDebugEnemyEnemySeparationEvents += 1;
+    }
+    if (reenteredA || reenteredB) {
+        stats.killDebugEnemyEnemyReenterEither += 1;
+    }
+    if (reenteredA && reenteredB) {
+        stats.killDebugEnemyEnemyReenterBoth += 1;
+    }
+    const bool wallA = game::geometry::IsPointInWall(world, a.position, GameplayConstants::kTankCollisionRadiusUnits);
+    const bool wallB = game::geometry::IsPointInWall(world, b.position, GameplayConstants::kTankCollisionRadiusUnits);
+    if (wallA || wallB) {
+        stats.killDebugEnemyEnemyWallContact += 1;
+    }
+    stats.killDebugEnemyEnemyMinDistance = std::min(stats.killDebugEnemyEnemyMinDistance, centerDistance);
+    stats.killDebugEnemyEnemyMaxDistance = std::max(stats.killDebugEnemyEnemyMaxDistance, centerDistance);
+    stats.killDebugEnemyEnemyDistanceSum += centerDistance;
+
+    if (stats.killDebugEnemyEnemySamplesPrinted < 12U) {
+        std::printf(
+            "[ENEMY_KILL_DEBUG_EVENT] reason=enemy_enemy pass=%s pair=%d,%d dist=%.3f killDist=%.3f reenter=%d,%d wallContact=%d,%d tier=%d,%d posA=(%.2f,%.2f) posB=(%.2f,%.2f)\n",
+            frontalPass ? "frontal" : "separation",
+            i,
+            j,
+            centerDistance,
+            GameplayConstants::kEnemyMutualKillDistanceUnits,
+            reenteredA ? 1 : 0,
+            reenteredB ? 1 : 0,
+            wallA ? 1 : 0,
+            wallB ? 1 : 0,
+            static_cast<int>(a.simTier),
+            static_cast<int>(b.simTier),
+            a.position.x,
+            a.position.y,
+            b.position.x,
+            b.position.y);
+        stats.killDebugEnemyEnemySamplesPrinted += 1;
+    }
+}
 
 void AccumulateEnemyWindowStats(int aliveCount, int visibleCount, int fullTierCount) {
     EnemyRuntimeWindowStats& stats = gEnemyRuntimeWindowStats;
@@ -59,6 +195,20 @@ void AccumulateEnemyWindowStats(int aliveCount, int visibleCount, int fullTierCo
     stats.maxVisibleCount = std::max(stats.maxVisibleCount, visibleCount);
     stats.minFullTierCount = std::min(stats.minFullTierCount, fullTierCount);
     stats.maxFullTierCount = std::max(stats.maxFullTierCount, fullTierCount);
+}
+
+void AccumulateEnemyWindowTime(float deltaSeconds) {
+    gEnemyRuntimeWindowStats.windowSeconds += std::max(0.0F, deltaSeconds);
+}
+
+void AccumulateEnemyWindowPairStats(const EnemyRuntimeStats& frameStats) {
+    gEnemyRuntimeWindowStats.frontalPairsVisited += static_cast<std::uint64_t>(std::max(0, frameStats.frontalPairsVisited));
+    gEnemyRuntimeWindowStats.frontalPairsDistanceChecks +=
+        static_cast<std::uint64_t>(std::max(0, frameStats.frontalPairsDistanceChecks));
+    gEnemyRuntimeWindowStats.separationPairsVisited +=
+        static_cast<std::uint64_t>(std::max(0, frameStats.separationPairsVisited));
+    gEnemyRuntimeWindowStats.separationPairsResolved +=
+        static_cast<std::uint64_t>(std::max(0, frameStats.separationPairsResolved));
 }
 
 void ResetEnemyWindowStats() {
@@ -104,7 +254,7 @@ float EnemySpeed(EnemyType type, EnemySubtype subtype, bool assassinHasLineOfSig
     } else if (type == EnemyType::Hunter) {
         baseSpeed = GameplayConstants::kEnemyHunterSpeed;
     } else {
-        baseSpeed = assassinHasLineOfSight ? 6.0F : 3.0F;
+        baseSpeed = assassinHasLineOfSight ? 3.0F : 1.5F;
     }
     return baseSpeed * EnemySubtypeSpeedMultiplier(type, subtype);
 }
@@ -149,49 +299,13 @@ float DistancePointToSegment(const Vec2f& p, const Vec2f& a, const Vec2f& b) {
     return Distance(p, closest);
 }
 
-float Cross2D(const Vec2f& a, const Vec2f& b, const Vec2f& c) {
-    return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
-}
-
-bool IsPointOnSegment(const Vec2f& p, const Vec2f& a, const Vec2f& b) {
-    constexpr float kEps = 0.0001F;
-    return p.x >= std::min(a.x, b.x) - kEps && p.x <= std::max(a.x, b.x) + kEps &&
-        p.y >= std::min(a.y, b.y) - kEps && p.y <= std::max(a.y, b.y) + kEps;
-}
-
-bool SegmentsIntersect(const Vec2f& a1, const Vec2f& a2, const Vec2f& b1, const Vec2f& b2) {
-    const float d1 = Cross2D(a1, a2, b1);
-    const float d2 = Cross2D(a1, a2, b2);
-    const float d3 = Cross2D(b1, b2, a1);
-    const float d4 = Cross2D(b1, b2, a2);
-    constexpr float kEps = 0.0001F;
-
-    if (((d1 > kEps && d2 < -kEps) || (d1 < -kEps && d2 > kEps)) &&
-        ((d3 > kEps && d4 < -kEps) || (d3 < -kEps && d4 > kEps))) {
-        return true;
+std::size_t PairTypeMatrixIndex(EnemyType a, EnemyType b) {
+    int ai = EnemyTypeTelemetryIndex(a);
+    int bi = EnemyTypeTelemetryIndex(b);
+    if (ai > bi) {
+        std::swap(ai, bi);
     }
-    if (std::fabs(d1) <= kEps && IsPointOnSegment(b1, a1, a2)) {
-        return true;
-    }
-    if (std::fabs(d2) <= kEps && IsPointOnSegment(b2, a1, a2)) {
-        return true;
-    }
-    if (std::fabs(d3) <= kEps && IsPointOnSegment(a1, b1, b2)) {
-        return true;
-    }
-    if (std::fabs(d4) <= kEps && IsPointOnSegment(a2, b1, b2)) {
-        return true;
-    }
-    return false;
-}
-
-float SegmentToSegmentDistance(const Vec2f& a1, const Vec2f& a2, const Vec2f& b1, const Vec2f& b2) {
-    if (SegmentsIntersect(a1, a2, b1, b2)) {
-        return 0.0F;
-    }
-    return std::min(
-        std::min(DistancePointToSegment(a1, b1, b2), DistancePointToSegment(a2, b1, b2)),
-        std::min(DistancePointToSegment(b1, a1, a2), DistancePointToSegment(b2, a1, a2)));
+    return static_cast<std::size_t>(ai * kEnemyTypeTelemetryCount + bi);
 }
 
 int RandomRotateDirection(Random& random) {
@@ -278,24 +392,8 @@ float FreeDistanceAheadWallsOnly(
     float headingRadians,
     float maxDistance,
     float clearanceUnits) {
-    const Vec2f dir = DirectionFromHeading(headingRadians);
-    const float sampleStep = std::max(0.02F, GameplayConstants::kLineOfSightSampleSpacing);
-    float dist = sampleStep;
-    while (dist <= maxDistance) {
-        const float clampedDist = std::min(dist, maxDistance);
-        const Vec2f sample{
-            .x = from.x + dir.x * clampedDist,
-            .y = from.y + dir.y * clampedDist,
-        };
-        if (game::geometry::IsPointInWall(world, sample, clearanceUnits)) {
-            return clampedDist;
-        }
-        if (clampedDist >= maxDistance) {
-            break;
-        }
-        dist += sampleStep;
-    }
-    return maxDistance;
+    return game::geometry::FreeDistanceAheadGridWallsOnly(
+        world, from, headingRadians, maxDistance, clearanceUnits, 1.0F);
 }
 
 void DecrementOriginBaseAliveCount(WorldState& world, EnemyTank& enemy) {
@@ -337,41 +435,39 @@ float ChooseBestTurnHeading(
     return std::numeric_limits<float>::quiet_NaN();
 }
 
-int ClampCellX(const WorldState& world, float x) {
-    const int maxX = world.maze.widthCells - 1;
-    const int cell = static_cast<int>(x / static_cast<float>(world.maze.cellSizeUnits));
-    return std::max(0, std::min(maxX, cell));
+int ClampCellX(const game::navigation::CellCoordCache& cellCache, float x) {
+    return cellCache.ClampCellX(x);
 }
 
-int ClampCellY(const WorldState& world, float y) {
-    const int maxY = world.maze.heightCells - 1;
-    const int cell = static_cast<int>(y / static_cast<float>(world.maze.cellSizeUnits));
-    return std::max(0, std::min(maxY, cell));
+int ClampCellY(const game::navigation::CellCoordCache& cellCache, float y) {
+    return cellCache.ClampCellY(y);
 }
 
-int CellIndex(const WorldState& world, int x, int y) {
-    return y * world.maze.widthCells + x;
+int CellIndex(const game::navigation::CellCoordCache& cellCache, int x, int y) {
+    return cellCache.CellIndex(x, y);
 }
 
-Vec2f CellCenter(const WorldState& world, int x, int y) {
-    const float cellSize = static_cast<float>(world.maze.cellSizeUnits);
-    return Vec2f{
-        .x = (static_cast<float>(x) + 0.5F) * cellSize,
-        .y = (static_cast<float>(y) + 0.5F) * cellSize,
-    };
+Vec2f CellCenter(const game::navigation::CellCoordCache& cellCache, int x, int y) {
+    return cellCache.CellCenter(x, y);
 }
 
-bool CanStepToNeighbor(const WorldState& world, int x, int y, int nx, int ny) {
+bool CanStepToNeighbor(
+    const WorldState& world,
+    const game::navigation::CellCoordCache& cellCache,
+    int x,
+    int y,
+    int nx,
+    int ny) {
     if (nx < 0 || ny < 0 || nx >= world.maze.widthCells || ny >= world.maze.heightCells) {
         return false;
     }
     const bool startInsideBase =
-        IsPointInUndestroyedBase(world, CellCenter(world, x, y), GameplayConstants::kTankCollisionRadiusUnits);
+        IsPointInUndestroyedBase(world, CellCenter(cellCache, x, y), GameplayConstants::kTankCollisionRadiusUnits);
     if (!startInsideBase &&
-        IsPointInUndestroyedBase(world, CellCenter(world, nx, ny), GameplayConstants::kTankCollisionRadiusUnits)) {
+        IsPointInUndestroyedBase(world, CellCenter(cellCache, nx, ny), GameplayConstants::kTankCollisionRadiusUnits)) {
         return false;
     }
-    const MazeCell& cell = world.maze.cells[static_cast<std::size_t>(CellIndex(world, x, y))];
+    const MazeCell& cell = world.maze.cells[static_cast<std::size_t>(CellIndex(cellCache, x, y))];
     if (nx == x + 1) {
         return !cell.eastWall;
     }
@@ -438,7 +534,11 @@ float HeuristicManhattan(int x, int y, int tx, int ty) {
     return static_cast<float>(std::abs(tx - x) + std::abs(ty - y));
 }
 
-void BuildEnemyOccupancy(const GameState& state, int ignoreEnemyIndex, std::vector<bool>& occupied) {
+void BuildEnemyOccupancy(
+    const GameState& state,
+    const game::navigation::CellCoordCache& cellCache,
+    int ignoreEnemyIndex,
+    std::vector<bool>& occupied) {
     const int totalCells = state.world.maze.widthCells * state.world.maze.heightCells;
     occupied.assign(static_cast<std::size_t>(totalCells), false);
     for (int i = 0; i < static_cast<int>(state.world.enemies.size()); ++i) {
@@ -449,14 +549,19 @@ void BuildEnemyOccupancy(const GameState& state, int ignoreEnemyIndex, std::vect
         if (!enemy.alive) {
             continue;
         }
-        const int cx = ClampCellX(state.world, enemy.position.x);
-        const int cy = ClampCellY(state.world, enemy.position.y);
-        occupied[static_cast<std::size_t>(CellIndex(state.world, cx, cy))] = true;
+        const int cx = ClampCellX(cellCache, enemy.position.x);
+        const int cy = ClampCellY(cellCache, enemy.position.y);
+        occupied[static_cast<std::size_t>(CellIndex(cellCache, cx, cy))] = true;
     }
 }
 
-bool BuildAssassinPath(GameState& state, EnemyTank& enemy, int enemyIndex) {
+bool BuildAssassinPath(
+    GameState& state,
+    const game::navigation::CellCoordCache& cellCache,
+    EnemyTank& enemy,
+    int enemyIndex) {
     profiling::ScopedProfile totalScope(profiling::Scope::PathfindingTotal, true);
+    gEnemyRuntimeWindowStats.navPathBuildCalls += 1;
     const int width = state.world.maze.widthCells;
     const int height = state.world.maze.heightCells;
     const int totalCells = width * height;
@@ -464,12 +569,12 @@ bool BuildAssassinPath(GameState& state, EnemyTank& enemy, int enemyIndex) {
         return false;
     }
 
-    const int startX = ClampCellX(state.world, enemy.position.x);
-    const int startY = ClampCellY(state.world, enemy.position.y);
-    const int goalX = ClampCellX(state.world, state.world.player.position.x);
-    const int goalY = ClampCellY(state.world, state.world.player.position.y);
-    const int startIndex = CellIndex(state.world, startX, startY);
-    const int goalIndex = CellIndex(state.world, goalX, goalY);
+    const int startX = ClampCellX(cellCache, enemy.position.x);
+    const int startY = ClampCellY(cellCache, enemy.position.y);
+    const int goalX = ClampCellX(cellCache, state.world.player.position.x);
+    const int goalY = ClampCellY(cellCache, state.world.player.position.y);
+    const int startIndex = CellIndex(cellCache, startX, startY);
+    const int goalIndex = CellIndex(cellCache, goalX, goalY);
     if (startIndex == goalIndex) {
         enemy.pathWaypointCount = 0;
         enemy.pathWaypointIndex = 0;
@@ -486,7 +591,7 @@ bool BuildAssassinPath(GameState& state, EnemyTank& enemy, int enemyIndex) {
 
     {
         profiling::ScopedProfile occupancyScope(profiling::Scope::PathfindingOccupancy, true);
-        BuildEnemyOccupancy(state, enemyIndex, occupied);
+        BuildEnemyOccupancy(state, cellCache, enemyIndex, occupied);
     }
     occupied[static_cast<std::size_t>(startIndex)] = false;
     occupied[static_cast<std::size_t>(goalIndex)] = false;
@@ -526,10 +631,10 @@ bool BuildAssassinPath(GameState& state, EnemyTank& enemy, int enemyIndex) {
             for (int i = 0; i < 4; ++i) {
                 const int nx = x + dx[static_cast<std::size_t>(i)];
                 const int ny = y + dy[static_cast<std::size_t>(i)];
-                if (!CanStepToNeighbor(state.world, x, y, nx, ny)) {
+                if (!CanStepToNeighbor(state.world, cellCache, x, y, nx, ny)) {
                     continue;
                 }
-                const int ni = CellIndex(state.world, nx, ny);
+                const int ni = CellIndex(cellCache, nx, ny);
                 if (occupied[static_cast<std::size_t>(ni)] && ni != goalIndex) {
                     continue;
                 }
@@ -603,29 +708,42 @@ bool BuildAssassinPath(GameState& state, EnemyTank& enemy, int enemyIndex) {
             if (enemy.pathWaypointCount >= EnemyTank::kMaxPathWaypoints) {
                 break;
             }
-            enemy.pathWaypoints[static_cast<std::size_t>(enemy.pathWaypointCount)] = CellCenter(state.world, cx, cy);
+            enemy.pathWaypoints[static_cast<std::size_t>(enemy.pathWaypointCount)] = CellCenter(cellCache, cx, cy);
             ++enemy.pathWaypointCount;
         }
     }
-    return enemy.pathWaypointCount > 0;
+    const bool success = enemy.pathWaypointCount > 0;
+    if (success) {
+        gEnemyRuntimeWindowStats.navPathBuildSuccesses += 1;
+    }
+    return success;
 }
 
-bool BuildAssassinPathToTarget(GameState& state, EnemyTank& enemy, int enemyIndex, const Vec2f& target) {
+bool BuildAssassinPathToTarget(
+    GameState& state,
+    const game::navigation::CellCoordCache& cellCache,
+    EnemyTank& enemy,
+    int enemyIndex,
+    const Vec2f& target) {
     const Vec2f previousPlayerPosition = state.world.player.position;
     state.world.player.position = target;
-    const bool built = BuildAssassinPath(state, enemy, enemyIndex);
+    const bool built = BuildAssassinPath(state, cellCache, enemy, enemyIndex);
     state.world.player.position = previousPlayerPosition;
     return built;
 }
 
-Vec2f RandomMazePoint(const WorldState& world, Random& random) {
+Vec2f RandomMazePoint(
+    const WorldState& world,
+    const game::navigation::CellCoordCache& cellCache,
+    Random& random) {
     const int cellX = random.NextInt(0, world.maze.widthCells - 1);
     const int cellY = random.NextInt(0, world.maze.heightCells - 1);
-    return CellCenter(world, cellX, cellY);
+    return CellCenter(cellCache, cellX, cellY);
 }
 
 bool BuildAssassinPathToFarRandomTarget(
     GameState& state,
+    const game::navigation::CellCoordCache& cellCache,
     EnemyTank& enemy,
     int enemyIndex,
     Random& random) {
@@ -634,18 +752,66 @@ bool BuildAssassinPathToFarRandomTarget(
     constexpr float kMinRandomTargetDistanceSq = kMinRandomTargetDistanceUnits * kMinRandomTargetDistanceUnits;
     constexpr int kMaxTargetAttempts = 24;
     for (int attempt = 0; attempt < kMaxTargetAttempts; ++attempt) {
-        const Vec2f randomTarget = RandomMazePoint(state.world, random);
+        const Vec2f randomTarget = RandomMazePoint(state.world, cellCache, random);
         if (DistanceSq(randomTarget, enemy.position) < kMinRandomTargetDistanceSq) {
             continue;
         }
-        if (BuildAssassinPathToTarget(state, enemy, enemyIndex, randomTarget)) {
+        if (BuildAssassinPathToTarget(state, cellCache, enemy, enemyIndex, randomTarget)) {
             return true;
         }
     }
 
     // Fallback: still pick some random destination if no far target succeeded.
-    const Vec2f fallbackTarget = RandomMazePoint(state.world, random);
-    return BuildAssassinPathToTarget(state, enemy, enemyIndex, fallbackTarget);
+    const Vec2f fallbackTarget = RandomMazePoint(state.world, cellCache, random);
+    return BuildAssassinPathToTarget(state, cellCache, enemy, enemyIndex, fallbackTarget);
+}
+
+bool TrySelectAssassinFlowHeading(
+    const game::navigation::CellCoordCache& cellCache,
+    const game::navigation::PlayerFlowField& flowField,
+    EnemyTank& enemy,
+    float& outHeadingRadians) {
+    if (!flowField.IsBuiltFor(cellCache.PlayerCellVersion())) {
+        gEnemyRuntimeWindowStats.navFlowMisses += 1;
+        return false;
+    }
+
+    const game::navigation::MazeCellCoord enemyCell = cellCache.WorldToCell(enemy.position);
+    const int enemyCellHash = cellCache.CellHash(enemyCell.x, enemyCell.y);
+    const int playerHash = cellCache.PlayerCellHash();
+    if (enemy.cachedPlayerCellHash != playerHash) {
+        enemy.cachedPlayerCellHash = playerHash;
+        enemy.expectedPathCellHash = -1;
+    }
+    if (enemy.expectedPathCellHash >= 0 && enemyCellHash != enemy.expectedPathCellHash) {
+        enemy.expectedPathCellHash = -1;
+        gEnemyRuntimeWindowStats.navFlowMisses += 1;
+        return false;
+    }
+
+    const int nextCellHash = flowField.NextCellHash(enemyCellHash);
+    if (nextCellHash < 0 || nextCellHash == enemyCellHash) {
+        enemy.expectedPathCellHash = enemyCellHash;
+        gEnemyRuntimeWindowStats.navFlowMisses += 1;
+        return false;
+    }
+
+    const Vec2f nextCenter = flowField.NextCellCenter(enemyCellHash, cellCache);
+    const Vec2f toNext{
+        .x = nextCenter.x - enemy.position.x,
+        .y = nextCenter.y - enemy.position.y,
+    };
+    const Vec2f stepDir = NormalizeOrZero(toNext);
+    if (stepDir.x == 0.0F && stepDir.y == 0.0F) {
+        enemy.expectedPathCellHash = nextCellHash;
+        gEnemyRuntimeWindowStats.navFlowMisses += 1;
+        return false;
+    }
+
+    enemy.expectedPathCellHash = nextCellHash;
+    outHeadingRadians = QuantizeToEightDirections(std::atan2(stepDir.x, -stepDir.y));
+    gEnemyRuntimeWindowStats.navFlowHeadingSelections += 1;
+    return true;
 }
 
 bool SelectDroneReturnToBaseHeading(
@@ -866,6 +1032,7 @@ float SelectTorpedoMoveHeading(
     bool& decidedStraight,
     const game::spatial::EnemySpatialGrid* spatialGrid) {
     profiling::ScopedProfile selectScope(profiling::Scope::EnemyTorpedoSelectHeading, true);
+    gEnemyRuntimeWindowStats.torpedoHeadingEvalCalls += 1;
     startRetreat = false;
     decidedStraight = true;
     const float straightHeading = QuantizeToEightDirections(enemy.headingRadians);
@@ -906,6 +1073,7 @@ float SelectTorpedoMoveHeading(
         leftClear < kTorpedoImmediateObstacleDistanceUnits &&
         rightClear < kTorpedoImmediateObstacleDistanceUnits) {
         startRetreat = true;
+        gEnemyRuntimeWindowStats.torpedoHeadingRetreatStarts += 1;
         return straightHeading;
     }
 
@@ -934,9 +1102,19 @@ float SelectTorpedoMoveHeading(
     const int chosenIndex =
         bestIndices[static_cast<std::size_t>(random.NextInt(0, std::max(0, bestCount - 1)))];
     const Candidate& chosen = candidates[static_cast<std::size_t>(chosenIndex)];
+    gEnemyRuntimeWindowStats.torpedoHeadingBestClearSum += static_cast<double>(bestClear);
+    gEnemyRuntimeWindowStats.torpedoHeadingChosenClearSum += static_cast<double>(chosen.clearDistance);
+    if (chosenIndex == 0) {
+        gEnemyRuntimeWindowStats.torpedoHeadingChosenStraight += 1;
+    } else if (chosenIndex == 1) {
+        gEnemyRuntimeWindowStats.torpedoHeadingChosenLeft += 1;
+    } else {
+        gEnemyRuntimeWindowStats.torpedoHeadingChosenRight += 1;
+    }
     const float maxSegmentLength = chosen.clearDistance - kSegmentBuildSafetyReduceUnits;
     if (maxSegmentLength < kSegmentBuildMinLengthUnits) {
         startRetreat = true;
+        gEnemyRuntimeWindowStats.torpedoHeadingRetreatStarts += 1;
         return straightHeading;
     }
     enemy.torpedoMoveDecisionHoldRemainingUnits =
@@ -1109,11 +1287,25 @@ bool IsMovementBlockedByEnemies(
     return false;
 }
 
-void ResolveEnemySeparation(
+void ResolveEnemySeparationLegacyGrid(
     WorldState& world,
     game::spatial::EnemySpatialGrid& grid,
-    const std::vector<std::uint8_t>& includeMask) {
+    const std::vector<std::uint8_t>& includeMask,
+    const std::vector<std::uint8_t>& reenteredFullTierMask) {
     profiling::ScopedProfile scope(profiling::Scope::EnemySeparation, true);
+    {
+        std::uint64_t included = 0;
+        for (std::size_t i = 0; i < world.enemies.size() && i < includeMask.size(); ++i) {
+            if (includeMask[i] == 0U) {
+                continue;
+            }
+            if (!world.enemies[i].alive) {
+                continue;
+            }
+            included += 1;
+        }
+        gEnemyRuntimeWindowStats.separationGridCandidates += included;
+    }
     {
         profiling::ScopedProfile buildScope(profiling::Scope::EnemySeparationGridBuild, true);
         grid.BuildFromPositions(world, nullptr, &includeMask);
@@ -1121,74 +1313,118 @@ void ResolveEnemySeparation(
     {
         profiling::ScopedProfile pairTraverseScope(profiling::Scope::EnemySeparationPairTraverse, true);
         grid.ForEachPairInSameOrAdjacentCell(world.enemies, [&](int i, int j) {
-        gEnemyRuntimeStats.separationPairsVisited += 1;
-        EnemyTank& a = world.enemies[static_cast<std::size_t>(i)];
-        EnemyTank& b = world.enemies[static_cast<std::size_t>(j)];
-        if (game::geometry::IsPointInUndestroyedBase(world, a.position, 1.0F) ||
-            game::geometry::IsPointInUndestroyedBase(world, b.position, 1.0F)) {
-            return;
-        }
-        profiling::ScopedProfile pairScope(profiling::Scope::EnemySeparationPairResolve, true);
+            gEnemyRuntimeStats.separationPairsVisited += 1;
+            EnemyTank& a = world.enemies[static_cast<std::size_t>(i)];
+            EnemyTank& b = world.enemies[static_cast<std::size_t>(j)];
+            gEnemyRuntimeWindowStats.separationPairsByType[PairTypeMatrixIndex(a.type, b.type)] += 1;
+            if (game::geometry::IsPointInUndestroyedBase(world, a.position, 1.0F) ||
+                game::geometry::IsPointInUndestroyedBase(world, b.position, 1.0F)) {
+                gEnemyRuntimeWindowStats.separationPairsBaseSkipped += 1;
+                return;
+            }
+            profiling::ScopedProfile pairScope(profiling::Scope::EnemySeparationPairResolve, true);
 
-        const float distSq = DistanceSq(a.position, b.position);
-        const float killDistSq =
-            GameplayConstants::kEnemyMutualKillDistanceUnits * GameplayConstants::kEnemyMutualKillDistanceUnits;
-        if (distSq <= killDistSq) {
-            a.alive = false;
-            b.alive = false;
-            DecrementOriginBaseAliveCount(world, a);
-            DecrementOriginBaseAliveCount(world, b);
-            return;
-        }
-        const float sepSq =
-            GameplayConstants::kEnemyPreferredSeparationUnits * GameplayConstants::kEnemyPreferredSeparationUnits;
-        if (distSq >= sepSq) {
-            return;
-        }
-        gEnemyRuntimeStats.separationPairsResolved += 1;
+            const float distSq = DistanceSq(a.position, b.position);
+            const float killDistSq =
+                GameplayConstants::kEnemyMutualKillDistanceUnits * GameplayConstants::kEnemyMutualKillDistanceUnits;
+            if (distSq <= killDistSq) {
+                const float centerDist = std::sqrt(std::max(0.0F, distSq));
+                const bool reenteredA =
+                    static_cast<std::size_t>(i) < reenteredFullTierMask.size() &&
+                    reenteredFullTierMask[static_cast<std::size_t>(i)] != 0U;
+                const bool reenteredB =
+                    static_cast<std::size_t>(j) < reenteredFullTierMask.size() &&
+                    reenteredFullTierMask[static_cast<std::size_t>(j)] != 0U;
+                RecordEnemyEnemyMutualKillDebug(world, i, j, a, b, centerDist, reenteredA, reenteredB, false);
+                a.alive = false;
+                b.alive = false;
+                DecrementOriginBaseAliveCount(world, a);
+                DecrementOriginBaseAliveCount(world, b);
+                gEnemyRuntimeWindowStats.separationPairsMutualKills += 1;
+                return;
+            }
+            const float sepSq =
+                GameplayConstants::kEnemyPreferredSeparationUnits * GameplayConstants::kEnemyPreferredSeparationUnits;
+            if (distSq >= sepSq) {
+                return;
+            }
+            gEnemyRuntimeStats.separationPairsResolved += 1;
 
-        const float dist = std::sqrt(distSq);
-        const float push = (GameplayConstants::kEnemyPreferredSeparationUnits - dist) * 0.5F;
-        Vec2f dir = NormalizeOrZero(Vec2f{
-            .x = b.position.x - a.position.x,
-            .y = b.position.y - a.position.y,
-        });
-        if (dir.x == 0.0F && dir.y == 0.0F) {
-            dir = Vec2f{.x = 1.0F, .y = 0.0F};
-        }
+            const float dist = std::sqrt(distSq);
+            const float push = (GameplayConstants::kEnemyPreferredSeparationUnits - dist) * 0.5F;
+            Vec2f dir = NormalizeOrZero(Vec2f{
+                .x = b.position.x - a.position.x,
+                .y = b.position.y - a.position.y,
+            });
+            if (dir.x == 0.0F && dir.y == 0.0F) {
+                dir = Vec2f{.x = 1.0F, .y = 0.0F};
+            }
 
-        const Vec2f movedA{
-            .x = a.position.x - dir.x * push,
-            .y = a.position.y - dir.y * push,
-        };
-        const Vec2f movedB{
-            .x = b.position.x + dir.x * push,
-            .y = b.position.y + dir.y * push,
-        };
-        const bool aBlocked =
-            game::geometry::IsPointInWall(world, movedA, GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
-        const bool bBlocked =
-            game::geometry::IsPointInWall(world, movedB, GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
-        if (!aBlocked) {
-            a.position = movedA;
-        }
-        if (!bBlocked) {
-            b.position = movedB;
-        }
-        if (aBlocked || bBlocked) {
-            a.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
-            b.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
-        }
+            const Vec2f movedA{
+                .x = a.position.x - dir.x * push,
+                .y = a.position.y - dir.y * push,
+            };
+            const Vec2f movedB{
+                .x = b.position.x + dir.x * push,
+                .y = b.position.y + dir.y * push,
+            };
+            const bool aBlocked =
+                game::geometry::IsPointInWall(world, movedA, GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
+            const bool bBlocked =
+                game::geometry::IsPointInWall(world, movedB, GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
+            if (!aBlocked) {
+                a.position = movedA;
+            }
+            if (!bBlocked) {
+                b.position = movedB;
+            }
+            if (aBlocked || bBlocked) {
+                a.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
+                b.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
+                gEnemyRuntimeWindowStats.separationPairsWallBlockedPushes += 1;
+            }
         });
     }
 }
 
-void ResolveEnemyFrontalCollisions(
+void ResolveEnemyFrontalCollisionsLegacyGrid(
     WorldState& world,
     const std::vector<Vec2f>& frameStartPositions,
     game::spatial::EnemySpatialGrid& grid,
-    const std::vector<std::uint8_t>& includeMask) {
+    const std::vector<std::uint8_t>& includeMask,
+    const std::vector<std::uint8_t>& reenteredFullTierMask) {
     profiling::ScopedProfile scope(profiling::Scope::EnemyFrontalCollisions, true);
+    {
+        const float cellSize = GameplayConstants::kMazeCellSizeUnits;
+        auto worldToCellX = [&](float x) {
+            const int cx = static_cast<int>(std::floor(x / cellSize));
+            return std::max(0, std::min(world.maze.widthCells - 1, cx));
+        };
+        auto worldToCellY = [&](float y) {
+            const int cy = static_cast<int>(std::floor(y / cellSize));
+            return std::max(0, std::min(world.maze.heightCells - 1, cy));
+        };
+        std::uint64_t included = 0;
+        std::uint64_t crossedCell = 0;
+        for (std::size_t i = 0; i < world.enemies.size() && i < includeMask.size(); ++i) {
+            if (includeMask[i] == 0U) {
+                continue;
+            }
+            const EnemyTank& enemy = world.enemies[i];
+            if (!enemy.alive) {
+                continue;
+            }
+            included += 1;
+            const Vec2f& start = frameStartPositions[i];
+            if (worldToCellX(start.x) != worldToCellX(enemy.position.x) ||
+                worldToCellY(start.y) != worldToCellY(enemy.position.y)) {
+                crossedCell += 1;
+            }
+        }
+        gEnemyRuntimeWindowStats.frontalGridCandidates += included;
+        gEnemyRuntimeWindowStats.frontalGridCellTransitions += crossedCell;
+        gEnemyRuntimeWindowStats.frontalGridInsertEstimate += included + crossedCell;
+    }
     {
         profiling::ScopedProfile buildScope(profiling::Scope::EnemyFrontalGridBuild, true);
         grid.BuildFromSegments(world, frameStartPositions, &includeMask);
@@ -1196,28 +1432,215 @@ void ResolveEnemyFrontalCollisions(
     {
         profiling::ScopedProfile pairTraverseScope(profiling::Scope::EnemyFrontalPairTraverse, true);
         grid.ForEachPairInSameOrAdjacentCell(world.enemies, [&](int i, int j) {
-        gEnemyRuntimeStats.frontalPairsVisited += 1;
-        EnemyTank& a = world.enemies[static_cast<std::size_t>(i)];
-        EnemyTank& b = world.enemies[static_cast<std::size_t>(j)];
-        if (game::geometry::IsPointInUndestroyedBase(world, a.position, 1.0F) ||
-            game::geometry::IsPointInUndestroyedBase(world, b.position, 1.0F)) {
-            return;
-        }
-        profiling::ScopedProfile pairScope(profiling::Scope::EnemyFrontalPairNarrowphase, true);
-        gEnemyRuntimeStats.frontalPairsDistanceChecks += 1;
-        const Vec2f aStart = frameStartPositions[static_cast<std::size_t>(i)];
-        const Vec2f aEnd = a.position;
-        const Vec2f bStart = frameStartPositions[static_cast<std::size_t>(j)];
-        const Vec2f bEnd = b.position;
-        const float distance = SegmentToSegmentDistance(aStart, aEnd, bStart, bEnd);
-        if (distance <= GameplayConstants::kEnemyMutualKillDistanceUnits) {
-            a.alive = false;
-            b.alive = false;
-            DecrementOriginBaseAliveCount(world, a);
-            DecrementOriginBaseAliveCount(world, b);
-        }
+            gEnemyRuntimeStats.frontalPairsVisited += 1;
+            EnemyTank& a = world.enemies[static_cast<std::size_t>(i)];
+            EnemyTank& b = world.enemies[static_cast<std::size_t>(j)];
+            gEnemyRuntimeWindowStats.frontalPairsByType[PairTypeMatrixIndex(a.type, b.type)] += 1;
+            if (game::geometry::IsPointInUndestroyedBase(world, a.position, 1.0F) ||
+                game::geometry::IsPointInUndestroyedBase(world, b.position, 1.0F)) {
+                gEnemyRuntimeWindowStats.frontalPairsBaseSkipped += 1;
+                return;
+            }
+            profiling::ScopedProfile pairScope(profiling::Scope::EnemyFrontalPairNarrowphase, true);
+            gEnemyRuntimeStats.frontalPairsDistanceChecks += 1;
+            const float centerDistSq = DistanceSq(a.position, b.position);
+            const float killDistSq =
+                GameplayConstants::kEnemyMutualKillDistanceUnits * GameplayConstants::kEnemyMutualKillDistanceUnits;
+            if (centerDistSq <= killDistSq) {
+                const float centerDist = std::sqrt(std::max(0.0F, centerDistSq));
+                const bool reenteredA =
+                    static_cast<std::size_t>(i) < reenteredFullTierMask.size() &&
+                    reenteredFullTierMask[static_cast<std::size_t>(i)] != 0U;
+                const bool reenteredB =
+                    static_cast<std::size_t>(j) < reenteredFullTierMask.size() &&
+                    reenteredFullTierMask[static_cast<std::size_t>(j)] != 0U;
+                RecordEnemyEnemyMutualKillDebug(world, i, j, a, b, centerDist, reenteredA, reenteredB, true);
+                a.alive = false;
+                b.alive = false;
+                DecrementOriginBaseAliveCount(world, a);
+                DecrementOriginBaseAliveCount(world, b);
+                gEnemyRuntimeWindowStats.frontalPairsMutualKills += 1;
+            }
         });
     }
+}
+
+void ResolveEnemyCollisionsSinglePass(
+    WorldState& world,
+    const std::vector<Vec2f>& frameStartPositions,
+    game::spatial::SweepPruneBroadPhase& broadPhase,
+    const std::vector<std::uint8_t>& includeMask,
+    const std::vector<std::uint8_t>& reenteredFullTierMask) {
+    profiling::ScopedProfile scope(profiling::Scope::EnemyFrontalCollisions, true);
+    constexpr float kSharedBroadRadiusUnits = 1.0F;  // r + 0.5 with enemy r=0.5
+    const float killDist =
+        GameplayConstants::kEnemyMutualKillDistanceUnits;
+    const float killDistSq = killDist * killDist;
+    const float separationDist =
+        GameplayConstants::kEnemyPreferredSeparationUnits;
+    const float separationDistSq = separationDist * separationDist;
+    {
+        const float cellSize = GameplayConstants::kMazeCellSizeUnits;
+        auto worldToCellX = [&](float x) {
+            const int cx = static_cast<int>(std::floor(x / cellSize));
+            return std::max(0, std::min(world.maze.widthCells - 1, cx));
+        };
+        auto worldToCellY = [&](float y) {
+            const int cy = static_cast<int>(std::floor(y / cellSize));
+            return std::max(0, std::min(world.maze.heightCells - 1, cy));
+        };
+        std::uint64_t included = 0;
+        std::uint64_t crossedCell = 0;
+        for (std::size_t i = 0; i < world.enemies.size() && i < includeMask.size(); ++i) {
+            if (includeMask[i] == 0U) {
+                continue;
+            }
+            const EnemyTank& enemy = world.enemies[i];
+            if (!enemy.alive) {
+                continue;
+            }
+            included += 1;
+            const Vec2f& start = frameStartPositions[i];
+            if (worldToCellX(start.x) != worldToCellX(enemy.position.x) ||
+                worldToCellY(start.y) != worldToCellY(enemy.position.y)) {
+                crossedCell += 1;
+            }
+        }
+        gEnemyRuntimeWindowStats.frontalGridCandidates += included;
+        gEnemyRuntimeWindowStats.separationGridCandidates += included;
+        gEnemyRuntimeWindowStats.frontalGridCellTransitions += crossedCell;
+        gEnemyRuntimeWindowStats.frontalGridInsertEstimate += included + crossedCell;
+    }
+    {
+        profiling::ScopedProfile buildScope(profiling::Scope::EnemyFrontalGridBuild, true);
+        broadPhase.BeginFrame(static_cast<int>(world.enemies.size()));
+        for (int i = 0; i < static_cast<int>(world.enemies.size()); ++i) {
+            const bool active = i < static_cast<int>(includeMask.size()) &&
+                includeMask[static_cast<std::size_t>(i)] != 0U &&
+                world.enemies[static_cast<std::size_t>(i)].alive;
+            const Vec2f& start = frameStartPositions[static_cast<std::size_t>(i)];
+            const Vec2f& end = world.enemies[static_cast<std::size_t>(i)].position;
+            broadPhase.UpdateEntity(
+                i,
+                start,
+                end,
+                kSharedBroadRadiusUnits,
+                active);
+        }
+    }
+    {
+        profiling::ScopedProfile pairTraverseScope(profiling::Scope::EnemyFrontalPairTraverse, true);
+        broadPhase.ForEachCandidatePair([&](int i, int j) {
+            EnemyTank& a = world.enemies[static_cast<std::size_t>(i)];
+            EnemyTank& b = world.enemies[static_cast<std::size_t>(j)];
+            if (!a.alive || !b.alive) {
+                return;
+            }
+
+            const bool inBase =
+                game::geometry::IsPointInUndestroyedBase(world, a.position, 1.0F) ||
+                game::geometry::IsPointInUndestroyedBase(world, b.position, 1.0F);
+
+            gEnemyRuntimeStats.frontalPairsVisited += 1;
+            gEnemyRuntimeWindowStats.frontalPairsByType[PairTypeMatrixIndex(a.type, b.type)] += 1;
+            if (inBase) {
+                gEnemyRuntimeWindowStats.frontalPairsBaseSkipped += 1;
+            } else {
+                profiling::ScopedProfile frontalPairScope(profiling::Scope::EnemyFrontalPairNarrowphase, true);
+                gEnemyRuntimeStats.frontalPairsDistanceChecks += 1;
+                const float centerDistSq = DistanceSq(a.position, b.position);
+                if (centerDistSq <= killDistSq) {
+                    const float centerDist = std::sqrt(std::max(0.0F, centerDistSq));
+                    const bool reenteredA =
+                        static_cast<std::size_t>(i) < reenteredFullTierMask.size() &&
+                        reenteredFullTierMask[static_cast<std::size_t>(i)] != 0U;
+                    const bool reenteredB =
+                        static_cast<std::size_t>(j) < reenteredFullTierMask.size() &&
+                        reenteredFullTierMask[static_cast<std::size_t>(j)] != 0U;
+                    RecordEnemyEnemyMutualKillDebug(world, i, j, a, b, centerDist, reenteredA, reenteredB, true);
+                    a.alive = false;
+                    b.alive = false;
+                    DecrementOriginBaseAliveCount(world, a);
+                    DecrementOriginBaseAliveCount(world, b);
+                    gEnemyRuntimeWindowStats.frontalPairsMutualKills += 1;
+                }
+            }
+
+            if (!a.alive || !b.alive) {
+                return;
+            }
+
+            gEnemyRuntimeStats.separationPairsVisited += 1;
+            gEnemyRuntimeWindowStats.separationPairsByType[PairTypeMatrixIndex(a.type, b.type)] += 1;
+            if (inBase) {
+                gEnemyRuntimeWindowStats.separationPairsBaseSkipped += 1;
+                return;
+            }
+
+            profiling::ScopedProfile separationPairScope(profiling::Scope::EnemySeparationPairResolve, true);
+            const float distSq = DistanceSq(a.position, b.position);
+            if (distSq <= killDistSq) {
+                const float centerDist = std::sqrt(std::max(0.0F, distSq));
+                const bool reenteredA =
+                    static_cast<std::size_t>(i) < reenteredFullTierMask.size() &&
+                    reenteredFullTierMask[static_cast<std::size_t>(i)] != 0U;
+                const bool reenteredB =
+                    static_cast<std::size_t>(j) < reenteredFullTierMask.size() &&
+                    reenteredFullTierMask[static_cast<std::size_t>(j)] != 0U;
+                RecordEnemyEnemyMutualKillDebug(world, i, j, a, b, centerDist, reenteredA, reenteredB, false);
+                a.alive = false;
+                b.alive = false;
+                DecrementOriginBaseAliveCount(world, a);
+                DecrementOriginBaseAliveCount(world, b);
+                gEnemyRuntimeWindowStats.separationPairsMutualKills += 1;
+                return;
+            }
+            if (distSq >= separationDistSq) {
+                return;
+            }
+
+            gEnemyRuntimeStats.separationPairsResolved += 1;
+            const float dist = std::sqrt(distSq);
+            const float push = (separationDist - dist) * 0.5F;
+            Vec2f dir = NormalizeOrZero(Vec2f{
+                .x = b.position.x - a.position.x,
+                .y = b.position.y - a.position.y,
+            });
+            if (dir.x == 0.0F && dir.y == 0.0F) {
+                dir = Vec2f{.x = 1.0F, .y = 0.0F};
+            }
+
+            const Vec2f movedA{
+                .x = a.position.x - dir.x * push,
+                .y = a.position.y - dir.y * push,
+            };
+            const Vec2f movedB{
+                .x = b.position.x + dir.x * push,
+                .y = b.position.y + dir.y * push,
+            };
+            const bool aBlocked =
+                game::geometry::IsPointInWall(world, movedA, GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
+            const bool bBlocked =
+                game::geometry::IsPointInWall(world, movedB, GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
+            if (!aBlocked) {
+                a.position = movedA;
+            }
+            if (!bBlocked) {
+                b.position = movedB;
+            }
+            if (aBlocked || bBlocked) {
+                a.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
+                b.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
+                gEnemyRuntimeWindowStats.separationPairsWallBlockedPushes += 1;
+            }
+        });
+    }
+    const game::spatial::SweepPruneBroadPhase::FrameStats& sapStats = broadPhase.GetFrameStats();
+    gEnemyRuntimeWindowStats.sapUpdateCalls += sapStats.updateCalls;
+    gEnemyRuntimeWindowStats.sapActiveItems += sapStats.activeItems;
+    gEnemyRuntimeWindowStats.sapCandidatePairs += sapStats.candidatePairs;
+    gEnemyRuntimeWindowStats.sapXRepairs += sapStats.xLocalRepairs;
+    gEnemyRuntimeWindowStats.sapYRepairs += sapStats.yLocalRepairs;
 }
 
 struct EnemyPerception {
@@ -1409,11 +1832,20 @@ void BuildOffscreenSegment(WorldState& world, EnemyTank& enemy, float segmentLen
     const int chosenIndex =
         bestIndices[static_cast<std::size_t>(random.NextInt(0, std::max(0, bestCount - 1)))];
     const Candidate& chosen = candidates[static_cast<std::size_t>(chosenIndex)];
+    const int typeIdx = EnemyTypeTelemetryIndex(enemy.type);
     const float maxSegmentLength =
         std::min(segmentLengthUnits, chosen.clearDistance - kSegmentBuildSafetyReduceUnits);
     if (maxSegmentLength < kSegmentBuildMinLengthUnits) {
+        if (enemy.type == EnemyType::Torpedo) {
+            enemy.headingRadians = QuantizeToEightDirections(enemy.headingRadians - kEightDirectionStep);
+        } else if (enemy.type == EnemyType::Drone) {
+            const int randomStep = random.NextInt(0, 7);
+            enemy.headingRadians =
+                NormalizeAngle(static_cast<float>(randomStep) * kEightDirectionStep);
+        }
         enemy.offscreenSegmentActive = false;
         enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
+        gEnemyRuntimeWindowStats.segmentBuildFailsByType[static_cast<std::size_t>(typeIdx)] += 1;
         return;
     }
     const float targetDistance = random.NextFloat(kSegmentBuildMinLengthUnits, maxSegmentLength);
@@ -1424,6 +1856,8 @@ void BuildOffscreenSegment(WorldState& world, EnemyTank& enemy, float segmentLen
         .y = enemy.position.y + dir.y * targetDistance,
     };
     enemy.offscreenSegmentActive = true;
+    gEnemyRuntimeWindowStats.segmentsBuiltByType[static_cast<std::size_t>(typeIdx)] += 1;
+    gEnemyRuntimeWindowStats.segmentLengthSumByType[static_cast<std::size_t>(typeIdx)] += targetDistance;
 }
 
 void ApplyCheapTierMovement(
@@ -1481,8 +1915,23 @@ void UpdateEnemySystem(GameState& state, const GameplayView& view, float deltaSe
         frameStartPositions.push_back(enemy.position);
     }
 
+    game::navigation::CellCoordCache& cellCache = state.world.navigationCache.cellCoords;
+    cellCache.ConfigureFromMaze(state.world.maze);
+    game::navigation::PlayerFlowField& playerFlowField = state.world.navigationCache.playerFlowField;
+    if (kUseFlowFieldPathGuidance) {
+        const bool playerCrossedCellBorder = cellCache.UpdatePlayerCell(state.world.player.position);
+        if (playerCrossedCellBorder) {
+            gEnemyRuntimeWindowStats.navPlayerCellChanges += 1;
+        }
+        if (playerCrossedCellBorder || !playerFlowField.IsBuiltFor(cellCache.PlayerCellVersion())) {
+            playerFlowField.Rebuild(state.world.maze, cellCache);
+            gEnemyRuntimeWindowStats.navFlowRebuilds += 1;
+        }
+    }
+
     game::spatial::EnemySpatialGrid rayQueryGrid;
     rayQueryGrid.BuildFromPositions(state.world, &frameStartPositions);
+    std::vector<std::uint8_t> reenteredFullTierMask(state.world.enemies.size(), 0U);
 
     for (int enemyIndex = 0; enemyIndex < static_cast<int>(state.world.enemies.size()); ++enemyIndex) {
         EnemyTank& enemy = state.world.enemies[static_cast<std::size_t>(enemyIndex)];
@@ -1497,10 +1946,12 @@ void UpdateEnemySystem(GameState& state, const GameplayView& view, float deltaSe
             previousTier == EnemySimTier::Cheap &&
             enemy.simTier == EnemySimTier::Full;
         if (reenteredFullTier) {
+            reenteredFullTierMask[static_cast<std::size_t>(enemyIndex)] = 1U;
             enemy.offscreenSegmentActive = false;
             if (enemy.type == EnemyType::Assassin) {
                 enemy.pathWaypointCount = 0;
                 enemy.pathWaypointIndex = 0;
+                enemy.expectedPathCellHash = -1;
             }
         }
 
@@ -1748,6 +2199,7 @@ void UpdateEnemySystem(GameState& state, const GameplayView& view, float deltaSe
                     speed = 0.0F;
                     enemy.pathWaypointCount = 0;
                     enemy.pathWaypointIndex = 0;
+                    enemy.expectedPathCellHash = -1;
                 } else {
                     const float obstacleAhead = game::geometry::FreeDistanceAhead(
                         state.world,
@@ -1760,13 +2212,28 @@ void UpdateEnemySystem(GameState& state, const GameplayView& view, float deltaSe
                     const bool needRepathEmpty = enemy.pathWaypointCount <= 0 || enemy.pathWaypointIndex >= enemy.pathWaypointCount;
                     if (needRepathObstacle || needRepathEmpty) {
                         if (playerInvisible) {
-                            BuildAssassinPathToFarRandomTarget(state, enemy, enemyIndex, random);
+                            BuildAssassinPathToFarRandomTarget(state, cellCache, enemy, enemyIndex, random);
                         } else {
-                            BuildAssassinPath(state, enemy, enemyIndex);
+                            BuildAssassinPath(state, cellCache, enemy, enemyIndex);
                         }
                     }
 
-                    if (enemy.pathWaypointCount > 0 && enemy.pathWaypointIndex < enemy.pathWaypointCount) {
+                    bool flowHeadingSelected = false;
+                    if (kUseFlowFieldPathGuidance && !playerInvisible) {
+                        flowHeadingSelected = TrySelectAssassinFlowHeading(
+                            cellCache,
+                            playerFlowField,
+                            enemy,
+                            movementHeading);
+                        if (flowHeadingSelected) {
+                            enemy.pathWaypointCount = 0;
+                            enemy.pathWaypointIndex = 0;
+                        }
+                    }
+
+                    if (!flowHeadingSelected &&
+                        enemy.pathWaypointCount > 0 &&
+                        enemy.pathWaypointIndex < enemy.pathWaypointCount) {
                         const Vec2f waypoint = enemy.pathWaypoints[static_cast<std::size_t>(enemy.pathWaypointIndex)];
                         const Vec2f toWaypoint{
                             .x = waypoint.x - enemy.position.x,
@@ -1775,9 +2242,9 @@ void UpdateEnemySystem(GameState& state, const GameplayView& view, float deltaSe
                         if (DistanceSq(waypoint, enemy.position) <= 0.36F) {
                             enemy.pathWaypointIndex += 1;
                             if (playerInvisible) {
-                                BuildAssassinPathToFarRandomTarget(state, enemy, enemyIndex, random);
+                                BuildAssassinPathToFarRandomTarget(state, cellCache, enemy, enemyIndex, random);
                             } else if (enemy.pathWaypointIndex < enemy.pathWaypointCount) {
-                                BuildAssassinPath(state, enemy, enemyIndex);
+                                BuildAssassinPath(state, cellCache, enemy, enemyIndex);
                             }
                         }
                         const Vec2f stepDir = NormalizeOrZero(toWaypoint);
@@ -1954,15 +2421,32 @@ void UpdateEnemySystem(GameState& state, const GameplayView& view, float deltaSe
         gEnemyRuntimeStats.aliveCount,
         gEnemyRuntimeStats.visibleInViewportCount,
         gEnemyRuntimeStats.fullTierCount);
+    AccumulateEnemyWindowTime(deltaSeconds);
 
     if (gEnemyRuntimeStats.fullTierCount >= 2) {
-        game::spatial::EnemySpatialGrid spatialGrid;
-        ResolveEnemyFrontalCollisions(state.world, frameStartPositions, spatialGrid, fullTierMask);
-        ResolveEnemySeparation(state.world, spatialGrid, fullTierMask);
+        if (kUseSweepPruneBroadPhase) {
+            game::spatial::SweepPruneBroadPhase& broadPhase = state.world.collisionCache.sweepPrune;
+            ResolveEnemyCollisionsSinglePass(
+                state.world,
+                frameStartPositions,
+                broadPhase,
+                fullTierMask,
+                reenteredFullTierMask);
+        } else {
+            game::spatial::EnemySpatialGrid spatialGrid;
+            ResolveEnemyFrontalCollisionsLegacyGrid(
+                state.world,
+                frameStartPositions,
+                spatialGrid,
+                fullTierMask,
+                reenteredFullTierMask);
+            ResolveEnemySeparationLegacyGrid(state.world, spatialGrid, fullTierMask, reenteredFullTierMask);
+        }
         gEnemyRuntimeWindowStats.collisionPassRuns += 1;
     } else {
         gEnemyRuntimeWindowStats.collisionPassSkips += 1;
     }
+    AccumulateEnemyWindowPairStats(gEnemyRuntimeStats);
 
     const auto& profiler = profiling::Profiler::Instance();
     const std::uint64_t frameIndex = profiler.FrameIndex();
@@ -1992,6 +2476,168 @@ void UpdateEnemySystem(GameState& state, const GameplayView& view, float deltaSe
                 gEnemyRuntimeWindowStats.maxFullTierCount,
                 static_cast<unsigned long long>(gEnemyRuntimeWindowStats.collisionPassRuns),
                 static_cast<unsigned long long>(gEnemyRuntimeWindowStats.collisionPassSkips));
+
+            const float windowSeconds = std::max(0.0001F, gEnemyRuntimeWindowStats.windowSeconds);
+            std::printf("[ENEMY_SEGMENTS] window=%.3fs", windowSeconds);
+            for (int typeIdx = 0; typeIdx < kEnemyTypeTelemetryCount; ++typeIdx) {
+                const std::uint64_t built =
+                    gEnemyRuntimeWindowStats.segmentsBuiltByType[static_cast<std::size_t>(typeIdx)];
+                const std::uint64_t fails =
+                    gEnemyRuntimeWindowStats.segmentBuildFailsByType[static_cast<std::size_t>(typeIdx)];
+                const float builtPerSec = static_cast<float>(built) / windowSeconds;
+                const float avgLen = built > 0
+                    ? (gEnemyRuntimeWindowStats.segmentLengthSumByType[static_cast<std::size_t>(typeIdx)] /
+                        static_cast<float>(built))
+                    : 0.0F;
+                std::printf(
+                    " %s{b/s=%.2f avgLen=%.2f fail=%llu}",
+                    EnemyTypeTelemetryLabel(typeIdx),
+                    builtPerSec,
+                    avgLen,
+                    static_cast<unsigned long long>(fails));
+            }
+            std::printf("\n");
+
+            const float frontalPairsPerSec =
+                static_cast<float>(gEnemyRuntimeWindowStats.frontalPairsVisited) / windowSeconds;
+            const float frontalChecksPerSec =
+                static_cast<float>(gEnemyRuntimeWindowStats.frontalPairsDistanceChecks) / windowSeconds;
+            const float separationPairsPerSec =
+                static_cast<float>(gEnemyRuntimeWindowStats.separationPairsVisited) / windowSeconds;
+            const float separationResolvePerSec =
+                static_cast<float>(gEnemyRuntimeWindowStats.separationPairsResolved) / windowSeconds;
+            const float frontalKillPct = gEnemyRuntimeWindowStats.frontalPairsDistanceChecks > 0
+                ? (100.0F * static_cast<float>(gEnemyRuntimeWindowStats.frontalPairsMutualKills) /
+                    static_cast<float>(gEnemyRuntimeWindowStats.frontalPairsDistanceChecks))
+                : 0.0F;
+            const float separationResolvePct = gEnemyRuntimeWindowStats.separationPairsVisited > 0
+                ? (100.0F * static_cast<float>(gEnemyRuntimeWindowStats.separationPairsResolved) /
+                    static_cast<float>(gEnemyRuntimeWindowStats.separationPairsVisited))
+                : 0.0F;
+            std::printf(
+                "[ENEMY_GRID] frontal{cand/s=%.1f xcell/s=%.1f ins/s=%.1f} separation{cand/s=%.1f}\n",
+                static_cast<float>(gEnemyRuntimeWindowStats.frontalGridCandidates) / windowSeconds,
+                static_cast<float>(gEnemyRuntimeWindowStats.frontalGridCellTransitions) / windowSeconds,
+                static_cast<float>(gEnemyRuntimeWindowStats.frontalGridInsertEstimate) / windowSeconds,
+                static_cast<float>(gEnemyRuntimeWindowStats.separationGridCandidates) / windowSeconds);
+            std::printf(
+                "[ENEMY_COLLISION_WINDOW] frontal{pairs/s=%.1f checks/s=%.1f baseSkip=%llu kill=%llu(%.1f%%)} separation{pairs/s=%.1f resolved/s=%.1f(%.1f%%) baseSkip=%llu kill=%llu wallBlock=%llu}\n",
+                frontalPairsPerSec,
+                frontalChecksPerSec,
+                static_cast<unsigned long long>(gEnemyRuntimeWindowStats.frontalPairsBaseSkipped),
+                static_cast<unsigned long long>(gEnemyRuntimeWindowStats.frontalPairsMutualKills),
+                frontalKillPct,
+                separationPairsPerSec,
+                separationResolvePerSec,
+                separationResolvePct,
+                static_cast<unsigned long long>(gEnemyRuntimeWindowStats.separationPairsBaseSkipped),
+                static_cast<unsigned long long>(gEnemyRuntimeWindowStats.separationPairsMutualKills),
+                static_cast<unsigned long long>(gEnemyRuntimeWindowStats.separationPairsWallBlockedPushes));
+            if (gEnemyRuntimeWindowStats.killDebugEnemyEnemyEvents > 0) {
+                const float killDistAvg = static_cast<float>(
+                    gEnemyRuntimeWindowStats.killDebugEnemyEnemyDistanceSum /
+                    static_cast<double>(gEnemyRuntimeWindowStats.killDebugEnemyEnemyEvents));
+                std::printf(
+                    "[ENEMY_KILL_DEBUG] enemyEnemy{events=%llu frontal=%llu separation=%llu reenterEither=%llu reenterBoth=%llu wallContact=%llu dist[min=%.3f avg=%.3f max=%.3f]}\n",
+                    static_cast<unsigned long long>(gEnemyRuntimeWindowStats.killDebugEnemyEnemyEvents),
+                    static_cast<unsigned long long>(gEnemyRuntimeWindowStats.killDebugEnemyEnemyFrontalEvents),
+                    static_cast<unsigned long long>(gEnemyRuntimeWindowStats.killDebugEnemyEnemySeparationEvents),
+                    static_cast<unsigned long long>(gEnemyRuntimeWindowStats.killDebugEnemyEnemyReenterEither),
+                    static_cast<unsigned long long>(gEnemyRuntimeWindowStats.killDebugEnemyEnemyReenterBoth),
+                    static_cast<unsigned long long>(gEnemyRuntimeWindowStats.killDebugEnemyEnemyWallContact),
+                    gEnemyRuntimeWindowStats.killDebugEnemyEnemyMinDistance,
+                    killDistAvg,
+                    gEnemyRuntimeWindowStats.killDebugEnemyEnemyMaxDistance);
+            } else {
+                std::printf(
+                    "[ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}\n");
+            }
+            const std::uint64_t flowTotalAttempts =
+                gEnemyRuntimeWindowStats.navFlowHeadingSelections + gEnemyRuntimeWindowStats.navFlowMisses;
+            const float flowHitPct = flowTotalAttempts > 0
+                ? (100.0F * static_cast<float>(gEnemyRuntimeWindowStats.navFlowHeadingSelections) /
+                    static_cast<float>(flowTotalAttempts))
+                : 0.0F;
+            const float pathBuildSuccessPct = gEnemyRuntimeWindowStats.navPathBuildCalls > 0
+                ? (100.0F * static_cast<float>(gEnemyRuntimeWindowStats.navPathBuildSuccesses) /
+                    static_cast<float>(gEnemyRuntimeWindowStats.navPathBuildCalls))
+                : 0.0F;
+            std::printf(
+                "[ENEMY_NAV_CACHE] playerCell{changes=%llu flowRebuilds=%llu} flow{hit=%llu miss=%llu hit%%=%.1f} pathFallback{calls=%llu ok=%llu ok%%=%.1f}\n",
+                static_cast<unsigned long long>(gEnemyRuntimeWindowStats.navPlayerCellChanges),
+                static_cast<unsigned long long>(gEnemyRuntimeWindowStats.navFlowRebuilds),
+                static_cast<unsigned long long>(gEnemyRuntimeWindowStats.navFlowHeadingSelections),
+                static_cast<unsigned long long>(gEnemyRuntimeWindowStats.navFlowMisses),
+                flowHitPct,
+                static_cast<unsigned long long>(gEnemyRuntimeWindowStats.navPathBuildCalls),
+                static_cast<unsigned long long>(gEnemyRuntimeWindowStats.navPathBuildSuccesses),
+                pathBuildSuccessPct);
+            std::printf(
+                "[ENEMY_SAP] updates=%llu active=%llu pairs=%llu repairs{x=%llu y=%llu}\n",
+                static_cast<unsigned long long>(gEnemyRuntimeWindowStats.sapUpdateCalls),
+                static_cast<unsigned long long>(gEnemyRuntimeWindowStats.sapActiveItems),
+                static_cast<unsigned long long>(gEnemyRuntimeWindowStats.sapCandidatePairs),
+                static_cast<unsigned long long>(gEnemyRuntimeWindowStats.sapXRepairs),
+                static_cast<unsigned long long>(gEnemyRuntimeWindowStats.sapYRepairs));
+            std::printf("[ENEMY_PAIR_TYPES] frontal");
+            for (int i = 0; i < kEnemyTypeTelemetryCount; ++i) {
+                for (int j = i; j < kEnemyTypeTelemetryCount; ++j) {
+                    const std::size_t bucket = static_cast<std::size_t>(i * kEnemyTypeTelemetryCount + j);
+                    std::printf(
+                        " %s%s=%llu",
+                        EnemyTypeTelemetryLabel(i),
+                        EnemyTypeTelemetryLabel(j),
+                        static_cast<unsigned long long>(gEnemyRuntimeWindowStats.frontalPairsByType[bucket]));
+                }
+            }
+            std::printf(" separation");
+            for (int i = 0; i < kEnemyTypeTelemetryCount; ++i) {
+                for (int j = i; j < kEnemyTypeTelemetryCount; ++j) {
+                    const std::size_t bucket = static_cast<std::size_t>(i * kEnemyTypeTelemetryCount + j);
+                    std::printf(
+                        " %s%s=%llu",
+                        EnemyTypeTelemetryLabel(i),
+                        EnemyTypeTelemetryLabel(j),
+                        static_cast<unsigned long long>(gEnemyRuntimeWindowStats.separationPairsByType[bucket]));
+                }
+            }
+            std::printf("\n");
+
+            if (gEnemyRuntimeWindowStats.torpedoHeadingEvalCalls > 0) {
+                const float evalPerSec =
+                    static_cast<float>(gEnemyRuntimeWindowStats.torpedoHeadingEvalCalls) / windowSeconds;
+                const float retreatPerSec =
+                    static_cast<float>(gEnemyRuntimeWindowStats.torpedoHeadingRetreatStarts) / windowSeconds;
+                const float totalChosen = static_cast<float>(
+                    gEnemyRuntimeWindowStats.torpedoHeadingChosenStraight +
+                    gEnemyRuntimeWindowStats.torpedoHeadingChosenLeft +
+                    gEnemyRuntimeWindowStats.torpedoHeadingChosenRight);
+                const float straightPct = totalChosen > 0.0F
+                    ? (100.0F * static_cast<float>(gEnemyRuntimeWindowStats.torpedoHeadingChosenStraight) / totalChosen)
+                    : 0.0F;
+                const float leftPct = totalChosen > 0.0F
+                    ? (100.0F * static_cast<float>(gEnemyRuntimeWindowStats.torpedoHeadingChosenLeft) / totalChosen)
+                    : 0.0F;
+                const float rightPct = totalChosen > 0.0F
+                    ? (100.0F * static_cast<float>(gEnemyRuntimeWindowStats.torpedoHeadingChosenRight) / totalChosen)
+                    : 0.0F;
+                const float avgBestClear = static_cast<float>(
+                    gEnemyRuntimeWindowStats.torpedoHeadingBestClearSum /
+                    static_cast<double>(gEnemyRuntimeWindowStats.torpedoHeadingEvalCalls));
+                const float avgChosenClear = static_cast<float>(
+                    gEnemyRuntimeWindowStats.torpedoHeadingChosenClearSum /
+                    static_cast<double>(gEnemyRuntimeWindowStats.torpedoHeadingEvalCalls));
+                std::printf(
+                    "[TORPEDO_HEADING] eval/s=%.2f retreat/s=%.2f pick[straight=%.1f%% left=%.1f%% right=%.1f%%] clear[best=%.2f chosen=%.2f]\n",
+                    evalPerSec,
+                    retreatPerSec,
+                    straightPct,
+                    leftPct,
+                    rightPct,
+                    avgBestClear,
+                    avgChosenClear);
+            }
+
             ResetEnemyWindowStats();
         }
         std::fflush(stdout);

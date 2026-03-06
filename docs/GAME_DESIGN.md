@@ -84,8 +84,8 @@ Enemy spawn table behavior (`src/game/systems/SpawnerSystem.cpp`):
 - On spawn at level `L`, choose one random entry from slots `1..L` (inclusive) and use that entry's type/subtype.
 - Current table entries are all `Advanced` subtypes:
   - `1..2` Drone, `3..4` Torpedo, `5..7` Hunter, `8..9` Assassin.
-- Global alive-enemy cap is `72`.
-- Per-base simultaneous alive cap is `12` enemies.
+- Global alive-enemy cap is `999`.
+- Per-base simultaneous alive cap is `24` enemies.
 - On spawn, enemy position is initialized inside the base with heading-aligned symmetry through base center:
   - cardinal heading: tank nose points at the middle of the matching base side.
   - diagonal heading: tank nose points at the matching base corner, then spawn center is shifted `0.5` world-units toward base core.
@@ -152,7 +152,7 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
   - `Basic`: `75%` of advanced speed
   - `Advanced`: `100%` baseline speed
   - `Hunter Lord`: `125%` of hunter advanced speed
-- Assassin advanced speed has two modes: `3.0` world-units/second when player line-of-sight is blocked or out of aggro range, and `6.0` world-units/second when the assassin has line-of-sight to a player in aggro range.
+- Assassin advanced speed has two modes: `1.5` world-units/second when player line-of-sight is blocked or out of aggro range, and `3.0` world-units/second when the assassin has line-of-sight to a player in aggro range.
 - Enemy projectile firing heading is quantized to the same 8-way (45-degree) directions.
 - Player and enemy collision shape is treated as a disc with `9px` diameter.
 - Enemy wall movement keeps additional margin: enemy disc edge stays at least `2px` away from maze walls.
@@ -162,12 +162,19 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
 
 ### Enemy Separation and Mutual Collision
 
-- Enemies continuously try to keep at least `1.0` world-units between each other.
+- Terminology convention:
+  - `distance` = center-to-center distance between two entities.
+  - `clearance` = disc-edge-to-disc-edge spacing between two entities (`clearance = distance - (r1 + r2)`).
+
+- Enemies continuously try to keep at least `1.0` world-units of `clearance` (equivalent to center `distance >= 2.0` with `r1=r2=0.5`).
 - If a planned move violates spacing, AI attempts a `45°` turn first; if not possible, enemy stops for that frame.
-- If two enemies occupy nearly the same position (`~0.12` world-units), both are destroyed.
+- Enemy mutual-kill uses center `distance` threshold `r1 + r2`; with current enemy radius assumption `r = 0.5`, two enemies are destroyed when center `distance` is `< 1.0` world-units.
 - Enemy deaths decrement the origin base `activeEnemies` counter used for per-base spawn capping.
 - Bases are one-way obstacles for enemy movement: enemies outside a base footprint cannot enter/touch it, while enemies that spawn inside can leave freely.
 - Enemy path-planning clearance checks use an inflated collision margin (`+50%` over the base enemy wall-avoidance radius) to reduce corner-side wall sticking.
+- Clearance query methods:
+  - `FreeDistanceAheadGrid`: default static-obstacle clearance for gameplay AI; traverses maze grid cells/edges (DDA-style) and returns first hit distance against walls/bases.
+  - `FreeDistanceAheadContinuous`: retained as sampled legacy implementation for offline comparison only; gameplay runtime does not call it.
 - Every spawned enemy gets a per-enemy self-awareness interval and timer:
   - Drone: random in `6..12` seconds.
   - Other enemy types: random in `4..8` seconds.
@@ -210,9 +217,17 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
   - Chase keeps stand-off band `3..6` units (approach if farther, retreat if closer, stop inside band).
   - Scout obstacle handling: try `±45°`, then `±90°`; if no option yields `>=3` clear units, rotate clockwise until clear.
 - Assassin:
-  - Uses hybrid routing with maze-cell A* shortest path (with dynamic enemy occupancy avoidance), not straight-line steering.
-  - Repaths when blocked within `2` units or when advancing through path turn points.
+  - Uses a player-directed maze flow-field (rebuilt only when player crosses a maze-cell border) for normal pursuit steering.
+  - Each assassin caches the latest player cell hash and expected next cell hash; flow steering remains valid while player hash is unchanged and the assassin stays on planned cells.
+  - If flow guidance is invalid/unavailable (e.g., stepped off planned cell), assassin falls back to the existing waypoint A* route builder.
+  - Repaths/fallback path builds when blocked within `2` units or when waypoint progression requires refresh.
   - Avoids ramming by stopping/adjusting when player distance is under `3` units.
+
+### Enemy Collision Broad Phase
+
+- Enemy-vs-enemy frontal collision and separation candidate generation uses cached Sweep-and-Prune arrays on X and Y axes.
+- Runtime keeps sorted `{id, sortField}` arrays with `id -> index` lookup and local insertion-repair updates after movement, then runs narrow-phase checks only on broad-phase candidates.
+- `EnemySpatialGrid` remains in use for ray/proximity filtering (`FreeDistanceAheadWithEnemies`) and is not used as the frontal/separation broad phase.
 
 ### Offscreen Enemy Simulation LOD
 
@@ -225,6 +240,9 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
   - segment length is randomized in `[2, (bestClear-4)]` (clamped by per-type segment cap)
   - movement advances toward cached endpoint and endpoint is recomputed only when current endpoint is reached
   - no wall/enemy/base collision checks are executed while traversing the current cheap-tier segment
+  - on cheap-tier segment-build failure (`bestClear - 4 < 2`):
+    - drone picks a random 8-way heading, remains without an active segment for that frame, then retries segment build on the next cheap-tier update
+    - torpedo rotates heading by `45°` counterclockwise, remains without an active segment for that frame, then retries segment build on the next cheap-tier update
 - Cheap-tier enemies do not participate in enemy-enemy frontal-collision and separation post-passes.
 - Cheap-tier enemies do not run enemy-enemy or enemy-base collision checks at all; wall clearance is evaluated only when selecting the next cheap-tier segment.
 - Torpedo exception:
