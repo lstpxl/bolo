@@ -292,9 +292,10 @@ World rendering is in `src/platform/Renderer2D.cpp`.
 - Gameplay view draws top-left debug text (axes/perf/profiling) only when menu `Debug info` is enabled.
 - HUD draws an icon counter strip above the radar blocks at font size `10`: base rectangle icon plus enemy type sprites (`Drone/Torpedo/Hunter/Assassin`) with per-type alive counts, tinted by corresponding minimap colors.
 - Debug-overlay text content is refreshed every `4` frames and cached between refreshes to reduce per-frame formatting/query overhead.
-- HUD minimap plots alive enemies as single-pixel markers in their corresponding colors, bases as `3x3` pixel squares, and player as a larger green marker.
+- HUD minimap uses a persistent `60x60` logical render texture (maze-cell aligned) and blits it scaled `2x` to `120x120` in the HUD. The minimap is horizontally centered in HUD content and uses matching vertical margins above/below. Enemy/base markers are single-pixel points in that logical texture; player marker is drawn dynamically on top.
 - HUD runtime sampling cadence:
-  - enemy minimap marker texture is fully rebuilt every frame (alive enemies only)
+  - enemy/base minimap texture updates incrementally (`1` entity index per frame): enemy indices `0..N-1`, base indices `-6..-1`
+  - minimap texture update erases previous cached cell coordinate (draw black), then draws current colored point and stores new cached cell coordinate
   - fuel bar value refreshes every `0.5s`
   - nearest-base radar uses a persistent texture layer; content is rebuilt every frame, then the layer is blitted every frame
   - joystick direction vectors on compass refresh every frame

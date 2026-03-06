@@ -12,9 +12,11 @@
 
 namespace {
 constexpr int kContentPadding = 10;
-constexpr int kMapBottomPadding = 10;
 constexpr int kBoltFontSize = 50;
 constexpr int kLivesBlockTopPadding = 12;
+constexpr int kMinimapLogicalSizePixels = 60;
+constexpr int kMinimapDisplayScale = 2;
+constexpr int kMinimapDisplaySizePixels = kMinimapLogicalSizePixels * kMinimapDisplayScale;
 
 constexpr Color kDroneMapColor{138, 43, 226, 255};      // #8A2BE2
 constexpr Color kTorpedoMapColor{255, 255, 0, 255};     // #FFFF00
@@ -193,6 +195,8 @@ void HudPanel::ReleaseResources() {
     basesRadarDirty_ = true;
     boltMetricsWidth_ = -1;
     lastMinimapEnemyUpdateFrame_ = 0;
+    minimapEntityCursorIndex_ = -kMinimapTrackedBaseCount;
+    minimapEntityCellValid_.fill(false);
     lastBasesRadarUpdateFrame_ = 0;
     cachedBasesRadarQuadrant_ = -2;
 }
@@ -213,10 +217,12 @@ HudPanel::HudLayout HudPanel::BuildHudLayout(int panelX, int hudWidth, int scree
     cursorY += 20;
     layout.speedY = cursorY;
 
-    layout.mapSize = layout.contentWidth;
-    layout.mapY = screenHeight - kMapBottomPadding - layout.mapSize;
+    layout.mapSize = std::min(layout.contentWidth, kMinimapDisplaySizePixels);
+    const int mapMargin = std::max(0, (layout.contentWidth - layout.mapSize) / 2);
+    layout.mapX = layout.contentX + mapMargin;
+    layout.mapY = screenHeight - mapMargin - layout.mapSize;
     layout.leftBlockSize = (layout.contentWidth - 8) / 2;
-    layout.blocksY = layout.mapY - layout.leftBlockSize - 10;
+    layout.blocksY = layout.mapY - layout.leftBlockSize - mapMargin;
     layout.compassX = layout.contentX + layout.leftBlockSize + 8;
     return layout;
 }
@@ -415,8 +421,8 @@ void HudPanel::RebuildStaticLayer(const AppConfig& config) const {
     DrawRectangle(layout.contentX, layout.speedY, layout.contentWidth, 12, DARKGRAY);
     DrawRectangleLines(layout.contentX, layout.speedY, layout.contentWidth, 12, RAYWHITE);
 
-    DrawRectangle(layout.contentX, layout.mapY, layout.mapSize, layout.mapSize, BLACK);
-    DrawRectangleLines(layout.contentX, layout.mapY, layout.mapSize, layout.mapSize, RAYWHITE);
+    DrawRectangle(layout.mapX, layout.mapY, layout.mapSize, layout.mapSize, BLACK);
+    DrawRectangleLines(layout.mapX - 1, layout.mapY - 1, layout.mapSize + 2, layout.mapSize + 2, RAYWHITE);
 
     DrawRectangle(layout.contentX, layout.blocksY, layout.leftBlockSize, layout.leftBlockSize, BLACK);
     DrawRectangleLines(layout.contentX, layout.blocksY, layout.leftBlockSize, layout.leftBlockSize, RAYWHITE);
@@ -450,10 +456,12 @@ void HudPanel::ResetMinimapMarkersLayer() const {
     EndTextureMode();
 
     lastMinimapEnemyUpdateFrame_ = 0;
+    minimapEntityCursorIndex_ = -kMinimapTrackedBaseCount;
+    minimapEntityCellValid_.fill(false);
     minimapMarkersDirty_ = false;
 }
 
-void HudPanel::UpdateOneMinimapEnemyMarker(const GameState& state, const HudLayout& layout) const {
+void HudPanel::UpdateOneMinimapEntityMarker(const GameState& state) const {
     if (!minimapMarkersTargetLoaded_) {
         return;
     }
@@ -462,33 +470,91 @@ void HudPanel::UpdateOneMinimapEnemyMarker(const GameState& state, const HudLayo
         ResetMinimapMarkersLayer();
     }
 
-    const float mazeWidth = static_cast<float>(state.world.maze.widthCells * state.world.maze.cellSizeUnits);
-    const float mazeHeight = static_cast<float>(state.world.maze.heightCells * state.world.maze.cellSizeUnits);
-    const auto mapPixelX = [&](float worldX) {
-        const float normalized = mazeWidth > 0.0F ? worldX / mazeWidth : 0.5F;
-        return static_cast<int>(
-            std::max(0.0F, std::min(1.0F, normalized)) * static_cast<float>(layout.mapSize - 1));
+    const int mazeWidthCells = std::max(1, state.world.maze.widthCells);
+    const int mazeHeightCells = std::max(1, state.world.maze.heightCells);
+    const int mazeCellSizeUnits = std::max(1, state.world.maze.cellSizeUnits);
+    const int maxEnemyIndex = std::min(
+        static_cast<int>(state.world.enemies.size()) - 1,
+        GameplayConstants::kMaxAliveEnemies - 1);
+    const int logicalMaxEntityIndex = std::max(-1, maxEnemyIndex);
+    if (minimapEntityCursorIndex_ > logicalMaxEntityIndex) {
+        minimapEntityCursorIndex_ = -kMinimapTrackedBaseCount;
+    }
+    const int entityIndex = minimapEntityCursorIndex_;
+    const int cacheIndex = entityIndex + kMinimapTrackedBaseCount;
+    if (cacheIndex < 0 || cacheIndex >= static_cast<int>(minimapEntityCellValid_.size())) {
+        minimapEntityCursorIndex_ = -kMinimapTrackedBaseCount;
+        return;
+    }
+
+    auto worldToLogicalCellX = [&](float worldX) {
+        const int mazeCellX = std::max(
+            0,
+            std::min(
+                mazeWidthCells - 1,
+                static_cast<int>(std::floor(worldX / static_cast<float>(mazeCellSizeUnits)))));
+        if (mazeWidthCells == 1) {
+            return 0;
+        }
+        return (mazeCellX * (kMinimapLogicalSizePixels - 1)) / (mazeWidthCells - 1);
     };
-    const auto mapPixelY = [&](float worldY) {
-        const float normalized = mazeHeight > 0.0F ? worldY / mazeHeight : 0.5F;
-        return static_cast<int>(
-            std::max(0.0F, std::min(1.0F, normalized)) * static_cast<float>(layout.mapSize - 1));
+    auto worldToLogicalCellY = [&](float worldY) {
+        const int mazeCellY = std::max(
+            0,
+            std::min(
+                mazeHeightCells - 1,
+                static_cast<int>(std::floor(worldY / static_cast<float>(mazeCellSizeUnits)))));
+        if (mazeHeightCells == 1) {
+            return 0;
+        }
+        return (mazeCellY * (kMinimapLogicalSizePixels - 1)) / (mazeHeightCells - 1);
     };
 
     BeginTextureMode(minimapMarkersTarget_);
-    ClearBackground(BLANK);
-    int drawnEnemies = 0;
-    for (const EnemyTank& enemy : state.world.enemies) {
-        if (!enemy.alive) {
-            continue;
+    if (minimapEntityCellValid_[static_cast<std::size_t>(cacheIndex)]) {
+        DrawPixel(
+            minimapEntityCellX_[static_cast<std::size_t>(cacheIndex)],
+            minimapEntityCellY_[static_cast<std::size_t>(cacheIndex)],
+            BLACK);
+    }
+
+    bool shouldDrawCurrentEntity = false;
+    Color entityColor = BLACK;
+    int entityCellX = 0;
+    int entityCellY = 0;
+    if (entityIndex < 0) {
+        const int baseSlot = entityIndex + kMinimapTrackedBaseCount;
+        if (baseSlot >= 0 && baseSlot < static_cast<int>(state.world.enemyBases.size())) {
+            const EnemyBase& base = state.world.enemyBases[static_cast<std::size_t>(baseSlot)];
+            shouldDrawCurrentEntity = true;
+            entityColor = base.destroyed ? kDestroyedBaseMapColor : kBaseMapColor;
+            entityCellX = worldToLogicalCellX(base.position.x);
+            entityCellY = worldToLogicalCellY(base.position.y);
         }
-        DrawPixel(mapPixelX(enemy.position.x), mapPixelY(enemy.position.y), EnemyMapColor(enemy.type));
-        ++drawnEnemies;
-        if (drawnEnemies >= GameplayConstants::kMaxAliveEnemies) {
-            break;
+    } else if (entityIndex >= 0 && entityIndex < static_cast<int>(state.world.enemies.size())) {
+        const EnemyTank& enemy = state.world.enemies[static_cast<std::size_t>(entityIndex)];
+        if (enemy.alive) {
+            shouldDrawCurrentEntity = true;
+            entityColor = EnemyMapColor(enemy.type);
+            entityCellX = worldToLogicalCellX(enemy.position.x);
+            entityCellY = worldToLogicalCellY(enemy.position.y);
         }
     }
+    if (shouldDrawCurrentEntity) {
+        DrawPixel(entityCellX, entityCellY, entityColor);
+        minimapEntityCellX_[static_cast<std::size_t>(cacheIndex)] = entityCellX;
+        minimapEntityCellY_[static_cast<std::size_t>(cacheIndex)] = entityCellY;
+        minimapEntityCellValid_[static_cast<std::size_t>(cacheIndex)] = true;
+    } else {
+        minimapEntityCellValid_[static_cast<std::size_t>(cacheIndex)] = false;
+    }
+
     EndTextureMode();
+
+    ++minimapEntityCursorIndex_;
+    if (minimapEntityCursorIndex_ > logicalMaxEntityIndex) {
+        minimapEntityCursorIndex_ = -kMinimapTrackedBaseCount;
+    }
 }
 
 void HudPanel::UpdateBasesRadarLayer(int blockSize, int highlightedQuadrant) const {
@@ -578,7 +644,7 @@ void HudPanel::PrepareRenderTargets(const GameState& state, const AppConfig& con
 
     EnsureBoltMetrics(layout.contentWidth);
     EnsureStaticLayerTarget(hudWidth, config.screenHeight);
-    EnsureMinimapMarkersTarget(layout.mapSize);
+    EnsureMinimapMarkersTarget(kMinimapLogicalSizePixels);
     EnsureBasesRadarTarget(layout.leftBlockSize);
     EnsureLivesIconTexture();
     EnsureEnemyCountIconTextures();
@@ -591,7 +657,7 @@ void HudPanel::PrepareRenderTargets(const GameState& state, const AppConfig& con
         const bool shouldUpdateEnemyLayer = minimapMarkersDirty_ ||
             frameIndex >= (lastMinimapEnemyUpdateFrame_ + kMinimapEnemyUpdateIntervalFrames);
         if (shouldUpdateEnemyLayer) {
-            UpdateOneMinimapEnemyMarker(state, layout);
+            UpdateOneMinimapEntityMarker(state);
             lastMinimapEnemyUpdateFrame_ = frameIndex;
         }
     }
@@ -747,7 +813,7 @@ void HudPanel::DrawPrepared(const GameState& state, const AppConfig& config, con
         const float mazeHeight = static_cast<float>(state.world.maze.heightCells * state.world.maze.cellSizeUnits);
         const auto mapPixelX = [&](float worldX) {
             const float normalized = mazeWidth > 0.0F ? worldX / mazeWidth : 0.5F;
-            return layout.contentX + static_cast<int>(
+            return layout.mapX + static_cast<int>(
                 std::max(0.0F, std::min(1.0F, normalized)) * static_cast<float>(layout.mapSize - 1));
         };
         const auto mapPixelY = [&](float worldY) {
@@ -755,12 +821,6 @@ void HudPanel::DrawPrepared(const GameState& state, const AppConfig& config, con
             return layout.mapY + static_cast<int>(
                 std::max(0.0F, std::min(1.0F, normalized)) * static_cast<float>(layout.mapSize - 1));
         };
-
-        for (const EnemyBase& base : state.world.enemyBases) {
-            const int px = mapPixelX(base.position.x);
-            const int py = mapPixelY(base.position.y);
-            DrawRectangle(px - 1, py - 1, 3, 3, base.destroyed ? kDestroyedBaseMapColor : kBaseMapColor);
-        }
 
         if (minimapMarkersTargetLoaded_) {
             const Rectangle source{
@@ -770,13 +830,18 @@ void HudPanel::DrawPrepared(const GameState& state, const AppConfig& config, con
                 .height = -static_cast<float>(minimapMarkersSize_),
             };
             const Rectangle destination{
-                .x = static_cast<float>(layout.contentX),
+                .x = static_cast<float>(layout.mapX),
                 .y = static_cast<float>(layout.mapY),
-                .width = static_cast<float>(minimapMarkersSize_),
-                .height = static_cast<float>(minimapMarkersSize_),
+                .width = static_cast<float>(layout.mapSize),
+                .height = static_cast<float>(layout.mapSize),
             };
             DrawTexturePro(minimapMarkersTarget_.texture, source, destination, Vector2{0.0F, 0.0F}, 0.0F, WHITE);
         } else {
+            for (const EnemyBase& base : state.world.enemyBases) {
+                const int px = mapPixelX(base.position.x);
+                const int py = mapPixelY(base.position.y);
+                DrawPixel(px, py, base.destroyed ? kDestroyedBaseMapColor : kBaseMapColor);
+            }
             int drawnEnemies = 0;
             for (const EnemyTank& enemy : state.world.enemies) {
                 if (!enemy.alive) {
@@ -792,7 +857,7 @@ void HudPanel::DrawPrepared(const GameState& state, const AppConfig& config, con
 
         const float normalizedX = mazeWidth > 0.0F ? state.world.player.position.x / mazeWidth : 0.5F;
         const float normalizedY = mazeHeight > 0.0F ? state.world.player.position.y / mazeHeight : 0.5F;
-        const int dotX = layout.contentX + static_cast<int>(
+        const int dotX = layout.mapX + static_cast<int>(
             std::max(0.0F, std::min(1.0F, normalizedX)) * static_cast<float>(layout.mapSize - 1));
         const int dotY = layout.mapY + static_cast<int>(
             std::max(0.0F, std::min(1.0F, normalizedY)) * static_cast<float>(layout.mapSize - 1));

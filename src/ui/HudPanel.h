@@ -20,6 +20,7 @@ private:
     static constexpr double kFuelSnapshotIntervalSeconds = 0.5;
     static constexpr std::uint64_t kMinimapEnemyUpdateIntervalFrames = 1;
     static constexpr std::uint64_t kBasesRadarUpdateIntervalFrames = 1;
+    static constexpr int kMinimapTrackedBaseCount = 6;
     static constexpr int kLivesIconSizePixels = 36;
     static constexpr int kLivesIconGapPixels = 1;
 
@@ -31,6 +32,7 @@ private:
         int livesY = 0;
         int fuelY = 0;
         int speedY = 0;
+        int mapX = 0;
         int mapY = 0;
         int mapSize = 0;
         int blocksY = 0;
@@ -47,7 +49,7 @@ private:
     void EnsureEnemyCountIconTextures() const;
     void RebuildStaticLayer(const AppConfig& config) const;
     void ResetMinimapMarkersLayer() const;
-    void UpdateOneMinimapEnemyMarker(const GameState& state, const HudLayout& layout) const;
+    void UpdateOneMinimapEntityMarker(const GameState& state) const;
     void UpdateBasesRadarLayer(int blockSize, int highlightedQuadrant) const;
     static int ComputeHighlightedQuadrant(const GameState& state);
 
@@ -78,6 +80,10 @@ private:
     mutable bool minimapMarkersTargetLoaded_ = false;
     mutable int minimapMarkersSize_ = 0;
     mutable std::uint64_t lastMinimapEnemyUpdateFrame_ = 0;
+    mutable int minimapEntityCursorIndex_ = -kMinimapTrackedBaseCount;
+    mutable std::array<int, GameplayConstants::kMaxAliveEnemies + kMinimapTrackedBaseCount> minimapEntityCellX_{};
+    mutable std::array<int, GameplayConstants::kMaxAliveEnemies + kMinimapTrackedBaseCount> minimapEntityCellY_{};
+    mutable std::array<bool, GameplayConstants::kMaxAliveEnemies + kMinimapTrackedBaseCount> minimapEntityCellValid_{};
 
     mutable bool basesRadarDirty_ = true;
     mutable RenderTexture2D basesRadarTarget_{};
