@@ -87,6 +87,32 @@ References:
 3. Isolate HUD cost as its own render scope to guide next-pass caching.
 4. Re-profile on handheld and compare `frame.render.*` + `frame.present`.
 
+### Render optimization progress update (2026-03-06)
+
+Implemented since the initial handheld render analysis:
+
+| Area | Status | Result |
+|------|--------|--------|
+| Scope attribution cleanup | Done | Removed duplicated/nested render ownership and added stable scope boundaries for world/HUD/overlay work. |
+| Debug overlay cache | Done | Overlay now uses a dirty-flagged `RenderTexture2D` refresh path instead of full per-frame text rebuild. |
+| HUD caching refactor | Done | Static HUD panel, minimap markers, and radar elements moved to prepared render targets with targeted invalidation/refresh. |
+| Two-phase render architecture | Done | All RT preparation is completed before main presentation pass; draw phase only composites prepared textures to avoid nested texture-mode regressions. |
+| World profiling split (enemies/effects) | Done | Added cull vs draw and projectile/explosion/fallback sub-scopes for actionable profiling. |
+| Projectile render stability | Done | Projectiles now render as pixel-snapped screen-space rectangles (`3x3` px), fixing flicker/dropouts seen with tiny world-space rects. |
+
+Observed from recent handheld logs (`profiling-logs/handheld-profile-31.log` and `profiling-logs/handheld-profile-32.log`):
+
+- `frame.render.hud` is no longer the dominant render cost after HUD RT caching.
+- `frame.render.world.enemies.draw` is the largest sub-scope inside enemy rendering; `enemies.cull` is comparatively small.
+- `frame.render.world.effects.projectiles` is low-cost; `effects.explosion` remains the heavier part when active.
+- Overall frame cost is now split between render and simulation (`frame.fixed_step`), so next wins are expected from maze/enemy draw-path reduction and targeted simulation-side work.
+
+Next optimization steps (render track):
+
+1. Prototype maze chunk caching (`maze-chunk-cache`) with explicit invalidation on maze rebuild/reset.
+2. Reduce enemy draw-path overhead (sprite state churn and repeated per-entity work inside `enemies.draw`).
+3. Continue handheld A/B verification (`handheld-ab-verify`) after each render change.
+
 ---
 
 ## 0. Performance and Optimization Ideas (Concepts)
