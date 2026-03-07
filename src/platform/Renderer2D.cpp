@@ -392,6 +392,54 @@ bool Renderer2D::LoadResources() {
     }
     UnloadImage(enemySheet);
 
+    auto loadExplosionSheet = [](
+        const char* filename,
+        int framePx,
+        Texture2D& outTexture,
+        bool& outLoaded) {
+        constexpr int kFrames = GameplayConstants::kExplosionFrameCount;
+        Image img{};
+        if (!TryLoadImageFromTextureDirectory(img, filename)) {
+            TraceLog(LOG_WARNING, "RENDER: %s not found", filename);
+            return;
+        }
+        if (img.width == kFrames * framePx && img.height == framePx) {
+            outTexture = LoadTextureFromImage(img);
+            outLoaded = outTexture.id != 0;
+            if (outLoaded) {
+                SetTextureFilter(outTexture, TEXTURE_FILTER_POINT);
+            } else {
+                TraceLog(LOG_WARNING, "RENDER: failed to upload %s texture", filename);
+            }
+        } else {
+            TraceLog(
+                LOG_WARNING,
+                "RENDER: %s unexpected size (%i x %i), expected %i x %i",
+                filename,
+                img.width,
+                img.height,
+                kFrames * framePx,
+                framePx);
+        }
+        UnloadImage(img);
+    };
+
+    loadExplosionSheet(
+        "explosion-1.png",
+        GameplayConstants::kEnemyExplosionSourceFrameSizePx,
+        enemyExplosionSheet_,
+        enemyExplosionSheetLoaded_);
+    loadExplosionSheet(
+        "explosion-2.png",
+        GameplayConstants::kPlayerExplosionSourceFrameSizePx,
+        playerExplosionSheet_,
+        playerExplosionSheetLoaded_);
+    loadExplosionSheet(
+        "explosion-3-large.png",
+        GameplayConstants::kBaseExplosionSourceFrameSizePx,
+        baseExplosionSheet_,
+        baseExplosionSheetLoaded_);
+
     UnloadImage(playerSheet);
     UnloadImage(playerFrame7);
     UnloadImage(playerFrame6);
@@ -420,6 +468,21 @@ void Renderer2D::UnloadResources() {
         UnloadTexture(enemyTankSheet_);
         enemyTankSheetLoaded_ = false;
         enemyTankSheet_ = Texture2D{};
+    }
+    if (enemyExplosionSheetLoaded_) {
+        UnloadTexture(enemyExplosionSheet_);
+        enemyExplosionSheetLoaded_ = false;
+        enemyExplosionSheet_ = Texture2D{};
+    }
+    if (playerExplosionSheetLoaded_) {
+        UnloadTexture(playerExplosionSheet_);
+        playerExplosionSheetLoaded_ = false;
+        playerExplosionSheet_ = Texture2D{};
+    }
+    if (baseExplosionSheetLoaded_) {
+        UnloadTexture(baseExplosionSheet_);
+        baseExplosionSheetLoaded_ = false;
+        baseExplosionSheet_ = Texture2D{};
     }
 }
 
@@ -608,6 +671,45 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
                     DrawRectangleRec(destRect, enemyColor);
                 }
             }
+
+            if (enemyExplosionSheetLoaded_) {
+                constexpr int kExpFramePx = GameplayConstants::kEnemyExplosionSourceFrameSizePx;
+                constexpr int kExpRenderPx = GameplayConstants::kEnemyExplosionRenderSizePx;
+                constexpr int kExpHalfRenderPx = kExpRenderPx / 2;
+                constexpr float kExpFrameDur = GameplayConstants::kEnemyExplosionFrameDurationSeconds;
+                constexpr int kExpFrameCount = GameplayConstants::kEnemyExplosionFrameCount;
+                for (const EnemyExplosion& explosion : state.world.enemyExplosions) {
+                    if (!explosion.active) {
+                        continue;
+                    }
+                    if (!IsWorldPointVisible(
+                            explosion.position,
+                            visibleLeft,
+                            visibleRight,
+                            visibleTop,
+                            visibleBottom,
+                            kEnemyRenderCullMarginUnits)) {
+                        continue;
+                    }
+                    const int frameIndex = std::min(
+                        static_cast<int>(explosion.elapsedSeconds / kExpFrameDur),
+                        kExpFrameCount - 1);
+                    const Rectangle srcRect{
+                        .x = static_cast<float>(frameIndex * kExpFramePx),
+                        .y = 0.0F,
+                        .width = static_cast<float>(kExpFramePx),
+                        .height = static_cast<float>(kExpFramePx),
+                    };
+                    const Vector2 expScreenPos = WorldToSnappedScreen(explosion.position, camera);
+                    const Rectangle dstRect{
+                        .x = static_cast<float>(RoundToInt(expScreenPos.x) - kExpHalfRenderPx),
+                        .y = static_cast<float>(RoundToInt(expScreenPos.y) - kExpHalfRenderPx),
+                        .width = static_cast<float>(kExpRenderPx),
+                        .height = static_cast<float>(kExpRenderPx),
+                    };
+                    DrawTexturePro(enemyExplosionSheet_, srcRect, dstRect, Vector2{0.0F, 0.0F}, 0.0F, WHITE);
+                }
+            }
         }
     }
 
@@ -640,21 +742,54 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
 
         if (state.world.deathExplosionRemainingSeconds > 0.0F) {
             profiling::ScopedProfile explosionScope(profiling::Scope::RenderWorldEffectsExplosion);
-            const float t = 1.0F -
-                (state.world.deathExplosionRemainingSeconds / GameplayConstants::kDeathExplosionDurationSeconds);
-            const float clamped = std::max(0.0F, std::min(1.0F, t));
-            const float outerRadius = 0.4F + clamped * 1.8F;
-            const float coreRadius = std::max(0.0F, 0.6F - clamped * 0.5F);
-            const unsigned char alpha = static_cast<unsigned char>(std::max(0.0F, 255.0F * (1.0F - clamped)));
-            DrawCircleV(
-                Vector2{state.world.deathExplosionPosition.x, state.world.deathExplosionPosition.y},
-                outerRadius,
-                Color{255, 140, 0, alpha});
-            if (coreRadius > 0.0F) {
-                DrawCircleV(
-                    Vector2{state.world.deathExplosionPosition.x, state.world.deathExplosionPosition.y},
-                    coreRadius,
-                    Color{255, 255, 120, alpha});
+            const float elapsed =
+                GameplayConstants::kDeathExplosionDurationSeconds - state.world.deathExplosionRemainingSeconds;
+            const int frameIndex = static_cast<int>(elapsed / GameplayConstants::kExplosionFrameDurationSeconds);
+            if (playerExplosionSheetLoaded_ && frameIndex < GameplayConstants::kExplosionFrameCount) {
+                constexpr int kSrcPx = GameplayConstants::kPlayerExplosionSourceFrameSizePx;
+                constexpr float kHalf = GameplayConstants::kPlayerExplosionRenderWorldUnits * 0.5F;
+                const Rectangle srcRect{
+                    .x = static_cast<float>(frameIndex * kSrcPx),
+                    .y = 0.0F,
+                    .width = static_cast<float>(kSrcPx),
+                    .height = static_cast<float>(kSrcPx),
+                };
+                const Rectangle dstRect{
+                    .x = state.world.deathExplosionPosition.x - kHalf,
+                    .y = state.world.deathExplosionPosition.y - kHalf,
+                    .width = GameplayConstants::kPlayerExplosionRenderWorldUnits,
+                    .height = GameplayConstants::kPlayerExplosionRenderWorldUnits,
+                };
+                DrawTexturePro(playerExplosionSheet_, srcRect, dstRect, Vector2{0.0F, 0.0F}, 0.0F, WHITE);
+            }
+        }
+
+        if (baseExplosionSheetLoaded_) {
+            constexpr int kSrcPx = GameplayConstants::kBaseExplosionSourceFrameSizePx;
+            constexpr float kHalf = GameplayConstants::kBaseExplosionRenderWorldUnits * 0.5F;
+            constexpr float kSize = GameplayConstants::kBaseExplosionRenderWorldUnits;
+            constexpr float kFrameDur = GameplayConstants::kExplosionFrameDurationSeconds;
+            constexpr int kFrameCount = GameplayConstants::kExplosionFrameCount;
+            for (const EnemyExplosion& explosion : state.world.baseExplosions) {
+                if (!explosion.active) {
+                    continue;
+                }
+                const int frameIndex = std::min(
+                    static_cast<int>(explosion.elapsedSeconds / kFrameDur),
+                    kFrameCount - 1);
+                const Rectangle srcRect{
+                    .x = static_cast<float>(frameIndex * kSrcPx),
+                    .y = 0.0F,
+                    .width = static_cast<float>(kSrcPx),
+                    .height = static_cast<float>(kSrcPx),
+                };
+                const Rectangle dstRect{
+                    .x = explosion.position.x - kHalf,
+                    .y = explosion.position.y - kHalf,
+                    .width = kSize,
+                    .height = kSize,
+                };
+                DrawTexturePro(baseExplosionSheet_, srcRect, dstRect, Vector2{0.0F, 0.0F}, 0.0F, WHITE);
             }
         }
 

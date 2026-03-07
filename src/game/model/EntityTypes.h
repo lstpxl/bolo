@@ -114,9 +114,16 @@ struct EnemyTank {
     bool alive = true;
 };
 
+struct EnemyExplosion {
+    Vec2f position;
+    float elapsedSeconds = 0.0F;
+    bool active = false;
+};
+
 struct EnemyBase {
     Vec2f position;
     bool destroyed = false;
+    bool explosionPlayed = false;
     float enemyGenerationIntervalSeconds = GameplayConstants::kBaseSpawnCooldownSeconds;
     float enemyGenerationTimerSeconds = GameplayConstants::kBaseSpawnCooldownSeconds;
     int activeEnemies = 0;

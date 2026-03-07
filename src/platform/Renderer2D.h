@@ -23,4 +23,10 @@ private:
     std::array<Vector2, kMaxPlayerTankFrames> playerTankFrameOffsetsPixels_{};
     Texture2D enemyTankSheet_{};
     bool enemyTankSheetLoaded_ = false;
+    Texture2D enemyExplosionSheet_{};
+    bool enemyExplosionSheetLoaded_ = false;
+    Texture2D playerExplosionSheet_{};
+    bool playerExplosionSheetLoaded_ = false;
+    Texture2D baseExplosionSheet_{};
+    bool baseExplosionSheetLoaded_ = false;
 };

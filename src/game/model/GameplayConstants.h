@@ -55,6 +55,30 @@ struct GameplayConstants {
     static constexpr float kHunterMaxDistanceUnits = 6.0F;           // world-units
     static constexpr float kAssassinMinDistanceUnits = 3.0F;         // world-units
 
+    // Shared explosion animation parameters (all explosion spritesheets use these).
+    static constexpr int kExplosionFrameCount = 6;                             // frames
+    static constexpr float kExplosionFrameDurationSeconds = 0.15F;             // seconds / frame
+    static constexpr float kExplosionTotalDurationSeconds =
+        static_cast<float>(kExplosionFrameCount) * kExplosionFrameDurationSeconds; // 0.9s
+
+    // Enemy explosion animation (explosion-1.png, 32×32 frames).
+    static constexpr int kMaxEnemyExplosions = 64;                             // slots
+    static constexpr int kEnemyExplosionSourceFrameSizePx = 32;                // px (source cell)
+    static constexpr int kEnemyExplosionRenderSizePx = 32;                     // px (destination, 1× scale)
+    // Kept for back-compat; callers should prefer the shared constants above.
+    static constexpr int kEnemyExplosionFrameCount = kExplosionFrameCount;
+    static constexpr float kEnemyExplosionFrameDurationSeconds = kExplosionFrameDurationSeconds;
+    static constexpr float kEnemyExplosionTotalDurationSeconds = kExplosionTotalDurationSeconds;
+
+    // Player death explosion animation (explosion-2.png, 32×32 frames).
+    static constexpr int kPlayerExplosionSourceFrameSizePx = 32;               // px (source cell)
+    static constexpr float kPlayerExplosionRenderWorldUnits = 2.0F;            // world units (32px / 16px·unit⁻¹)
+
+    // Base destruction explosion animation (explosion-3-large.png, 64×64 frames).
+    static constexpr int kMaxBaseExplosions = kEnemyBaseCount;                 // slots (one per base)
+    static constexpr int kBaseExplosionSourceFrameSizePx = 64;                 // px (source cell)
+    static constexpr float kBaseExplosionRenderWorldUnits = 4.0F;              // world units (64px / 16px·unit⁻¹)
+
     // Game phase tuning.
     static constexpr float kStartModeDurationSeconds = 1.5F;         // seconds
     static constexpr float kDeathModeDurationSeconds = 3.0F;         // seconds

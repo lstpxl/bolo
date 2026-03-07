@@ -1,7 +1,9 @@
 #pragma once
 
+#include <array>
 #include "core/Types.h"
 #include "game/model/EntityTypes.h"
+#include "game/model/GameplayConstants.h"
 #include "game/navigation/CellCoordCache.h"
 #include "game/navigation/PlayerFlowField.h"
 #include "game/spatial/SweepPruneBroadPhase.h"
@@ -34,6 +36,8 @@ struct WorldState {
         .alive = true,
     };
     std::vector<EnemyTank> enemies{};
+    std::array<EnemyExplosion, GameplayConstants::kMaxEnemyExplosions> enemyExplosions{};
+    std::array<EnemyExplosion, GameplayConstants::kMaxBaseExplosions> baseExplosions{};
     std::vector<EnemyBase> enemyBases{};
     std::vector<Projectile> projectiles{};
     int score = 0;

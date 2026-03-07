@@ -139,6 +139,57 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const GameplayVie
         }
     }
 
+    // Spawn explosions for enemies that died this frame.
+    for (const EnemyTank& enemy : state_.world.enemies) {
+        if (enemy.alive) {
+            continue;
+        }
+        for (EnemyExplosion& slot : state_.world.enemyExplosions) {
+            if (!slot.active) {
+                slot.position = enemy.position;
+                slot.elapsedSeconds = 0.0F;
+                slot.active = true;
+                break;
+            }
+        }
+    }
+
+    // Spawn explosions for bases destroyed this frame.
+    for (EnemyBase& base : state_.world.enemyBases) {
+        if (!base.destroyed || base.explosionPlayed) {
+            continue;
+        }
+        base.explosionPlayed = true;
+        for (EnemyExplosion& slot : state_.world.baseExplosions) {
+            if (!slot.active) {
+                slot.position = base.position;
+                slot.elapsedSeconds = 0.0F;
+                slot.active = true;
+                break;
+            }
+        }
+    }
+
+    // Tick active explosions.
+    for (EnemyExplosion& explosion : state_.world.enemyExplosions) {
+        if (!explosion.active) {
+            continue;
+        }
+        explosion.elapsedSeconds += deltaSeconds;
+        if (explosion.elapsedSeconds >= GameplayConstants::kExplosionTotalDurationSeconds) {
+            explosion.active = false;
+        }
+    }
+    for (EnemyExplosion& explosion : state_.world.baseExplosions) {
+        if (!explosion.active) {
+            continue;
+        }
+        explosion.elapsedSeconds += deltaSeconds;
+        if (explosion.elapsedSeconds >= GameplayConstants::kExplosionTotalDurationSeconds) {
+            explosion.active = false;
+        }
+    }
+
     // Cleanup dead entities.
     state_.world.projectiles.erase(
         std::remove_if(
