@@ -40,6 +40,12 @@
       "problemMatcher": []
     },
     {
+      "label": "BOLT: Remove RG353V Profile",
+      "type": "shell",
+      "command": "RG353V_DEVICE_IP=${input:rg353vDeviceIp} npm run remove-profile:rg353v",
+      "problemMatcher": []
+    },
+    {
       "label": "BOLT: Build and Deploy RG353V Release",
       "type": "shell",
       "command": "RG353V_DEVICE_IP=${input:rg353vDeviceIp} npm run build-and-deploy:rg353v:release",
