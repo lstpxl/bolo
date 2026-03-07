@@ -529,67 +529,84 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
     const float baseCoreRadiusPixels = static_cast<float>(baseCoreDiameterPixels) * 0.5F;
     {
         profiling::ScopedProfile enemiesScope(profiling::Scope::RenderWorldEnemies);
-        for (const EnemyBase& base : state.world.enemyBases) {
-            const Vector2 baseScreenPosition = WorldToSnappedScreen(base.position, camera);
-            const int centerX = RoundToInt(baseScreenPosition.x);
-            const int centerY = RoundToInt(baseScreenPosition.y);
-            const Color baseShellColor = base.destroyed ? kDestroyedBaseColor : kEnemyBaseShellColor;
-            const Color baseCoreColor = base.destroyed ? kDestroyedBaseColor : kEnemyBaseColor;
-
-            // Draw base shell (3x3 units), carve 1x1 empty center, then draw core disc inside.
-            DrawRectangle(
-                centerX - baseHalfPixels,
-                centerY - baseHalfPixels,
-                baseSizePixels,
-                baseSizePixels,
-                baseShellColor);
-            DrawRectangle(
-                centerX - baseCenterHoleHalfPixels,
-                centerY - baseCenterHoleHalfPixels,
-                baseCenterHolePixels,
-                baseCenterHolePixels,
-                kBackgroundColor);
-            DrawCircleV(
-                Vector2{static_cast<float>(centerX), static_cast<float>(centerY)},
-                baseCoreRadiusPixels,
-                baseCoreColor);
+        constexpr std::size_t kMaxTrackedVisibleEnemies = GameplayConstants::kMaxAliveEnemies;
+        std::array<const EnemyTank*, kMaxTrackedVisibleEnemies> visibleEnemies{};
+        int visibleEnemyCount = 0;
+        {
+            profiling::ScopedProfile cullScope(profiling::Scope::RenderWorldEnemiesCull);
+            for (const EnemyTank& enemy : state.world.enemies) {
+                if (!enemy.alive) {
+                    continue;
+                }
+                if (!IsWorldPointVisible(
+                        enemy.position,
+                        visibleLeft,
+                        visibleRight,
+                        visibleTop,
+                        visibleBottom,
+                        kEnemyRenderCullMarginUnits)) {
+                    continue;
+                }
+                if (visibleEnemyCount < static_cast<int>(visibleEnemies.size())) {
+                    visibleEnemies[static_cast<std::size_t>(visibleEnemyCount)] = &enemy;
+                    ++visibleEnemyCount;
+                }
+            }
         }
 
-        const int enemySizePixels = kEnemyRenderSizePx;
-        const int enemyHalfPixels = enemySizePixels / 2;
-        for (const EnemyTank& enemy : state.world.enemies) {
-            if (!enemy.alive) {
-                continue;
+        {
+            profiling::ScopedProfile drawScope(profiling::Scope::RenderWorldEnemiesDraw);
+            for (const EnemyBase& base : state.world.enemyBases) {
+                const Vector2 baseScreenPosition = WorldToSnappedScreen(base.position, camera);
+                const int centerX = RoundToInt(baseScreenPosition.x);
+                const int centerY = RoundToInt(baseScreenPosition.y);
+                const Color baseShellColor = base.destroyed ? kDestroyedBaseColor : kEnemyBaseShellColor;
+                const Color baseCoreColor = base.destroyed ? kDestroyedBaseColor : kEnemyBaseColor;
+
+                // Draw base shell (3x3 units), carve 1x1 empty center, then draw core disc inside.
+                DrawRectangle(
+                    centerX - baseHalfPixels,
+                    centerY - baseHalfPixels,
+                    baseSizePixels,
+                    baseSizePixels,
+                    baseShellColor);
+                DrawRectangle(
+                    centerX - baseCenterHoleHalfPixels,
+                    centerY - baseCenterHoleHalfPixels,
+                    baseCenterHolePixels,
+                    baseCenterHolePixels,
+                    kBackgroundColor);
+                DrawCircleV(
+                    Vector2{static_cast<float>(centerX), static_cast<float>(centerY)},
+                    baseCoreRadiusPixels,
+                    baseCoreColor);
             }
-            if (!IsWorldPointVisible(
-                    enemy.position,
-                    visibleLeft,
-                    visibleRight,
-                    visibleTop,
-                    visibleBottom,
-                    kEnemyRenderCullMarginUnits)) {
-                continue;
-            }
-            const Vector2 enemyScreenPosition = WorldToSnappedScreen(enemy.position, camera);
-            const Rectangle destRect{
-                .x = static_cast<float>(RoundToInt(enemyScreenPosition.x) - enemyHalfPixels),
-                .y = static_cast<float>(RoundToInt(enemyScreenPosition.y) - enemyHalfPixels),
-                .width = static_cast<float>(enemySizePixels),
-                .height = static_cast<float>(enemySizePixels),
-            };
-            const Color enemyColor = EnemyColorForType(enemy.type);
-            if (enemyTankSheetLoaded_) {
-                const int directionIndex = PlayerFrameIndexFromHeading(enemy.headingRadians, kEnemyTankDirectionCount);
-                const int typeIndex = EnemyTypeIndex(enemy.type);
-                const Rectangle sourceRect{
-                    .x = static_cast<float>(directionIndex * kEnemyTankFrameSizePx),
-                    .y = static_cast<float>(typeIndex * kEnemyTankFrameSizePx),
-                    .width = static_cast<float>(kEnemyTankFrameSizePx),
-                    .height = static_cast<float>(kEnemyTankFrameSizePx),
+
+            const int enemySizePixels = kEnemyRenderSizePx;
+            const int enemyHalfPixels = enemySizePixels / 2;
+            for (int i = 0; i < visibleEnemyCount; ++i) {
+                const EnemyTank& enemy = *visibleEnemies[static_cast<std::size_t>(i)];
+                const Vector2 enemyScreenPosition = WorldToSnappedScreen(enemy.position, camera);
+                const Rectangle destRect{
+                    .x = static_cast<float>(RoundToInt(enemyScreenPosition.x) - enemyHalfPixels),
+                    .y = static_cast<float>(RoundToInt(enemyScreenPosition.y) - enemyHalfPixels),
+                    .width = static_cast<float>(enemySizePixels),
+                    .height = static_cast<float>(enemySizePixels),
                 };
-                DrawTexturePro(enemyTankSheet_, sourceRect, destRect, Vector2{0.0F, 0.0F}, 0.0F, enemyColor);
-            } else {
-                DrawRectangleRec(destRect, enemyColor);
+                const Color enemyColor = EnemyColorForType(enemy.type);
+                if (enemyTankSheetLoaded_) {
+                    const int directionIndex = PlayerFrameIndexFromHeading(enemy.headingRadians, kEnemyTankDirectionCount);
+                    const int typeIndex = EnemyTypeIndex(enemy.type);
+                    const Rectangle sourceRect{
+                        .x = static_cast<float>(directionIndex * kEnemyTankFrameSizePx),
+                        .y = static_cast<float>(typeIndex * kEnemyTankFrameSizePx),
+                        .width = static_cast<float>(kEnemyTankFrameSizePx),
+                        .height = static_cast<float>(kEnemyTankFrameSizePx),
+                    };
+                    DrawTexturePro(enemyTankSheet_, sourceRect, destRect, Vector2{0.0F, 0.0F}, 0.0F, enemyColor);
+                } else {
+                    DrawRectangleRec(destRect, enemyColor);
+                }
             }
         }
     }
@@ -598,32 +615,36 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
         profiling::ScopedProfile effectsScope(profiling::Scope::RenderWorldEffects);
         BeginMode2D(camera);
 
-        for (const Projectile& projectile : state.world.projectiles) {
-            if (!projectile.alive) {
-                continue;
+        if (!state.world.projectiles.empty()) {
+            profiling::ScopedProfile projectileScope(profiling::Scope::RenderWorldEffectsProjectiles);
+            for (const Projectile& projectile : state.world.projectiles) {
+                if (!projectile.alive) {
+                    continue;
+                }
+                if (!IsWorldPointVisible(
+                        projectile.position,
+                        visibleLeft,
+                        visibleRight,
+                        visibleTop,
+                        visibleBottom,
+                        kProjectileRenderCullMarginUnits)) {
+                    continue;
+                }
+                const Color color = projectile.owner == ProjectileOwner::Player ? kPlayerShellColor : kEnemyShellColor;
+                const Vector2 snappedPosition = SnapWorldToPixelGrid(projectile.position);
+                DrawRectangleRec(
+                    Rectangle{
+                        .x = snappedPosition.x - kProjectileRenderHalfSizeUnits,
+                        .y = snappedPosition.y - kProjectileRenderHalfSizeUnits,
+                        .width = kProjectileRenderSizeUnits,
+                        .height = kProjectileRenderSizeUnits,
+                    },
+                    color);
             }
-            if (!IsWorldPointVisible(
-                    projectile.position,
-                    visibleLeft,
-                    visibleRight,
-                    visibleTop,
-                    visibleBottom,
-                    kProjectileRenderCullMarginUnits)) {
-                continue;
-            }
-            const Color color = projectile.owner == ProjectileOwner::Player ? kPlayerShellColor : kEnemyShellColor;
-            const Vector2 snappedPosition = SnapWorldToPixelGrid(projectile.position);
-            DrawRectangleRec(
-                Rectangle{
-                    .x = snappedPosition.x - kProjectileRenderHalfSizeUnits,
-                    .y = snappedPosition.y - kProjectileRenderHalfSizeUnits,
-                    .width = kProjectileRenderSizeUnits,
-                    .height = kProjectileRenderSizeUnits,
-                },
-                color);
         }
 
         if (state.world.deathExplosionRemainingSeconds > 0.0F) {
+            profiling::ScopedProfile explosionScope(profiling::Scope::RenderWorldEffectsExplosion);
             const float t = 1.0F -
                 (state.world.deathExplosionRemainingSeconds / GameplayConstants::kDeathExplosionDurationSeconds);
             const float clamped = std::max(0.0F, std::min(1.0F, t));
@@ -643,6 +664,7 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
         }
 
         if (!playerTankSheetLoaded_ && state.world.player.alive) {
+            profiling::ScopedProfile playerFallbackScope(profiling::Scope::RenderWorldEffectsPlayerFallback);
             const float half = GameplayConstants::kEntitySizeUnits * 0.5F;
             DrawRectangleRec(
                 Rectangle{

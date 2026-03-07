@@ -1,0 +1,17 @@
+.cursorignore/build/**
+/build/**
+/sysroot/**
+.DS_Store
+/build-arm/
+/raylib/.zig-cache/
+/raylib/build-arm/
+/raylib/**
+/resources/**
+/assets/**
+/third_party/**
+/original-screenshots/**
+/raw-sounds/**
+sysroot-backup.zip
+.env
+compile_commands.json
+raw-sounds
