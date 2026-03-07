@@ -1,4 +1,3 @@
-.cursorignore/build/**
 /build/**
 /sysroot/**
 .DS_Store

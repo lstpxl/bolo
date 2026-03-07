@@ -11,6 +11,7 @@
     "build:rg353v:debug": "cmake --preset rg353v-debug --fresh && cmake --build --preset rg353v-debug",
     "deploy:rg353v:release": "bash scripts/deploy-rg353v.sh release",
     "deploy:rg353v:debug": "bash scripts/deploy-rg353v.sh debug",
+    "fetch-profile:rg353v": "bash scripts/fetch-handheld-profile.sh",
     "build-and-deploy:rg353v:release": "npm run build:rg353v:release && npm run deploy:rg353v:release",
     "build-and-deploy:rg353v:debug": "npm run build:rg353v:debug && npm run deploy:rg353v:debug"
   }
