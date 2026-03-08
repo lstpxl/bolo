@@ -61,6 +61,15 @@ constexpr float kProjectileRenderCullMarginUnits = 1.0F;
 constexpr int kProjectileRenderSizePixels = 3;
 constexpr int kProjectileRenderHalfSizePixels = kProjectileRenderSizePixels / 2;
 
+// Pre-baked base sprite dimensions (must match the math in the old DrawWorld loop).
+constexpr int kBaseSizePx = static_cast<int>(GameplayConstants::kEnemyBaseSizeUnits) * GameplayConstants::kPixelsPerUnit;
+constexpr int kBaseHalfPx = kBaseSizePx / 2;
+constexpr int kBaseHolePx = GameplayConstants::kPixelsPerUnit + 8;
+constexpr int kBaseHoleHalfPx = kBaseHolePx / 2;
+constexpr int kBaseHoleOffsetPx = kBaseHalfPx - kBaseHoleHalfPx;
+constexpr int kBaseCoreDiameterPx = (kBaseHolePx - 10 > 2) ? (kBaseHolePx - 10) : 2;
+constexpr int kBaseCoreRadiusPx = kBaseCoreDiameterPx / 2;
+
 Vector2 SnapWorldToPixelGrid(const Vec2f& worldPosition) {
     const float pixelsPerUnit = static_cast<float>(GameplayConstants::kPixelsPerUnit);
     return Vector2{
@@ -73,10 +82,6 @@ int RoundToInt(float value) {
     return static_cast<int>(std::round(value));
 }
 
-int UnitsToPixels(float valueInUnits) {
-    const float pixels = valueInUnits * static_cast<float>(GameplayConstants::kPixelsPerUnit);
-    return std::max(1, RoundToInt(pixels));
-}
 
 Color EnemyColorForType(EnemyType type) {
     if (type == EnemyType::Drone) {
@@ -98,6 +103,54 @@ Vector2 WorldToSnappedScreen(const Vec2f& worldPosition, const Camera2D& camera)
         static_cast<float>(RoundToInt(screen.x)),
         static_cast<float>(RoundToInt(screen.y)),
     };
+}
+
+void DrawFlowFieldArrow(const Camera2D& camera, float fromX, float fromY, float toX, float toY, float cellSizeUnits) {
+    const Vector2 fromScreen = GetWorldToScreen2D(Vector2{fromX, fromY}, camera);
+    const Vector2 toScreen = GetWorldToScreen2D(Vector2{toX, toY}, camera);
+    const Vector2 delta{
+        toScreen.x - fromScreen.x,
+        toScreen.y - fromScreen.y,
+    };
+    const float length = std::sqrt(delta.x * delta.x + delta.y * delta.y);
+    if (length <= 0.001F) {
+        return;
+    }
+
+    const Vector2 dir{
+        delta.x / length,
+        delta.y / length,
+    };
+    const Vector2 perp{
+        -dir.y,
+        dir.x,
+    };
+    const float arrowLenPx = std::min(
+        std::max(cellSizeUnits * camera.zoom * 0.35F, 4.0F),
+        length * 0.75F);
+    const Vector2 tail{
+        fromScreen.x - dir.x * arrowLenPx * 0.2F,
+        fromScreen.y - dir.y * arrowLenPx * 0.2F,
+    };
+    const Vector2 tip{
+        fromScreen.x + dir.x * arrowLenPx * 0.8F,
+        fromScreen.y + dir.y * arrowLenPx * 0.8F,
+    };
+
+    constexpr Color kFlowArrowColor{96, 200, 255, 180};
+    const float headSize = std::clamp(arrowLenPx * 0.22F, 2.0F, 6.0F);
+    DrawLineEx(tail, tip, 1.0F, kFlowArrowColor);
+    DrawTriangle(
+        tip,
+        Vector2{
+            tip.x - dir.x * headSize - perp.x * headSize * 0.6F,
+            tip.y - dir.y * headSize - perp.y * headSize * 0.6F,
+        },
+        Vector2{
+            tip.x - dir.x * headSize + perp.x * headSize * 0.6F,
+            tip.y - dir.y * headSize + perp.y * headSize * 0.6F,
+        },
+        kFlowArrowColor);
 }
 
 bool IsWorldPointVisible(
@@ -347,6 +400,8 @@ bool Renderer2D::LoadResources() {
         kEnemyTankTypeCount * kEnemySpriteSheetCellSize,
         BLANK);
     FillOpaquePixelsColor(sourceSheet, WHITE);
+    const std::array<Color, kEnemyTankTypeCount> kEnemyTypeColors{
+        kDroneColor, kTorpedoColor, kHunterColor, kAssassinColor};
     for (int typeIndex = 0; typeIndex < kEnemyTankTypeCount; ++typeIndex) {
         const int sourceRow = kEnemySpriteFirstRowIndex + typeIndex;
         Image frame0 = ExtractSpriteCell(sourceSheet, 0, sourceRow, kEnemySpriteSheetCellSize);
@@ -372,6 +427,26 @@ bool Renderer2D::LoadResources() {
         DrawSpriteCell(enemySheet, frame5, 5, typeIndex, kEnemySpriteSheetCellSize);
         DrawSpriteCell(enemySheet, frame6, 6, typeIndex, kEnemySpriteSheetCellSize);
         DrawSpriteCell(enemySheet, frame7, 7, typeIndex, kEnemySpriteSheetCellSize);
+
+        // Pre-colorize this type's row so we can draw with WHITE tint and avoid batch flushes.
+        const Color typeColor = kEnemyTypeColors[static_cast<std::size_t>(typeIndex)];
+        Color* sheetPixels = static_cast<Color*>(enemySheet.data);
+        if (sheetPixels != nullptr) {
+            const int rowStartY = typeIndex * kEnemySpriteSheetCellSize;
+            const int rowEndY = rowStartY + kEnemySpriteSheetCellSize;
+            const int sheetWidth = enemySheet.width;
+            for (int py = rowStartY; py < rowEndY; ++py) {
+                for (int px = 0; px < sheetWidth; ++px) {
+                    Color& pixel = sheetPixels[py * sheetWidth + px];
+                    if (pixel.a == 0) {
+                        continue;
+                    }
+                    pixel.r = typeColor.r;
+                    pixel.g = typeColor.g;
+                    pixel.b = typeColor.b;
+                }
+            }
+        }
 
         UnloadImage(frame7);
         UnloadImage(frame6);
@@ -455,6 +530,21 @@ bool Renderer2D::LoadResources() {
     UnloadImage(playerBodyUp);
     UnloadImage(sourceSheet);
 
+    // Pre-bake base sprites into textures so each base draws in one call instead of three.
+    auto generateBaseTexture = [&](Color shellColor, Color coreColor, Texture2D& outTexture, bool& outLoaded) {
+        Image img = GenImageColor(kBaseSizePx, kBaseSizePx, shellColor);
+        ImageDrawRectangle(&img, kBaseHoleOffsetPx, kBaseHoleOffsetPx, kBaseHolePx, kBaseHolePx, kBackgroundColor);
+        ImageDrawCircle(&img, kBaseHalfPx, kBaseHalfPx, kBaseCoreRadiusPx, coreColor);
+        outTexture = LoadTextureFromImage(img);
+        outLoaded = outTexture.id != 0;
+        if (outLoaded) {
+            SetTextureFilter(outTexture, TEXTURE_FILTER_POINT);
+        }
+        UnloadImage(img);
+    };
+    generateBaseTexture(kEnemyBaseShellColor, kEnemyBaseColor, baseAliveTexture_, baseAliveTextureLoaded_);
+    generateBaseTexture(kDestroyedBaseColor, kDestroyedBaseColor, baseDestroyedTexture_, baseDestroyedTextureLoaded_);
+
     return playerTankSheetLoaded_;
 }
 
@@ -484,6 +574,16 @@ void Renderer2D::UnloadResources() {
         baseExplosionSheetLoaded_ = false;
         baseExplosionSheet_ = Texture2D{};
     }
+    if (baseAliveTextureLoaded_) {
+        UnloadTexture(baseAliveTexture_);
+        baseAliveTextureLoaded_ = false;
+        baseAliveTexture_ = Texture2D{};
+    }
+    if (baseDestroyedTextureLoaded_) {
+        UnloadTexture(baseDestroyedTexture_);
+        baseDestroyedTextureLoaded_ = false;
+        baseDestroyedTexture_ = Texture2D{};
+    }
 }
 
 void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
@@ -499,7 +599,8 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
     DrawRectangleRec(worldViewport, kBackgroundColor);
 
     Camera2D camera{};
-    camera.target = SnapWorldToPixelGrid(state.world.player.position);
+    const Vec2f cameraTarget = state.world.panModeActive ? state.world.panTarget : state.world.player.position;
+    camera.target = SnapWorldToPixelGrid(cameraTarget);
     camera.offset = Vector2{
         std::round(worldViewport.width * 0.5F),
         std::round(worldViewport.height * 0.5F),
@@ -583,13 +684,37 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
         DrawVerticalWallPixels(borderTopRight, borderBottomRight, wallThicknessPixels, kWallsColor);
     }
 
+    const bool showFlowField =
+#if defined(__APPLE__) && !defined(NDEBUG)
+        state.world.navigationCache.playerFlowField.HasBuild();
+#else
+        state.menuSettings.debugInfo && state.world.navigationCache.playerFlowField.HasBuild();
+#endif
+    if (showFlowField) {
+        const auto& flowField = state.world.navigationCache.playerFlowField;
+        const float cellSizeUnits = static_cast<float>(state.world.maze.cellSizeUnits);
+        const float cellHalfUnits = cellSizeUnits * 0.5F;
+        for (int cellY = minCellY; cellY <= maxCellY; ++cellY) {
+            for (int cellX = minCellX; cellX <= maxCellX; ++cellX) {
+                const int fromHash = cellY * state.world.maze.widthCells + cellX;
+                const int toHash = flowField.NextCellHash(fromHash);
+                if (toHash < 0 || toHash == fromHash) {
+                    continue;
+                }
+                const int toX = toHash % state.world.maze.widthCells;
+                const int toY = toHash / state.world.maze.widthCells;
+                DrawFlowFieldArrow(
+                    camera,
+                    static_cast<float>(cellX) * cellSizeUnits + cellHalfUnits,
+                    static_cast<float>(cellY) * cellSizeUnits + cellHalfUnits,
+                    static_cast<float>(toX) * cellSizeUnits + cellHalfUnits,
+                    static_cast<float>(toY) * cellSizeUnits + cellHalfUnits,
+                    cellSizeUnits);
+            }
+        }
+    }
+
     const Vector2 playerRenderPosition = SnapWorldToPixelGrid(state.world.player.position);
-    const int baseSizePixels = UnitsToPixels(GameplayConstants::kEnemyBaseSizeUnits);
-    const int baseHalfPixels = baseSizePixels / 2;
-    const int baseCenterHolePixels = UnitsToPixels(1.0F) + 8;
-    const int baseCenterHoleHalfPixels = baseCenterHolePixels / 2;
-    const int baseCoreDiameterPixels = std::max(2, baseCenterHolePixels - 10);
-    const float baseCoreRadiusPixels = static_cast<float>(baseCoreDiameterPixels) * 0.5F;
     {
         profiling::ScopedProfile enemiesScope(profiling::Scope::RenderWorldEnemies);
         constexpr std::size_t kMaxTrackedVisibleEnemies = GameplayConstants::kMaxAliveEnemies;
@@ -617,32 +742,34 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
             }
         }
 
+        std::sort(
+            visibleEnemies.begin(),
+            visibleEnemies.begin() + visibleEnemyCount,
+            [](const EnemyTank* a, const EnemyTank* b) {
+                return EnemyTypeIndex(a->type) < EnemyTypeIndex(b->type);
+            });
+
         {
             profiling::ScopedProfile drawScope(profiling::Scope::RenderWorldEnemiesDraw);
             for (const EnemyBase& base : state.world.enemyBases) {
                 const Vector2 baseScreenPosition = WorldToSnappedScreen(base.position, camera);
-                const int centerX = RoundToInt(baseScreenPosition.x);
-                const int centerY = RoundToInt(baseScreenPosition.y);
-                const Color baseShellColor = base.destroyed ? kDestroyedBaseColor : kEnemyBaseShellColor;
-                const Color baseCoreColor = base.destroyed ? kDestroyedBaseColor : kEnemyBaseColor;
-
-                // Draw base shell (3x3 units), carve 1x1 empty center, then draw core disc inside.
-                DrawRectangle(
-                    centerX - baseHalfPixels,
-                    centerY - baseHalfPixels,
-                    baseSizePixels,
-                    baseSizePixels,
-                    baseShellColor);
-                DrawRectangle(
-                    centerX - baseCenterHoleHalfPixels,
-                    centerY - baseCenterHoleHalfPixels,
-                    baseCenterHolePixels,
-                    baseCenterHolePixels,
-                    kBackgroundColor);
-                DrawCircleV(
-                    Vector2{static_cast<float>(centerX), static_cast<float>(centerY)},
-                    baseCoreRadiusPixels,
-                    baseCoreColor);
+                const int topLeftX = RoundToInt(baseScreenPosition.x) - kBaseHalfPx;
+                const int topLeftY = RoundToInt(baseScreenPosition.y) - kBaseHalfPx;
+                if (!base.destroyed && baseAliveTextureLoaded_) {
+                    DrawTexture(baseAliveTexture_, topLeftX, topLeftY, WHITE);
+                } else if (base.destroyed && baseDestroyedTextureLoaded_) {
+                    DrawTexture(baseDestroyedTexture_, topLeftX, topLeftY, WHITE);
+                } else {
+                    // Fallback if textures didn't load.
+                    const Color shellColor = base.destroyed ? kDestroyedBaseColor : kEnemyBaseShellColor;
+                    const Color coreColor = base.destroyed ? kDestroyedBaseColor : kEnemyBaseColor;
+                    DrawRectangle(topLeftX, topLeftY, kBaseSizePx, kBaseSizePx, shellColor);
+                    DrawRectangle(
+                        topLeftX + kBaseHoleOffsetPx, topLeftY + kBaseHoleOffsetPx,
+                        kBaseHolePx, kBaseHolePx, kBackgroundColor);
+                    DrawCircle(topLeftX + kBaseHalfPx, topLeftY + kBaseHalfPx,
+                               static_cast<float>(kBaseCoreRadiusPx), coreColor);
+                }
             }
 
             const int enemySizePixels = kEnemyRenderSizePx;
@@ -656,7 +783,6 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
                     .width = static_cast<float>(enemySizePixels),
                     .height = static_cast<float>(enemySizePixels),
                 };
-                const Color enemyColor = EnemyColorForType(enemy.type);
                 if (enemyTankSheetLoaded_) {
                     const int directionIndex = PlayerFrameIndexFromHeading(enemy.headingRadians, kEnemyTankDirectionCount);
                     const int typeIndex = EnemyTypeIndex(enemy.type);
@@ -666,9 +792,9 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
                         .width = static_cast<float>(kEnemyTankFrameSizePx),
                         .height = static_cast<float>(kEnemyTankFrameSizePx),
                     };
-                    DrawTexturePro(enemyTankSheet_, sourceRect, destRect, Vector2{0.0F, 0.0F}, 0.0F, enemyColor);
+                    DrawTexturePro(enemyTankSheet_, sourceRect, destRect, Vector2{0.0F, 0.0F}, 0.0F, WHITE);
                 } else {
-                    DrawRectangleRec(destRect, enemyColor);
+                    DrawRectangleRec(destRect, EnemyColorForType(enemy.type));
                 }
             }
 

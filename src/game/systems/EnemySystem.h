@@ -2,6 +2,7 @@
 
 #include "core/Random.h"
 #include "game/GameplayView.h"
+#include "game/navigation/FlowRebuildWorker.h"
 
 struct GameState;
 
@@ -17,5 +18,10 @@ struct EnemyRuntimeStats {
     int separationPairsResolved = 0;
 };
 
-void UpdateEnemySystem(GameState& state, const GameplayView& view, float deltaSeconds, Random& random);
+void UpdateEnemySystem(
+    GameState& state,
+    const GameplayView& view,
+    float deltaSeconds,
+    Random& random,
+    game::navigation::FlowRebuildWorker& flowWorker);
 const EnemyRuntimeStats& GetEnemyRuntimeStats();

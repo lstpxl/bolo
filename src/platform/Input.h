@@ -24,6 +24,11 @@ struct FrameInput {
     bool menuNavigateLeftPressed = false;
     bool menuNavigateRightPressed = false;
     bool menuSelectPressed = false;
+    bool panTogglePressed = false;
+    bool panNorthPressed = false;
+    bool panSouthPressed = false;
+    bool panWestPressed = false;
+    bool panEastPressed = false;
 };
 
 FrameInput PollFrameInput();

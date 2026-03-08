@@ -86,6 +86,7 @@ Enemy spawn table behavior (`src/game/systems/SpawnerSystem.cpp`):
   - `1..2` Drone, `3..4` Torpedo, `5..7` Hunter, `8..9` Assassin.
 - Global alive-enemy cap is `999`.
 - Per-base simultaneous alive cap is `24` enemies.
+- **Level 9 (debug):** Assassins only, 6 per base max, assassin speed ×4. Intended for flow-field debugging.
 - On spawn, enemy position is initialized inside the base with heading-aligned symmetry through base center:
   - cardinal heading: tank nose points at the middle of the matching base side.
   - diagonal heading: tank nose points at the matching base corner, then spawn center is shifted `0.5` world-units toward base core.
@@ -256,7 +257,11 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
   - only torpedo `Move` mode can use cheap-tier segment movement.
   - offscreen torpedo player-detection checks run at a lower frequency than full simulation.
 - Assassin exception:
-  - while cheap-tier, assassin uses cached offscreen segment movement like other enemy types.
+  - while cheap-tier, assassin segment selection is flow-field-driven and recomputed on cell transitions (or when no active segment exists).
+  - each cheap-tier assassin segment must leave the current cell and continue `1` world-unit beyond that exit.
+  - if current flow direction matches previous flow direction, the segment is axis-aligned (`horizontal`/`vertical`) through the cell.
+  - if flow direction turns by `90°` (`CW`/`CCW`), the segment uses a `45°` turn toward the destination-edge midpoint and continues `1` unit beyond.
+  - segment validity is checked against wall blocking at segment-build time.
   - on `Cheap -> Full` transition, assassin flow-step cache is invalidated and resumed by regular full logic.
 
 ### Invisibility Mode
@@ -288,11 +293,13 @@ World rendering is in `src/platform/Renderer2D.cpp`.
 - Enemy tank visuals load from `resources/textures/sprites.png` (`2x7` grid, `9x9` cells). Rows `4..7` map to `Drone`, `Torpedo`, `Hunter`, `Assassin` (matching `docs/original-1982/ENEMY_TYPES.md` order). Column 1 is facing 12 o'clock, column 2 is 45 degrees clockwise; the renderer precomputes all 8 directions at load time and uses the matching directional frame at draw time. Non-transparent source pixels are normalized to white during load, then tinted by enemy type color at draw time.
 - Player tank visuals load from `resources/textures/sprites.png` (`2x7` grid, `9x9` cells). Row `1` is body and row `2` is barrel; each direction frame is prebuilt by XOR-combining body+barrel cells and rendered in green (`#00C030`), with 8 directions precomputed from the two source columns.
 - Enemy sprite rendering uses pixel-snapped screen-space placement derived from world positions with integer sprite scaling (`9x9` source cells rendered at `18x18`, i.e. exact `2x`). Player gameplay footprint remains `kEntitySizeUnits = 1.0`, and the player sprite is rendered in pixel-snapped screen space at fixed `18x18` with per-frame pivot correction to avoid heading-frame jitter.
-- Compile-time presentation scaling: on macOS builds, the game renders to a logical `640x480` target and presents at `2x` (`1280x960`) with point filtering (each logical pixel becomes `2x2` physical pixels); handheld builds keep `1x` presentation.
+- Compile-time presentation scaling: macOS **debug** builds use `1x` presentation scaling (no upscaled intermediate target), while macOS release builds use `2x` point-scaled presentation. Handheld builds keep `1x`.
+- macOS debug default window size is `1920x1440` (2x larger than `960x720`) to expose more maze area while keeping world render scale at `1 unit = 16 px`.
 - HUD direction radar draws three lines: hull heading (white), move joystick vector from gamepad axes `0/1` (sky blue), and fire joystick vector from gamepad axes `2/3` (red). Joystick direction uses `(axisX, axisY)` and amplitude is normalized by raw max magnitude `32768`.
 - HUD lives indicators use the same sprite source and color as the in-world player tank sprite, rendered at `36x36` (4x of the `9x9` source cell).
 - HUD lives indicators are left-aligned in the lives row; as lives decrease, icons disappear from the right.
 - Gameplay view draws top-left debug text (axes/perf/profiling) only when menu `Debug info` is enabled.
+- Flow-field guidance arrows are drawn at maze-cell centers for visible cells when a flow field build exists. On macOS debug builds this overlay is always shown; on other builds it is gated by `Debug info`.
 - HUD draws an icon counter strip above the radar blocks at font size `10`: base rectangle icon plus enemy type sprites (`Drone/Torpedo/Hunter/Assassin`) with per-type alive counts, tinted by corresponding minimap colors.
 - Debug-overlay text content is refreshed every `4` frames and cached between refreshes to reduce per-frame formatting/query overhead.
 - HUD minimap uses a persistent `60x60` logical render texture (maze-cell aligned) and blits it scaled `2x` to `120x120` in the HUD. The minimap is horizontally centered in HUD content and uses matching vertical margins above/below. Enemy/base markers are single-pixel points in that logical texture; player marker is drawn dynamically on top.

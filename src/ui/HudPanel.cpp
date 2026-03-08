@@ -929,6 +929,12 @@ void HudPanel::DrawPrepared(const GameState& state, const AppConfig& config, con
         DrawLine(centerX, centerY, leftToX, leftToY, SKYBLUE);
         DrawLine(centerX, centerY, rightToX, rightToY, RED);
 
+        if (state.world.panModeActive) {
+            constexpr int kPanLabelFontSize = 20;
+            const int panLabelW = MeasureText("P", kPanLabelFontSize);
+            DrawText("P", centerX - panLabelW / 2, centerY - kPanLabelFontSize / 2, kPanLabelFontSize, YELLOW);
+        }
+
         if (state.world.levelCleared || state.world.levelClearMessageSeconds > 0.0F) {
             DrawText("LEVEL CLEARED", layout.contentX + 6, layout.blocksY - 26, 20, LIME);
         }

@@ -51,6 +51,8 @@ struct WorldState {
     float levelClearMessageSeconds = 0.0F;
     NavigationRuntimeCache navigationCache{};
     CollisionRuntimeCache collisionCache{};
+    bool panModeActive = false;
+    Vec2f panTarget{.x = 0.0F, .y = 0.0F};
 };
 
 struct GameState {

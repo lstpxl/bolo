@@ -10,7 +10,9 @@
 
 namespace {
 constexpr int kPresentationScale =
-#if defined(__APPLE__)
+#if defined(__APPLE__) && !defined(NDEBUG)
+    1;
+#elif defined(__APPLE__)
     2;
 #else
     1;

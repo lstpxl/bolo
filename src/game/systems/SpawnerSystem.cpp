@@ -32,6 +32,10 @@ constexpr std::array<EnemySpawnEntry, 9> kEnemySpawnTable{{
 }};
 
 EnemySpawnEntry PickSpawnEnemyForLevel(int level, Random& random) {
+    // Level 9: assassin-only debug level for flow-field testing.
+    if (level == 9) {
+        return kEnemySpawnTable[8];  // Assassin
+    }
     const int clampedLevel = std::max(1, std::min(level, static_cast<int>(kEnemySpawnTable.size())));
     const int pickedIndex = random.NextInt(0, clampedLevel - 1);
     return kEnemySpawnTable[static_cast<std::size_t>(pickedIndex)];
@@ -142,9 +146,10 @@ void UpdateSpawnerSystem(GameState& state, float deltaSeconds, Random& random) {
             base.enemyGenerationIntervalSeconds = GameplayConstants::kBaseSpawnCooldownSeconds;
         }
         base.enemyGenerationTimerSeconds -= deltaSeconds;
+        const int maxPerBase = (state.menuSettings.levelNumber == 9) ? 6 : GameplayConstants::kMaxAliveEnemiesPerBase;
         if (aliveEnemies >= GameplayConstants::kMaxAliveEnemies ||
             base.enemyGenerationTimerSeconds > 0.0F ||
-            base.activeEnemies >= GameplayConstants::kMaxAliveEnemiesPerBase) {
+            base.activeEnemies >= maxPerBase) {
             continue;
         }
 

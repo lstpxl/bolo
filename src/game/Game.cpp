@@ -42,6 +42,7 @@ void Game::RequestMenu() {
 }
 
 void Game::StartGame(const AppConfig& config, const GameplayView& view) {
+    flowWorker_.Drain();
     modeController_.StartGame(state_, state_.menuSettings, config, view, random_);
 }
 
@@ -50,6 +51,37 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const GameplayVie
         return;
     }
     profiling::ScopedProfile gameScope(profiling::Scope::GameUpdate, true);
+
+    // Pan mode: P toggles; W/A/S/D move viewport 1 cell when active.
+    if (input.panTogglePressed) {
+        state_.world.panModeActive = !state_.world.panModeActive;
+        if (state_.world.panModeActive) {
+            state_.world.panTarget = state_.world.player.position;
+        }
+    }
+    if (state_.world.panModeActive) {
+        const float cellSize = static_cast<float>(state_.world.maze.cellSizeUnits);
+        const float mazeW = static_cast<float>(state_.world.maze.widthCells * state_.world.maze.cellSizeUnits);
+        const float mazeH = static_cast<float>(state_.world.maze.heightCells * state_.world.maze.cellSizeUnits);
+        if (input.panNorthPressed) {
+            state_.world.panTarget.y = std::max(0.0F, state_.world.panTarget.y - cellSize);
+        }
+        if (input.panSouthPressed) {
+            state_.world.panTarget.y = std::min(mazeH, state_.world.panTarget.y + cellSize);
+        }
+        if (input.panWestPressed) {
+            state_.world.panTarget.x = std::max(0.0F, state_.world.panTarget.x - cellSize);
+        }
+        if (input.panEastPressed) {
+            state_.world.panTarget.x = std::min(mazeW, state_.world.panTarget.x + cellSize);
+        }
+    }
+
+    FrameInput playerInput = input;
+    if (state_.world.panModeActive) {
+        playerInput.moveX = 0.0F;
+        playerInput.moveY = 0.0F;
+    }
 
     auto beginDeathMode = [&]() {
         if (state_.world.deathModeRemainingSeconds > 0.0F) {
@@ -94,11 +126,11 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const GameplayVie
     // Target order: Input -> AI -> Movement -> Collision -> Combat -> Spawning -> Fuel/Rules -> Cleanup.
     {
         profiling::ScopedProfile scope(profiling::Scope::AiUpdate, true);
-        UpdateEnemySystem(state_, view, deltaSeconds, random_);
+        UpdateEnemySystem(state_, view, deltaSeconds, random_, flowWorker_);
     }
     if (!playerLocked) {
         profiling::ScopedProfile scope(profiling::Scope::PlayerUpdate);
-        UpdatePlayerSystem(state_, input, deltaSeconds);
+        UpdatePlayerSystem(state_, playerInput, deltaSeconds);
     } else {
         state_.world.player.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
         state_.world.player.throttleNormalized = 0.0F;

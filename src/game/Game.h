@@ -7,6 +7,7 @@
 #include "game/GameModeController.h"
 #include "game/RuntimeContext.h"
 #include "game/GameState.h"
+#include "game/navigation/FlowRebuildWorker.h"
 #include "platform/IRenderer.h"
 #include "platform/Input.h"
 
@@ -30,4 +31,5 @@ private:
     GameState state_{};
     RuntimeContext runtimeContext_{};
     Random random_{0};
+    game::navigation::FlowRebuildWorker flowWorker_{};
 };

@@ -36,6 +36,18 @@ This document consolidates two independent analyses and serves as the canonical 
 
 ---
 
+## Platform Spike Behavior (handheld — do not investigate further)
+
+Recurring `frame.total` peaks of **~90ms** are visible in handheld profiles (e.g. `handheld-profile-33.log`). These are **not caused by game-logic CPU work**:
+
+- `frame.present` peaks match `frame.render` max at ~90ms, indicating a **platform-level VSync/compositor stall**, not a simulation bottleneck.
+- The CPU game simulation (`frame.fixed_step`) stays well under those peak values.
+- This behaviour is characteristic of the Mali-G52 + GLES 3.2 + PortMaster/dArkOS stack, where the driver or compositor can delay `SwapBuffers` by one or more refresh intervals.
+
+**Action: none.** These spikes are unaddressable from application code. Filter them out when reading profile logs — treat the **average and p95** values as the real signal, not the max.
+
+---
+
 ## Render Findings and Handheld Strategy (2026-03-06)
 
 ### Render scope breakdown observed in `handheld-profile-26.log`
@@ -112,6 +124,38 @@ Next optimization steps (render track):
 1. Prototype maze chunk caching (`maze-chunk-cache`) with explicit invalidation on maze rebuild/reset.
 2. Reduce enemy draw-path overhead (sprite state churn and repeated per-entity work inside `enemies.draw`).
 3. Continue handheld A/B verification (`handheld-ab-verify`) after each render change.
+
+---
+
+## Profile 35 Key Findings (handheld-profile-35.log, 2026-03-08)
+
+### Implemented since Profile 34
+
+| Change | Result |
+|--------|--------|
+| Flow field rebuild threaded | `nav.flow_field_rebuild` no longer appears (runs on background thread). Main-thread blocking removed. |
+| Base texture caching | Two 48×48 pre-baked textures for alive/destroyed bases. Per-base draw: 3 calls → 1. |
+| Movement sub-scopes | `enemy.movement.separation_probe`, `enemy.movement.overlap_check`, `enemy.movement.wall_check` now visible. |
+
+### Movement sub-scope breakdown (under stress, ~144 enemies, ~7 full-tier)
+
+| Scope | Avg (peak) | Share of movement |
+|-------|------------|-------------------|
+| `enemy.ai.movement` | ~2.0–2.1 ms | 100% (parent) |
+| `enemy.movement.overlap_check` | ~1.3–1.4 ms | **~65%** |
+| `enemy.movement.separation_probe` | ~0.5–0.6 ms | ~25% |
+| `enemy.movement.wall_check` | (not separately visible) | ~10% implied |
+
+### Platform spike
+
+`frame.total` max = 1438 ms (extreme outlier). Treat as platform-level; focus on avg/p95 per optimization-strategy guidance.
+
+### Next optimisation candidates
+
+1. **`enemy.movement.overlap_check`** — Largest movement sub-scope (~1.3 ms under load). Contains `IsMovementBlockedByEnemies` and `TrySeparationTurn`. Consider spatial acceleration (grid/cell filter) or cheaper narrow-phase checks.
+2. **`enemy.movement.separation_probe`** — O(n) per-enemy loop over all others. Could use spatial structure (e.g. grid) instead of full scan.
+3. **`enemy.physics.frontal_collisions` / `frontal_grid_build`** — ~0.5–0.7 ms each when full-tier active. Lower priority after movement work.
+4. **Flow field hit rate** — At 100% in stress windows, A* fallback unused. Flow-field tuning and threading validated.
 
 ---
 

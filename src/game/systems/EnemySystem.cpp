@@ -2,9 +2,11 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cstdio>
 #include <cmath>
 #include <cstdint>
+#include <future>
 #include <limits>
 #include <vector>
 #include "core/AngleMath.h"
@@ -37,6 +39,7 @@ constexpr float kSegmentBuildMinLengthUnits = 2.0F;
 constexpr float kOffscreenSegmentLengthUnits = 8.0F;
 constexpr float kOffscreenTorpedoSegmentLengthUnits = 12.0F;
 constexpr float kOffscreenTorpedoDetectIntervalSeconds = 0.6F;
+constexpr float kAssassinCheapSegmentOutOfCellUnits = 1.0F;
 constexpr int kEnemyTypeTelemetryCount = 4;
 constexpr bool kUseFlowFieldPathGuidance = true;
 constexpr int kMaxFlowFieldAge = 2;
@@ -248,7 +251,7 @@ float EnemySubtypeSpeedMultiplier(EnemyType type, EnemySubtype subtype) {
     return 1.0F;
 }
 
-float EnemySpeed(EnemyType type, EnemySubtype subtype, bool assassinHasLineOfSight) {
+float EnemySpeed(EnemyType type, EnemySubtype subtype, bool assassinHasLineOfSight, int levelNumber) {
     float baseSpeed = GameplayConstants::kEnemyDroneSpeed;
     if (type == EnemyType::Drone) {
         baseSpeed = GameplayConstants::kEnemyDroneSpeed;
@@ -259,7 +262,12 @@ float EnemySpeed(EnemyType type, EnemySubtype subtype, bool assassinHasLineOfSig
     } else {
         baseSpeed = assassinHasLineOfSight ? 3.0F : 1.5F;
     }
-    return baseSpeed * EnemySubtypeSpeedMultiplier(type, subtype);
+    float speed = baseSpeed * EnemySubtypeSpeedMultiplier(type, subtype);
+    // Level 9: assassin-only debug level with 4× assassin speed for flow-field testing.
+    if (levelNumber == 9 && type == EnemyType::Assassin) {
+        speed *= 4.0F;
+    }
+    return speed;
 }
 
 float EnemyFireInterval(EnemyType type) {
@@ -537,6 +545,8 @@ float HeuristicManhattan(int x, int y, int tx, int ty) {
     return static_cast<float>(std::abs(tx - x) + std::abs(ty - y));
 }
 
+// Only called from BuildAssassinPath, which is only reachable when
+// kUseAssassinAStarBackupNavigation = true. Currently dead at runtime.
 void BuildEnemyOccupancy(
     const GameState& state,
     const game::navigation::CellCoordCache& cellCache,
@@ -558,6 +568,7 @@ void BuildEnemyOccupancy(
     }
 }
 
+// Only reachable when kUseAssassinAStarBackupNavigation = true. Currently dead at runtime.
 bool BuildAssassinPath(
     GameState& state,
     const game::navigation::CellCoordCache& cellCache,
@@ -722,6 +733,7 @@ bool BuildAssassinPath(
     return success;
 }
 
+// Only reachable when kUseAssassinAStarBackupNavigation = true. Currently dead at runtime.
 bool BuildAssassinPathToTarget(
     GameState& state,
     const game::navigation::CellCoordCache& cellCache,
@@ -744,6 +756,7 @@ Vec2f RandomMazePoint(
     return CellCenter(cellCache, cellX, cellY);
 }
 
+// Only reachable when kUseAssassinAStarBackupNavigation = true. Currently dead at runtime.
 bool BuildAssassinPathToFarRandomTarget(
     GameState& state,
     const game::navigation::CellCoordCache& cellCache,
@@ -1871,23 +1884,212 @@ void BuildOffscreenSegment(WorldState& world, EnemyTank& enemy, float segmentLen
     gEnemyRuntimeWindowStats.segmentLengthSumByType[static_cast<std::size_t>(typeIdx)] += targetDistance;
 }
 
+bool BuildSegmentExitPointFromCell(
+    const game::navigation::CellCoordCache& cellCache,
+    const game::navigation::MazeCellCoord& cell,
+    const Vec2f& from,
+    const Vec2f& direction,
+    float outOfCellUnits,
+    Vec2f& outTarget) {
+    constexpr float kEpsilon = 0.0001F;
+    const float cellSize = static_cast<float>(cellCache.CellSizeUnits());
+    const float cellMinX = static_cast<float>(cell.x) * cellSize;
+    const float cellMinY = static_cast<float>(cell.y) * cellSize;
+    const float cellMaxX = cellMinX + cellSize;
+    const float cellMaxY = cellMinY + cellSize;
+
+    float exitDistance = std::numeric_limits<float>::infinity();
+    if (direction.x > kEpsilon) {
+        exitDistance = std::min(exitDistance, (cellMaxX - from.x) / direction.x);
+    } else if (direction.x < -kEpsilon) {
+        exitDistance = std::min(exitDistance, (cellMinX - from.x) / direction.x);
+    }
+    if (direction.y > kEpsilon) {
+        exitDistance = std::min(exitDistance, (cellMaxY - from.y) / direction.y);
+    } else if (direction.y < -kEpsilon) {
+        exitDistance = std::min(exitDistance, (cellMinY - from.y) / direction.y);
+    }
+    if (!std::isfinite(exitDistance) || exitDistance <= kEpsilon) {
+        return false;
+    }
+
+    const float distanceToTarget = exitDistance + outOfCellUnits;
+    outTarget = Vec2f{
+        .x = from.x + direction.x * distanceToTarget,
+        .y = from.y + direction.y * distanceToTarget,
+    };
+    return true;
+}
+
+bool BuildAssassinCheapFlowSegment(
+    WorldState& world,
+    const game::navigation::CellCoordCache& cellCache,
+    const game::navigation::PlayerFlowField& flowField,
+    EnemyTank& enemy,
+    bool& outNeedsInitialFlowBuild) {
+    outNeedsInitialFlowBuild = false;
+    if (!flowField.HasBuild()) {
+        outNeedsInitialFlowBuild = true;
+        gEnemyRuntimeWindowStats.navFlowMisses += 1;
+        return false;
+    }
+
+    const game::navigation::MazeCellCoord enemyCell = cellCache.WorldToCell(enemy.position);
+    const int enemyCellHash = cellCache.CellHash(enemyCell.x, enemyCell.y);
+    const int nextCellHash = flowField.NextCellHash(enemyCellHash);
+    if (nextCellHash < 0 || nextCellHash == enemyCellHash || cellCache.WidthCells() <= 0) {
+        gEnemyRuntimeWindowStats.navFlowMisses += 1;
+        return false;
+    }
+
+    const int nextCellX = nextCellHash % cellCache.WidthCells();
+    const int nextCellY = nextCellHash / cellCache.WidthCells();
+    const int flowDx = nextCellX - enemyCell.x;
+    const int flowDy = nextCellY - enemyCell.y;
+    if (std::abs(flowDx) + std::abs(flowDy) != 1) {
+        gEnemyRuntimeWindowStats.navFlowMisses += 1;
+        return false;
+    }
+
+    const float flowHeading = QuantizeToEightDirections(
+        std::atan2(static_cast<float>(flowDx), -static_cast<float>(flowDy)));
+    const Vec2f flowDirection = DirectionFromHeading(flowHeading);
+    float segmentHeading = flowHeading;
+    Vec2f segmentTarget{};
+
+    const bool hasPreviousFlow = enemy.expectedPathCellHash >= 0;
+    if (hasPreviousFlow) {
+        const float previousFlowHeading = enemy.cachedFlowHeadingRadians;
+        const float delta = SignedAngleDelta(previousFlowHeading, flowHeading);
+        const float absDelta = std::fabs(delta);
+        constexpr float kTurnEpsilon = 0.001F;
+        const bool sameDirection = absDelta <= kTurnEpsilon;
+        const bool perpendicularTurn = std::fabs(absDelta - (kPi * 0.5F)) <= kTurnEpsilon;
+
+        if (perpendicularTurn) {
+            const float turnSign = (delta >= 0.0F) ? 1.0F : -1.0F;
+            segmentHeading = QuantizeToEightDirections(previousFlowHeading + turnSign * kEightDirectionStep);
+            const Vec2f diagonalDirection = DirectionFromHeading(segmentHeading);
+            const Vec2f cellCenter = cellCache.CellCenter(enemyCell.x, enemyCell.y);
+            const Vec2f destinationEdgeMidpoint{
+                .x = cellCenter.x + flowDirection.x * (static_cast<float>(cellCache.CellSizeUnits()) * 0.5F),
+                .y = cellCenter.y + flowDirection.y * (static_cast<float>(cellCache.CellSizeUnits()) * 0.5F),
+            };
+            segmentTarget = Vec2f{
+                .x = destinationEdgeMidpoint.x + diagonalDirection.x * kAssassinCheapSegmentOutOfCellUnits,
+                .y = destinationEdgeMidpoint.y + diagonalDirection.y * kAssassinCheapSegmentOutOfCellUnits,
+            };
+
+            const Vec2f toTarget{
+                .x = segmentTarget.x - enemy.position.x,
+                .y = segmentTarget.y - enemy.position.y,
+            };
+            const Vec2f targetDir = NormalizeOrZero(toTarget);
+            if (targetDir.x == 0.0F || targetDir.y == 0.0F ||
+                targetDir.x * diagonalDirection.x + targetDir.y * diagonalDirection.y < 0.95F) {
+                if (!BuildSegmentExitPointFromCell(
+                        cellCache,
+                        enemyCell,
+                        enemy.position,
+                        diagonalDirection,
+                        kAssassinCheapSegmentOutOfCellUnits,
+                        segmentTarget)) {
+                    gEnemyRuntimeWindowStats.navFlowMisses += 1;
+                    return false;
+                }
+            }
+        } else {
+            segmentHeading = flowHeading;
+            if (!BuildSegmentExitPointFromCell(
+                    cellCache,
+                    enemyCell,
+                    enemy.position,
+                    flowDirection,
+                    kAssassinCheapSegmentOutOfCellUnits,
+                    segmentTarget)) {
+                gEnemyRuntimeWindowStats.navFlowMisses += 1;
+                return false;
+            }
+            (void)sameDirection;
+        }
+    } else {
+        if (!BuildSegmentExitPointFromCell(
+                cellCache,
+                enemyCell,
+                enemy.position,
+                flowDirection,
+                kAssassinCheapSegmentOutOfCellUnits,
+                segmentTarget)) {
+            gEnemyRuntimeWindowStats.navFlowMisses += 1;
+            return false;
+        }
+    }
+
+    if (SegmentIntersectsWall(
+            world,
+            enemy.position,
+            segmentTarget,
+            GameplayConstants::kEnemyWallAvoidanceRadiusUnits)) {
+        gEnemyRuntimeWindowStats.navFlowMisses += 1;
+        return false;
+    }
+
+    const int typeIdx = EnemyTypeTelemetryIndex(enemy.type);
+    enemy.offscreenCachedHeadingRadians = segmentHeading;
+    enemy.offscreenSegmentEnd = segmentTarget;
+    enemy.offscreenSegmentActive = true;
+    enemy.expectedPathCellHash = nextCellHash;
+    enemy.cachedFlowFromCellHash = enemyCellHash;
+    enemy.cachedFlowHeadingRadians = flowHeading;
+    gEnemyRuntimeWindowStats.navFlowHeadingSelections += 1;
+    gEnemyRuntimeWindowStats.segmentsBuiltByType[static_cast<std::size_t>(typeIdx)] += 1;
+    gEnemyRuntimeWindowStats.segmentLengthSumByType[static_cast<std::size_t>(typeIdx)] +=
+        Distance(enemy.position, segmentTarget);
+    return true;
+}
+
 void ApplyCheapTierMovement(
     GameState& state,
+    const game::navigation::CellCoordCache& cellCache,
+    const game::navigation::PlayerFlowField& flowField,
     EnemyTank& enemy,
     int enemyIndex,
     float deltaSeconds,
     float speed,
-    Random& random) {
+    Random& random,
+    bool& outNeedsInitialFlowBuild) {
+    outNeedsInitialFlowBuild = false;
     float segmentLength = kOffscreenSegmentLengthUnits;
     if (enemy.type == EnemyType::Torpedo) {
         segmentLength = kOffscreenTorpedoSegmentLengthUnits;
     }
-    const bool reachedSegmentEnd =
-        !enemy.offscreenSegmentActive ||
-        DistanceSq(enemy.position, enemy.offscreenSegmentEnd) <= 0.04F;
-    if (reachedSegmentEnd) {
-        // Cheap-tier policy: decide the next segment only at segment endpoints.
-        BuildOffscreenSegment(state.world, enemy, segmentLength, random);
+
+    if (enemy.type == EnemyType::Assassin && kUseFlowFieldPathGuidance) {
+        const game::navigation::MazeCellCoord enemyCell = cellCache.WorldToCell(enemy.position);
+        const int enemyCellHash = cellCache.CellHash(enemyCell.x, enemyCell.y);
+        const bool enteredNewCell = enemy.cachedFlowFromCellHash != enemyCellHash;
+        const bool reachedSegmentEnd =
+            !enemy.offscreenSegmentActive ||
+            DistanceSq(enemy.position, enemy.offscreenSegmentEnd) <= 0.04F;
+        if (enteredNewCell || reachedSegmentEnd) {
+            if (!BuildAssassinCheapFlowSegment(
+                    state.world,
+                    cellCache,
+                    flowField,
+                    enemy,
+                    outNeedsInitialFlowBuild)) {
+                enemy.offscreenSegmentActive = false;
+                enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
+            }
+        }
+    } else {
+        const bool reachedSegmentEnd =
+            !enemy.offscreenSegmentActive ||
+            DistanceSq(enemy.position, enemy.offscreenSegmentEnd) <= 0.04F;
+        if (reachedSegmentEnd) {
+            // Cheap-tier policy: decide the next segment only at segment endpoints.
+            BuildOffscreenSegment(state.world, enemy, segmentLength, random);
+        }
     }
 
     if (!enemy.offscreenSegmentActive || std::fabs(speed) <= 0.0001F) {
@@ -1916,7 +2118,12 @@ void ApplyCheapTierMovement(
 }
 }  // namespace
 
-void UpdateEnemySystem(GameState& state, const GameplayView& view, float deltaSeconds, Random& random) {
+void UpdateEnemySystem(
+    GameState& state,
+    const GameplayView& view,
+    float deltaSeconds,
+    Random& random,
+    game::navigation::FlowRebuildWorker& flowWorker) {
     profiling::ScopedProfile scope(profiling::Scope::EnemyUpdate, true);
     gEnemyRuntimeStats = EnemyRuntimeStats{};
     const bool playerInvisible = state.menuSettings.invisibility;
@@ -1930,6 +2137,33 @@ void UpdateEnemySystem(GameState& state, const GameplayView& view, float deltaSe
     game::navigation::CellCoordCache& cellCache = navigationCache.cellCoords;
     cellCache.ConfigureFromMaze(state.world.maze);
     game::navigation::PlayerFlowField& playerFlowField = navigationCache.playerFlowField;
+
+    // Collect a completed background rebuild and swap it into the live field.
+    if (flowWorker.inFlight &&
+        flowWorker.future.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+        flowWorker.future.get();
+        std::swap(navigationCache.playerFlowField, flowWorker.pendingFlowField);
+        flowWorker.inFlight = false;
+    }
+
+    // Schedule an async rebuild. Skips silently if one is already in flight.
+    // The live playerFlowField continues to be used until the rebuild completes.
+    auto scheduleFlowRebuild = [&]() {
+        if (flowWorker.inFlight) {
+            return;
+        }
+        flowWorker.inFlight = true;
+        MazeState mazeCopy = state.world.maze;
+        game::navigation::CellCoordCache cacheCopy = cellCache;
+        flowWorker.future = std::async(
+            std::launch::async,
+            [&pending = flowWorker.pendingFlowField,
+             m = std::move(mazeCopy),
+             c = std::move(cacheCopy)]() mutable {
+                pending.Rebuild(m, c);
+            });
+    };
+
     if (kUseFlowFieldPathGuidance) {
         const int previousPlayerCellHash = cellCache.PlayerCellHash();
         const bool playerCrossedCellBorder = cellCache.UpdatePlayerCell(state.world.player.position);
@@ -1938,7 +2172,7 @@ void UpdateEnemySystem(GameState& state, const GameplayView& view, float deltaSe
             if (navigationCache.playerFlowFieldCacheActive) {
                 navigationCache.playerFlowFieldAge += 1;
                 if (navigationCache.playerFlowFieldAge > kMaxFlowFieldAge) {
-                    playerFlowField.Rebuild(state.world.maze, cellCache);
+                    scheduleFlowRebuild();
                     navigationCache.playerFlowFieldAge = 0;
                     gEnemyRuntimeWindowStats.navFlowRebuilds += 1;
                 } else {
@@ -1956,7 +2190,7 @@ void UpdateEnemySystem(GameState& state, const GameplayView& view, float deltaSe
             navigationCache.playerFlowFieldSpawnRequestActive = false;
             navigationCache.playerFlowFieldCacheActive = true;
             if (!playerFlowField.HasBuild()) {
-                playerFlowField.Rebuild(state.world.maze, cellCache);
+                scheduleFlowRebuild();
                 navigationCache.playerFlowFieldAge = 0;
                 gEnemyRuntimeWindowStats.navFlowRebuilds += 1;
             }
@@ -2010,11 +2244,27 @@ void UpdateEnemySystem(GameState& state, const GameplayView& view, float deltaSe
                 playerInvisible,
                 view);
 
-            float cheapSpeed = EnemySpeed(enemy.type, enemy.subtype, false);
+            float cheapSpeed = EnemySpeed(enemy.type, enemy.subtype, false, state.menuSettings.levelNumber);
             if (enemy.aiMode == EnemyAiMode::Watch || enemy.aiMode == EnemyAiMode::Rotate) {
                 cheapSpeed = 0.0F;
             }
-            ApplyCheapTierMovement(state, enemy, enemyIndex, deltaSeconds, cheapSpeed, random);
+            bool needsInitialFlowBuild = false;
+            ApplyCheapTierMovement(
+                state,
+                cellCache,
+                playerFlowField,
+                enemy,
+                enemyIndex,
+                deltaSeconds,
+                cheapSpeed,
+                random,
+                needsInitialFlowBuild);
+            if (needsInitialFlowBuild && enemy.type == EnemyType::Assassin) {
+                navigationCache.playerFlowFieldCacheActive = true;
+                scheduleFlowRebuild();
+                navigationCache.playerFlowFieldAge = 0;
+                gEnemyRuntimeWindowStats.navFlowRebuilds += 1;
+            }
             continue;
         }
 
@@ -2025,7 +2275,7 @@ void UpdateEnemySystem(GameState& state, const GameplayView& view, float deltaSe
         }
 
         float movementHeading = QuantizeToEightDirections(enemy.headingRadians);
-        float speed = EnemySpeed(enemy.type, enemy.subtype, perception.assassinHasLineOfSight);
+        float speed = EnemySpeed(enemy.type, enemy.subtype, perception.assassinHasLineOfSight, state.menuSettings.levelNumber);
         bool preserveContinuousHeading = false;
         {
             profiling::ScopedProfile phaseScope(profiling::Scope::EnemyAiDecision, true);
@@ -2237,7 +2487,7 @@ void UpdateEnemySystem(GameState& state, const GameplayView& view, float deltaSe
                     enemy.expectedPathCellHash = -1;
                     enemy.cachedFlowFromCellHash = -1;
                 } else {
-                    if (kUseAssassinFlowFieldOnlyNavigation && !playerInvisible) {
+                    if (kUseAssassinFlowFieldOnlyNavigation) {
                         bool flowHeadingSelected = false;
                         bool needsInitialFlowBuild = false;
                         if (kUseFlowFieldPathGuidance) {
@@ -2249,16 +2499,11 @@ void UpdateEnemySystem(GameState& state, const GameplayView& view, float deltaSe
                                 movementHeading);
                             if (!flowHeadingSelected && needsInitialFlowBuild) {
                                 navigationCache.playerFlowFieldCacheActive = true;
-                                playerFlowField.Rebuild(state.world.maze, cellCache);
+                                // Kick off a background rebuild; assassin falls through to
+                                // prediction-based heading this frame.
+                                scheduleFlowRebuild();
                                 navigationCache.playerFlowFieldAge = 0;
                                 gEnemyRuntimeWindowStats.navFlowRebuilds += 1;
-                                needsInitialFlowBuild = false;
-                                flowHeadingSelected = TrySelectAssassinFlowNextStep(
-                                    cellCache,
-                                    playerFlowField,
-                                    enemy,
-                                    needsInitialFlowBuild,
-                                    movementHeading);
                             }
                         }
 
@@ -2351,99 +2596,124 @@ void UpdateEnemySystem(GameState& state, const GameplayView& view, float deltaSe
             };
 
             // Keep enemies from overlapping: turn first, stop second.
-            const float sepSq =
-                GameplayConstants::kEnemyPreferredSeparationUnits * GameplayConstants::kEnemyPreferredSeparationUnits;
-            float minDistSqToOthers = std::numeric_limits<float>::infinity();
-            float currentMinDistSqToOthers = std::numeric_limits<float>::infinity();
-            for (int i = 0; i < static_cast<int>(state.world.enemies.size()); ++i) {
-                if (i == enemyIndex) {
-                    continue;
+            {
+                profiling::ScopedProfile sepScope(profiling::Scope::EnemyMovementSeparationProbe, true);
+                constexpr float sepSq =
+                    GameplayConstants::kEnemyPreferredSeparationUnits * GameplayConstants::kEnemyPreferredSeparationUnits;
+                float minDistSqToOthers = std::numeric_limits<float>::infinity();
+                float currentMinDistSqToOthers = std::numeric_limits<float>::infinity();
+                for (int i = 0; i < static_cast<int>(state.world.enemies.size()); ++i) {
+                    if (i == enemyIndex) {
+                        continue;
+                    }
+                    const EnemyTank& other = state.world.enemies[static_cast<std::size_t>(i)];
+                    if (!other.alive) {
+                        continue;
+                    }
+                    currentMinDistSqToOthers =
+                        std::min(currentMinDistSqToOthers, DistanceSq(enemy.position, other.position));
+                    minDistSqToOthers =
+                        std::min(minDistSqToOthers, DistanceSq(candidatePosition, other.position));
                 }
-                const EnemyTank& other = state.world.enemies[static_cast<std::size_t>(i)];
-                if (!other.alive) {
-                    continue;
-                }
-                currentMinDistSqToOthers =
-                    std::min(currentMinDistSqToOthers, DistanceSq(enemy.position, other.position));
-                minDistSqToOthers =
-                    std::min(minDistSqToOthers, DistanceSq(candidatePosition, other.position));
-            }
-            constexpr float kSeparationProgressEpsilonSq = 0.01F;
-            const bool makingSeparationProgress =
-                minDistSqToOthers > currentMinDistSqToOthers + kSeparationProgressEpsilonSq;
-            if (std::fabs(speed) > 0.0F &&
-                minDistSqToOthers < sepSq &&
-                !makingSeparationProgress) {
-                float turnHeading = movementHeading;
-                Vec2f turnCandidate = candidatePosition;
-                if (TrySeparationTurn(state.world, state.world.enemies, enemyIndex, speed, deltaSeconds, turnHeading, turnCandidate)) {
-                    movementHeading = turnHeading;
-                    candidatePosition = turnCandidate;
-                } else {
-                    speed = 0.0F;
-                    candidatePosition = enemy.position;
-                    enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
-                    if (enemy.type == EnemyType::Drone) {
-                        EnterDroneWatchMode(state.world, enemy, random);
+                constexpr float kSeparationProgressEpsilonSq = 0.01F;
+                const bool makingSeparationProgress =
+                    minDistSqToOthers > currentMinDistSqToOthers + kSeparationProgressEpsilonSq;
+                if (std::fabs(speed) > 0.0F &&
+                    minDistSqToOthers < sepSq &&
+                    !makingSeparationProgress) {
+                    float turnHeading = movementHeading;
+                    Vec2f turnCandidate = candidatePosition;
+                    if (TrySeparationTurn(state.world, state.world.enemies, enemyIndex, speed, deltaSeconds, turnHeading, turnCandidate)) {
+                        movementHeading = turnHeading;
+                        candidatePosition = turnCandidate;
+                    } else {
+                        speed = 0.0F;
+                        candidatePosition = enemy.position;
+                        enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
+                        if (enemy.type == EnemyType::Drone) {
+                            EnterDroneWatchMode(state.world, enemy, random);
+                        }
                     }
                 }
             }
 
-            if (std::fabs(speed) > 0.0F && IsMovementBlockedByEnemies(
-                    state.world.enemies,
-                    frameStartPositions,
-                    enemyIndex,
-                    previousPosition,
-                    candidatePosition,
-                    GameplayConstants::kEnemyPreferredSeparationUnits)) {
-                float turnHeading = movementHeading;
-                Vec2f turnCandidate = candidatePosition;
-                const bool foundTurn = TrySeparationTurn(
-                    state.world,
-                    state.world.enemies,
-                    enemyIndex,
-                    speed,
-                    deltaSeconds,
-                    turnHeading,
-                    turnCandidate);
-                if (foundTurn && !IsMovementBlockedByEnemies(
-                        state.world.enemies,
-                        frameStartPositions,
-                        enemyIndex,
+            {
+                profiling::ScopedProfile overlapScope(profiling::Scope::EnemyMovementOverlapCheck, true);
+                bool blocked = false;
+                if (std::fabs(speed) > 0.0F) {
+                    {
+                        profiling::ScopedProfile scope(profiling::Scope::EnemyMovementOverlapIsBlocked, true);
+                        blocked = IsMovementBlockedByEnemies(
+                            state.world.enemies,
+                            frameStartPositions,
+                            enemyIndex,
+                            previousPosition,
+                            candidatePosition,
+                            GameplayConstants::kEnemyPreferredSeparationUnits);
+                    }
+                }
+                if (blocked) {
+                    float turnHeading = movementHeading;
+                    Vec2f turnCandidate = candidatePosition;
+                    bool foundTurn = false;
+                    {
+                        profiling::ScopedProfile scope(profiling::Scope::EnemyMovementOverlapSeparationTurn, true);
+                        foundTurn = TrySeparationTurn(
+                            state.world,
+                            state.world.enemies,
+                            enemyIndex,
+                            speed,
+                            deltaSeconds,
+                            turnHeading,
+                            turnCandidate);
+                    }
+                    bool turnValid = false;
+                    if (foundTurn) {
+                        profiling::ScopedProfile scope(profiling::Scope::EnemyMovementOverlapTurnValid, true);
+                        turnValid = !IsMovementBlockedByEnemies(
+                            state.world.enemies,
+                            frameStartPositions,
+                            enemyIndex,
+                            previousPosition,
+                            turnCandidate,
+                            GameplayConstants::kEnemyPreferredSeparationUnits);
+                    }
+                    if (turnValid) {
+                        movementHeading = turnHeading;
+                        candidatePosition = turnCandidate;
+                    } else {
+                        enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
+                        candidatePosition = enemy.position;
+                        if (enemy.type == EnemyType::Drone) {
+                            EnterDroneWatchMode(state.world, enemy, random);
+                        }
+                    }
+                }
+            }
+
+            {
+                profiling::ScopedProfile wallScope(profiling::Scope::EnemyMovementWallCheck, true);
+                if (std::fabs(speed) > 0.001F && SegmentIntersectsWall(
+                        state.world,
                         previousPosition,
-                        turnCandidate,
-                        GameplayConstants::kEnemyPreferredSeparationUnits)) {
-                    movementHeading = turnHeading;
-                    candidatePosition = turnCandidate;
-                } else {
+                        candidatePosition,
+                        GameplayConstants::kEnemyWallAvoidanceRadiusUnits)) {
                     enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
-                    candidatePosition = enemy.position;
+                    enemy.aiStateTimerSeconds = 0.0F;
                     if (enemy.type == EnemyType::Drone) {
                         EnterDroneWatchMode(state.world, enemy, random);
+                    } else if (enemy.type == EnemyType::Hunter) {
+                        enemy.aiMode = EnemyAiMode::Rotate;
+                        enemy.aiModeElapsedSeconds = 0.0F;
                     }
+                } else {
+                    enemy.velocity = Vec2f{
+                        .x = snappedDirection.x * speed,
+                        .y = snappedDirection.y * speed,
+                    };
+                    enemy.position = candidatePosition;
+                    enemy.headingRadians = movementHeading;
                 }
-            }
-
-            if (std::fabs(speed) > 0.001F && SegmentIntersectsWall(
-                    state.world,
-                    previousPosition,
-                    candidatePosition,
-                    GameplayConstants::kEnemyWallAvoidanceRadiusUnits)) {
-                enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
-                enemy.aiStateTimerSeconds = 0.0F;
-                if (enemy.type == EnemyType::Drone) {
-                    EnterDroneWatchMode(state.world, enemy, random);
-                } else if (enemy.type == EnemyType::Hunter) {
-                    enemy.aiMode = EnemyAiMode::Rotate;
-                    enemy.aiModeElapsedSeconds = 0.0F;
-                }
-            } else {
-                enemy.velocity = Vec2f{
-                    .x = snappedDirection.x * speed,
-                    .y = snappedDirection.y * speed,
-                };
-                enemy.position = candidatePosition;
-                enemy.headingRadians = movementHeading;
             }
 
             if (enemy.type == EnemyType::Torpedo && enemy.torpedoMoveMode == TorpedoMoveMode::Move) {

@@ -29,4 +29,8 @@ private:
     bool playerExplosionSheetLoaded_ = false;
     Texture2D baseExplosionSheet_{};
     bool baseExplosionSheetLoaded_ = false;
+    Texture2D baseAliveTexture_{};
+    bool baseAliveTextureLoaded_ = false;
+    Texture2D baseDestroyedTexture_{};
+    bool baseDestroyedTextureLoaded_ = false;
 };

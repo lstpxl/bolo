@@ -331,6 +331,7 @@ bool TryPlacePlayer(
 }  // namespace
 
 void InitializeMazeWorld(GameState& state, const GameplayView& view, Random& random) {
+    state.world.navigationCache = NavigationRuntimeCache{};
     state.world.maze.widthCells = GameplayConstants::kMazeWidthCells;
     state.world.maze.heightCells = GameplayConstants::kMazeHeightCells;
     state.world.maze.cellSizeUnits = GameplayConstants::kMazeCellSizeUnits;
@@ -408,6 +409,9 @@ void InitializeMazeWorld(GameState& state, const GameplayView& view, Random& ran
     state.world.playerTurnLostPending = false;
     state.world.levelCleared = false;
     state.world.levelClearMessageSeconds = 0.0F;
+    state.world.navigationCache.playerFlowFieldSpawnRequestActive = true;
+    state.world.panModeActive = false;
+    state.world.panTarget = state.world.player.position;
 }
 
 bool PlacePlayerAtSafeSpawn(GameState& state, const GameplayView& view, Random& random) {
