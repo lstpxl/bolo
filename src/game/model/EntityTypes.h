@@ -58,6 +58,8 @@ enum class EnemyAiMode {
     Chase,
     Rotate,
     Path,
+    Pursuit,
+    Uncouple,
 };
 
 enum class TorpedoMoveMode {
@@ -86,6 +88,7 @@ struct EnemyTank {
     float aiModeElapsedSeconds = 0.0F;
     float selfAwarenessIntervalSeconds = 6.0F;
     float selfAwarenessTimerSeconds = 6.0F;
+    EnemyAiMode preUncoupleAiMode = EnemyAiMode::Wander;
     float desiredHeadingRadians = 0.0F;
     Vec2f wanderDirection{.x = 0.0F, .y = -1.0F};
     int watchRotateDirection = 1;

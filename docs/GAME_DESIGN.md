@@ -171,8 +171,12 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
 
 - Enemies continuously try to keep at least `1.0` world-units of `clearance` (equivalent to center `distance >= 2.0` with `r1=r2=0.5`).
 - If a planned move violates spacing, AI attempts a `45°` turn first; if not possible, enemy stops for that frame.
-- Enemy mutual-kill uses center `distance` threshold `r1 + r2`; with current enemy radius assumption `r = 0.5`, two enemies are destroyed when center `distance` is `< 1.0` world-units.
-- Enemy deaths decrement the origin base `activeEnemies` counter used for per-base spawn capping.
+- Enemy-vs-enemy overlap does **not** kill enemies.
+- On overlap/collision detection, pair order is deterministic: first enemy keeps its current behavior, second enemy enters `Uncouple` mode for `1.0s`.
+- `Uncouple` mode is available to all enemy types and temporarily overrides their normal AI mode to move away from nearby enemies, then restores the previous mode when the timer expires.
+- On near-separation conflicts (`distance < preferred separation`), enemies are no longer position-pushed directly in the collision pass; both enemies enter `Uncouple` mode instead.
+- `Uncouple` steering uses an elastic-style summed repulsion force: per enemy, contributions from nearby enemies are accumulated with distance falloff, and nearby walls add repulsion using short-range clearance probes.
+- While in `Uncouple`, each enemy also receives a tiny per-update random force component to break deadlocks/equilibrium (for example exact-overlap pairs or groups contesting narrow passages).
 - On death, an enemy explosion animation plays at the enemy's position: `resources/textures/explosion-1.png` is a 6-frame horizontal spritesheet (each frame `32×32` px), played at `0.15s` per frame (total `0.9s`). Up to `64` simultaneous explosions are tracked in `WorldState::enemyExplosions`. The explosion is rendered at `32×32` screen pixels (1× source scale), centered on the death position. The enemy entity is removed from the simulation immediately on death; only the explosion visual persists.
 - When a base is destroyed, a one-shot explosion animation plays at the base center: `resources/textures/explosion-3-large.png` is a 6-frame horizontal spritesheet (each frame `64×64` px), played at `0.15s` per frame (total `0.9s`). Up to `6` simultaneous base explosions are tracked in `WorldState::baseExplosions`. The explosion is rendered as `4×4` world units (`64` screen pixels at `16px/unit`), centered on the base. Spawning is gated by `EnemyBase::explosionPlayed` so each base triggers at most one explosion.
 - Player death uses `resources/textures/explosion-2.png` (6-frame `32×32` px horizontal spritesheet, `0.15s` per frame). The animation plays once at `kPlayerExplosionRenderWorldUnits = 2` world units (`32` screen pixels), centered at the player's death position. Rendered in world space inside the `BeginMode2D` camera block. The animation does not loop; after `0.9s` (6 frames) nothing is drawn for the remaining death-mode duration.
@@ -223,6 +227,7 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
   - Chase keeps stand-off band `3..6` units (approach if farther, retreat if closer, stop inside band).
   - Scout obstacle handling: try `±45°`, then `±90°`; if no option yields `>=3` clear units, rotate clockwise until clear.
 - Assassin:
+  - Modes: `Pursuit` (default) and temporary `Uncouple`.
   - Uses a pure player-directed maze flow-field for pursuit steering (no waypoint A* path following in the active runtime branch).
   - Each assassin computes and caches only the next flow-field step heading per current cell; cached heading is reused until the assassin leaves that cell.
   - Flow-field initial build is requested by assassin when no build exists, or when assassin-spawn flow request becomes active.

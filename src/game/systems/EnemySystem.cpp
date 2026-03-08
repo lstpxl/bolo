@@ -40,6 +40,11 @@ constexpr float kOffscreenSegmentLengthUnits = 8.0F;
 constexpr float kOffscreenTorpedoSegmentLengthUnits = 12.0F;
 constexpr float kOffscreenTorpedoDetectIntervalSeconds = 0.6F;
 constexpr float kAssassinCheapSegmentOutOfCellUnits = 1.0F;
+constexpr float kEnemyUncoupleDurationSeconds = 1.0F;
+constexpr float kUncoupleEnemyForceRangeUnits = GameplayConstants::kEnemyPreferredSeparationUnits * 2.0F;
+constexpr float kUncoupleWallProbeRangeUnits = 1.5F;
+constexpr float kUncoupleWallForceScale = 1.2F;
+constexpr float kUncoupleRandomForceScale = 0.28F;
 constexpr int kEnemyTypeTelemetryCount = 4;
 constexpr bool kUseFlowFieldPathGuidance = true;
 constexpr int kMaxFlowFieldAge = 2;
@@ -138,7 +143,7 @@ struct EnemyRuntimeWindowStats {
 };
 EnemyRuntimeWindowStats gEnemyRuntimeWindowStats{};
 
-void RecordEnemyEnemyMutualKillDebug(
+[[maybe_unused]] void RecordEnemyEnemyMutualKillDebug(
     const WorldState& world,
     int i,
     int j,
@@ -239,6 +244,134 @@ float QuantizeToEightDirections(float angleRadians) {
 
 Vec2f DirectionFromHeading(float headingRadians) {
     return core::angle::DirectionFromHeading(headingRadians);
+}
+
+float DistanceSq(const Vec2f& a, const Vec2f& b);
+Vec2f NormalizeOrZero(const Vec2f& v);
+
+EnemyAiMode DefaultAiModeForType(EnemyType type) {
+    switch (type) {
+    case EnemyType::Drone:
+        return EnemyAiMode::Wander;
+    case EnemyType::Torpedo:
+        return EnemyAiMode::Wander;
+    case EnemyType::Hunter:
+        return EnemyAiMode::Scout;
+    case EnemyType::Assassin:
+        return EnemyAiMode::Pursuit;
+    }
+    return EnemyAiMode::Wander;
+}
+
+void RestoreFromUncoupleMode(EnemyTank& enemy) {
+    EnemyAiMode mode = enemy.preUncoupleAiMode;
+    if (mode == EnemyAiMode::Uncouple) {
+        mode = DefaultAiModeForType(enemy.type);
+    }
+    enemy.aiMode = mode;
+    enemy.aiModeElapsedSeconds = 0.0F;
+    enemy.aiStateTimerSeconds = 0.0F;
+}
+
+float SelectUncoupleHeading(
+    const WorldState& world,
+    const std::vector<EnemyTank>& enemies,
+    int selfIndex,
+    float fallbackHeading,
+    Random& random) {
+    const EnemyTank& self = enemies[static_cast<std::size_t>(selfIndex)];
+    Vec2f summedForce{.x = 0.0F, .y = 0.0F};
+
+    const float enemyRangeSq = kUncoupleEnemyForceRangeUnits * kUncoupleEnemyForceRangeUnits;
+    for (int i = 0; i < static_cast<int>(enemies.size()); ++i) {
+        if (i == selfIndex) {
+            continue;
+        }
+        const EnemyTank& other = enemies[static_cast<std::size_t>(i)];
+        if (!other.alive) {
+            continue;
+        }
+        const float distSq = DistanceSq(self.position, other.position);
+        if (distSq > enemyRangeSq) {
+            continue;
+        }
+
+        const float dist = std::sqrt(std::max(0.0F, distSq));
+        Vec2f awayDir = NormalizeOrZero(Vec2f{
+            .x = self.position.x - other.position.x,
+            .y = self.position.y - other.position.y,
+        });
+        if (awayDir.x == 0.0F && awayDir.y == 0.0F) {
+            awayDir = DirectionFromHeading(static_cast<float>(i) * kEightDirectionStep);
+        }
+        const float force = 1.0F - std::min(1.0F, dist / kUncoupleEnemyForceRangeUnits);
+        summedForce.x += awayDir.x * force;
+        summedForce.y += awayDir.y * force;
+    }
+
+    // Add wall repulsion to avoid uncouple movement that sticks enemies against walls.
+    for (int step = 0; step < 8; ++step) {
+        const float heading = NormalizeAngle(static_cast<float>(step) * kEightDirectionStep);
+        const Vec2f dir = DirectionFromHeading(heading);
+        const float clear = game::geometry::FreeDistanceAhead(
+            world,
+            self.position,
+            heading,
+            kUncoupleWallProbeRangeUnits,
+            GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
+            1.0F);
+        if (clear >= kUncoupleWallProbeRangeUnits) {
+            continue;
+        }
+        const float wallForce =
+            (1.0F - std::max(0.0F, clear) / kUncoupleWallProbeRangeUnits) * kUncoupleWallForceScale;
+        summedForce.x -= dir.x * wallForce;
+        summedForce.y -= dir.y * wallForce;
+    }
+
+    // Tiny random jitter breaks local force equilibrium in tight clusters/passages.
+    const float jitterHeading = random.NextFloat(0.0F, kPi * 2.0F);
+    const Vec2f jitterDir = DirectionFromHeading(jitterHeading);
+    summedForce.x += jitterDir.x * kUncoupleRandomForceScale;
+    summedForce.y += jitterDir.y * kUncoupleRandomForceScale;
+
+    const Vec2f awayDir = NormalizeOrZero(summedForce);
+    if (awayDir.x == 0.0F && awayDir.y == 0.0F) {
+        return QuantizeToEightDirections(fallbackHeading);
+    }
+    return QuantizeToEightDirections(std::atan2(awayDir.x, -awayDir.y));
+}
+
+void EnterUncoupleMode(std::vector<EnemyTank>& enemies, int leadingIndex, int uncoupleIndex) {
+    if (uncoupleIndex < 0 || uncoupleIndex >= static_cast<int>(enemies.size())) {
+        return;
+    }
+    EnemyTank& uncoupled = enemies[static_cast<std::size_t>(uncoupleIndex)];
+    if (!uncoupled.alive) {
+        return;
+    }
+    if (uncoupled.aiMode != EnemyAiMode::Uncouple) {
+        uncoupled.preUncoupleAiMode = uncoupled.aiMode;
+    }
+    uncoupled.aiMode = EnemyAiMode::Uncouple;
+    uncoupled.aiModeElapsedSeconds = 0.0F;
+    uncoupled.aiStateTimerSeconds = kEnemyUncoupleDurationSeconds;
+    uncoupled.offscreenSegmentActive = false;
+
+    float uncoupleHeading = QuantizeToEightDirections(uncoupled.headingRadians);
+    if (leadingIndex >= 0 && leadingIndex < static_cast<int>(enemies.size())) {
+        const EnemyTank& leader = enemies[static_cast<std::size_t>(leadingIndex)];
+        if (leader.alive) {
+            const Vec2f awayDir = NormalizeOrZero(Vec2f{
+                .x = uncoupled.position.x - leader.position.x,
+                .y = uncoupled.position.y - leader.position.y,
+            });
+            if (awayDir.x != 0.0F || awayDir.y != 0.0F) {
+                uncoupleHeading = QuantizeToEightDirections(std::atan2(awayDir.x, -awayDir.y));
+            }
+        }
+    }
+    uncoupled.desiredHeadingRadians = uncoupleHeading;
 }
 
 float EnemySubtypeSpeedMultiplier(EnemyType type, EnemySubtype subtype) {
@@ -407,7 +540,7 @@ float FreeDistanceAheadWallsOnly(
         world, from, headingRadians, maxDistance, clearanceUnits, 1.0F);
 }
 
-void DecrementOriginBaseAliveCount(WorldState& world, EnemyTank& enemy) {
+[[maybe_unused]] void DecrementOriginBaseAliveCount(WorldState& world, EnemyTank& enemy) {
     if (enemy.originBaseIndex < 0 || enemy.originBaseIndex >= static_cast<int>(world.enemyBases.size())) {
         enemy.originBaseIndex = -1;
         return;
@@ -1316,6 +1449,7 @@ void ResolveEnemySeparationLegacyGrid(
     game::spatial::EnemySpatialGrid& grid,
     const std::vector<std::uint8_t>& includeMask,
     const std::vector<std::uint8_t>& reenteredFullTierMask) {
+    (void)reenteredFullTierMask;
     profiling::ScopedProfile scope(profiling::Scope::EnemySeparation, true);
     {
         std::uint64_t included = 0;
@@ -1352,20 +1486,7 @@ void ResolveEnemySeparationLegacyGrid(
             const float killDistSq =
                 GameplayConstants::kEnemyMutualKillDistanceUnits * GameplayConstants::kEnemyMutualKillDistanceUnits;
             if (distSq <= killDistSq) {
-                const float centerDist = std::sqrt(std::max(0.0F, distSq));
-                const bool reenteredA =
-                    static_cast<std::size_t>(i) < reenteredFullTierMask.size() &&
-                    reenteredFullTierMask[static_cast<std::size_t>(i)] != 0U;
-                const bool reenteredB =
-                    static_cast<std::size_t>(j) < reenteredFullTierMask.size() &&
-                    reenteredFullTierMask[static_cast<std::size_t>(j)] != 0U;
-                RecordEnemyEnemyMutualKillDebug(world, i, j, a, b, centerDist, reenteredA, reenteredB, false);
-                a.alive = false;
-                b.alive = false;
-                DecrementOriginBaseAliveCount(world, a);
-                DecrementOriginBaseAliveCount(world, b);
-                gEnemyRuntimeWindowStats.separationPairsMutualKills += 1;
-                return;
+                EnterUncoupleMode(world.enemies, i, j);
             }
             const float sepSq =
                 GameplayConstants::kEnemyPreferredSeparationUnits * GameplayConstants::kEnemyPreferredSeparationUnits;
@@ -1373,40 +1494,8 @@ void ResolveEnemySeparationLegacyGrid(
                 return;
             }
             gEnemyRuntimeStats.separationPairsResolved += 1;
-
-            const float dist = std::sqrt(distSq);
-            const float push = (GameplayConstants::kEnemyPreferredSeparationUnits - dist) * 0.5F;
-            Vec2f dir = NormalizeOrZero(Vec2f{
-                .x = b.position.x - a.position.x,
-                .y = b.position.y - a.position.y,
-            });
-            if (dir.x == 0.0F && dir.y == 0.0F) {
-                dir = Vec2f{.x = 1.0F, .y = 0.0F};
-            }
-
-            const Vec2f movedA{
-                .x = a.position.x - dir.x * push,
-                .y = a.position.y - dir.y * push,
-            };
-            const Vec2f movedB{
-                .x = b.position.x + dir.x * push,
-                .y = b.position.y + dir.y * push,
-            };
-            const bool aBlocked =
-                game::geometry::IsPointInWall(world, movedA, GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
-            const bool bBlocked =
-                game::geometry::IsPointInWall(world, movedB, GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
-            if (!aBlocked) {
-                a.position = movedA;
-            }
-            if (!bBlocked) {
-                b.position = movedB;
-            }
-            if (aBlocked || bBlocked) {
-                a.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
-                b.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
-                gEnemyRuntimeWindowStats.separationPairsWallBlockedPushes += 1;
-            }
+            EnterUncoupleMode(world.enemies, j, i);
+            EnterUncoupleMode(world.enemies, i, j);
         });
     }
 }
@@ -1417,6 +1506,7 @@ void ResolveEnemyFrontalCollisionsLegacyGrid(
     game::spatial::EnemySpatialGrid& grid,
     const std::vector<std::uint8_t>& includeMask,
     const std::vector<std::uint8_t>& reenteredFullTierMask) {
+    (void)reenteredFullTierMask;
     profiling::ScopedProfile scope(profiling::Scope::EnemyFrontalCollisions, true);
     {
         const float cellSize = GameplayConstants::kMazeCellSizeUnits;
@@ -1471,19 +1561,7 @@ void ResolveEnemyFrontalCollisionsLegacyGrid(
             const float killDistSq =
                 GameplayConstants::kEnemyMutualKillDistanceUnits * GameplayConstants::kEnemyMutualKillDistanceUnits;
             if (centerDistSq <= killDistSq) {
-                const float centerDist = std::sqrt(std::max(0.0F, centerDistSq));
-                const bool reenteredA =
-                    static_cast<std::size_t>(i) < reenteredFullTierMask.size() &&
-                    reenteredFullTierMask[static_cast<std::size_t>(i)] != 0U;
-                const bool reenteredB =
-                    static_cast<std::size_t>(j) < reenteredFullTierMask.size() &&
-                    reenteredFullTierMask[static_cast<std::size_t>(j)] != 0U;
-                RecordEnemyEnemyMutualKillDebug(world, i, j, a, b, centerDist, reenteredA, reenteredB, true);
-                a.alive = false;
-                b.alive = false;
-                DecrementOriginBaseAliveCount(world, a);
-                DecrementOriginBaseAliveCount(world, b);
-                gEnemyRuntimeWindowStats.frontalPairsMutualKills += 1;
+                EnterUncoupleMode(world.enemies, i, j);
             }
         });
     }
@@ -1495,6 +1573,7 @@ void ResolveEnemyCollisionsSinglePass(
     game::spatial::SweepPruneBroadPhase& broadPhase,
     const std::vector<std::uint8_t>& includeMask,
     const std::vector<std::uint8_t>& reenteredFullTierMask) {
+    (void)reenteredFullTierMask;
     profiling::ScopedProfile scope(profiling::Scope::EnemyFrontalCollisions, true);
     constexpr float kSharedBroadRadiusUnits = 1.0F;  // r + 0.5 with enemy r=0.5
     const float killDist =
@@ -1574,19 +1653,7 @@ void ResolveEnemyCollisionsSinglePass(
                 gEnemyRuntimeStats.frontalPairsDistanceChecks += 1;
                 const float centerDistSq = DistanceSq(a.position, b.position);
                 if (centerDistSq <= killDistSq) {
-                    const float centerDist = std::sqrt(std::max(0.0F, centerDistSq));
-                    const bool reenteredA =
-                        static_cast<std::size_t>(i) < reenteredFullTierMask.size() &&
-                        reenteredFullTierMask[static_cast<std::size_t>(i)] != 0U;
-                    const bool reenteredB =
-                        static_cast<std::size_t>(j) < reenteredFullTierMask.size() &&
-                        reenteredFullTierMask[static_cast<std::size_t>(j)] != 0U;
-                    RecordEnemyEnemyMutualKillDebug(world, i, j, a, b, centerDist, reenteredA, reenteredB, true);
-                    a.alive = false;
-                    b.alive = false;
-                    DecrementOriginBaseAliveCount(world, a);
-                    DecrementOriginBaseAliveCount(world, b);
-                    gEnemyRuntimeWindowStats.frontalPairsMutualKills += 1;
+                    EnterUncoupleMode(world.enemies, i, j);
                 }
             }
 
@@ -1604,59 +1671,15 @@ void ResolveEnemyCollisionsSinglePass(
             profiling::ScopedProfile separationPairScope(profiling::Scope::EnemySeparationPairResolve, true);
             const float distSq = DistanceSq(a.position, b.position);
             if (distSq <= killDistSq) {
-                const float centerDist = std::sqrt(std::max(0.0F, distSq));
-                const bool reenteredA =
-                    static_cast<std::size_t>(i) < reenteredFullTierMask.size() &&
-                    reenteredFullTierMask[static_cast<std::size_t>(i)] != 0U;
-                const bool reenteredB =
-                    static_cast<std::size_t>(j) < reenteredFullTierMask.size() &&
-                    reenteredFullTierMask[static_cast<std::size_t>(j)] != 0U;
-                RecordEnemyEnemyMutualKillDebug(world, i, j, a, b, centerDist, reenteredA, reenteredB, false);
-                a.alive = false;
-                b.alive = false;
-                DecrementOriginBaseAliveCount(world, a);
-                DecrementOriginBaseAliveCount(world, b);
-                gEnemyRuntimeWindowStats.separationPairsMutualKills += 1;
-                return;
+                EnterUncoupleMode(world.enemies, i, j);
             }
             if (distSq >= separationDistSq) {
                 return;
             }
 
             gEnemyRuntimeStats.separationPairsResolved += 1;
-            const float dist = std::sqrt(distSq);
-            const float push = (separationDist - dist) * 0.5F;
-            Vec2f dir = NormalizeOrZero(Vec2f{
-                .x = b.position.x - a.position.x,
-                .y = b.position.y - a.position.y,
-            });
-            if (dir.x == 0.0F && dir.y == 0.0F) {
-                dir = Vec2f{.x = 1.0F, .y = 0.0F};
-            }
-
-            const Vec2f movedA{
-                .x = a.position.x - dir.x * push,
-                .y = a.position.y - dir.y * push,
-            };
-            const Vec2f movedB{
-                .x = b.position.x + dir.x * push,
-                .y = b.position.y + dir.y * push,
-            };
-            const bool aBlocked =
-                game::geometry::IsPointInWall(world, movedA, GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
-            const bool bBlocked =
-                game::geometry::IsPointInWall(world, movedB, GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
-            if (!aBlocked) {
-                a.position = movedA;
-            }
-            if (!bBlocked) {
-                b.position = movedB;
-            }
-            if (aBlocked || bBlocked) {
-                a.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
-                b.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
-                gEnemyRuntimeWindowStats.separationPairsWallBlockedPushes += 1;
-            }
+            EnterUncoupleMode(world.enemies, j, i);
+            EnterUncoupleMode(world.enemies, i, j);
         });
     }
     const game::spatial::SweepPruneBroadPhase::FrameStats& sapStats = broadPhase.GetFrameStats();
@@ -1805,6 +1828,12 @@ void AdvanceCheapTierTimers(
 
     // Keep weapon cadence realistic while cheap; this prevents on-screen burst anomalies.
     enemy.fireCooldownSeconds = std::max(0.0F, enemy.fireCooldownSeconds - deltaSeconds);
+    if (enemy.aiMode == EnemyAiMode::Uncouple) {
+        enemy.aiStateTimerSeconds = std::max(0.0F, enemy.aiStateTimerSeconds - deltaSeconds);
+        if (enemy.aiStateTimerSeconds <= 0.0F) {
+            RestoreFromUncoupleMode(enemy);
+        }
+    }
     (void)view;
 }
 
@@ -2279,7 +2308,25 @@ void UpdateEnemySystem(
         bool preserveContinuousHeading = false;
         {
             profiling::ScopedProfile phaseScope(profiling::Scope::EnemyAiDecision, true);
-            if (enemy.type == EnemyType::Drone) {
+            bool handledByUncouple = false;
+            if (enemy.aiMode == EnemyAiMode::Uncouple) {
+                enemy.aiStateTimerSeconds = std::max(0.0F, enemy.aiStateTimerSeconds - deltaSeconds);
+                if (enemy.aiStateTimerSeconds > 0.0F) {
+                    movementHeading =
+                        SelectUncoupleHeading(
+                            state.world,
+                            state.world.enemies,
+                            enemyIndex,
+                            enemy.desiredHeadingRadians,
+                            random);
+                    enemy.desiredHeadingRadians = movementHeading;
+                    handledByUncouple = true;
+                } else {
+                    RestoreFromUncoupleMode(enemy);
+                }
+            }
+
+            if (!handledByUncouple && enemy.type == EnemyType::Drone) {
                 if (enemy.aiMode != EnemyAiMode::Watch && enemy.aiMode != EnemyAiMode::Wander) {
                     enemy.aiMode = EnemyAiMode::Wander;
                     enemy.aiModeElapsedSeconds = 0.0F;
@@ -2333,7 +2380,7 @@ void UpdateEnemySystem(
                         speed = 0.0F;
                     }
                 }
-            } else if (enemy.type == EnemyType::Torpedo) {
+            } else if (!handledByUncouple && enemy.type == EnemyType::Torpedo) {
                 enemy.torpedoPlayerDetectTimerSeconds -= deltaSeconds;
                 if (enemy.torpedoPlayerDetectTimerSeconds <= 0.0F) {
                     enemy.torpedoPlayerDetectTimerSeconds = kTorpedoPlayerDetectIntervalSeconds;
@@ -2424,7 +2471,7 @@ void UpdateEnemySystem(
                         }
                     }
                 }
-            } else if (enemy.type == EnemyType::Hunter) {
+            } else if (!handledByUncouple && enemy.type == EnemyType::Hunter) {
                 const bool canChase =
                     !playerInvisible &&
                     !perception.playerObscured &&
@@ -2478,8 +2525,8 @@ void UpdateEnemySystem(
                         enemy.aiMode = EnemyAiMode::Scout;
                     }
                 }
-            } else {
-                enemy.aiMode = EnemyAiMode::Path;
+            } else if (!handledByUncouple) {
+                enemy.aiMode = EnemyAiMode::Pursuit;
                 if (!playerInvisible && perception.distanceToPlayer < GameplayConstants::kAssassinMinDistanceUnits) {
                     speed = 0.0F;
                     enemy.pathWaypointCount = 0;
