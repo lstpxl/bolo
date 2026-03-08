@@ -97,6 +97,10 @@ int GameApp::Run() {
             TryLoadSoundFromKnownPaths(enemyExplodingSound_, "enemy-exploding.wav", "enemy-exploding sound");
         baseExplodingSoundLoaded_ =
             TryLoadSoundFromKnownPaths(baseExplodingSound_, "base-exploding.wav", "base-exploding sound");
+        menuMusicGeneratorReady_ = menuMusicGenerator_.Initialize();
+        if (!menuMusicGeneratorReady_) {
+            TraceLog(LOG_WARNING, "AUDIO: menu music generator failed to initialize");
+        }
     }
 
     while (!exitRequested_ && !WindowShouldClose()) {
@@ -156,6 +160,10 @@ int GameApp::Run() {
                     profiling::ScopedProfile renderScope(profiling::Scope::FrameRender);
                     Render(input);
                 }
+                if (audioReady_ && menuMusicGeneratorReady_) {
+                    menuMusicGenerator_.SetEnabled(game_.Mode() == GameMode::Menu);
+                    menuMusicGenerator_.Update();
+                }
             }
         }
         profiling::Profiler::Instance().EndFrame();
@@ -192,6 +200,10 @@ int GameApp::Run() {
     debugOverlayRenderer_.ReleaseResources();
     renderer_.UnloadResources();
     if (audioReady_) {
+        if (menuMusicGeneratorReady_) {
+            menuMusicGenerator_.Shutdown();
+            menuMusicGeneratorReady_ = false;
+        }
         CloseAudioDevice();
     }
     CloseWindow();

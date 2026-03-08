@@ -137,7 +137,7 @@ void DrawFlowFieldArrow(const Camera2D& camera, float fromX, float fromY, float 
         fromScreen.y + dir.y * arrowLenPx * 0.8F,
     };
 
-    constexpr Color kFlowArrowColor{96, 200, 255, 180};
+    constexpr Color kFlowArrowColor{24, 50, 64, 180};
     const float headSize = std::clamp(arrowLenPx * 0.22F, 2.0F, 6.0F);
     DrawLineEx(tail, tip, 1.0F, kFlowArrowColor);
     DrawTriangle(

@@ -49,31 +49,26 @@ FrameInput PollFrameInput() {
         if (IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_TRIGGER_1)) {
             turretTurnInput += 1.0F;
         }
-    } else {
-        if (IsKeyDown(KEY_A)) {
-            moveX -= 1.0F;
-        }
-        if (IsKeyDown(KEY_D)) {
-            moveX += 1.0F;
-        }
-        if (IsKeyDown(KEY_W) || IsKeyDown(KEY_UP)) {
-            moveY -= 1.0F;
-        }
-        if (IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN)) {
-            moveY += 1.0F;
-        }
-        if (IsKeyDown(KEY_LEFT)) {
-            turnInput -= 1.0F;
-        }
-        if (IsKeyDown(KEY_RIGHT)) {
-            turnInput += 1.0F;
-        }
-        if (IsKeyDown(KEY_ONE)) {
-            turretTurnInput -= 1.0F;
-        }
-        if (IsKeyDown(KEY_TWO)) {
-            turretTurnInput += 1.0F;
-        }
+    }
+    if (IsKeyDown(KEY_LEFT)) {
+        moveX -= 1.0F;
+        turnInput -= 1.0F;
+    }
+    if (IsKeyDown(KEY_RIGHT)) {
+        moveX += 1.0F;
+        turnInput += 1.0F;
+    }
+    if (IsKeyDown(KEY_UP)) {
+        moveY -= 1.0F;
+    }
+    if (IsKeyDown(KEY_DOWN)) {
+        moveY += 1.0F;
+    }
+    if (IsKeyDown(KEY_ONE)) {
+        turretTurnInput -= 1.0F;
+    }
+    if (IsKeyDown(KEY_TWO)) {
+        turretTurnInput += 1.0F;
     }
 
     if (moveX > 1.0F) {
@@ -119,12 +114,12 @@ FrameInput PollFrameInput() {
     const bool gamepadForwardReleased = IsGamepadButtonReleased(0, GAMEPAD_BUTTON_LEFT_FACE_UP);
     const bool gamepadReverseReleased = IsGamepadButtonReleased(0, GAMEPAD_BUTTON_LEFT_FACE_DOWN);
 
-    const bool keyForwardDown = IsKeyDown(KEY_W) || IsKeyDown(KEY_UP);
-    const bool keyReverseDown = IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN);
-    const bool keyForwardPressed = IsKeyPressed(KEY_W) || IsKeyPressed(KEY_UP);
-    const bool keyReversePressed = IsKeyPressed(KEY_S) || IsKeyPressed(KEY_DOWN);
-    const bool keyForwardReleased = IsKeyReleased(KEY_W) || IsKeyReleased(KEY_UP);
-    const bool keyReverseReleased = IsKeyReleased(KEY_S) || IsKeyReleased(KEY_DOWN);
+    const bool keyForwardDown = IsKeyDown(KEY_UP);
+    const bool keyReverseDown = IsKeyDown(KEY_DOWN);
+    const bool keyForwardPressed = IsKeyPressed(KEY_UP);
+    const bool keyReversePressed = IsKeyPressed(KEY_DOWN);
+    const bool keyForwardReleased = IsKeyReleased(KEY_UP);
+    const bool keyReverseReleased = IsKeyReleased(KEY_DOWN);
 
     return FrameInput{
         .moveX = moveX,

@@ -68,6 +68,7 @@ enum class Scope : std::uint8_t {
     RenderHudCompass,
     RenderOverlay,
     FramePresent,
+    MenuMusicUpdate,
     Count
 };
 

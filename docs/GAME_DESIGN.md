@@ -108,8 +108,9 @@ Input is collected in `src/platform/Input.cpp`.
 - Move joystick: gamepad axes `0` and `1` (left stick).
 - Fire joystick: gamepad axes `2` and `3` (right stick).
 - Throttle:
-  - forward: W or Up / D-pad up
-  - decelerate: S or Down / D-pad down
+  - forward: Up arrow / D-pad up
+  - decelerate: Down arrow / D-pad down
+- **Mac keyboard:** Cursor keys (Up/Down/Left/Right) control tank movement and turn; WASD control camera pan only when pan mode is active (P toggles).
 - Return to menu while playing:
   - Enter (keyboard) or Start (gamepad)
 - Exit app:
@@ -329,6 +330,8 @@ World rendering is in `src/platform/Renderer2D.cpp`.
   - If source distance `d > 10 * 6` world-units, sound is not played.
   - If `d <= 3 * 6`, full volume is used.
   - If `3 * 6 < d <= 10 * 6`, volume is `V = 1 - (d - r1) / (r2 - r1)` with `r1 = 3 * 6`, `r2 = 10 * 6`.
+- Main menu background music is generated procedurally at runtime by a bytebeat-style synthesizer module (`src/app/MenuMusicGenerator.cpp`), not loaded from an audio asset file.
+- Procedural menu music is enabled only while `GameMode::Menu` is active and is paused immediately when transitioning to gameplay.
 
 ## Main Menu UX
 
@@ -343,6 +346,7 @@ Menu rendering is in `src/ui/MenuScreen.cpp`.
   - debug info checkbox (positioned to the right of invisibility)
   - Start and Quit buttons
   - bottom-aligned build number text
+- While the menu is visible, a low-volume generated 8-bit/chiptune loop plays in the background.
 - Quit opens confirmation dialog.
 
 ## Build Number

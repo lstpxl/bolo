@@ -90,10 +90,13 @@ void UpdatePlayerSystem(GameState& state, const FrameInput& input, float deltaSe
 
     speed += state.world.player.throttleNormalized * throttleAccelerationPerSecond * deltaSeconds;
 
-    const float joystickRawX = static_cast<float>(input.gamepadAxis0Raw);
-    const float joystickRawY = static_cast<float>(input.gamepadAxis1Raw);
-    float targetNormalizedX = joystickRawX / joystickAxisRawMax;
-    float targetNormalizedY = joystickRawY / joystickAxisRawMax;
+    float targetNormalizedX = static_cast<float>(input.gamepadAxis0Raw) / joystickAxisRawMax;
+    float targetNormalizedY = static_cast<float>(input.gamepadAxis1Raw) / joystickAxisRawMax;
+    const bool joystickActive = (input.gamepadAxis0Raw != 0 || input.gamepadAxis1Raw != 0);
+    if (!joystickActive && (input.moveX != 0.0F || input.moveY != 0.0F)) {
+        targetNormalizedX = input.moveX;
+        targetNormalizedY = input.moveY;
+    }
     const float joystickMagnitude =
         std::sqrt(targetNormalizedX * targetNormalizedX + targetNormalizedY * targetNormalizedY);
     if (joystickMagnitude > 1.0F) {

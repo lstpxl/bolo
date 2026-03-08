@@ -267,6 +267,7 @@ const std::array<const char*, kScopeCount> kScopeNames = {
     "frame.render.hud.compass",
     "frame.render.overlay",
     "frame.present",
+    "menu.music",
 };
 
 }  // namespace

@@ -82,6 +82,7 @@ add_executable(
     src/app/BuildInfo.cpp
     src/app/DebugOverlayRenderer.cpp
     src/app/GameApp.cpp
+    src/app/MenuMusicGenerator.cpp
     src/core/ResourceLocator.cpp
     src/core/Profiling.cpp
     src/core/Random.cpp
