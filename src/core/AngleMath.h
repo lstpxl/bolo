@@ -31,7 +31,7 @@ inline float AngleDistance(float aRadians, float bRadians) {
     const float a = NormalizeAngle(aRadians);
     const float b = NormalizeAngle(bRadians);
     const float diff = std::fabs(a - b);
-    return std::min(diff, twoPi - diff);
+    return std::fmin(diff, twoPi - diff);
 }
 
 inline float QuantizeToEightDirections(float angleRadians) {
