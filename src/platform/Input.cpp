@@ -150,9 +150,9 @@ FrameInput PollFrameInput() {
             IsKeyPressed(KEY_RIGHT) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_RIGHT),
         .menuSelectPressed = IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE) || gamepadSouthPressed || gamepadEastPressed,
         .panTogglePressed = IsKeyPressed(KEY_P),
-        .panNorthPressed = IsKeyPressed(KEY_W),
-        .panSouthPressed = IsKeyPressed(KEY_S),
-        .panWestPressed = IsKeyPressed(KEY_A),
-        .panEastPressed = IsKeyPressed(KEY_D),
+        .panNorthPressed = IsKeyDown(KEY_W),
+        .panSouthPressed = IsKeyDown(KEY_S),
+        .panWestPressed = IsKeyDown(KEY_A),
+        .panEastPressed = IsKeyDown(KEY_D),
     };
 }

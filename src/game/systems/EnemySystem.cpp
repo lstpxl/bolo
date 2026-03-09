@@ -43,8 +43,14 @@ constexpr float kAssassinCheapSegmentOutOfCellUnits = 1.0F;
 constexpr float kEnemyUncoupleDurationSeconds = 1.0F;
 constexpr float kUncoupleEnemyForceRangeUnits = GameplayConstants::kEnemyPreferredSeparationUnits * 2.0F;
 constexpr float kUncoupleWallProbeRangeUnits = 1.5F;
+constexpr float kUncoupleObstacleProbeRangeUnits = 2.0F;
+constexpr float kUncoupleObstacleAheadDotThreshold = 0.35F;
+constexpr float kUncouplePathFollowForceScale = 0.6F;
+constexpr float kUncoupleObstacleForceScale = 0.9F;
 constexpr float kUncoupleWallForceScale = 1.2F;
-constexpr float kUncoupleRandomForceScale = 0.28F;
+constexpr float kUncoupleRandomForceScale = 0.08F;
+constexpr float kParallelWallSideProbeUnits = 0.75F;
+constexpr float kParallelWallContactThresholdUnits = 0.18F;
 constexpr int kEnemyTypeTelemetryCount = 4;
 constexpr bool kUseFlowFieldPathGuidance = true;
 constexpr int kMaxFlowFieldAge = 2;
@@ -280,9 +286,13 @@ float SelectUncoupleHeading(
     float fallbackHeading,
     Random& random) {
     const EnemyTank& self = enemies[static_cast<std::size_t>(selfIndex)];
-    Vec2f summedForce{.x = 0.0F, .y = 0.0F};
+    Vec2f separationForce{.x = 0.0F, .y = 0.0F};
+    Vec2f obstacleAvoidanceForce{.x = 0.0F, .y = 0.0F};
+    Vec2f wallAvoidanceForce{.x = 0.0F, .y = 0.0F};
+    Vec2f randomNoiseForce{.x = 0.0F, .y = 0.0F};
 
     const float enemyRangeSq = kUncoupleEnemyForceRangeUnits * kUncoupleEnemyForceRangeUnits;
+    const Vec2f desiredDir = DirectionFromHeading(QuantizeToEightDirections(fallbackHeading));
     for (int i = 0; i < static_cast<int>(enemies.size()); ++i) {
         if (i == selfIndex) {
             continue;
@@ -304,9 +314,24 @@ float SelectUncoupleHeading(
         if (awayDir.x == 0.0F && awayDir.y == 0.0F) {
             awayDir = DirectionFromHeading(static_cast<float>(i) * kEightDirectionStep);
         }
-        const float force = 1.0F - std::min(1.0F, dist / kUncoupleEnemyForceRangeUnits);
-        summedForce.x += awayDir.x * force;
-        summedForce.y += awayDir.y * force;
+        const float separationWeight = 1.0F - std::min(1.0F, dist / kUncoupleEnemyForceRangeUnits);
+        separationForce.x += awayDir.x * separationWeight;
+        separationForce.y += awayDir.y * separationWeight;
+
+        if (dist <= kUncoupleObstacleProbeRangeUnits) {
+            const Vec2f toOtherDir = NormalizeOrZero(Vec2f{
+                .x = other.position.x - self.position.x,
+                .y = other.position.y - self.position.y,
+            });
+            const float aheadDot = toOtherDir.x * desiredDir.x + toOtherDir.y * desiredDir.y;
+            if (aheadDot >= kUncoupleObstacleAheadDotThreshold) {
+                const float obstacleWeight =
+                    (1.0F - std::min(1.0F, dist / kUncoupleObstacleProbeRangeUnits)) *
+                    kUncoupleObstacleForceScale;
+                obstacleAvoidanceForce.x += awayDir.x * obstacleWeight;
+                obstacleAvoidanceForce.y += awayDir.y * obstacleWeight;
+            }
+        }
     }
 
     // Add wall repulsion to avoid uncouple movement that sticks enemies against walls.
@@ -325,15 +350,31 @@ float SelectUncoupleHeading(
         }
         const float wallForce =
             (1.0F - std::max(0.0F, clear) / kUncoupleWallProbeRangeUnits) * kUncoupleWallForceScale;
-        summedForce.x -= dir.x * wallForce;
-        summedForce.y -= dir.y * wallForce;
+        wallAvoidanceForce.x -= dir.x * wallForce;
+        wallAvoidanceForce.y -= dir.y * wallForce;
     }
 
     // Tiny random jitter breaks local force equilibrium in tight clusters/passages.
     const float jitterHeading = random.NextFloat(0.0F, kPi * 2.0F);
     const Vec2f jitterDir = DirectionFromHeading(jitterHeading);
-    summedForce.x += jitterDir.x * kUncoupleRandomForceScale;
-    summedForce.y += jitterDir.y * kUncoupleRandomForceScale;
+    randomNoiseForce.x += jitterDir.x * kUncoupleRandomForceScale;
+    randomNoiseForce.y += jitterDir.y * kUncoupleRandomForceScale;
+
+    // Keep path-following weaker than separation while uncoupling.
+    const float separationMag =
+        std::sqrt(separationForce.x * separationForce.x + separationForce.y * separationForce.y);
+    const float pathFollowMag = std::min(kUncouplePathFollowForceScale, separationMag);
+    const Vec2f pathFollowingForce{
+        .x = desiredDir.x * pathFollowMag,
+        .y = desiredDir.y * pathFollowMag,
+    };
+
+    const Vec2f summedForce{
+        .x = pathFollowingForce.x + separationForce.x + obstacleAvoidanceForce.x + wallAvoidanceForce.x +
+            randomNoiseForce.x,
+        .y = pathFollowingForce.y + separationForce.y + obstacleAvoidanceForce.y + wallAvoidanceForce.y +
+            randomNoiseForce.y,
+    };
 
     const Vec2f awayDir = NormalizeOrZero(summedForce);
     if (awayDir.x == 0.0F && awayDir.y == 0.0F) {
@@ -528,6 +569,30 @@ EnemySimTier DetermineEnemySimTier(const EnemyTank& enemy, const GameState& stat
 
 bool SegmentIntersectsWall(const WorldState& world, const Vec2f& from, const Vec2f& to, float clearanceUnits) {
     return game::geometry::SegmentIntersectsWall(world, from, to, clearanceUnits);
+}
+
+bool IsEdgeOnWallContact(
+    const WorldState& world,
+    const Vec2f& candidatePosition,
+    float movementHeadingRadians) {
+    const float leftHeading = NormalizeAngle(movementHeadingRadians - (kPi * 0.5F));
+    const float rightHeading = NormalizeAngle(movementHeadingRadians + (kPi * 0.5F));
+    const float leftClear = game::geometry::FreeDistanceAhead(
+        world,
+        candidatePosition,
+        leftHeading,
+        kParallelWallSideProbeUnits,
+        GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
+        1.0F);
+    const float rightClear = game::geometry::FreeDistanceAhead(
+        world,
+        candidatePosition,
+        rightHeading,
+        kParallelWallSideProbeUnits,
+        GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
+        1.0F);
+    return leftClear <= kParallelWallContactThresholdUnits ||
+        rightClear <= kParallelWallContactThresholdUnits;
 }
 
 float FreeDistanceAheadWallsOnly(
@@ -1486,6 +1551,7 @@ void ResolveEnemySeparationLegacyGrid(
             const float killDistSq =
                 GameplayConstants::kEnemyMutualKillDistanceUnits * GameplayConstants::kEnemyMutualKillDistanceUnits;
             if (distSq <= killDistSq) {
+                EnterUncoupleMode(world.enemies, j, i);
                 EnterUncoupleMode(world.enemies, i, j);
             }
             const float sepSq =
@@ -1561,6 +1627,7 @@ void ResolveEnemyFrontalCollisionsLegacyGrid(
             const float killDistSq =
                 GameplayConstants::kEnemyMutualKillDistanceUnits * GameplayConstants::kEnemyMutualKillDistanceUnits;
             if (centerDistSq <= killDistSq) {
+                EnterUncoupleMode(world.enemies, j, i);
                 EnterUncoupleMode(world.enemies, i, j);
             }
         });
@@ -1653,6 +1720,7 @@ void ResolveEnemyCollisionsSinglePass(
                 gEnemyRuntimeStats.frontalPairsDistanceChecks += 1;
                 const float centerDistSq = DistanceSq(a.position, b.position);
                 if (centerDistSq <= killDistSq) {
+                    EnterUncoupleMode(world.enemies, j, i);
                     EnterUncoupleMode(world.enemies, i, j);
                 }
             }
@@ -1671,6 +1739,7 @@ void ResolveEnemyCollisionsSinglePass(
             profiling::ScopedProfile separationPairScope(profiling::Scope::EnemySeparationPairResolve, true);
             const float distSq = DistanceSq(a.position, b.position);
             if (distSq <= killDistSq) {
+                EnterUncoupleMode(world.enemies, j, i);
                 EnterUncoupleMode(world.enemies, i, j);
             }
             if (distSq >= separationDistSq) {
@@ -2184,12 +2253,14 @@ void UpdateEnemySystem(
         flowWorker.inFlight = true;
         MazeState mazeCopy = state.world.maze;
         game::navigation::CellCoordCache cacheCopy = cellCache;
+        std::vector<EnemyBase> basesCopy = state.world.enemyBases;
         flowWorker.future = std::async(
             std::launch::async,
             [&pending = flowWorker.pendingFlowField,
              m = std::move(mazeCopy),
-             c = std::move(cacheCopy)]() mutable {
-                pending.Rebuild(m, c);
+             c = std::move(cacheCopy),
+             b = std::move(basesCopy)]() mutable {
+                pending.Rebuild(m, c, b);
             });
     };
 
@@ -2740,19 +2811,19 @@ void UpdateEnemySystem(
 
             {
                 profiling::ScopedProfile wallScope(profiling::Scope::EnemyMovementWallCheck, true);
-                if (std::fabs(speed) > 0.001F && SegmentIntersectsWall(
-                        state.world,
-                        previousPosition,
-                        candidatePosition,
-                        GameplayConstants::kEnemyWallAvoidanceRadiusUnits)) {
+                const bool moving = std::fabs(speed) > 0.001F;
+                const bool segmentWallHit = moving && SegmentIntersectsWall(
+                    state.world,
+                    previousPosition,
+                    candidatePosition,
+                    GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
+                const bool edgeOnWallContact = moving && !segmentWallHit &&
+                    IsEdgeOnWallContact(state.world, candidatePosition, movementHeading);
+                if (segmentWallHit || edgeOnWallContact) {
                     enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
                     enemy.aiStateTimerSeconds = 0.0F;
-                    if (enemy.type == EnemyType::Drone) {
-                        EnterDroneWatchMode(state.world, enemy, random);
-                    } else if (enemy.type == EnemyType::Hunter) {
-                        enemy.aiMode = EnemyAiMode::Rotate;
-                        enemy.aiModeElapsedSeconds = 0.0F;
-                    }
+                    // Wall contact enters uncouple so wall and neighbor repulsion can resolve local jams.
+                    EnterUncoupleMode(state.world.enemies, enemyIndex, enemyIndex);
                 } else {
                     enemy.velocity = Vec2f{
                         .x = snappedDirection.x * speed,

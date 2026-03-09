@@ -1,10 +1,34 @@
 #include "game/navigation/PlayerFlowField.h"
 
 #include <array>
+#include <cmath>
 #include <deque>
 #include <limits>
+#include "game/model/GameplayConstants.h"
 
 namespace game::navigation {
+
+namespace {
+bool IsCellOccupiedByBase(
+    const CellCoordCache& cellCache, int cellX, int cellY,
+    const std::vector<EnemyBase>& bases) {
+    const Vec2f center = cellCache.CellCenter(cellX, cellY);
+    const float halfBase = GameplayConstants::kEnemyBaseSizeUnits * 0.5F;
+    constexpr float kClearanceUnits = 0.0F;
+    for (const EnemyBase& base : bases) {
+        if (base.destroyed) {
+            continue;
+        }
+        const float dx = std::fabs(center.x - base.position.x);
+        const float dy = std::fabs(center.y - base.position.y);
+        if (dx <= halfBase + kClearanceUnits && dy <= halfBase + kClearanceUnits) {
+            return true;
+        }
+    }
+    return false;
+}
+
+}  // namespace
 
 void PlayerFlowField::EnsureCapacity(const MazeState& maze) {
     widthCells_ = maze.widthCells;
@@ -44,7 +68,8 @@ bool PlayerFlowField::CanTraverse(const MazeState& maze, int fromX, int fromY, i
     return false;
 }
 
-void PlayerFlowField::Rebuild(const MazeState& maze, const CellCoordCache& cellCache) {
+void PlayerFlowField::Rebuild(const MazeState& maze, const CellCoordCache& cellCache,
+    const std::vector<EnemyBase>& bases) {
     EnsureCapacity(maze);
     if (widthCells_ <= 0 || heightCells_ <= 0) {
         return;
@@ -65,7 +90,7 @@ void PlayerFlowField::Rebuild(const MazeState& maze, const CellCoordCache& cellC
     std::deque<int> queue{};
     queue.push_back(goalHash);
     distance_[static_cast<std::size_t>(goalHash)] = 0;
-    nextCellHash_[static_cast<std::size_t>(goalHash)] = goalHash;
+    // Do not assign flow to player cell; leave nextCellHash = -1
 
     constexpr std::array<int, 4> kDx{1, -1, 0, 0};
     constexpr std::array<int, 4> kDy{0, 0, 1, -1};
@@ -82,6 +107,9 @@ void PlayerFlowField::Rebuild(const MazeState& maze, const CellCoordCache& cellC
             if (!cellCache.IsValidCell(neighborX, neighborY)) {
                 continue;
             }
+            if (IsCellOccupiedByBase(cellCache, neighborX, neighborY, bases)) {
+                continue;
+            }
             if (!CanTraverse(maze, neighborX, neighborY, currentX, currentY)) {
                 continue;
             }
@@ -92,6 +120,47 @@ void PlayerFlowField::Rebuild(const MazeState& maze, const CellCoordCache& cellC
             distance_[static_cast<std::size_t>(neighborHash)] = currentDist + 1;
             nextCellHash_[static_cast<std::size_t>(neighborHash)] = currentHash;
             queue.push_back(neighborHash);
+        }
+    }
+
+    // Base-occupied cells were skipped in BFS. Assign outward flow direction
+    // toward a traversable neighbor whose flow does not point back at this base cell.
+    // Base always fits in one cell (kEnemyBaseSizeUnits < cell size); use the cell
+    // containing the base center.
+    constexpr std::array<int, 4> kDxOut{1, -1, 0, 0};
+    constexpr std::array<int, 4> kDyOut{0, 0, 1, -1};
+    for (const EnemyBase& base : bases) {
+        if (base.destroyed) {
+            continue;
+        }
+        const MazeCellCoord cell = cellCache.WorldToCell(base.position);
+        const int cx = cell.x;
+        const int cy = cell.y;
+        const int cellHash = cellCache.CellHash(cx, cy);
+        int bestNeighborHash = -1;
+        int bestDist = std::numeric_limits<int>::max();
+        for (int i = 0; i < 4; ++i) {
+            const int nx = cx + kDxOut[static_cast<std::size_t>(i)];
+            const int ny = cy + kDyOut[static_cast<std::size_t>(i)];
+            if (!cellCache.IsValidCell(nx, ny)) {
+                continue;
+            }
+            if (!CanTraverse(maze, cx, cy, nx, ny)) {
+                continue;
+            }
+            const int neighborHash = cellCache.CellHash(nx, ny);
+            const int neighborNext = nextCellHash_[static_cast<std::size_t>(neighborHash)];
+            if (neighborNext < 0 || neighborNext == cellHash) {
+                continue;
+            }
+            const int dist = distance_[static_cast<std::size_t>(neighborHash)];
+            if (dist < bestDist) {
+                bestDist = dist;
+                bestNeighborHash = neighborHash;
+            }
+        }
+        if (bestNeighborHash >= 0) {
+            nextCellHash_[static_cast<std::size_t>(cellHash)] = bestNeighborHash;
         }
     }
 

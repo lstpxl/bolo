@@ -37,6 +37,7 @@ Gameplay constants (see `src/game/GameState.h`):
 - `kEntitySizeUnits = 1.0` (player and enemy tank footprint)
 - `kEnemyBaseSizeUnits = 3.0`
 - `kEnemyBaseCount = 6`
+- Invariant: `kEnemyBaseSizeUnits < cell size`; each base always fits in one cell.
 
 Derived world size:
 
@@ -110,7 +111,7 @@ Input is collected in `src/platform/Input.cpp`.
 - Throttle:
   - forward: Up arrow / D-pad up
   - decelerate: Down arrow / D-pad down
-- **Mac keyboard:** Cursor keys (Up/Down/Left/Right) control tank movement and turn; WASD control camera pan only when pan mode is active (P toggles).
+- **Mac keyboard:** Cursor keys (Up/Down/Left/Right) control tank movement and turn; WASD control camera pan when pan mode is active (P toggles)—camera moves one cell per frame while each direction key is held.
 - Return to menu while playing:
   - Enter (keyboard) or Start (gamepad)
 - Exit app:
@@ -172,11 +173,15 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
 - Enemies continuously try to keep at least `1.0` world-units of `clearance` (equivalent to center `distance >= 2.0` with `r1=r2=0.5`).
 - If a planned move violates spacing, AI attempts a `45°` turn first; if not possible, enemy stops for that frame.
 - Enemy-vs-enemy overlap does **not** kill enemies.
-- On overlap/collision detection, pair order is deterministic: first enemy keeps its current behavior, second enemy enters `Uncouple` mode for `1.0s`.
+- On overlap/collision detection (frontal and near-separation paths), both enemies enter `Uncouple` mode for `1.0s`.
 - `Uncouple` mode is available to all enemy types and temporarily overrides their normal AI mode to move away from nearby enemies, then restores the previous mode when the timer expires.
 - On near-separation conflicts (`distance < preferred separation`), enemies are no longer position-pushed directly in the collision pass; both enemies enter `Uncouple` mode instead.
-- `Uncouple` steering uses an elastic-style summed repulsion force: per enemy, contributions from nearby enemies are accumulated with distance falloff, and nearby walls add repulsion using short-range clearance probes.
+- `Uncouple` per-step steering combines force components as `pathFollowing + (separation + obstacleAvoidance + wallAvoidance) + randomNoise`.
+- `pathFollowing` is always clamped so its magnitude is not greater than `separation` magnitude for that step.
+- `obstacleAvoidance` is computed from nearby enemies ahead of the desired uncouple direction (short-range, direction-aware).
+- `wallAvoidance` uses short-range clearance probes around the enemy and pushes away from blocked directions.
 - While in `Uncouple`, each enemy also receives a tiny per-update random force component to break deadlocks/equilibrium (for example exact-overlap pairs or groups contesting narrow passages).
+- Full-tier movement wall handling additionally checks side-clearance while moving (edge-on/parallel-to-wall case); if side contact risk is detected, enemy enters `Uncouple` mode instead of sliding into wall-stick behavior.
 - On death, an enemy explosion animation plays at the enemy's position: `resources/textures/explosion-1.png` is a 6-frame horizontal spritesheet (each frame `32×32` px), played at `0.15s` per frame (total `0.9s`). Up to `64` simultaneous explosions are tracked in `WorldState::enemyExplosions`. The explosion is rendered at `32×32` screen pixels (1× source scale), centered on the death position. The enemy entity is removed from the simulation immediately on death; only the explosion visual persists.
 - When a base is destroyed, a one-shot explosion animation plays at the base center: `resources/textures/explosion-3-large.png` is a 6-frame horizontal spritesheet (each frame `64×64` px), played at `0.15s` per frame (total `0.9s`). Up to `6` simultaneous base explosions are tracked in `WorldState::baseExplosions`. The explosion is rendered as `4×4` world units (`64` screen pixels at `16px/unit`), centered on the base. Spawning is gated by `EnemyBase::explosionPlayed` so each base triggers at most one explosion.
 - Player death uses `resources/textures/explosion-2.png` (6-frame `32×32` px horizontal spritesheet, `0.15s` per frame). The animation plays once at `kPlayerExplosionRenderWorldUnits = 2` world units (`32` screen pixels), centered at the player's death position. Rendered in world space inside the `BeginMode2D` camera block. The animation does not loop; after `0.9s` (6 frames) nothing is drawn for the remaining death-mode duration.
@@ -229,6 +234,7 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
 - Assassin:
   - Modes: `Pursuit` (default) and temporary `Uncouple`.
   - Uses a pure player-directed maze flow-field for pursuit steering (no waypoint A* path following in the active runtime branch).
+  - Flow-field build treats cells occupied by undestroyed bases as blocking (non-traversable).
   - Each assassin computes and caches only the next flow-field step heading per current cell; cached heading is reused until the assassin leaves that cell.
   - Flow-field initial build is requested by assassin when no build exists, or when assassin-spawn flow request becomes active.
   - Assassin steering does not require player-cell-version freshness; cached flow-field data remains valid until scheduled cache refresh.

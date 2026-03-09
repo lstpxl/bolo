@@ -11,7 +11,8 @@ namespace game::navigation {
 class PlayerFlowField {
 public:
     void EnsureCapacity(const MazeState& maze);
-    void Rebuild(const MazeState& maze, const CellCoordCache& cellCache);
+    void Rebuild(const MazeState& maze, const CellCoordCache& cellCache,
+        const std::vector<EnemyBase>& bases);
     void OverrideNextCellHash(int fromCellHash, int toCellHash);
 
     bool HasBuild() const { return hasBuild_; }
