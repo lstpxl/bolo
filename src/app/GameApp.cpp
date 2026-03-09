@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <string>
+#include "core/Log.h"
 #include "core/Profiling.h"
 #include "core/ResourceLocator.h"
 #include "raylib.h"
@@ -34,11 +35,11 @@ bool TryLoadSoundAtPath(Sound& sound, const std::string& path) {
 bool TryLoadSoundFromKnownPaths(Sound& sound, const char* fileName, const char* logName) {
     const std::string path = core::resources::ResolveResourcePath("audio", fileName);
     if (!path.empty() && TryLoadSoundAtPath(sound, path)) {
-        TraceLog(LOG_INFO, "AUDIO: %s loaded from: %s", logName, path.c_str());
+        bolt::log::Info("AUDIO: %s loaded from: %s", logName, path.c_str());
         return true;
     }
 
-    TraceLog(LOG_WARNING, "AUDIO: %s failed to load from known paths", logName);
+    bolt::log::Warning("AUDIO: %s failed to load from known paths", logName);
     return false;
 }
 
@@ -60,11 +61,12 @@ int GameApp::Run() {
         config_.screenWidth * kPresentationScale,
         config_.screenHeight * kPresentationScale,
         config_.windowTitle.data());
+    bolt::log::Init();
     SetExitKey(KEY_NULL);
     SetTargetFPS(config_.targetFps);
     ConfigureRayguiDefaultStyle();
     if (!renderer_.LoadResources()) {
-        TraceLog(LOG_WARNING, "RENDER: Failed to load one or more renderer resources");
+        bolt::log::Warning("RENDER: Failed to load one or more renderer resources");
     }
     int activePresentationScale = 1;
     if (kPresentationScale > 1) {
@@ -74,8 +76,7 @@ int GameApp::Run() {
             SetTextureFilter(presentationTarget_.texture, TEXTURE_FILTER_POINT);
             activePresentationScale = kPresentationScale;
         } else {
-            TraceLog(
-                LOG_WARNING,
+            bolt::log::Warning(
                 "RENDER: Failed to create presentation render target, falling back to 1x presentation");
             SetWindowSize(config_.screenWidth, config_.screenHeight);
         }
@@ -99,7 +100,7 @@ int GameApp::Run() {
             TryLoadSoundFromKnownPaths(baseExplodingSound_, "base-exploding.wav", "base-exploding sound");
         menuMusicGeneratorReady_ = menuMusicGenerator_.Initialize();
         if (!menuMusicGeneratorReady_) {
-            TraceLog(LOG_WARNING, "AUDIO: menu music generator failed to initialize");
+            bolt::log::Warning("AUDIO: menu music generator failed to initialize");
         }
     }
 

@@ -93,6 +93,11 @@ struct GameplayConstants {
         kEnemyWallClearancePixels / static_cast<float>(kPixelsPerUnit); // world-units
     static constexpr float kEnemyWallAvoidanceRadiusUnits =
         kTankCollisionRadiusUnits + kEnemyWallClearanceUnits;           // world-units
+
+    // Enemy dual-radius model (universal for all types):
+    static constexpr float kEnemyCollisionRadiusUnits = kTankCollisionRadiusUnits;  // hard radius: collision
+    static constexpr float kEnemyAvoidanceRadiusUnits = kEnemyWallAvoidanceRadiusUnits;  // soft radius: steering
+
     static constexpr float kProjectileLifetimeSeconds = 3.0F;          // seconds
     static constexpr float kProjectileHitRadius = 0.7F;                // world-units
     static constexpr float kPlayerEnemyCollisionRadius = kTankCollisionRadiusUnits * 2.0F; // world-units

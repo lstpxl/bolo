@@ -116,12 +116,19 @@ exec ./bolt
 
 App exit combo: `START + SELECT`.
 
+## Logging
+
+The app writes logs next to the executable:
+
+- `bolt.log` – debug, info, warnings (resource loading, etc.)
+- `profile.log` – profiling telemetry (`[PROFILE]`, `[ENEMY_*]`, etc.)
+
 ## Compare handheld profiling logs
 
-Use the reusable comparison script to summarize A/B telemetry from two captured logs:
+Profile output goes to `profile.log` in the app directory. For handheld comparison, copy `profile.log` from the device after a session, then run:
 
 ```bash
-python3 scripts/compare-handheld-profiles.py docs/handheld-profile-22.log docs/handheld-profile-23.log
+python3 scripts/compare-handheld-profiles.py baseline-profile.log candidate-profile.log
 ```
 
 Convention:

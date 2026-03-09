@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include "core/Log.h"
 #include "game/systems/EnemyAssassin.h"
 #include "game/systems/EnemyDrone.h"
 #include "game/systems/EnemyHunter.h"
@@ -136,7 +137,7 @@ std::uint64_t gLastEnemyStatsPrintedFrame = 0;
     stats.killDebugEnemyEnemyDistanceSum += centerDistance;
 
     if (stats.killDebugEnemyEnemySamplesPrinted < 12U) {
-        std::printf(
+        bolt::log::Profile(
             "[ENEMY_KILL_DEBUG_EVENT] reason=enemy_enemy pass=%s pair=%d,%d dist=%.3f killDist=%.3f reenter=%d,%d wallContact=%d,%d tier=%d,%d posA=(%.2f,%.2f) posB=(%.2f,%.2f)\n",
             frontalPass ? "frontal" : "separation",
             i,
@@ -394,7 +395,7 @@ void EnterUncoupleMode(
 
     const bool shouldSample = alreadyUncouple || reason == UncoupleReason::SelfWallContact;
     if (shouldSample && stats.uncoupleSamplesPrinted < kUncoupleEventSampleCap) {
-        std::printf(
+        bolt::log::Profile(
             "[ENEMY_UNCOUPLE_EVENT] id=%d reason=%s alreadyUncouple=%d timerBeforeReset=%.3f movedLastFrame=%.3f pos=(%.2f,%.2f)\n",
             uncoupleIndex,
             UncoupleReasonLabel(reason),
@@ -2370,7 +2371,7 @@ void UpdateEnemySystem(
     const std::uint64_t frameIndex = profiler.FrameIndex();
     if (profiler.ShouldEmitPeriodicReport() && frameIndex != gLastEnemyStatsPrintedFrame) {
         gLastEnemyStatsPrintedFrame = frameIndex;
-        std::printf(
+        bolt::log::Profile(
             "[ENEMY_STATS] frame=%llu alive=%d visible=%d full=%d cheap=%d fullInBase=%d pairs(frontal=%d checks=%d separation=%d resolved=%d)\n",
             static_cast<unsigned long long>(frameIndex),
             gEnemyRuntimeStats.aliveCount,
@@ -2383,7 +2384,7 @@ void UpdateEnemySystem(
             gEnemyRuntimeStats.separationPairsVisited,
             gEnemyRuntimeStats.separationPairsResolved);
         if (gEnemyRuntimeWindowStats.fixedSteps > 0) {
-            std::printf(
+            bolt::log::Profile(
                 "[ENEMY_WINDOW] steps=%llu alive[min=%d max=%d] visible[min=%d max=%d] full[min=%d max=%d] collisionPasses[runs=%llu skips=%llu]\n",
                 static_cast<unsigned long long>(gEnemyRuntimeWindowStats.fixedSteps),
                 gEnemyRuntimeWindowStats.minAliveCount,
@@ -2396,25 +2397,34 @@ void UpdateEnemySystem(
                 static_cast<unsigned long long>(gEnemyRuntimeWindowStats.collisionPassSkips));
 
             const float windowSeconds = std::max(0.0001F, gEnemyRuntimeWindowStats.windowSeconds);
-            std::printf("[ENEMY_SEGMENTS] window=%.3fs", windowSeconds);
-            for (int typeIdx = 0; typeIdx < kEnemyTypeTelemetryCount; ++typeIdx) {
-                const std::uint64_t built =
-                    gEnemyRuntimeWindowStats.segmentsBuiltByType[static_cast<std::size_t>(typeIdx)];
-                const std::uint64_t fails =
-                    gEnemyRuntimeWindowStats.segmentBuildFailsByType[static_cast<std::size_t>(typeIdx)];
-                const float builtPerSec = static_cast<float>(built) / windowSeconds;
-                const float avgLen = built > 0
-                    ? (gEnemyRuntimeWindowStats.segmentLengthSumByType[static_cast<std::size_t>(typeIdx)] /
-                        static_cast<float>(built))
-                    : 0.0F;
-                std::printf(
-                    " %s{b/s=%.2f avgLen=%.2f fail=%llu}",
-                    EnemyTypeTelemetryLabel(typeIdx),
-                    builtPerSec,
-                    avgLen,
-                    static_cast<unsigned long long>(fails));
+            {
+                std::array<char, 1024> buf{};
+                int n = std::snprintf(
+                    buf.data(),
+                    buf.size(),
+                    "[ENEMY_SEGMENTS] window=%.3fs",
+                    windowSeconds);
+                for (int typeIdx = 0; typeIdx < kEnemyTypeTelemetryCount && n > 0 && n < static_cast<int>(buf.size() - 128); ++typeIdx) {
+                    const std::uint64_t built =
+                        gEnemyRuntimeWindowStats.segmentsBuiltByType[static_cast<std::size_t>(typeIdx)];
+                    const std::uint64_t fails =
+                        gEnemyRuntimeWindowStats.segmentBuildFailsByType[static_cast<std::size_t>(typeIdx)];
+                    const float builtPerSec = static_cast<float>(built) / windowSeconds;
+                    const float avgLen = built > 0
+                        ? (gEnemyRuntimeWindowStats.segmentLengthSumByType[static_cast<std::size_t>(typeIdx)] /
+                            static_cast<float>(built))
+                        : 0.0F;
+                    n += std::snprintf(
+                        buf.data() + n,
+                        static_cast<std::size_t>(buf.size()) - static_cast<std::size_t>(n),
+                        " %s{b/s=%.2f avgLen=%.2f fail=%llu}",
+                        EnemyTypeTelemetryLabel(typeIdx),
+                        builtPerSec,
+                        avgLen,
+                        static_cast<unsigned long long>(fails));
+                }
+                bolt::log::Profile("%s\n", buf.data());
             }
-            std::printf("\n");
 
             const float frontalPairsPerSec =
                 static_cast<float>(gEnemyRuntimeWindowStats.frontalPairsVisited) / windowSeconds;
@@ -2432,13 +2442,13 @@ void UpdateEnemySystem(
                 ? (100.0F * static_cast<float>(gEnemyRuntimeWindowStats.separationPairsResolved) /
                     static_cast<float>(gEnemyRuntimeWindowStats.separationPairsVisited))
                 : 0.0F;
-            std::printf(
+            bolt::log::Profile(
                 "[ENEMY_GRID] frontal{cand/s=%.1f xcell/s=%.1f ins/s=%.1f} separation{cand/s=%.1f}\n",
                 static_cast<float>(gEnemyRuntimeWindowStats.frontalGridCandidates) / windowSeconds,
                 static_cast<float>(gEnemyRuntimeWindowStats.frontalGridCellTransitions) / windowSeconds,
                 static_cast<float>(gEnemyRuntimeWindowStats.frontalGridInsertEstimate) / windowSeconds,
                 static_cast<float>(gEnemyRuntimeWindowStats.separationGridCandidates) / windowSeconds);
-            std::printf(
+            bolt::log::Profile(
                 "[ENEMY_COLLISION_WINDOW] frontal{pairs/s=%.1f checks/s=%.1f baseSkip=%llu kill=%llu(%.1f%%)} separation{pairs/s=%.1f resolved/s=%.1f(%.1f%%) baseSkip=%llu kill=%llu wallBlock=%llu}\n",
                 frontalPairsPerSec,
                 frontalChecksPerSec,
@@ -2455,7 +2465,7 @@ void UpdateEnemySystem(
                 ? (100.0F * static_cast<float>(gEnemyRuntimeWindowStats.uncoupleReentryResets) /
                     static_cast<float>(gEnemyRuntimeWindowStats.uncoupleEntries))
                 : 0.0F;
-            std::printf(
+            bolt::log::Profile(
                 "[ENEMY_UNCOUPLE] entries=%llu reentryResets=%llu(%.1f%%) reason{frontal=%llu separation=%llu wallContact=%llu}\n",
                 static_cast<unsigned long long>(gEnemyRuntimeWindowStats.uncoupleEntries),
                 static_cast<unsigned long long>(gEnemyRuntimeWindowStats.uncoupleReentryResets),
@@ -2467,7 +2477,7 @@ void UpdateEnemySystem(
                 const float killDistAvg = static_cast<float>(
                     gEnemyRuntimeWindowStats.killDebugEnemyEnemyDistanceSum /
                     static_cast<double>(gEnemyRuntimeWindowStats.killDebugEnemyEnemyEvents));
-                std::printf(
+                bolt::log::Profile(
                     "[ENEMY_KILL_DEBUG] enemyEnemy{events=%llu frontal=%llu separation=%llu reenterEither=%llu reenterBoth=%llu wallContact=%llu dist[min=%.3f avg=%.3f max=%.3f]}\n",
                     static_cast<unsigned long long>(gEnemyRuntimeWindowStats.killDebugEnemyEnemyEvents),
                     static_cast<unsigned long long>(gEnemyRuntimeWindowStats.killDebugEnemyEnemyFrontalEvents),
@@ -2479,7 +2489,7 @@ void UpdateEnemySystem(
                     killDistAvg,
                     gEnemyRuntimeWindowStats.killDebugEnemyEnemyMaxDistance);
             } else {
-                std::printf(
+                bolt::log::Profile(
                     "[ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}\n");
             }
             const std::uint64_t flowTotalAttempts =
@@ -2492,7 +2502,7 @@ void UpdateEnemySystem(
                 ? (100.0F * static_cast<float>(gEnemyRuntimeWindowStats.navPathBuildSuccesses) /
                     static_cast<float>(gEnemyRuntimeWindowStats.navPathBuildCalls))
                 : 0.0F;
-            std::printf(
+            bolt::log::Profile(
                 "[ENEMY_NAV_CACHE] playerCell{changes=%llu flowRebuilds=%llu} flow{hit=%llu miss=%llu hit%%=%.1f} pathFallback{calls=%llu ok=%llu ok%%=%.1f}\n",
                 static_cast<unsigned long long>(gEnemyRuntimeWindowStats.navPlayerCellChanges),
                 static_cast<unsigned long long>(gEnemyRuntimeWindowStats.navFlowRebuilds),
@@ -2502,36 +2512,43 @@ void UpdateEnemySystem(
                 static_cast<unsigned long long>(gEnemyRuntimeWindowStats.navPathBuildCalls),
                 static_cast<unsigned long long>(gEnemyRuntimeWindowStats.navPathBuildSuccesses),
                 pathBuildSuccessPct);
-            std::printf(
+            bolt::log::Profile(
                 "[ENEMY_SAP] updates=%llu active=%llu pairs=%llu repairs{x=%llu y=%llu}\n",
                 static_cast<unsigned long long>(gEnemyRuntimeWindowStats.sapUpdateCalls),
                 static_cast<unsigned long long>(gEnemyRuntimeWindowStats.sapActiveItems),
                 static_cast<unsigned long long>(gEnemyRuntimeWindowStats.sapCandidatePairs),
                 static_cast<unsigned long long>(gEnemyRuntimeWindowStats.sapXRepairs),
                 static_cast<unsigned long long>(gEnemyRuntimeWindowStats.sapYRepairs));
-            std::printf("[ENEMY_PAIR_TYPES] frontal");
-            for (int i = 0; i < kEnemyTypeTelemetryCount; ++i) {
-                for (int j = i; j < kEnemyTypeTelemetryCount; ++j) {
-                    const std::size_t bucket = static_cast<std::size_t>(i * kEnemyTypeTelemetryCount + j);
-                    std::printf(
-                        " %s%s=%llu",
-                        EnemyTypeTelemetryLabel(i),
-                        EnemyTypeTelemetryLabel(j),
-                        static_cast<unsigned long long>(gEnemyRuntimeWindowStats.frontalPairsByType[bucket]));
+            {
+                std::array<char, 1024> buf{};
+                int n = std::snprintf(buf.data(), buf.size(), "[ENEMY_PAIR_TYPES] frontal");
+                for (int i = 0; i < kEnemyTypeTelemetryCount && n > 0 && n < static_cast<int>(buf.size() - 64); ++i) {
+                    for (int j = i; j < kEnemyTypeTelemetryCount; ++j) {
+                        const std::size_t bucket = static_cast<std::size_t>(i * kEnemyTypeTelemetryCount + j);
+                        n += std::snprintf(
+                            buf.data() + n,
+                            static_cast<std::size_t>(buf.size()) - static_cast<std::size_t>(n),
+                            " %s%s=%llu",
+                            EnemyTypeTelemetryLabel(i),
+                            EnemyTypeTelemetryLabel(j),
+                            static_cast<unsigned long long>(gEnemyRuntimeWindowStats.frontalPairsByType[bucket]));
+                    }
                 }
-            }
-            std::printf(" separation");
-            for (int i = 0; i < kEnemyTypeTelemetryCount; ++i) {
-                for (int j = i; j < kEnemyTypeTelemetryCount; ++j) {
-                    const std::size_t bucket = static_cast<std::size_t>(i * kEnemyTypeTelemetryCount + j);
-                    std::printf(
-                        " %s%s=%llu",
-                        EnemyTypeTelemetryLabel(i),
-                        EnemyTypeTelemetryLabel(j),
-                        static_cast<unsigned long long>(gEnemyRuntimeWindowStats.separationPairsByType[bucket]));
+                n += std::snprintf(buf.data() + n, static_cast<std::size_t>(buf.size()) - static_cast<std::size_t>(n), " separation");
+                for (int i = 0; i < kEnemyTypeTelemetryCount && n > 0 && n < static_cast<int>(buf.size() - 64); ++i) {
+                    for (int j = i; j < kEnemyTypeTelemetryCount; ++j) {
+                        const std::size_t bucket = static_cast<std::size_t>(i * kEnemyTypeTelemetryCount + j);
+                        n += std::snprintf(
+                            buf.data() + n,
+                            static_cast<std::size_t>(buf.size()) - static_cast<std::size_t>(n),
+                            " %s%s=%llu",
+                            EnemyTypeTelemetryLabel(i),
+                            EnemyTypeTelemetryLabel(j),
+                            static_cast<unsigned long long>(gEnemyRuntimeWindowStats.separationPairsByType[bucket]));
+                    }
                 }
+                bolt::log::Profile("%s\n", buf.data());
             }
-            std::printf("\n");
 
             if (gEnemyRuntimeWindowStats.torpedoHeadingEvalCalls > 0) {
                 const float evalPerSec =
@@ -2557,7 +2574,7 @@ void UpdateEnemySystem(
                 const float avgChosenClear = static_cast<float>(
                     gEnemyRuntimeWindowStats.torpedoHeadingChosenClearSum /
                     static_cast<double>(gEnemyRuntimeWindowStats.torpedoHeadingEvalCalls));
-                std::printf(
+                bolt::log::Profile(
                     "[TORPEDO_HEADING] eval/s=%.2f retreat/s=%.2f pick[straight=%.1f%% left=%.1f%% right=%.1f%%] clear[best=%.2f chosen=%.2f]\n",
                     evalPerSec,
                     retreatPerSec,
@@ -2570,7 +2587,6 @@ void UpdateEnemySystem(
 
             ResetEnemyWindowStats();
         }
-        std::fflush(stdout);
     }
 }
 

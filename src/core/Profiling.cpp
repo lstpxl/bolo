@@ -1,5 +1,6 @@
 #include "core/Profiling.h"
 
+#include "core/Log.h"
 #include <algorithm>
 #include <array>
 #include <atomic>
@@ -335,7 +336,7 @@ void Profiler::EmitPeriodicReport(float fixedStepSeconds) const {
     const AllocationSnapshot allocSnapshot = LastFrameAllocationSnapshot();
     const float fixedStepBudgetMs = fixedStepSeconds * 1000.0F;
 
-    std::printf(
+    bolt::log::Profile(
         "\n[PROFILE] frame=%llu budget=%.3fms alloc(+%llu/-%llu, +%llub/-%llub, live=%llub peak=%llub)\n",
         static_cast<unsigned long long>(FrameIndex()),
         fixedStepBudgetMs,
@@ -355,7 +356,7 @@ void Profiler::EmitPeriodicReport(float fixedStepSeconds) const {
         const float budgetPct = fixedStepBudgetMs > 0.001F ? (rows[i].view.avgMs / fixedStepBudgetMs) * 100.0F : 0.0F;
         const float reportBudgetPct =
             fixedStepBudgetMs > 0.001F ? (rows[i].view.reportAvgMs / fixedStepBudgetMs) * 100.0F : 0.0F;
-        std::printf(
+        bolt::log::Profile(
             "  %-32s win=%7.3fms avg=%7.3fms p95=%7.3fms max=%7.3fms calls(last=%3u,win=%4llu,total=%llu) (win %.1f%% | avg %.1f%% budget)\n",
             ScopeName(rows[i].scope),
             rows[i].view.reportAvgMs,
@@ -370,7 +371,6 @@ void Profiler::EmitPeriodicReport(float fixedStepSeconds) const {
         ++printedRows;
     }
     State().CommitReportSnapshot();
-    std::fflush(stdout);
 }
 
 const char* ScopeName(Scope scope) {

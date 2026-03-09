@@ -159,10 +159,23 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
 - Assassin advanced speed has two modes: `1.5` world-units/second when player line-of-sight is blocked or out of aggro range, and `3.0` world-units/second when the assassin has line-of-sight to a player in aggro range.
 - Enemy projectile firing heading is quantized to the same 8-way (45-degree) directions.
 - Player and enemy collision shape is treated as a disc with `9px` diameter.
+- **Enemy dual-radius model:** agents use two radii (universal for all enemy types):
+  - **hardRadius** (`kEnemyCollisionRadiusUnits`): collision radius for overlap and hit checks.
+  - **softRadius** (`kEnemyAvoidanceRadiusUnits`): avoidance radius for steering (wall clearance, path planning, separation). Soft radius is larger than hard radius.
 - Enemy wall movement keeps additional margin: enemy disc edge stays at least `2px` away from maze walls.
 - Start mode: at game start (and level restart after all bases are destroyed), player enters a `1.5s` lock where movement/fire are disabled and fuel fills from `0` to max on HUD.
 - Death mode: when player dies, player enters a `3s` lock with movement/fire disabled and a simple explosion animation before life loss + respawn resolution.
 - Respawn safety: respawn placement requires at least `30` world-units distance from every undestroyed base; if random placement cannot satisfy this, fallback chooses the farthest cell center from alive bases.
+
+### Collision System and Radius Usage
+
+`CollisionSystem.cpp` currently uses these constants (you can decide whether to migrate to the enemy dual-radius names):
+
+- **`kTankCollisionRadiusUnits`** – wall checks (IsPointInWall) for player and enemy; projectile-kill debug.
+- **`kPlayerEnemyCollisionRadius`** – player–enemy overlap (`2 × kTankCollisionRadiusUnits`).
+- **`kProjectileHitRadius`** – projectile vs enemy/player hit detection (0.7 units).
+
+Enemy movement/steering code uses **`kEnemyWallAvoidanceRadiusUnits`** (same as `kEnemyAvoidanceRadiusUnits`) for clearance queries.
 
 ### Enemy Separation and Mutual Collision
 

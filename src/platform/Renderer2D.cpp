@@ -6,6 +6,7 @@
 #include <array>
 #include <cstdint>
 #include <string>
+#include "core/Log.h"
 #include "core/Profiling.h"
 #include "core/ResourceLocator.h"
 #include "raylib.h"
@@ -330,14 +331,13 @@ bool Renderer2D::LoadResources() {
     }
     Image sourceSheet{};
     if (!TryLoadImageFromTextureDirectory(sourceSheet, "sprites.png")) {
-        TraceLog(LOG_WARNING, "RENDER: sprites.png not found");
+        bolt::log::Warning("RENDER: sprites.png not found");
         return false;
     }
 
     if (sourceSheet.width != kSpriteSheetColumns * kSpriteSheetCellSize ||
         sourceSheet.height != kSpriteSheetRows * kSpriteSheetCellSize) {
-        TraceLog(
-            LOG_WARNING,
+        bolt::log::Warning(
             "RENDER: sprites.png has unexpected size (%i x %i), expected %i x %i",
             sourceSheet.width,
             sourceSheet.height,
@@ -392,7 +392,7 @@ bool Renderer2D::LoadResources() {
                 ComputeFramePivotOffsetPixels(playerSheet, frameIndex, playerTankFrameSizePx_);
         }
     } else {
-        TraceLog(LOG_WARNING, "RENDER: failed to create player spritesheet texture from sprites.png");
+        bolt::log::Warning("RENDER: failed to create player spritesheet texture from sprites.png");
     }
 
     Image enemySheet = GenImageColor(
@@ -463,7 +463,7 @@ bool Renderer2D::LoadResources() {
     if (enemyTankSheetLoaded_) {
         SetTextureFilter(enemyTankSheet_, TEXTURE_FILTER_POINT);
     } else {
-        TraceLog(LOG_WARNING, "RENDER: failed to create enemy spritesheet texture from sprites.png");
+        bolt::log::Warning("RENDER: failed to create enemy spritesheet texture from sprites.png");
     }
     UnloadImage(enemySheet);
 
@@ -475,7 +475,7 @@ bool Renderer2D::LoadResources() {
         constexpr int kFrames = GameplayConstants::kExplosionFrameCount;
         Image img{};
         if (!TryLoadImageFromTextureDirectory(img, filename)) {
-            TraceLog(LOG_WARNING, "RENDER: %s not found", filename);
+            bolt::log::Warning("RENDER: %s not found", filename);
             return;
         }
         if (img.width == kFrames * framePx && img.height == framePx) {
@@ -484,11 +484,10 @@ bool Renderer2D::LoadResources() {
             if (outLoaded) {
                 SetTextureFilter(outTexture, TEXTURE_FILTER_POINT);
             } else {
-                TraceLog(LOG_WARNING, "RENDER: failed to upload %s texture", filename);
+                bolt::log::Warning("RENDER: failed to upload %s texture", filename);
             }
         } else {
-            TraceLog(
-                LOG_WARNING,
+            bolt::log::Warning(
                 "RENDER: %s unexpected size (%i x %i), expected %i x %i",
                 filename,
                 img.width,

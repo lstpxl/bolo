@@ -1,5 +1,7 @@
 #include "game/systems/CollisionSystem.h"
 
+#include "core/Log.h"
+
 #include <algorithm>
 #include <cstddef>
 #include <cmath>
@@ -105,7 +107,7 @@ void UpdateCollisionSystem(GameState& state, float deltaSeconds) {
     const std::uint64_t frameIndex = profiler.FrameIndex();
     if (profiler.ShouldEmitPeriodicReport() && frameIndex != gLastEnemyCollisionDebugPrintedFrame) {
         gLastEnemyCollisionDebugPrintedFrame = frameIndex;
-        std::printf(
+        bolt::log::Profile(
             "[ENEMY_KILL_DEBUG_COLLISION] projectile{kills=%llu wallContact=%llu}\n",
             static_cast<unsigned long long>(gEnemyCollisionDeathDebugWindowStats.projectileKills),
             static_cast<unsigned long long>(gEnemyCollisionDeathDebugWindowStats.projectileKillWallContact));

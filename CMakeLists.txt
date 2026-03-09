@@ -59,6 +59,7 @@ if(TARGET_RG353V)
 endif()
 
 add_subdirectory(raylib)
+add_subdirectory(third_party/spdlog)
 
 set(BOLT_GENERATED_DIR "${CMAKE_BINARY_DIR}/generated")
 set(BOLT_BUILD_NUMBER_FILE "${CMAKE_SOURCE_DIR}/build/build_number.txt")
@@ -83,6 +84,7 @@ add_executable(
     src/app/DebugOverlayRenderer.cpp
     src/app/GameApp.cpp
     src/app/MenuMusicGenerator.cpp
+    src/core/Log.cpp
     src/core/ResourceLocator.cpp
     src/core/Profiling.cpp
     src/core/Random.cpp
@@ -131,4 +133,4 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
     target_compile_options(bolt PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
-target_link_libraries(bolt PRIVATE raylib)
+target_link_libraries(bolt PRIVATE raylib spdlog::spdlog)
