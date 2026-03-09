@@ -5,6 +5,8 @@ Synergistic Software Presents
 BOLO
 ====
 
+Apple II platform
+
 Copyright 1992
 by Evlyn Software
 

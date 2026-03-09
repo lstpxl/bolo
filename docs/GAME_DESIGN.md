@@ -132,8 +132,8 @@ Input is collected in `src/platform/Input.cpp`.
 Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
 
 - "Full velocity" is `20.0` units/second.
-- Throttle ramp time is 3 seconds from 0 to full:
-  - rate = `1.0 / 3.0` per second.
+- Throttle ramp time is 1.5 seconds from 0 to full (2× responsive):
+  - rate = `2.0 / kPlayerSecondsToFullVelocity` per second.
 - Forward button increases throttle.
 - Reverse/down button decreases throttle.
 - Throttle is clamped to `0..1` (no negative velocity, no reverse movement).
@@ -145,7 +145,7 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
   - combined target is clamped to normalized magnitude `<= 1`
   - current velocity is normalized as `V` (`velocity / kPlayerFullVelocity`)
   - transform vector is `T = J - V`
-  - each update, `V` moves toward `J` at constant rate `kJoystickAcceleration`:
+  - each update, `V` moves toward `J` at constant rate `kJoystickAcceleration * 2`:
     - `V += normalize(T) * min(|T|, kJoystickAcceleration * dt)`
   - this gives transition time `|T| / kJoystickAcceleration` (e.g. `|T|=1`, `a=1` => `1s`)
   - tank heading is quantized to 8-way facing (45-degree steps) and movement is projected onto that snapped heading

@@ -36,7 +36,9 @@ constexpr float kTurnRepeatIntervalSeconds = 0.333F;
 }  // namespace
 
 void UpdatePlayerSystem(GameState& state, const FrameInput& input, float deltaSeconds) {
-    constexpr float throttleRatePerSecond = 1.0F / GameplayConstants::kPlayerSecondsToFullVelocity;
+    // Throttle ramp 2× faster for UP/DOWN buttons.
+    constexpr float throttleRatePerSecond =
+        2.0F / GameplayConstants::kPlayerSecondsToFullVelocity;
     constexpr float joystickAxisRawMax = 32768.0F;
     constexpr float fireJoystickDeadzoneNormalized = 0.2F;
     constexpr float throttleAccelerationPerSecond =
@@ -119,7 +121,9 @@ void UpdatePlayerSystem(GameState& state, const FrameInput& input, float deltaSe
     const float transformX = targetNormalizedX - velocityNormalizedX;
     const float transformY = targetNormalizedY - velocityNormalizedY;
     const float transformMagnitude = std::sqrt(transformX * transformX + transformY * transformY);
-    const float transformStep = GameplayConstants::kJoystickAcceleration * deltaSeconds;
+    // 2× acceleration for UP/DOWN throttle responsiveness.
+    const float transformStep =
+        GameplayConstants::kJoystickAcceleration * 2.0F * deltaSeconds;
     if (transformMagnitude > 0.0F) {
         const float appliedStep = std::min(transformStep, transformMagnitude);
         velocityNormalizedX += (transformX / transformMagnitude) * appliedStep;
