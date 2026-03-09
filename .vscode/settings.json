@@ -11,7 +11,7 @@
   "C_Cpp.default.includePath": [
     "${workspaceFolder}/src",
     "${workspaceFolder}/third_party/raygui/src",
-    "${workspaceFolder}/raylib/src"
+    "${workspaceFolder}/third_party/raylib/src"
   ],
   "C_Cpp.default.compilerPath": "/usr/bin/c++",
   "C_Cpp.default.cppStandard": "c++20",

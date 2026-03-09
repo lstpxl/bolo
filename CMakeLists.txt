@@ -58,7 +58,7 @@ if(TARGET_RG353V)
     endif()
 endif()
 
-add_subdirectory(raylib)
+add_subdirectory(third_party/raylib)
 add_subdirectory(third_party/spdlog)
 
 set(BOLT_GENERATED_DIR "${CMAKE_BINARY_DIR}/generated")

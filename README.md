@@ -5,8 +5,8 @@ Demo app for:
 - macOS local testing
 - Anbernic RG353V (dArkOS / PortMaster flow)
 
-The project vendors `raylib/` and uses SDL backend for RG353V builds.
-`raylib` and `raygui` are tracked as git submodules (pinned commits).
+The project vendors `third_party/raylib` and uses SDL backend for RG353V builds.
+`raylib`, `raygui`, and `spdlog` are tracked as git submodules (pinned commits).
 
 ## Prerequisites (macOS)
 
