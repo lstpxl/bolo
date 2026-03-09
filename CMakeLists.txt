@@ -109,7 +109,6 @@ add_executable(
     src/game/systems/ProjectileSystem.cpp
     src/game/systems/SpawnerSystem.cpp
     src/platform/Input.cpp
-    src/platform/PlayerFigure.cpp
     src/platform/RaylibRenderer.cpp
     src/platform/Renderer2D.cpp
     src/ui/ConfirmationDialog.cpp

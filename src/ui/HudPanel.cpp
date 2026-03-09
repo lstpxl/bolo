@@ -7,7 +7,6 @@
 #include "core/Profiling.h"
 #include "core/ResourceLocator.h"
 #include "game/GameQueries.h"
-#include "platform/PlayerFigure.h"
 #include "raylib.h"
 
 namespace {
@@ -25,7 +24,6 @@ constexpr Color kAssassinMapColor{255, 0, 0, 255};      // #FF0000
 constexpr Color kPlayerMapColor{0, 255, 255, 255};      // #00FFFF
 constexpr Color kBaseMapColor{255, 0, 255, 255};        // #FF00FF
 constexpr Color kDestroyedBaseMapColor{96, 96, 96, 255};    // #606060
-constexpr Color kPlayerLifeColor{0, 192, 48, 255};      // #00C030
 constexpr Color kPanelColor{27, 31, 39, 255};
 constexpr Color kPanelDividerColor{58, 66, 80, 255};
 constexpr Color kCompassBackgroundColor{237, 126, 188, 255};
@@ -719,25 +717,15 @@ void HudPanel::DrawPrepared(const GameState& state, const AppConfig& config, con
             .height = static_cast<float>(kLivesIconSizePixels),
         };
         for (int i = 0; i < livesToRender; ++i) {
+            if (!livesIconTextureLoaded_) continue;
             const int iconX = livesStartX + (i * (kLivesIconSizePixels + kLivesIconGapPixels));
-            if (livesIconTextureLoaded_) {
-                const Rectangle destinationRect{
-                    .x = static_cast<float>(iconX),
-                    .y = static_cast<float>(layout.livesY),
-                    .width = static_cast<float>(kLivesIconSizePixels),
-                    .height = static_cast<float>(kLivesIconSizePixels),
-                };
-                DrawTexturePro(livesIconTexture_, sourceRect, destinationRect, Vector2{0.0F, 0.0F}, 0.0F, WHITE);
-            } else {
-                DrawPlayerFigure(
-                    Vector2{
-                        static_cast<float>(iconX) + static_cast<float>(kLivesIconSizePixels) * 0.5F,
-                        static_cast<float>(layout.livesY) + static_cast<float>(kLivesIconSizePixels) * 0.5F,
-                    },
-                    static_cast<float>(kLivesIconSizePixels),
-                    0.0F,
-                    kPlayerLifeColor);
-            }
+            const Rectangle destinationRect{
+                .x = static_cast<float>(iconX),
+                .y = static_cast<float>(layout.livesY),
+                .width = static_cast<float>(kLivesIconSizePixels),
+                .height = static_cast<float>(kLivesIconSizePixels),
+            };
+            DrawTexturePro(livesIconTexture_, sourceRect, destinationRect, Vector2{0.0F, 0.0F}, 0.0F, WHITE);
         }
     }
 
