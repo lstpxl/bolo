@@ -51,11 +51,9 @@ FrameInput PollFrameInput() {
         }
     }
     if (IsKeyDown(KEY_LEFT)) {
-        moveX -= 1.0F;
         turnInput -= 1.0F;
     }
     if (IsKeyDown(KEY_RIGHT)) {
-        moveX += 1.0F;
         turnInput += 1.0F;
     }
     if (IsKeyDown(KEY_UP)) {

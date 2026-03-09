@@ -15,6 +15,7 @@
 #include "game/geometry/WorldGeometry.h"
 #include "game/navigation/CellCoordCache.h"
 #include "game/navigation/PlayerFlowField.h"
+#include "game/spatial/EnemyCellOccupancy.h"
 #include "game/spatial/EnemySpatialGrid.h"
 #include "game/spatial/SweepPruneBroadPhase.h"
 #include "game/systems/ProjectileSystem.h"
@@ -49,6 +50,7 @@ constexpr float kUncouplePathFollowForceScale = 0.6F;
 constexpr float kUncoupleObstacleForceScale = 0.9F;
 constexpr float kUncoupleWallForceScale = 1.2F;
 constexpr float kUncoupleRandomForceScale = 0.08F;
+constexpr float kUncoupleReentryDistanceUnits = 1.5F;
 constexpr float kParallelWallSideProbeUnits = 0.75F;
 constexpr float kParallelWallContactThresholdUnits = 0.18F;
 constexpr int kEnemyTypeTelemetryCount = 4;
@@ -57,6 +59,16 @@ constexpr int kMaxFlowFieldAge = 2;
 constexpr bool kUseAssassinFlowFieldOnlyNavigation = true;
 constexpr bool kUseAssassinAStarBackupNavigation = false;
 constexpr bool kUseSweepPruneBroadPhase = true;
+constexpr std::uint64_t kUncoupleEventSampleCap = 16U;
+constexpr float kUncouplePriorityEpsilon = 0.05F;
+constexpr float kUncouplePriorityCrowdingRangeUnits = GameplayConstants::kEnemyPreferredSeparationUnits * 1.5F;
+constexpr float kUncouplePriorityClearProbeUnits = 3.0F;
+
+enum class UncoupleReason {
+    FrontalCollision,
+    SeparationProximity,
+    SelfWallContact,
+};
 
 int EnemyTypeTelemetryIndex(EnemyType type) {
     switch (type) {
@@ -85,6 +97,18 @@ const char* EnemyTypeTelemetryLabel(int idx) {
     default:
         return "?";
     }
+}
+
+const char* UncoupleReasonLabel(UncoupleReason reason) {
+    switch (reason) {
+    case UncoupleReason::FrontalCollision:
+        return "frontal";
+    case UncoupleReason::SeparationProximity:
+        return "separation";
+    case UncoupleReason::SelfWallContact:
+        return "wallContact";
+    }
+    return "?";
 }
 
 EnemyRuntimeStats gEnemyRuntimeStats{};
@@ -146,6 +170,12 @@ struct EnemyRuntimeWindowStats {
     float killDebugEnemyEnemyMinDistance = std::numeric_limits<float>::max();
     float killDebugEnemyEnemyMaxDistance = 0.0F;
     double killDebugEnemyEnemyDistanceSum = 0.0;
+    std::uint64_t uncoupleEntries = 0;
+    std::uint64_t uncoupleReentryResets = 0;
+    std::uint64_t uncoupleEntriesFrontal = 0;
+    std::uint64_t uncoupleEntriesSeparation = 0;
+    std::uint64_t uncoupleEntriesWallContact = 0;
+    std::uint64_t uncoupleSamplesPrinted = 0;
 };
 EnemyRuntimeWindowStats gEnemyRuntimeWindowStats{};
 
@@ -383,7 +413,12 @@ float SelectUncoupleHeading(
     return QuantizeToEightDirections(std::atan2(awayDir.x, -awayDir.y));
 }
 
-void EnterUncoupleMode(std::vector<EnemyTank>& enemies, int leadingIndex, int uncoupleIndex) {
+void EnterUncoupleMode(
+    std::vector<EnemyTank>& enemies,
+    int leadingIndex,
+    int uncoupleIndex,
+    UncoupleReason reason,
+    float movedLastFrameUnits = -1.0F) {
     if (uncoupleIndex < 0 || uncoupleIndex >= static_cast<int>(enemies.size())) {
         return;
     }
@@ -391,13 +426,35 @@ void EnterUncoupleMode(std::vector<EnemyTank>& enemies, int leadingIndex, int un
     if (!uncoupled.alive) {
         return;
     }
+    EnemyRuntimeWindowStats& stats = gEnemyRuntimeWindowStats;
+    stats.uncoupleEntries += 1;
+    switch (reason) {
+    case UncoupleReason::FrontalCollision:
+        stats.uncoupleEntriesFrontal += 1;
+        break;
+    case UncoupleReason::SeparationProximity:
+        stats.uncoupleEntriesSeparation += 1;
+        break;
+    case UncoupleReason::SelfWallContact:
+        stats.uncoupleEntriesWallContact += 1;
+        break;
+    }
+
+    const bool alreadyUncouple = uncoupled.aiMode == EnemyAiMode::Uncouple;
+    const float timerBeforeReset = uncoupled.aiStateTimerSeconds;
+    if (alreadyUncouple) {
+        stats.uncoupleReentryResets += 1;
+    }
     if (uncoupled.aiMode != EnemyAiMode::Uncouple) {
         uncoupled.preUncoupleAiMode = uncoupled.aiMode;
+        uncoupled.aiMode = EnemyAiMode::Uncouple;
+        uncoupled.aiModeElapsedSeconds = 0.0F;
+        uncoupled.aiStateTimerSeconds = kEnemyUncoupleDurationSeconds;
+        uncoupled.offscreenSegmentActive = false;
+    } else {
+        // Keep uncouple timer stable on reentry so movement progress can accumulate.
+        uncoupled.aiMode = EnemyAiMode::Uncouple;
     }
-    uncoupled.aiMode = EnemyAiMode::Uncouple;
-    uncoupled.aiModeElapsedSeconds = 0.0F;
-    uncoupled.aiStateTimerSeconds = kEnemyUncoupleDurationSeconds;
-    uncoupled.offscreenSegmentActive = false;
 
     float uncoupleHeading = QuantizeToEightDirections(uncoupled.headingRadians);
     if (leadingIndex >= 0 && leadingIndex < static_cast<int>(enemies.size())) {
@@ -413,6 +470,28 @@ void EnterUncoupleMode(std::vector<EnemyTank>& enemies, int leadingIndex, int un
         }
     }
     uncoupled.desiredHeadingRadians = uncoupleHeading;
+
+    const bool shouldSample = alreadyUncouple || reason == UncoupleReason::SelfWallContact;
+    if (shouldSample && stats.uncoupleSamplesPrinted < kUncoupleEventSampleCap) {
+        std::printf(
+            "[ENEMY_UNCOUPLE_EVENT] id=%d reason=%s alreadyUncouple=%d timerBeforeReset=%.3f movedLastFrame=%.3f pos=(%.2f,%.2f)\n",
+            uncoupleIndex,
+            UncoupleReasonLabel(reason),
+            alreadyUncouple ? 1 : 0,
+            timerBeforeReset,
+            movedLastFrameUnits,
+            uncoupled.position.x,
+            uncoupled.position.y);
+        stats.uncoupleSamplesPrinted += 1;
+    }
+}
+
+bool ShouldEnterSeparationUncouple(const EnemyTank& a, const EnemyTank& b, float distSq) {
+    if (a.aiMode != EnemyAiMode::Uncouple || b.aiMode != EnemyAiMode::Uncouple) {
+        return true;
+    }
+    const float reentryDistSq = kUncoupleReentryDistanceUnits * kUncoupleReentryDistanceUnits;
+    return distSq <= reentryDistSq;
 }
 
 float EnemySubtypeSpeedMultiplier(EnemyType type, EnemySubtype subtype) {
@@ -1476,10 +1555,43 @@ bool IsMovementBlockedByEnemies(
     int selfIndex,
     const Vec2f& from,
     const Vec2f& to,
-    float minSeparation) {
+    float minSeparation,
+    const std::vector<float>* uncoupleEscapeScores = nullptr) {
+    auto otherYieldsToSelf = [&](int otherIndex) {
+        if (uncoupleEscapeScores == nullptr) {
+            return false;
+        }
+        if (selfIndex < 0 || otherIndex < 0 ||
+            selfIndex >= static_cast<int>(enemies.size()) ||
+            otherIndex >= static_cast<int>(enemies.size())) {
+            return false;
+        }
+        const EnemyTank& self = enemies[static_cast<std::size_t>(selfIndex)];
+        const EnemyTank& other = enemies[static_cast<std::size_t>(otherIndex)];
+        if (self.aiMode != EnemyAiMode::Uncouple || other.aiMode != EnemyAiMode::Uncouple) {
+            return false;
+        }
+        if (selfIndex >= static_cast<int>(uncoupleEscapeScores->size()) ||
+            otherIndex >= static_cast<int>(uncoupleEscapeScores->size())) {
+            return false;
+        }
+        const float selfScore = (*uncoupleEscapeScores)[static_cast<std::size_t>(selfIndex)];
+        const float otherScore = (*uncoupleEscapeScores)[static_cast<std::size_t>(otherIndex)];
+        if (selfScore > otherScore + kUncouplePriorityEpsilon) {
+            return true;
+        }
+        if (std::fabs(selfScore - otherScore) <= kUncouplePriorityEpsilon) {
+            return selfIndex < otherIndex;
+        }
+        return false;
+    };
+
     constexpr float kSeparationProgressEpsilon = 0.001F;
     for (int i = 0; i < static_cast<int>(enemies.size()); ++i) {
         if (i == selfIndex) {
+            continue;
+        }
+        if (otherYieldsToSelf(i)) {
             continue;
         }
         const EnemyTank& other = enemies[static_cast<std::size_t>(i)];
@@ -1551,17 +1663,20 @@ void ResolveEnemySeparationLegacyGrid(
             const float killDistSq =
                 GameplayConstants::kEnemyMutualKillDistanceUnits * GameplayConstants::kEnemyMutualKillDistanceUnits;
             if (distSq <= killDistSq) {
-                EnterUncoupleMode(world.enemies, j, i);
-                EnterUncoupleMode(world.enemies, i, j);
+                EnterUncoupleMode(world.enemies, j, i, UncoupleReason::SeparationProximity);
+                EnterUncoupleMode(world.enemies, i, j, UncoupleReason::SeparationProximity);
             }
             const float sepSq =
                 GameplayConstants::kEnemyPreferredSeparationUnits * GameplayConstants::kEnemyPreferredSeparationUnits;
             if (distSq >= sepSq) {
                 return;
             }
+            if (!ShouldEnterSeparationUncouple(a, b, distSq)) {
+                return;
+            }
             gEnemyRuntimeStats.separationPairsResolved += 1;
-            EnterUncoupleMode(world.enemies, j, i);
-            EnterUncoupleMode(world.enemies, i, j);
+            EnterUncoupleMode(world.enemies, j, i, UncoupleReason::SeparationProximity);
+            EnterUncoupleMode(world.enemies, i, j, UncoupleReason::SeparationProximity);
         });
     }
 }
@@ -1627,8 +1742,8 @@ void ResolveEnemyFrontalCollisionsLegacyGrid(
             const float killDistSq =
                 GameplayConstants::kEnemyMutualKillDistanceUnits * GameplayConstants::kEnemyMutualKillDistanceUnits;
             if (centerDistSq <= killDistSq) {
-                EnterUncoupleMode(world.enemies, j, i);
-                EnterUncoupleMode(world.enemies, i, j);
+                EnterUncoupleMode(world.enemies, j, i, UncoupleReason::FrontalCollision);
+                EnterUncoupleMode(world.enemies, i, j, UncoupleReason::FrontalCollision);
             }
         });
     }
@@ -1720,8 +1835,8 @@ void ResolveEnemyCollisionsSinglePass(
                 gEnemyRuntimeStats.frontalPairsDistanceChecks += 1;
                 const float centerDistSq = DistanceSq(a.position, b.position);
                 if (centerDistSq <= killDistSq) {
-                    EnterUncoupleMode(world.enemies, j, i);
-                    EnterUncoupleMode(world.enemies, i, j);
+                    EnterUncoupleMode(world.enemies, j, i, UncoupleReason::FrontalCollision);
+                    EnterUncoupleMode(world.enemies, i, j, UncoupleReason::FrontalCollision);
                 }
             }
 
@@ -1739,16 +1854,19 @@ void ResolveEnemyCollisionsSinglePass(
             profiling::ScopedProfile separationPairScope(profiling::Scope::EnemySeparationPairResolve, true);
             const float distSq = DistanceSq(a.position, b.position);
             if (distSq <= killDistSq) {
-                EnterUncoupleMode(world.enemies, j, i);
-                EnterUncoupleMode(world.enemies, i, j);
+                EnterUncoupleMode(world.enemies, j, i, UncoupleReason::SeparationProximity);
+                EnterUncoupleMode(world.enemies, i, j, UncoupleReason::SeparationProximity);
             }
             if (distSq >= separationDistSq) {
                 return;
             }
+            if (!ShouldEnterSeparationUncouple(a, b, distSq)) {
+                return;
+            }
 
             gEnemyRuntimeStats.separationPairsResolved += 1;
-            EnterUncoupleMode(world.enemies, j, i);
-            EnterUncoupleMode(world.enemies, i, j);
+            EnterUncoupleMode(world.enemies, j, i, UncoupleReason::SeparationProximity);
+            EnterUncoupleMode(world.enemies, i, j, UncoupleReason::SeparationProximity);
         });
     }
     const game::spatial::SweepPruneBroadPhase::FrameStats& sapStats = broadPhase.GetFrameStats();
@@ -2166,6 +2284,14 @@ void ApplyCheapTierMovement(
         const game::navigation::MazeCellCoord enemyCell = cellCache.WorldToCell(enemy.position);
         const int enemyCellHash = cellCache.CellHash(enemyCell.x, enemyCell.y);
         const bool enteredNewCell = enemy.cachedFlowFromCellHash != enemyCellHash;
+        if (enteredNewCell) {
+            game::spatial::EnemyCellOccupancy& occ = state.world.navigationCache.enemyCellOccupancy;
+            if (occ.HasOtherInCell(enemyCell.x, enemyCell.y, enemyIndex)) {
+                enemy.cheapTierCrowdedSlowMode = true;
+            } else {
+                enemy.cheapTierCrowdedSlowMode = false;
+            }
+        }
         const bool reachedSegmentEnd =
             !enemy.offscreenSegmentActive ||
             DistanceSq(enemy.position, enemy.offscreenSegmentEnd) <= 0.04F;
@@ -2195,8 +2321,12 @@ void ApplyCheapTierMovement(
         return;
     }
 
+    float effectiveSpeed = speed;
+    if (enemy.type == EnemyType::Assassin && enemy.cheapTierCrowdedSlowMode) {
+        effectiveSpeed *= 0.5F;
+    }
     const Vec2f dir = DirectionFromHeading(enemy.offscreenCachedHeadingRadians);
-    const float maxStep = std::max(0.0F, speed * deltaSeconds);
+    const float maxStep = std::max(0.0F, effectiveSpeed * deltaSeconds);
     const float remaining = Distance(enemy.position, enemy.offscreenSegmentEnd);
     const float step = std::min(maxStep, remaining);
     enemy.position = Vec2f{
@@ -2205,14 +2335,90 @@ void ApplyCheapTierMovement(
     };
     enemy.headingRadians = enemy.offscreenCachedHeadingRadians;
     enemy.velocity = Vec2f{
-        .x = dir.x * speed,
-        .y = dir.y * speed,
+        .x = dir.x * effectiveSpeed,
+        .y = dir.y * effectiveSpeed,
     };
 
     if (enemy.type == EnemyType::Torpedo && enemy.torpedoMoveMode == TorpedoMoveMode::Move) {
         enemy.torpedoStraightDistanceSinceTurnUnits += step;
     }
     (void)enemyIndex;
+}
+
+bool TryGetAssassinFlowHeading(
+    const game::navigation::CellCoordCache& cellCache,
+    const game::navigation::PlayerFlowField& flowField,
+    const EnemyTank& enemy,
+    float& outHeadingRadians) {
+    if (!flowField.HasBuild()) {
+        return false;
+    }
+    const game::navigation::MazeCellCoord enemyCell = cellCache.WorldToCell(enemy.position);
+    const int enemyCellHash = cellCache.CellHash(enemyCell.x, enemyCell.y);
+    const int nextCellHash = flowField.NextCellHash(enemyCellHash);
+    if (nextCellHash < 0 || nextCellHash == enemyCellHash || cellCache.WidthCells() <= 0) {
+        return false;
+    }
+    const int nextCellX = nextCellHash % cellCache.WidthCells();
+    const int nextCellY = nextCellHash / cellCache.WidthCells();
+    const int flowDx = nextCellX - enemyCell.x;
+    const int flowDy = nextCellY - enemyCell.y;
+    if (std::abs(flowDx) + std::abs(flowDy) != 1) {
+        return false;
+    }
+    outHeadingRadians = QuantizeToEightDirections(
+        std::atan2(static_cast<float>(flowDx), -static_cast<float>(flowDy)));
+    return true;
+}
+
+float ComputeUncoupleEscapeScore(
+    const WorldState& world,
+    const game::navigation::CellCoordCache& cellCache,
+    const game::navigation::PlayerFlowField& flowField,
+    const std::vector<EnemyTank>& enemies,
+    int selfIndex) {
+    if (selfIndex < 0 || selfIndex >= static_cast<int>(enemies.size())) {
+        return -1000.0F;
+    }
+    const EnemyTank& self = enemies[static_cast<std::size_t>(selfIndex)];
+    if (!self.alive || self.aiMode != EnemyAiMode::Uncouple) {
+        return -1000.0F;
+    }
+
+    float strategicHeading = self.desiredHeadingRadians;
+    if (self.type == EnemyType::Assassin) {
+        float flowHeading = strategicHeading;
+        if (TryGetAssassinFlowHeading(cellCache, flowField, self, flowHeading)) {
+            strategicHeading = flowHeading;
+        }
+    }
+
+    const float clearAhead = game::geometry::FreeDistanceAhead(
+        world,
+        self.position,
+        strategicHeading,
+        kUncouplePriorityClearProbeUnits,
+        GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
+        1.0F);
+    const float alignment = std::cos(SignedAngleDelta(self.headingRadians, strategicHeading));
+
+    const float crowdingRangeSq = kUncouplePriorityCrowdingRangeUnits * kUncouplePriorityCrowdingRangeUnits;
+    int crowdingCount = 0;
+    for (int i = 0; i < static_cast<int>(enemies.size()); ++i) {
+        if (i == selfIndex) {
+            continue;
+        }
+        const EnemyTank& other = enemies[static_cast<std::size_t>(i)];
+        if (!other.alive || other.aiMode != EnemyAiMode::Uncouple) {
+            continue;
+        }
+        if (DistanceSq(self.position, other.position) <= crowdingRangeSq) {
+            crowdingCount += 1;
+        }
+    }
+
+    // Higher score means better downstream release candidate during uncouple.
+    return clearAhead * 2.0F + alignment * 0.75F - static_cast<float>(crowdingCount) * 0.5F;
 }
 }  // namespace
 
@@ -2234,6 +2440,22 @@ void UpdateEnemySystem(
     NavigationRuntimeCache& navigationCache = state.world.navigationCache;
     game::navigation::CellCoordCache& cellCache = navigationCache.cellCoords;
     cellCache.ConfigureFromMaze(state.world.maze);
+
+    game::spatial::EnemyCellOccupancy& occupancy = navigationCache.enemyCellOccupancy;
+    const int maxEnemies =
+        std::max(static_cast<int>(state.world.enemies.size()),
+                 static_cast<int>(GameplayConstants::kMaxAliveEnemies));
+    occupancy.Reserve(cellCache.WidthCells(), cellCache.HeightCells(), maxEnemies);
+    for (int i = 0; i < static_cast<int>(state.world.enemies.size()); ++i) {
+        const EnemyTank& e = state.world.enemies[static_cast<std::size_t>(i)];
+        if (!e.alive) {
+            occupancy.Remove(i);
+            continue;
+        }
+        const game::navigation::MazeCellCoord c =
+            cellCache.WorldToCell(frameStartPositions[static_cast<std::size_t>(i)]);
+        occupancy.SetCell(i, c.x, c.y);
+    }
     game::navigation::PlayerFlowField& playerFlowField = navigationCache.playerFlowField;
 
     // Collect a completed background rebuild and swap it into the live field.
@@ -2300,6 +2522,16 @@ void UpdateEnemySystem(
     game::spatial::EnemySpatialGrid rayQueryGrid;
     rayQueryGrid.BuildFromPositions(state.world, &frameStartPositions);
     std::vector<std::uint8_t> reenteredFullTierMask(state.world.enemies.size(), 0U);
+    std::vector<float> uncoupleEscapeScores(state.world.enemies.size(), -1000.0F);
+    for (int enemyIndex = 0; enemyIndex < static_cast<int>(state.world.enemies.size()); ++enemyIndex) {
+        uncoupleEscapeScores[static_cast<std::size_t>(enemyIndex)] =
+            ComputeUncoupleEscapeScore(
+                state.world,
+                cellCache,
+                playerFlowField,
+                state.world.enemies,
+                enemyIndex);
+    }
 
     for (int enemyIndex = 0; enemyIndex < static_cast<int>(state.world.enemies.size()); ++enemyIndex) {
         EnemyTank& enemy = state.world.enemies[static_cast<std::size_t>(enemyIndex)];
@@ -2321,6 +2553,7 @@ void UpdateEnemySystem(
                 enemy.pathWaypointIndex = 0;
                 enemy.expectedPathCellHash = -1;
                 enemy.cachedFlowFromCellHash = -1;
+                enemy.cheapTierCrowdedSlowMode = false;
             }
         }
 
@@ -2365,6 +2598,9 @@ void UpdateEnemySystem(
                 navigationCache.playerFlowFieldAge = 0;
                 gEnemyRuntimeWindowStats.navFlowRebuilds += 1;
             }
+            const game::navigation::MazeCellCoord cheapCell =
+                cellCache.WorldToCell(enemy.position);
+            occupancy.SetCell(enemyIndex, cheapCell.x, cheapCell.y);
             continue;
         }
 
@@ -2383,12 +2619,19 @@ void UpdateEnemySystem(
             if (enemy.aiMode == EnemyAiMode::Uncouple) {
                 enemy.aiStateTimerSeconds = std::max(0.0F, enemy.aiStateTimerSeconds - deltaSeconds);
                 if (enemy.aiStateTimerSeconds > 0.0F) {
+                    float uncoupleFallbackHeading = enemy.desiredHeadingRadians;
+                    if (enemy.type == EnemyType::Assassin) {
+                        float flowHeading = uncoupleFallbackHeading;
+                        if (TryGetAssassinFlowHeading(cellCache, playerFlowField, enemy, flowHeading)) {
+                            uncoupleFallbackHeading = flowHeading;
+                        }
+                    }
                     movementHeading =
                         SelectUncoupleHeading(
                             state.world,
                             state.world.enemies,
                             enemyIndex,
-                            enemy.desiredHeadingRadians,
+                            uncoupleFallbackHeading,
                             random);
                     enemy.desiredHeadingRadians = movementHeading;
                     handledByUncouple = true;
@@ -2720,6 +2963,9 @@ void UpdateEnemySystem(
                     GameplayConstants::kEnemyPreferredSeparationUnits * GameplayConstants::kEnemyPreferredSeparationUnits;
                 float minDistSqToOthers = std::numeric_limits<float>::infinity();
                 float currentMinDistSqToOthers = std::numeric_limits<float>::infinity();
+                const float selfUncoupleScore = enemyIndex < static_cast<int>(uncoupleEscapeScores.size())
+                    ? uncoupleEscapeScores[static_cast<std::size_t>(enemyIndex)]
+                    : -1000.0F;
                 for (int i = 0; i < static_cast<int>(state.world.enemies.size()); ++i) {
                     if (i == enemyIndex) {
                         continue;
@@ -2727,6 +2973,18 @@ void UpdateEnemySystem(
                     const EnemyTank& other = state.world.enemies[static_cast<std::size_t>(i)];
                     if (!other.alive) {
                         continue;
+                    }
+                    if (enemy.aiMode == EnemyAiMode::Uncouple &&
+                        other.aiMode == EnemyAiMode::Uncouple &&
+                        i < static_cast<int>(uncoupleEscapeScores.size())) {
+                        const float otherScore = uncoupleEscapeScores[static_cast<std::size_t>(i)];
+                        const bool otherYieldsToSelf =
+                            (selfUncoupleScore > otherScore + kUncouplePriorityEpsilon) ||
+                            (std::fabs(selfUncoupleScore - otherScore) <= kUncouplePriorityEpsilon &&
+                                enemyIndex < i);
+                        if (otherYieldsToSelf) {
+                            continue;
+                        }
                     }
                     currentMinDistSqToOthers =
                         std::min(currentMinDistSqToOthers, DistanceSq(enemy.position, other.position));
@@ -2767,7 +3025,8 @@ void UpdateEnemySystem(
                             enemyIndex,
                             previousPosition,
                             candidatePosition,
-                            GameplayConstants::kEnemyPreferredSeparationUnits);
+                            GameplayConstants::kEnemyPreferredSeparationUnits,
+                            &uncoupleEscapeScores);
                     }
                 }
                 if (blocked) {
@@ -2794,7 +3053,8 @@ void UpdateEnemySystem(
                             enemyIndex,
                             previousPosition,
                             turnCandidate,
-                            GameplayConstants::kEnemyPreferredSeparationUnits);
+                            GameplayConstants::kEnemyPreferredSeparationUnits,
+                            &uncoupleEscapeScores);
                     }
                     if (turnValid) {
                         movementHeading = turnHeading;
@@ -2820,10 +3080,20 @@ void UpdateEnemySystem(
                 const bool edgeOnWallContact = moving && !segmentWallHit &&
                     IsEdgeOnWallContact(state.world, candidatePosition, movementHeading);
                 if (segmentWallHit || edgeOnWallContact) {
+                    const float movedLastFrameUnits = Distance(candidatePosition, previousPosition);
                     enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
-                    enemy.aiStateTimerSeconds = 0.0F;
+                    // Only zero timer when entering uncouple from non-uncouple; preserve it on re-entry
+                    // so the assassin can accumulate movement progress and eventually escape.
+                    if (enemy.aiMode != EnemyAiMode::Uncouple) {
+                        enemy.aiStateTimerSeconds = 0.0F;
+                    }
                     // Wall contact enters uncouple so wall and neighbor repulsion can resolve local jams.
-                    EnterUncoupleMode(state.world.enemies, enemyIndex, enemyIndex);
+                    EnterUncoupleMode(
+                        state.world.enemies,
+                        enemyIndex,
+                        enemyIndex,
+                        UncoupleReason::SelfWallContact,
+                        movedLastFrameUnits);
                 } else {
                     enemy.velocity = Vec2f{
                         .x = snappedDirection.x * speed,
@@ -2854,6 +3124,10 @@ void UpdateEnemySystem(
             profiling::ScopedProfile phaseScope(profiling::Scope::EnemyAiFiring, true);
             RunFiringPhase(state, enemy, perception, view, deltaSeconds);
         }
+
+        const game::navigation::MazeCellCoord fullCell =
+            cellCache.WorldToCell(enemy.position);
+        occupancy.SetCell(enemyIndex, fullCell.x, fullCell.y);
     }
 
     std::vector<std::uint8_t> fullTierMask(state.world.enemies.size(), 0U);
@@ -2992,6 +3266,18 @@ void UpdateEnemySystem(
                 static_cast<unsigned long long>(gEnemyRuntimeWindowStats.separationPairsBaseSkipped),
                 static_cast<unsigned long long>(gEnemyRuntimeWindowStats.separationPairsMutualKills),
                 static_cast<unsigned long long>(gEnemyRuntimeWindowStats.separationPairsWallBlockedPushes));
+            const float uncoupleReentryPct = gEnemyRuntimeWindowStats.uncoupleEntries > 0
+                ? (100.0F * static_cast<float>(gEnemyRuntimeWindowStats.uncoupleReentryResets) /
+                    static_cast<float>(gEnemyRuntimeWindowStats.uncoupleEntries))
+                : 0.0F;
+            std::printf(
+                "[ENEMY_UNCOUPLE] entries=%llu reentryResets=%llu(%.1f%%) reason{frontal=%llu separation=%llu wallContact=%llu}\n",
+                static_cast<unsigned long long>(gEnemyRuntimeWindowStats.uncoupleEntries),
+                static_cast<unsigned long long>(gEnemyRuntimeWindowStats.uncoupleReentryResets),
+                uncoupleReentryPct,
+                static_cast<unsigned long long>(gEnemyRuntimeWindowStats.uncoupleEntriesFrontal),
+                static_cast<unsigned long long>(gEnemyRuntimeWindowStats.uncoupleEntriesSeparation),
+                static_cast<unsigned long long>(gEnemyRuntimeWindowStats.uncoupleEntriesWallContact));
             if (gEnemyRuntimeWindowStats.killDebugEnemyEnemyEvents > 0) {
                 const float killDistAvg = static_cast<float>(
                     gEnemyRuntimeWindowStats.killDebugEnemyEnemyDistanceSum /

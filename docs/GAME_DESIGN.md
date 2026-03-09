@@ -176,6 +176,9 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
 - On overlap/collision detection (frontal and near-separation paths), both enemies enter `Uncouple` mode for `1.0s`.
 - `Uncouple` mode is available to all enemy types and temporarily overrides their normal AI mode to move away from nearby enemies, then restores the previous mode when the timer expires.
 - On near-separation conflicts (`distance < preferred separation`), enemies are no longer position-pushed directly in the collision pass; both enemies enter `Uncouple` mode instead.
+- Re-entering `Uncouple` while already in `Uncouple` does not reset the remaining uncouple timer.
+- For near-separation re-entry, if both enemies are already in `Uncouple`, re-triggering is gated by a stricter center-distance threshold (`<= 1.5` units); otherwise, the regular preferred-separation threshold (`< 2.0`) is used.
+- Wall-contact uncouple (segment or edge-on wall hit during movement) likewise does not reset the timer on re-entry when already in `Uncouple`; the pre-`EnterUncoupleMode` timer zero is skipped.
 - `Uncouple` per-step steering combines force components as `pathFollowing + (separation + obstacleAvoidance + wallAvoidance) + randomNoise`.
 - `pathFollowing` is always clamped so its magnitude is not greater than `separation` magnitude for that step.
 - `obstacleAvoidance` is computed from nearby enemies ahead of the desired uncouple direction (short-range, direction-aware).
@@ -274,6 +277,7 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
   - if current flow direction matches previous flow direction, the segment is axis-aligned (`horizontal`/`vertical`) through the cell.
   - if flow direction turns by `90°` (`CW`/`CCW`), the segment uses a `45°` turn toward the destination-edge midpoint and continues `1` unit beyond.
   - segment validity is checked against wall blocking at segment-build time.
+  - **Crowd anti-stacking:** when a cheap-tier assassin enters a maze cell, it checks `EnemyCellOccupancy` for any other enemy in that cell. If another enemy is present, the assassin switches to *slow mode* (velocity ×0.5); if no other enemy and slow mode was on, it turns slow mode off. This reduces cheap-tier assassin crowding in the same cell.
   - on `Cheap -> Full` transition, assassin flow-step cache is invalidated and resumed by regular full logic.
 
 ### Invisibility Mode

@@ -6,11 +6,13 @@
 #include "game/model/GameplayConstants.h"
 #include "game/navigation/CellCoordCache.h"
 #include "game/navigation/PlayerFlowField.h"
+#include "game/spatial/EnemyCellOccupancy.h"
 #include "game/spatial/SweepPruneBroadPhase.h"
 
 struct NavigationRuntimeCache {
     game::navigation::CellCoordCache cellCoords{};
     game::navigation::PlayerFlowField playerFlowField{};
+    game::spatial::EnemyCellOccupancy enemyCellOccupancy{};
     bool playerFlowFieldCacheActive = false;
     bool playerFlowFieldSpawnRequestActive = false;
     int playerFlowFieldAge = 0;

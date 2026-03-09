@@ -114,6 +114,7 @@ struct EnemyTank {
     int expectedPathCellHash = -1;
     int cachedFlowFromCellHash = -1;
     float cachedFlowHeadingRadians = 0.0F;
+    bool cheapTierCrowdedSlowMode = false;  // assassins: 0.5x speed when another enemy in same cell
     bool alive = true;
 };
 

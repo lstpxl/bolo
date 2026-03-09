@@ -92,6 +92,7 @@ add_executable(
     src/game/geometry/WorldGeometry.cpp
     src/game/navigation/CellCoordCache.cpp
     src/game/navigation/PlayerFlowField.cpp
+    src/game/spatial/EnemyCellOccupancy.cpp
     src/game/spatial/EnemySpatialGrid.cpp
     src/game/spatial/SweepPruneBroadPhase.cpp
     src/game/systems/CollisionSystem.cpp
