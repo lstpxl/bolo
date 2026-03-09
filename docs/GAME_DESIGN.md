@@ -274,6 +274,7 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
 - Assassin exception:
   - while cheap-tier, assassin segment selection is flow-field-driven and recomputed on cell transitions (or when no active segment exists).
   - each cheap-tier assassin segment must leave the current cell and continue `1` world-unit beyond that exit.
+  - cheap-tier assassin segment exits are constrained to the flow-target edge with corner avoidance: edge crossing must be at least `1.0` world-unit from either corner.
   - if current flow direction matches previous flow direction, the segment is axis-aligned (`horizontal`/`vertical`) through the cell.
   - if flow direction turns by `90°` (`CW`/`CCW`), the segment uses a `45°` turn toward the destination-edge midpoint and continues `1` unit beyond.
   - segment validity is checked against wall blocking at segment-build time.

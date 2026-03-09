@@ -2,6 +2,12 @@
 
 #include <algorithm>
 #include <array>
+#include "game/systems/EnemyAssassin.h"
+#include "game/systems/EnemyDrone.h"
+#include "game/systems/EnemyHunter.h"
+#include "game/systems/EnemySystemHelpers.h"
+#include "game/systems/EnemySystemInternal.h"
+#include "game/systems/EnemyTorpedo.h"
 #include <chrono>
 #include <cstdio>
 #include <cmath>
@@ -20,19 +26,18 @@
 #include "game/spatial/SweepPruneBroadPhase.h"
 #include "game/systems/ProjectileSystem.h"
 
+EnemyRuntimeWindowStats gEnemyRuntimeWindowStats{};
+
 namespace {
 constexpr float kPi = 3.14159265358979323846F;
 constexpr float kEightDirectionStep = kPi / 4.0F;
-constexpr float kCosThirtyDegrees = 0.8660254F;
 constexpr float kDroneBaseBearingThresholdRadians = 1.3962634F;  // 80 degrees
-constexpr float kDroneReturnRequiredClearRunUnits = 6.0F;
 constexpr float kEnemyPlanningClearanceScale = 1.5F;
 constexpr float kTorpedoNearCollisionCheckDistanceUnits = 3.0F;
 constexpr float kTorpedoMoveDecisionHoldDistanceUnits = 1.0F;
 constexpr float kTorpedoRetreatExitClearanceUnits = 2.0F;
 constexpr float kTorpedoRetreatSpeedFactor = 0.1F;
 constexpr float kTorpedoImmediateObstacleDistanceUnits = 1.0F;
-constexpr float kTorpedoLongPathProbeUnits = 24.0F;
 constexpr float kTorpedoPlayerDetectIntervalSeconds = 0.25F;
 constexpr float kSegmentBuildProbeMaxUnits = 15.0F;
 constexpr float kSegmentBuildSafetyReduceUnits = 4.0F;
@@ -40,7 +45,6 @@ constexpr float kSegmentBuildMinLengthUnits = 2.0F;
 constexpr float kOffscreenSegmentLengthUnits = 8.0F;
 constexpr float kOffscreenTorpedoSegmentLengthUnits = 12.0F;
 constexpr float kOffscreenTorpedoDetectIntervalSeconds = 0.6F;
-constexpr float kAssassinCheapSegmentOutOfCellUnits = 1.0F;
 constexpr float kEnemyUncoupleDurationSeconds = 1.0F;
 constexpr float kUncoupleEnemyForceRangeUnits = GameplayConstants::kEnemyPreferredSeparationUnits * 2.0F;
 constexpr float kUncoupleWallProbeRangeUnits = 1.5F;
@@ -53,7 +57,6 @@ constexpr float kUncoupleRandomForceScale = 0.08F;
 constexpr float kUncoupleReentryDistanceUnits = 1.5F;
 constexpr float kParallelWallSideProbeUnits = 0.75F;
 constexpr float kParallelWallContactThresholdUnits = 0.18F;
-constexpr int kEnemyTypeTelemetryCount = 4;
 constexpr bool kUseFlowFieldPathGuidance = true;
 constexpr int kMaxFlowFieldAge = 2;
 constexpr bool kUseAssassinFlowFieldOnlyNavigation = true;
@@ -69,20 +72,6 @@ enum class UncoupleReason {
     SeparationProximity,
     SelfWallContact,
 };
-
-int EnemyTypeTelemetryIndex(EnemyType type) {
-    switch (type) {
-    case EnemyType::Drone:
-        return 0;
-    case EnemyType::Torpedo:
-        return 1;
-    case EnemyType::Hunter:
-        return 2;
-    case EnemyType::Assassin:
-        return 3;
-    }
-    return 0;
-}
 
 const char* EnemyTypeTelemetryLabel(int idx) {
     switch (idx) {
@@ -113,71 +102,6 @@ const char* UncoupleReasonLabel(UncoupleReason reason) {
 
 EnemyRuntimeStats gEnemyRuntimeStats{};
 std::uint64_t gLastEnemyStatsPrintedFrame = 0;
-struct EnemyRuntimeWindowStats {
-    int minAliveCount = std::numeric_limits<int>::max();
-    int maxAliveCount = 0;
-    int minVisibleCount = std::numeric_limits<int>::max();
-    int maxVisibleCount = 0;
-    int minFullTierCount = std::numeric_limits<int>::max();
-    int maxFullTierCount = 0;
-    std::uint64_t fixedSteps = 0;
-    float windowSeconds = 0.0F;
-    std::uint64_t collisionPassRuns = 0;
-    std::uint64_t collisionPassSkips = 0;
-    std::uint64_t frontalGridCandidates = 0;
-    std::uint64_t frontalGridCellTransitions = 0;
-    std::uint64_t frontalGridInsertEstimate = 0;
-    std::uint64_t separationGridCandidates = 0;
-    std::uint64_t frontalPairsVisited = 0;
-    std::uint64_t frontalPairsDistanceChecks = 0;
-    std::uint64_t separationPairsVisited = 0;
-    std::uint64_t separationPairsResolved = 0;
-    std::uint64_t frontalPairsBaseSkipped = 0;
-    std::uint64_t separationPairsBaseSkipped = 0;
-    std::uint64_t frontalPairsMutualKills = 0;
-    std::uint64_t separationPairsMutualKills = 0;
-    std::uint64_t separationPairsWallBlockedPushes = 0;
-    std::array<std::uint64_t, kEnemyTypeTelemetryCount * kEnemyTypeTelemetryCount> frontalPairsByType{};
-    std::array<std::uint64_t, kEnemyTypeTelemetryCount * kEnemyTypeTelemetryCount> separationPairsByType{};
-    std::array<std::uint64_t, kEnemyTypeTelemetryCount> segmentsBuiltByType{};
-    std::array<float, kEnemyTypeTelemetryCount> segmentLengthSumByType{};
-    std::array<std::uint64_t, kEnemyTypeTelemetryCount> segmentBuildFailsByType{};
-    std::uint64_t torpedoHeadingEvalCalls = 0;
-    std::uint64_t torpedoHeadingRetreatStarts = 0;
-    std::uint64_t torpedoHeadingChosenStraight = 0;
-    std::uint64_t torpedoHeadingChosenLeft = 0;
-    std::uint64_t torpedoHeadingChosenRight = 0;
-    double torpedoHeadingBestClearSum = 0.0;
-    double torpedoHeadingChosenClearSum = 0.0;
-    std::uint64_t navPlayerCellChanges = 0;
-    std::uint64_t navFlowRebuilds = 0;
-    std::uint64_t navFlowHeadingSelections = 0;
-    std::uint64_t navFlowMisses = 0;
-    std::uint64_t navPathBuildCalls = 0;
-    std::uint64_t navPathBuildSuccesses = 0;
-    std::uint64_t sapUpdateCalls = 0;
-    std::uint64_t sapActiveItems = 0;
-    std::uint64_t sapCandidatePairs = 0;
-    std::uint64_t sapXRepairs = 0;
-    std::uint64_t sapYRepairs = 0;
-    std::uint64_t killDebugEnemyEnemyEvents = 0;
-    std::uint64_t killDebugEnemyEnemyFrontalEvents = 0;
-    std::uint64_t killDebugEnemyEnemySeparationEvents = 0;
-    std::uint64_t killDebugEnemyEnemyReenterEither = 0;
-    std::uint64_t killDebugEnemyEnemyReenterBoth = 0;
-    std::uint64_t killDebugEnemyEnemyWallContact = 0;
-    std::uint64_t killDebugEnemyEnemySamplesPrinted = 0;
-    float killDebugEnemyEnemyMinDistance = std::numeric_limits<float>::max();
-    float killDebugEnemyEnemyMaxDistance = 0.0F;
-    double killDebugEnemyEnemyDistanceSum = 0.0;
-    std::uint64_t uncoupleEntries = 0;
-    std::uint64_t uncoupleReentryResets = 0;
-    std::uint64_t uncoupleEntriesFrontal = 0;
-    std::uint64_t uncoupleEntriesSeparation = 0;
-    std::uint64_t uncoupleEntriesWallContact = 0;
-    std::uint64_t uncoupleSamplesPrinted = 0;
-};
-EnemyRuntimeWindowStats gEnemyRuntimeWindowStats{};
 
 [[maybe_unused]] void RecordEnemyEnemyMutualKillDebug(
     const WorldState& world,
@@ -281,9 +205,6 @@ float QuantizeToEightDirections(float angleRadians) {
 Vec2f DirectionFromHeading(float headingRadians) {
     return core::angle::DirectionFromHeading(headingRadians);
 }
-
-float DistanceSq(const Vec2f& a, const Vec2f& b);
-Vec2f NormalizeOrZero(const Vec2f& v);
 
 EnemyAiMode DefaultAiModeForType(EnemyType type) {
     switch (type) {
@@ -536,33 +457,6 @@ float EnemyFireInterval(EnemyType type) {
     return GameplayConstants::kEnemyAssassinFireInterval;
 }
 
-float DistanceSq(const Vec2f& a, const Vec2f& b) {
-    const float dx = a.x - b.x;
-    const float dy = a.y - b.y;
-    return dx * dx + dy * dy;
-}
-
-float Distance(const Vec2f& a, const Vec2f& b) {
-    return std::sqrt(DistanceSq(a, b));
-}
-
-float DistancePointToSegment(const Vec2f& p, const Vec2f& a, const Vec2f& b) {
-    const float abX = b.x - a.x;
-    const float abY = b.y - a.y;
-    const float abLenSq = abX * abX + abY * abY;
-    if (abLenSq <= 0.000001F) {
-        return Distance(p, a);
-    }
-    const float apX = p.x - a.x;
-    const float apY = p.y - a.y;
-    const float t = std::max(0.0F, std::min(1.0F, (apX * abX + apY * abY) / abLenSq));
-    const Vec2f closest{
-        .x = a.x + abX * t,
-        .y = a.y + abY * t,
-    };
-    return Distance(p, closest);
-}
-
 std::size_t PairTypeMatrixIndex(EnemyType a, EnemyType b) {
     int ai = EnemyTypeTelemetryIndex(a);
     int bi = EnemyTypeTelemetryIndex(b);
@@ -570,54 +464,6 @@ std::size_t PairTypeMatrixIndex(EnemyType a, EnemyType b) {
         std::swap(ai, bi);
     }
     return static_cast<std::size_t>(ai * kEnemyTypeTelemetryCount + bi);
-}
-
-int RandomRotateDirection(Random& random) {
-    return random.NextInt(0, 1) == 0 ? -1 : 1;
-}
-
-float NearestBaseDistance(const WorldState& world, const Vec2f& p) {
-    float nearest = std::numeric_limits<float>::infinity();
-    for (const EnemyBase& base : world.enemyBases) {
-        if (base.destroyed) {
-            continue;
-        }
-        nearest = std::min(nearest, Distance(base.position, p));
-    }
-    return nearest;
-}
-
-Vec2f NearestBasePosition(const WorldState& world, const Vec2f& p) {
-    Vec2f nearestPos = p;
-    float nearest = std::numeric_limits<float>::infinity();
-    for (const EnemyBase& base : world.enemyBases) {
-        if (base.destroyed) {
-            continue;
-        }
-        const float dist = Distance(base.position, p);
-        if (dist < nearest) {
-            nearest = dist;
-            nearestPos = base.position;
-        }
-    }
-    return nearestPos;
-}
-
-void EnterDroneWatchMode(WorldState& world, EnemyTank& enemy, Random& random) {
-    enemy.aiMode = EnemyAiMode::Watch;
-    enemy.aiModeElapsedSeconds = 0.0F;
-    enemy.watchRotateDirection = RandomRotateDirection(random);
-    const float nearestBaseDist = NearestBaseDistance(world, enemy.position);
-    enemy.returnToBase = nearestBaseDist >= 36.0F;
-}
-
-Vec2f NormalizeOrZero(const Vec2f& v) {
-    const float lenSq = v.x * v.x + v.y * v.y;
-    if (lenSq <= 0.000001F) {
-        return Vec2f{.x = 0.0F, .y = 0.0F};
-    }
-    const float invLen = 1.0F / std::sqrt(lenSq);
-    return Vec2f{.x = v.x * invLen, .y = v.y * invLen};
 }
 
 bool IsPointInUndestroyedBase(const WorldState& world, const Vec2f& point, float clearanceUnits) {
@@ -692,35 +538,6 @@ float FreeDistanceAheadWallsOnly(
     EnemyBase& origin = world.enemyBases[static_cast<std::size_t>(enemy.originBaseIndex)];
     origin.activeEnemies = std::max(0, origin.activeEnemies - 1);
     enemy.originBaseIndex = -1;
-}
-
-float ChooseBestTurnHeading(
-    const WorldState& world,
-    const Vec2f& origin,
-    float currentHeading,
-    const std::array<float, 4>& turnCandidates,
-    int candidateCount,
-    float requiredDistance) {
-    float bestHeading = currentHeading;
-    float bestDistance = -1.0F;
-    for (int i = 0; i < candidateCount; ++i) {
-        const float candidate = QuantizeToEightDirections(currentHeading + turnCandidates[static_cast<std::size_t>(i)]);
-        const float freeDist = game::geometry::FreeDistanceAhead(
-            world,
-            origin,
-            candidate,
-            requiredDistance + 2.0F,
-            GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
-            kEnemyPlanningClearanceScale);
-        if (freeDist > bestDistance) {
-            bestDistance = freeDist;
-            bestHeading = candidate;
-        }
-    }
-    if (bestDistance >= requiredDistance) {
-        return bestHeading;
-    }
-    return std::numeric_limits<float>::quiet_NaN();
 }
 
 int ClampCellX(const game::navigation::CellCoordCache& cellCache, float x) {
@@ -1057,448 +874,6 @@ bool BuildAssassinPathToFarRandomTarget(
     // Fallback: still pick some random destination if no far target succeeded.
     const Vec2f fallbackTarget = RandomMazePoint(state.world, cellCache, random);
     return BuildAssassinPathToTarget(state, cellCache, enemy, enemyIndex, fallbackTarget);
-}
-
-bool TrySelectAssassinFlowNextStep(
-    const game::navigation::CellCoordCache& cellCache,
-    const game::navigation::PlayerFlowField& flowField,
-    EnemyTank& enemy,
-    bool& outNeedsInitialFlowBuild,
-    float& outHeadingRadians) {
-    outNeedsInitialFlowBuild = false;
-    if (!flowField.HasBuild()) {
-        outNeedsInitialFlowBuild = true;
-        gEnemyRuntimeWindowStats.navFlowMisses += 1;
-        return false;
-    }
-
-    const game::navigation::MazeCellCoord enemyCell = cellCache.WorldToCell(enemy.position);
-    const int enemyCellHash = cellCache.CellHash(enemyCell.x, enemyCell.y);
-    const int playerHash = cellCache.PlayerCellHash();
-    if (enemy.cachedPlayerCellHash != playerHash) {
-        enemy.cachedPlayerCellHash = playerHash;
-        enemy.expectedPathCellHash = -1;
-        enemy.cachedFlowFromCellHash = -1;
-    }
-    if (enemy.cachedFlowFromCellHash == enemyCellHash && enemy.expectedPathCellHash >= 0) {
-        outHeadingRadians = enemy.cachedFlowHeadingRadians;
-        gEnemyRuntimeWindowStats.navFlowHeadingSelections += 1;
-        return true;
-    }
-
-    const int nextCellHash = flowField.NextCellHash(enemyCellHash);
-    if (nextCellHash < 0 || nextCellHash == enemyCellHash) {
-        enemy.expectedPathCellHash = -1;
-        enemy.cachedFlowFromCellHash = -1;
-        gEnemyRuntimeWindowStats.navFlowMisses += 1;
-        return false;
-    }
-
-    const Vec2f nextCenter = flowField.NextCellCenter(enemyCellHash, cellCache);
-    const Vec2f toNext{
-        .x = nextCenter.x - enemy.position.x,
-        .y = nextCenter.y - enemy.position.y,
-    };
-    const Vec2f stepDir = NormalizeOrZero(toNext);
-    if (stepDir.x == 0.0F && stepDir.y == 0.0F) {
-        enemy.expectedPathCellHash = -1;
-        enemy.cachedFlowFromCellHash = -1;
-        gEnemyRuntimeWindowStats.navFlowMisses += 1;
-        return false;
-    }
-
-    enemy.expectedPathCellHash = nextCellHash;
-    outHeadingRadians = QuantizeToEightDirections(std::atan2(stepDir.x, -stepDir.y));
-    enemy.cachedFlowFromCellHash = enemyCellHash;
-    enemy.cachedFlowHeadingRadians = outHeadingRadians;
-    gEnemyRuntimeWindowStats.navFlowHeadingSelections += 1;
-    return true;
-}
-
-bool SelectDroneReturnToBaseHeading(
-    const WorldState& world,
-    const EnemyTank& enemy,
-    Random& random,
-    float& selectedHeading) {
-    const Vec2f nearestBase = NearestBasePosition(world, enemy.position);
-    const Vec2f toBase{
-        .x = nearestBase.x - enemy.position.x,
-        .y = nearestBase.y - enemy.position.y,
-    };
-    if (std::fabs(toBase.x) <= 0.001F && std::fabs(toBase.y) <= 0.001F) {
-        return false;
-    }
-
-    const float desiredHeading = QuantizeToEightDirections(std::atan2(toBase.x, -toBase.y));
-    const std::array<float, 8> offsets{
-        0.0F,
-        kEightDirectionStep,
-        -kEightDirectionStep,
-        kEightDirectionStep * 2.0F,
-        -kEightDirectionStep * 2.0F,
-        kEightDirectionStep * 3.0F,
-        -kEightDirectionStep * 3.0F,
-        kEightDirectionStep * 4.0F};
-
-    std::array<float, 8> candidateHeadings{};
-    int candidateCount = 0;
-    int bestCandidateIndex = -1;
-    float bestAlignment = std::numeric_limits<float>::infinity();
-    for (float offset : offsets) {
-        const float candidate = QuantizeToEightDirections(desiredHeading + offset);
-        const float clearDistance = game::geometry::FreeDistanceAhead(
-            world,
-            enemy.position,
-            candidate,
-            kDroneReturnRequiredClearRunUnits,
-            GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
-            kEnemyPlanningClearanceScale);
-        if (clearDistance < kDroneReturnRequiredClearRunUnits) {
-            continue;
-        }
-        const float alignment = AngleDistance(candidate, desiredHeading);
-        if (candidateCount < static_cast<int>(candidateHeadings.size())) {
-            candidateHeadings[static_cast<std::size_t>(candidateCount)] = candidate;
-            if (alignment < bestAlignment) {
-                bestAlignment = alignment;
-                bestCandidateIndex = candidateCount;
-            }
-            ++candidateCount;
-        }
-    }
-
-    if (candidateCount <= 0 || bestCandidateIndex < 0) {
-        return false;
-    }
-    if (candidateCount == 1) {
-        selectedHeading = candidateHeadings[0];
-        return true;
-    }
-
-    constexpr float kBestHeadingWeight = 0.6F;
-    constexpr float kOtherHeadingsTotalWeight = 0.4F;
-    const float otherWeightEach = kOtherHeadingsTotalWeight / static_cast<float>(candidateCount - 1);
-    const float pick = random.NextFloat(0.0F, 1.0F);
-    float cumulative = 0.0F;
-    for (int i = 0; i < candidateCount; ++i) {
-        const float weight = (i == bestCandidateIndex) ? kBestHeadingWeight : otherWeightEach;
-        cumulative += weight;
-        if (pick <= cumulative || i == candidateCount - 1) {
-            selectedHeading = candidateHeadings[static_cast<std::size_t>(i)];
-            return true;
-        }
-    }
-
-    selectedHeading = candidateHeadings[static_cast<std::size_t>(bestCandidateIndex)];
-    return true;
-}
-
-bool SelectDroneWatchEscapeHeading(
-    const WorldState& world,
-    const std::vector<EnemyTank>& enemies,
-    int selfIndex,
-    float deltaSeconds,
-    float& selectedHeading) {
-    const EnemyTank& self = enemies[static_cast<std::size_t>(selfIndex)];
-
-    float currentNearestDistance = std::numeric_limits<float>::infinity();
-    int nearestEnemyIndex = -1;
-    for (int i = 0; i < static_cast<int>(enemies.size()); ++i) {
-        if (i == selfIndex) {
-            continue;
-        }
-        const EnemyTank& other = enemies[static_cast<std::size_t>(i)];
-        if (!other.alive) {
-            continue;
-        }
-        const float dist = Distance(self.position, other.position);
-        if (dist < currentNearestDistance) {
-            currentNearestDistance = dist;
-            nearestEnemyIndex = i;
-        }
-    }
-
-    float awayHeading = self.headingRadians;
-    if (nearestEnemyIndex >= 0) {
-        const EnemyTank& nearestEnemy = enemies[static_cast<std::size_t>(nearestEnemyIndex)];
-        awayHeading = std::atan2(
-            self.position.x - nearestEnemy.position.x,
-            -(self.position.y - nearestEnemy.position.y));
-    }
-
-    const std::array<float, 8> offsets{
-        0.0F,
-        kEightDirectionStep,
-        -kEightDirectionStep,
-        kEightDirectionStep * 2.0F,
-        -kEightDirectionStep * 2.0F,
-        kEightDirectionStep * 3.0F,
-        -kEightDirectionStep * 3.0F,
-        kEightDirectionStep * 4.0F};
-
-    const float stepDistance = GameplayConstants::kEnemyDroneSpeed * deltaSeconds;
-    bool found = false;
-    float bestNearestDistance = -1.0F;
-    float bestAwayAlignment = std::numeric_limits<float>::infinity();
-    float bestHeading = self.headingRadians;
-    for (float offset : offsets) {
-        const float candidateHeading = QuantizeToEightDirections(self.headingRadians + offset);
-        const float clearDistance = game::geometry::FreeDistanceAhead(
-            world,
-            self.position,
-            candidateHeading,
-            GameplayConstants::kEnemyRequiredClearRunUnits + 0.5F,
-            GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
-            kEnemyPlanningClearanceScale);
-        if (clearDistance <= GameplayConstants::kEnemyRequiredClearRunUnits) {
-            continue;
-        }
-
-        const Vec2f dir = DirectionFromHeading(candidateHeading);
-        const Vec2f candidatePosition{
-            .x = self.position.x + dir.x * stepDistance,
-            .y = self.position.y + dir.y * stepDistance,
-        };
-
-        float nearestDistance = std::numeric_limits<float>::infinity();
-        for (int i = 0; i < static_cast<int>(enemies.size()); ++i) {
-            if (i == selfIndex) {
-                continue;
-            }
-            const EnemyTank& other = enemies[static_cast<std::size_t>(i)];
-            if (!other.alive) {
-                continue;
-            }
-            nearestDistance = std::min(nearestDistance, Distance(candidatePosition, other.position));
-        }
-        const float awayAlignment = AngleDistance(candidateHeading, awayHeading);
-
-        if (!found ||
-            nearestDistance > bestNearestDistance + 0.001F ||
-            (std::fabs(nearestDistance - bestNearestDistance) <= 0.001F &&
-             awayAlignment < bestAwayAlignment)) {
-            found = true;
-            bestNearestDistance = nearestDistance;
-            bestAwayAlignment = awayAlignment;
-            bestHeading = candidateHeading;
-        }
-    }
-
-    if (!found) {
-        return false;
-    }
-
-    if (currentNearestDistance < GameplayConstants::kEnemyPreferredSeparationUnits &&
-        bestNearestDistance <= currentNearestDistance + 0.001F) {
-        return false;
-    }
-
-    selectedHeading = bestHeading;
-    return true;
-}
-
-bool PlayerAheadForTorpedo(const EnemyTank& enemy, const Vec2f& toPlayerNormalized) {
-    const Vec2f forward = DirectionFromHeading(enemy.headingRadians);
-    const float dot = forward.x * toPlayerNormalized.x + forward.y * toPlayerNormalized.y;
-    return dot >= kCosThirtyDegrees;
-}
-
-float SelectBestLongStraightHeading(const WorldState& world, const EnemyTank& enemy) {
-    float bestHeading = QuantizeToEightDirections(enemy.headingRadians);
-    float bestClear = -1.0F;
-    for (int step = 0; step < 8; ++step) {
-        const float candidate = NormalizeAngle(static_cast<float>(step) * kEightDirectionStep);
-        const float clearDist = game::geometry::FreeDistanceAhead(
-            world,
-            enemy.position,
-            candidate,
-            kTorpedoLongPathProbeUnits,
-            GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
-            kEnemyPlanningClearanceScale);
-        if (clearDist > bestClear) {
-            bestClear = clearDist;
-            bestHeading = candidate;
-        }
-    }
-    return QuantizeToEightDirections(bestHeading);
-}
-
-float SelectTorpedoMoveHeading(
-    const WorldState& world,
-    const std::vector<EnemyTank>& enemies,
-    int selfIndex,
-    EnemyTank& enemy,
-    Random& random,
-    bool& startRetreat,
-    bool& decidedStraight,
-    const game::spatial::EnemySpatialGrid* spatialGrid) {
-    profiling::ScopedProfile selectScope(profiling::Scope::EnemyTorpedoSelectHeading, true);
-    gEnemyRuntimeWindowStats.torpedoHeadingEvalCalls += 1;
-    startRetreat = false;
-    decidedStraight = true;
-    const float straightHeading = QuantizeToEightDirections(enemy.headingRadians);
-    const float straightClearWithEnemies = game::geometry::FreeDistanceAheadWithEnemies(
-        world,
-        enemies,
-        selfIndex,
-        enemy.position,
-        straightHeading,
-        kSegmentBuildProbeMaxUnits,
-        GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
-        kEnemyPlanningClearanceScale,
-        spatialGrid);
-    const float leftHeading = QuantizeToEightDirections(straightHeading - kEightDirectionStep);
-    const float rightHeading = QuantizeToEightDirections(straightHeading + kEightDirectionStep);
-    const float leftClear = game::geometry::FreeDistanceAheadWithEnemies(
-        world,
-        enemies,
-        selfIndex,
-        enemy.position,
-        leftHeading,
-        kSegmentBuildProbeMaxUnits,
-        GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
-        kEnemyPlanningClearanceScale,
-        spatialGrid);
-    const float rightClear = game::geometry::FreeDistanceAheadWithEnemies(
-        world,
-        enemies,
-        selfIndex,
-        enemy.position,
-        rightHeading,
-        kSegmentBuildProbeMaxUnits,
-        GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
-        kEnemyPlanningClearanceScale,
-        spatialGrid);
-
-    if (straightClearWithEnemies < kTorpedoImmediateObstacleDistanceUnits &&
-        leftClear < kTorpedoImmediateObstacleDistanceUnits &&
-        rightClear < kTorpedoImmediateObstacleDistanceUnits) {
-        startRetreat = true;
-        gEnemyRuntimeWindowStats.torpedoHeadingRetreatStarts += 1;
-        return straightHeading;
-    }
-
-    struct Candidate {
-        float heading;
-        float clearDistance;
-    };
-    const std::array<Candidate, 3> candidates{{
-        {.heading = straightHeading, .clearDistance = straightClearWithEnemies},
-        {.heading = leftHeading, .clearDistance = leftClear},
-        {.heading = rightHeading, .clearDistance = rightClear},
-    }};
-    float bestClear = -1.0F;
-    for (const Candidate& candidate : candidates) {
-        bestClear = std::max(bestClear, candidate.clearDistance);
-    }
-    std::array<int, 3> bestIndices{};
-    int bestCount = 0;
-    constexpr float kTieEpsilon = 0.001F;
-    for (int i = 0; i < static_cast<int>(candidates.size()); ++i) {
-        if (std::fabs(candidates[static_cast<std::size_t>(i)].clearDistance - bestClear) <= kTieEpsilon) {
-            bestIndices[static_cast<std::size_t>(bestCount)] = i;
-            ++bestCount;
-        }
-    }
-    const int chosenIndex =
-        bestIndices[static_cast<std::size_t>(random.NextInt(0, std::max(0, bestCount - 1)))];
-    const Candidate& chosen = candidates[static_cast<std::size_t>(chosenIndex)];
-    gEnemyRuntimeWindowStats.torpedoHeadingBestClearSum += static_cast<double>(bestClear);
-    gEnemyRuntimeWindowStats.torpedoHeadingChosenClearSum += static_cast<double>(chosen.clearDistance);
-    if (chosenIndex == 0) {
-        gEnemyRuntimeWindowStats.torpedoHeadingChosenStraight += 1;
-    } else if (chosenIndex == 1) {
-        gEnemyRuntimeWindowStats.torpedoHeadingChosenLeft += 1;
-    } else {
-        gEnemyRuntimeWindowStats.torpedoHeadingChosenRight += 1;
-    }
-    const float maxSegmentLength = chosen.clearDistance - kSegmentBuildSafetyReduceUnits;
-    if (maxSegmentLength < kSegmentBuildMinLengthUnits) {
-        startRetreat = true;
-        gEnemyRuntimeWindowStats.torpedoHeadingRetreatStarts += 1;
-        return straightHeading;
-    }
-    enemy.torpedoMoveDecisionHoldRemainingUnits =
-        random.NextFloat(kSegmentBuildMinLengthUnits, maxSegmentLength);
-    enemy.torpedoStraightDistanceSinceTurnUnits = 0.0F;
-    decidedStraight = chosen.heading == straightHeading;
-
-    return chosen.heading;
-}
-
-void EnterTorpedoTargetingMode(EnemyTank& enemy) {
-    enemy.torpedoMoveMode = TorpedoMoveMode::Targeting;
-}
-
-void EnterTorpedoRotateMode(EnemyTank& enemy) {
-    enemy.torpedoMoveMode = TorpedoMoveMode::Rotate;
-    enemy.torpedoRotateTargetHeadingRadians = enemy.torpedoChosenHeadingRadians;
-}
-
-float UpdateTorpedoRotateHeading(EnemyTank& enemy, float deltaSeconds) {
-    const float rotateStep =
-        (kPi * 2.0F / GameplayConstants::kSlowRotateFullTurnSeconds) * deltaSeconds;
-    const float signedDelta = SignedAngleDelta(enemy.headingRadians, enemy.torpedoRotateTargetHeadingRadians);
-    if (std::fabs(signedDelta) <= rotateStep + 0.0001F) {
-        const float heading = QuantizeToEightDirections(enemy.torpedoRotateTargetHeadingRadians);
-        enemy.torpedoMoveMode = TorpedoMoveMode::Move;
-        enemy.torpedoStraightDistanceSinceTurnUnits = 0.0F;
-        enemy.torpedoMoveDecisionHoldRemainingUnits = 0.0F;
-        return heading;
-    }
-    const float direction = signedDelta > 0.0F ? 1.0F : -1.0F;
-    return NormalizeAngle(enemy.headingRadians + direction * rotateStep);
-}
-
-float SelectScoutHeadingWithFallback(
-    const WorldState& world,
-    const EnemyTank& enemy,
-    bool allowNinetyTurns,
-    bool& shouldRotate) {
-    const float lookahead = game::geometry::FreeDistanceAhead(
-        world,
-        enemy.position,
-        enemy.headingRadians,
-        GameplayConstants::kEnemyLookaheadObstacleUnits,
-        GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
-        kEnemyPlanningClearanceScale);
-    if (lookahead >= GameplayConstants::kEnemyLookaheadObstacleUnits) {
-        shouldRotate = false;
-        return enemy.headingRadians;
-    }
-
-    const std::array<float, 4> turns45{
-        -kEightDirectionStep, kEightDirectionStep, 0.0F, 0.0F};
-    const float turned45 = ChooseBestTurnHeading(
-        world,
-        enemy.position,
-        enemy.headingRadians,
-        turns45,
-        2,
-        GameplayConstants::kEnemyRequiredClearRunUnits);
-    if (!std::isnan(turned45)) {
-        shouldRotate = false;
-        return turned45;
-    }
-
-    if (allowNinetyTurns) {
-        const std::array<float, 4> turns90{
-            -kEightDirectionStep * 2.0F, kEightDirectionStep * 2.0F, 0.0F, 0.0F};
-        const float turned90 = ChooseBestTurnHeading(
-            world,
-            enemy.position,
-            enemy.headingRadians,
-            turns90,
-            2,
-            GameplayConstants::kEnemyRequiredClearRunUnits);
-        if (!std::isnan(turned90)) {
-            shouldRotate = false;
-            return turned90;
-        }
-    }
-
-    shouldRotate = true;
-    return enemy.headingRadians;
 }
 
 bool TrySeparationTurn(
@@ -2100,170 +1475,6 @@ void BuildOffscreenSegment(WorldState& world, EnemyTank& enemy, float segmentLen
     gEnemyRuntimeWindowStats.segmentLengthSumByType[static_cast<std::size_t>(typeIdx)] += targetDistance;
 }
 
-bool BuildSegmentExitPointFromCell(
-    const game::navigation::CellCoordCache& cellCache,
-    const game::navigation::MazeCellCoord& cell,
-    const Vec2f& from,
-    const Vec2f& direction,
-    float outOfCellUnits,
-    Vec2f& outTarget) {
-    constexpr float kEpsilon = 0.0001F;
-    const float cellSize = static_cast<float>(cellCache.CellSizeUnits());
-    const float cellMinX = static_cast<float>(cell.x) * cellSize;
-    const float cellMinY = static_cast<float>(cell.y) * cellSize;
-    const float cellMaxX = cellMinX + cellSize;
-    const float cellMaxY = cellMinY + cellSize;
-
-    float exitDistance = std::numeric_limits<float>::infinity();
-    if (direction.x > kEpsilon) {
-        exitDistance = std::min(exitDistance, (cellMaxX - from.x) / direction.x);
-    } else if (direction.x < -kEpsilon) {
-        exitDistance = std::min(exitDistance, (cellMinX - from.x) / direction.x);
-    }
-    if (direction.y > kEpsilon) {
-        exitDistance = std::min(exitDistance, (cellMaxY - from.y) / direction.y);
-    } else if (direction.y < -kEpsilon) {
-        exitDistance = std::min(exitDistance, (cellMinY - from.y) / direction.y);
-    }
-    if (!std::isfinite(exitDistance) || exitDistance <= kEpsilon) {
-        return false;
-    }
-
-    const float distanceToTarget = exitDistance + outOfCellUnits;
-    outTarget = Vec2f{
-        .x = from.x + direction.x * distanceToTarget,
-        .y = from.y + direction.y * distanceToTarget,
-    };
-    return true;
-}
-
-bool BuildAssassinCheapFlowSegment(
-    WorldState& world,
-    const game::navigation::CellCoordCache& cellCache,
-    const game::navigation::PlayerFlowField& flowField,
-    EnemyTank& enemy,
-    bool& outNeedsInitialFlowBuild) {
-    outNeedsInitialFlowBuild = false;
-    if (!flowField.HasBuild()) {
-        outNeedsInitialFlowBuild = true;
-        gEnemyRuntimeWindowStats.navFlowMisses += 1;
-        return false;
-    }
-
-    const game::navigation::MazeCellCoord enemyCell = cellCache.WorldToCell(enemy.position);
-    const int enemyCellHash = cellCache.CellHash(enemyCell.x, enemyCell.y);
-    const int nextCellHash = flowField.NextCellHash(enemyCellHash);
-    if (nextCellHash < 0 || nextCellHash == enemyCellHash || cellCache.WidthCells() <= 0) {
-        gEnemyRuntimeWindowStats.navFlowMisses += 1;
-        return false;
-    }
-
-    const int nextCellX = nextCellHash % cellCache.WidthCells();
-    const int nextCellY = nextCellHash / cellCache.WidthCells();
-    const int flowDx = nextCellX - enemyCell.x;
-    const int flowDy = nextCellY - enemyCell.y;
-    if (std::abs(flowDx) + std::abs(flowDy) != 1) {
-        gEnemyRuntimeWindowStats.navFlowMisses += 1;
-        return false;
-    }
-
-    const float flowHeading = QuantizeToEightDirections(
-        std::atan2(static_cast<float>(flowDx), -static_cast<float>(flowDy)));
-    const Vec2f flowDirection = DirectionFromHeading(flowHeading);
-    float segmentHeading = flowHeading;
-    Vec2f segmentTarget{};
-
-    const bool hasPreviousFlow = enemy.expectedPathCellHash >= 0;
-    if (hasPreviousFlow) {
-        const float previousFlowHeading = enemy.cachedFlowHeadingRadians;
-        const float delta = SignedAngleDelta(previousFlowHeading, flowHeading);
-        const float absDelta = std::fabs(delta);
-        constexpr float kTurnEpsilon = 0.001F;
-        const bool sameDirection = absDelta <= kTurnEpsilon;
-        const bool perpendicularTurn = std::fabs(absDelta - (kPi * 0.5F)) <= kTurnEpsilon;
-
-        if (perpendicularTurn) {
-            const float turnSign = (delta >= 0.0F) ? 1.0F : -1.0F;
-            segmentHeading = QuantizeToEightDirections(previousFlowHeading + turnSign * kEightDirectionStep);
-            const Vec2f diagonalDirection = DirectionFromHeading(segmentHeading);
-            const Vec2f cellCenter = cellCache.CellCenter(enemyCell.x, enemyCell.y);
-            const Vec2f destinationEdgeMidpoint{
-                .x = cellCenter.x + flowDirection.x * (static_cast<float>(cellCache.CellSizeUnits()) * 0.5F),
-                .y = cellCenter.y + flowDirection.y * (static_cast<float>(cellCache.CellSizeUnits()) * 0.5F),
-            };
-            segmentTarget = Vec2f{
-                .x = destinationEdgeMidpoint.x + diagonalDirection.x * kAssassinCheapSegmentOutOfCellUnits,
-                .y = destinationEdgeMidpoint.y + diagonalDirection.y * kAssassinCheapSegmentOutOfCellUnits,
-            };
-
-            const Vec2f toTarget{
-                .x = segmentTarget.x - enemy.position.x,
-                .y = segmentTarget.y - enemy.position.y,
-            };
-            const Vec2f targetDir = NormalizeOrZero(toTarget);
-            if (targetDir.x == 0.0F || targetDir.y == 0.0F ||
-                targetDir.x * diagonalDirection.x + targetDir.y * diagonalDirection.y < 0.95F) {
-                if (!BuildSegmentExitPointFromCell(
-                        cellCache,
-                        enemyCell,
-                        enemy.position,
-                        diagonalDirection,
-                        kAssassinCheapSegmentOutOfCellUnits,
-                        segmentTarget)) {
-                    gEnemyRuntimeWindowStats.navFlowMisses += 1;
-                    return false;
-                }
-            }
-        } else {
-            segmentHeading = flowHeading;
-            if (!BuildSegmentExitPointFromCell(
-                    cellCache,
-                    enemyCell,
-                    enemy.position,
-                    flowDirection,
-                    kAssassinCheapSegmentOutOfCellUnits,
-                    segmentTarget)) {
-                gEnemyRuntimeWindowStats.navFlowMisses += 1;
-                return false;
-            }
-            (void)sameDirection;
-        }
-    } else {
-        if (!BuildSegmentExitPointFromCell(
-                cellCache,
-                enemyCell,
-                enemy.position,
-                flowDirection,
-                kAssassinCheapSegmentOutOfCellUnits,
-                segmentTarget)) {
-            gEnemyRuntimeWindowStats.navFlowMisses += 1;
-            return false;
-        }
-    }
-
-    if (SegmentIntersectsWall(
-            world,
-            enemy.position,
-            segmentTarget,
-            GameplayConstants::kEnemyWallAvoidanceRadiusUnits)) {
-        gEnemyRuntimeWindowStats.navFlowMisses += 1;
-        return false;
-    }
-
-    const int typeIdx = EnemyTypeTelemetryIndex(enemy.type);
-    enemy.offscreenCachedHeadingRadians = segmentHeading;
-    enemy.offscreenSegmentEnd = segmentTarget;
-    enemy.offscreenSegmentActive = true;
-    enemy.expectedPathCellHash = nextCellHash;
-    enemy.cachedFlowFromCellHash = enemyCellHash;
-    enemy.cachedFlowHeadingRadians = flowHeading;
-    gEnemyRuntimeWindowStats.navFlowHeadingSelections += 1;
-    gEnemyRuntimeWindowStats.segmentsBuiltByType[static_cast<std::size_t>(typeIdx)] += 1;
-    gEnemyRuntimeWindowStats.segmentLengthSumByType[static_cast<std::size_t>(typeIdx)] +=
-        Distance(enemy.position, segmentTarget);
-    return true;
-}
-
 void ApplyCheapTierMovement(
     GameState& state,
     const game::navigation::CellCoordCache& cellCache,
@@ -2343,32 +1554,6 @@ void ApplyCheapTierMovement(
         enemy.torpedoStraightDistanceSinceTurnUnits += step;
     }
     (void)enemyIndex;
-}
-
-bool TryGetAssassinFlowHeading(
-    const game::navigation::CellCoordCache& cellCache,
-    const game::navigation::PlayerFlowField& flowField,
-    const EnemyTank& enemy,
-    float& outHeadingRadians) {
-    if (!flowField.HasBuild()) {
-        return false;
-    }
-    const game::navigation::MazeCellCoord enemyCell = cellCache.WorldToCell(enemy.position);
-    const int enemyCellHash = cellCache.CellHash(enemyCell.x, enemyCell.y);
-    const int nextCellHash = flowField.NextCellHash(enemyCellHash);
-    if (nextCellHash < 0 || nextCellHash == enemyCellHash || cellCache.WidthCells() <= 0) {
-        return false;
-    }
-    const int nextCellX = nextCellHash % cellCache.WidthCells();
-    const int nextCellY = nextCellHash / cellCache.WidthCells();
-    const int flowDx = nextCellX - enemyCell.x;
-    const int flowDy = nextCellY - enemyCell.y;
-    if (std::abs(flowDx) + std::abs(flowDy) != 1) {
-        return false;
-    }
-    outHeadingRadians = QuantizeToEightDirections(
-        std::atan2(static_cast<float>(flowDx), -static_cast<float>(flowDy)));
-    return true;
 }
 
 float ComputeUncoupleEscapeScore(

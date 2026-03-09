@@ -96,7 +96,12 @@ add_executable(
     src/game/spatial/EnemySpatialGrid.cpp
     src/game/spatial/SweepPruneBroadPhase.cpp
     src/game/systems/CollisionSystem.cpp
+    src/game/systems/EnemyAssassin.cpp
+    src/game/systems/EnemyDrone.cpp
+    src/game/systems/EnemyHunter.cpp
     src/game/systems/EnemySystem.cpp
+    src/game/systems/EnemySystemHelpers.cpp
+    src/game/systems/EnemyTorpedo.cpp
     src/game/systems/MazeSystem.cpp
     src/game/systems/PlayerSystem.cpp
     src/game/systems/ProjectileSystem.cpp
