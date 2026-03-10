@@ -1,0 +1,15 @@
+BasedOnStyle: Google
+Language: Cpp
+
+# Brace on new line
+BreakBeforeBraces: Allman
+
+# Break after ( for function params
+BreakAfterOpenBracketFunction: true
+AlignAfterOpenBracket: false
+BreakBeforeCloseBracketFunction: false
+ContinuationIndentWidth: 4
+BinPackParameters: BinPack
+
+ColumnLimit: 100
+IndentWidth: 4

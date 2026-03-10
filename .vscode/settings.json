@@ -21,5 +21,12 @@
     "--compile-commands-dir=${workspaceFolder}/build/macos-debug"
   ],
   "npm.enableScriptExplorer": true,
-  "npm.scriptRunner": "npm"
+  "npm.scriptRunner": "npm",
+  "clang-format.executable": "/opt/homebrew/bin/clang-format",
+  "[cpp]": {
+    "editor.defaultFormatter": "xaver.clang-format"
+  },
+  "[c]": {
+    "editor.defaultFormatter": "xaver.clang-format"
+  }
 }
