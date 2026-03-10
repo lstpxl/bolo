@@ -37,12 +37,9 @@ FrameInput PollFrameInput() {
         if (IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_RIGHT)) {
             turnInput += 1.0F;
         }
-        if (IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_UP)) {
-            moveY -= 1.0F;
-        }
-        if (IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_DOWN)) {
-            moveY += 1.0F;
-        }
+        // D-pad up/down affect throttle only (forwardButtonDown/reverseButtonDown), not moveY,
+        // to avoid velocity-snap artifact when braking (interpolating toward backward then
+        // snapping to hull heading produced acceleration spikes).
         if (IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_TRIGGER_1)) {
             turretTurnInput -= 1.0F;
         }
@@ -56,12 +53,9 @@ FrameInput PollFrameInput() {
     if (IsKeyDown(KEY_RIGHT)) {
         turnInput += 1.0F;
     }
-    if (IsKeyDown(KEY_UP)) {
-        moveY -= 1.0F;
-    }
-    if (IsKeyDown(KEY_DOWN)) {
-        moveY += 1.0F;
-    }
+    // UP/DOWN affect throttle only (forwardButtonDown/reverseButtonDown), not moveY,
+    // to avoid velocity-snap artifact when braking (interpolating toward backward then
+    // snapping to hull heading produced acceleration spikes on Mac and elsewhere).
     if (IsKeyDown(KEY_ONE)) {
         turretTurnInput -= 1.0F;
     }

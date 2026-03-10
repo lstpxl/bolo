@@ -111,6 +111,7 @@ Input is collected in `src/platform/Input.cpp`.
 - Throttle:
   - forward: Up arrow / D-pad up
   - decelerate: Down arrow / D-pad down
+  - These keys affect throttle only, not the move joystick target (prevents brake acceleration artifact).
 - **Mac keyboard:** Cursor keys (Up/Down/Left/Right) control tank movement and turn; WASD control camera pan when pan mode is active (P toggles)—camera moves one cell per frame while each direction key is held.
 - Return to menu while playing:
   - Enter (keyboard) or Start (gamepad)
