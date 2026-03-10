@@ -11,7 +11,6 @@ struct EnemySpawnChoice {
 };
 
 /// Returns the list of enemy types (with subtypes) that can appear at the given level (1-based).
-/// Empty if none apply. Level 9 is assassin-only (flow-field debug).
 inline std::vector<EnemySpawnChoice> EnemyTypesForLevel(int level) {
     switch (level) {
         case 1:
