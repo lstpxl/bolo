@@ -29,7 +29,6 @@
 #include "game/navigation/CellCoordCache.h"
 #include "game/navigation/PlayerFlowField.h"
 #include "game/spatial/EnemyCellOccupancy.h"
-#include "game/spatial/EnemySpatialGrid.h"
 #include "game/spatial/SweepPruneBroadPhase.h"
 
 EnemyRuntimeWindowStats gEnemyRuntimeWindowStats{};
@@ -50,7 +49,6 @@ constexpr bool kUseFlowFieldPathGuidance = true;
 constexpr int kMaxFlowFieldAge = 2;
 constexpr bool kUseAssassinFlowFieldOnlyNavigation = true;
 constexpr bool kUseAssassinAStarBackupNavigation = false;
-constexpr bool kUseSweepPruneBroadPhase = true;
 constexpr float kUncouplePriorityEpsilon = 0.05F;
 
 EnemyRuntimeStats gEnemyRuntimeStats{};
@@ -425,10 +423,15 @@ void UpdateEnemySystem(
     game::navigation::CellCoordCache& cellCache = navigationCache.cellCoords;
 
     game::spatial::EnemyCellOccupancy& occupancy = navigationCache.enemyCellOccupancy;
+    game::spatial::EnemyCellOccupancy& rayQueryOccupancy = navigationCache.enemyRayQueryOccupancy;
     const int maxEnemies =
         std::max(static_cast<int>(state.world.enemies.size()),
                  static_cast<int>(GameplayConstants::kMaxAliveEnemies));
-    occupancy.Reserve(cellCache.WidthCells(), cellCache.HeightCells(), maxEnemies);
+    occupancy.Reserve(
+        cellCache.WidthCells(),
+        cellCache.HeightCells(),
+        maxEnemies,
+        cellCache.CellSizeUnits());
     for (int i = 0; i < static_cast<int>(state.world.enemies.size()); ++i) {
         EnemyTank& e = state.world.enemies[static_cast<std::size_t>(i)];
         if (!e.alive) {
@@ -440,6 +443,12 @@ void UpdateEnemySystem(
         e.cellCoord = c;
         occupancy.SetCell(i, c.x, c.y);
     }
+    rayQueryOccupancy.Reserve(
+        cellCache.WidthCells(),
+        cellCache.HeightCells(),
+        maxEnemies,
+        cellCache.CellSizeUnits());
+    rayQueryOccupancy.BuildFromPositions(state.world, &frameStartPositions);
     game::navigation::PlayerFlowField& playerFlowField = navigationCache.playerFlowField;
 
     TryApplyCompletedFlowRebuild(flowWorker, navigationCache);
@@ -477,8 +486,6 @@ void UpdateEnemySystem(
         }
     }
 
-    game::spatial::EnemySpatialGrid rayQueryGrid;
-    rayQueryGrid.BuildFromPositions(state.world, &frameStartPositions);
     std::vector<std::uint8_t> reenteredFullTierMask(state.world.enemies.size(), 0U);
     std::vector<float> uncoupleEscapeScores(state.world.enemies.size(), -1000.0F);
     for (int enemyIndex = 0; enemyIndex < static_cast<int>(state.world.enemies.size()); ++enemyIndex) {
@@ -676,7 +683,7 @@ void UpdateEnemySystem(
                         kTorpedoNearCollisionCheckDistanceUnits,
                         GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
                         kEnemyPlanningClearanceScale,
-                        &rayQueryGrid);
+                        &rayQueryOccupancy);
                     if (enemy.torpedoRetreatMovedUnits >= kTorpedoRetreatExitClearanceUnits &&
                         forwardClear >= kTorpedoRetreatExitClearanceUnits) {
                         speed = 0.0F;
@@ -707,7 +714,7 @@ void UpdateEnemySystem(
                             kTorpedoNearCollisionCheckDistanceUnits,
                             GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
                             kEnemyPlanningClearanceScale,
-                            &rayQueryGrid);
+                            &rayQueryOccupancy);
                         if (nearClear < kTorpedoImmediateObstacleDistanceUnits) {
                             enemy.torpedoMoveMode = TorpedoMoveMode::Retreat;
                             enemy.torpedoRetreatMovedUnits = 0.0F;
@@ -734,7 +741,7 @@ void UpdateEnemySystem(
                             random,
                             startRetreat,
                             decidedStraight,
-                            &rayQueryGrid);
+                            &rayQueryOccupancy);
                         if (startRetreat) {
                             enemy.torpedoMoveMode = TorpedoMoveMode::Retreat;
                             enemy.torpedoRetreatMovedUnits = 0.0F;
@@ -1117,36 +1124,16 @@ void UpdateEnemySystem(
     AccumulateEnemyWindowTime(deltaSeconds);
 
     if (gEnemyRuntimeStats.fullTierCount >= 2) {
-        if (kUseSweepPruneBroadPhase) {
-            game::spatial::SweepPruneBroadPhase& broadPhase = state.world.collisionCache.sweepPrune;
-            ResolveEnemyCollisionsSinglePass(
-                state.world,
-                gEnemyRuntimeStats,
-                frameStartPositions,
-                broadPhase,
-                fullTierMask,
-                reenteredFullTierMask,
-                EnterUncoupleByReasonCode,
-                ShouldEnterSeparationUncouple);
-        } else {
-            game::spatial::EnemySpatialGrid spatialGrid;
-            ResolveEnemyFrontalCollisionsLegacyGrid(
-                state.world,
-                gEnemyRuntimeStats,
-                frameStartPositions,
-                spatialGrid,
-                fullTierMask,
-                reenteredFullTierMask,
-                EnterUncoupleByReasonCode);
-            ResolveEnemySeparationLegacyGrid(
-                state.world,
-                gEnemyRuntimeStats,
-                spatialGrid,
-                fullTierMask,
-                reenteredFullTierMask,
-                EnterUncoupleByReasonCode,
-                ShouldEnterSeparationUncouple);
-        }
+        game::spatial::SweepPruneBroadPhase& broadPhase = state.world.collisionCache.sweepPrune;
+        ResolveEnemyCollisionsSinglePass(
+            state.world,
+            gEnemyRuntimeStats,
+            frameStartPositions,
+            broadPhase,
+            fullTierMask,
+            reenteredFullTierMask,
+            EnterUncoupleByReasonCode,
+            ShouldEnterSeparationUncouple);
         gEnemyRuntimeWindowStats.collisionPassRuns += 1;
     } else {
         gEnemyRuntimeWindowStats.collisionPassSkips += 1;

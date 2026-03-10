@@ -5,7 +5,7 @@
 #include <limits>
 #include "core/AngleMath.h"
 #include "game/model/GameplayConstants.h"
-#include "game/spatial/EnemySpatialGrid.h"
+#include "game/spatial/EnemyCellOccupancy.h"
 
 namespace game::geometry {
 
@@ -405,16 +405,16 @@ float FreeDistanceAhead(const WorldState& world, const Vec2f& from, float headin
 float FreeDistanceAheadWithEnemies(const WorldState& world,
     const std::vector<EnemyTank>& enemies, int selfIndex, const Vec2f& from,
     float headingRadians, float maxDistance, float clearanceUnits,
-    float planningClearanceScale, const game::spatial::EnemySpatialGrid* spatialGrid) {
+    float planningClearanceScale, const game::spatial::EnemyCellOccupancy* rayQueryOccupancy) {
     const float staticObstacleDistance =
         FreeDistanceAhead(world, from, headingRadians, maxDistance, clearanceUnits, planningClearanceScale);
     const float probeDistance = std::min(maxDistance, staticObstacleDistance);
     const float separationRadius = GameplayConstants::kEnemyPreferredSeparationUnits;
 
     std::vector<int> candidateIndices;
-    if (spatialGrid != nullptr) {
+    if (rayQueryOccupancy != nullptr) {
         const Vec2f dir = core::angle::DirectionFromHeading(headingRadians);
-        spatialGrid->GetEnemiesAlongRay(enemies, selfIndex, from, dir, probeDistance, candidateIndices);
+        rayQueryOccupancy->GetEnemiesAlongRay(enemies, selfIndex, from, dir, probeDistance, candidateIndices);
     } else {
         const float filterRadius = probeDistance + separationRadius;
         const float filterRadiusSq = filterRadius * filterRadius;

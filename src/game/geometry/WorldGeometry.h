@@ -4,7 +4,7 @@
 #include <vector>
 
 namespace game::spatial {
-class EnemySpatialGrid;
+class EnemyCellOccupancy;
 }
 
 namespace game::geometry {
@@ -35,6 +35,6 @@ float FreeDistanceAheadWithEnemies(const WorldState& world,
     const std::vector<EnemyTank>& enemies, int selfIndex, const Vec2f& from,
     float headingRadians, float maxDistance, float clearanceUnits,
     float planningClearanceScale = 1.0F,
-    const game::spatial::EnemySpatialGrid* spatialGrid = nullptr);
+    const game::spatial::EnemyCellOccupancy* rayQueryOccupancy = nullptr);
 
 }  // namespace game::geometry

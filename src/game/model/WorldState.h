@@ -13,6 +13,7 @@ struct NavigationRuntimeCache {
     game::navigation::CellCoordCache cellCoords{};
     game::navigation::PlayerFlowField playerFlowField{};
     game::spatial::EnemyCellOccupancy enemyCellOccupancy{};
+    game::spatial::EnemyCellOccupancy enemyRayQueryOccupancy{};
     bool playerFlowFieldCacheActive = false;
     bool playerFlowFieldSpawnRequestActive = false;
     int flowFieldInvalidationGeneration = 0;

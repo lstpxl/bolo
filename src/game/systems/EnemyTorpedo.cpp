@@ -7,7 +7,7 @@
 #include "game/model/GameplayConstants.h"
 #include "game/systems/EnemySystemHelpers.h"
 #include "game/systems/EnemySystemInternal.h"
-#include "game/spatial/EnemySpatialGrid.h"
+#include "game/spatial/EnemyCellOccupancy.h"
 
 namespace {
 
@@ -58,7 +58,7 @@ float SelectTorpedoMoveHeading(
     Random& random,
     bool& startRetreat,
     bool& decidedStraight,
-    const game::spatial::EnemySpatialGrid* spatialGrid) {
+    const game::spatial::EnemyCellOccupancy* rayQueryOccupancy) {
     profiling::ScopedProfile selectScope(profiling::Scope::EnemyTorpedoSelectHeading, true);
     gEnemyRuntimeWindowStats.torpedoHeadingEvalCalls += 1;
     startRetreat = false;
@@ -73,7 +73,7 @@ float SelectTorpedoMoveHeading(
         kSegmentBuildProbeMaxUnits,
         GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
         kEnemyPlanningClearanceScale,
-        spatialGrid);
+        rayQueryOccupancy);
     const float leftHeading = core::angle::QuantizeToEightDirections(straightHeading - kEightDirectionStep);
     const float rightHeading = core::angle::QuantizeToEightDirections(straightHeading + kEightDirectionStep);
     const float leftClear = game::geometry::FreeDistanceAheadWithEnemies(
@@ -85,7 +85,7 @@ float SelectTorpedoMoveHeading(
         kSegmentBuildProbeMaxUnits,
         GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
         kEnemyPlanningClearanceScale,
-        spatialGrid);
+        rayQueryOccupancy);
     const float rightClear = game::geometry::FreeDistanceAheadWithEnemies(
         world,
         enemies,
@@ -95,7 +95,7 @@ float SelectTorpedoMoveHeading(
         kSegmentBuildProbeMaxUnits,
         GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
         kEnemyPlanningClearanceScale,
-        spatialGrid);
+        rayQueryOccupancy);
 
     if (straightClearWithEnemies < kTorpedoImmediateObstacleDistanceUnits &&
         leftClear < kTorpedoImmediateObstacleDistanceUnits &&

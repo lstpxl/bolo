@@ -7,7 +7,7 @@
 #include "game/model/WorldState.h"
 
 namespace game::spatial {
-class EnemySpatialGrid;
+class EnemyCellOccupancy;
 }
 
 bool PlayerAheadForTorpedo(const EnemyTank& enemy, const Vec2f& toPlayerNormalized);
@@ -22,7 +22,7 @@ float SelectTorpedoMoveHeading(
     Random& random,
     bool& startRetreat,
     bool& decidedStraight,
-    const game::spatial::EnemySpatialGrid* spatialGrid);
+    const game::spatial::EnemyCellOccupancy* rayQueryOccupancy);
 
 void EnterTorpedoTargetingMode(EnemyTank& enemy);
 void EnterTorpedoRotateMode(EnemyTank& enemy);
