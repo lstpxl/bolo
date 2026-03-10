@@ -11,7 +11,7 @@ The project vendors `third_party/raylib` and uses SDL backend for RG353V builds.
 ## Prerequisites (macOS)
 
 ```bash
-brew install cmake zig rsync
+brew install cmake zig rsync clang-format
 ```
 
 ## Build configs
