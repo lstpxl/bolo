@@ -34,9 +34,6 @@ struct GameplayConstants {
     static constexpr float kEnemyProjectileSpeed = 7.0F;             // world-units / second
     static constexpr float kEnemyAggroRangeUnits = 16.0F;           // world-units
     static constexpr float kEnemyFireRangeUnits = 24.0F;            // world-units
-    static constexpr int kDroneMaxLevel = 2;                         // level index
-    static constexpr int kTorpedoMaxLevel = 4;                       // level index
-    static constexpr int kHunterMaxLevel = 7;                        // level index
     static constexpr float kEnemyAssassinPredictionSeconds = 0.8F;   // seconds
     static constexpr float kEnemyAiRetargetMinSeconds = 0.7F;        // seconds
     static constexpr float kEnemyAiRetargetRandomSeconds = 0.9F;     // seconds
