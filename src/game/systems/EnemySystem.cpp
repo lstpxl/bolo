@@ -1648,7 +1648,9 @@ void UpdateEnemySystem(
     if (flowWorker.inFlight &&
         flowWorker.future.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
         flowWorker.future.get();
-        std::swap(navigationCache.playerFlowField, flowWorker.pendingFlowField);
+        if (flowWorker.buildGeneration >= navigationCache.flowFieldInvalidationGeneration) {
+            std::swap(navigationCache.playerFlowField, flowWorker.pendingFlowField);
+        }
         flowWorker.inFlight = false;
     }
 
@@ -1658,6 +1660,7 @@ void UpdateEnemySystem(
         if (flowWorker.inFlight) {
             return;
         }
+        flowWorker.buildGeneration = navigationCache.flowFieldInvalidationGeneration;
         flowWorker.inFlight = true;
         MazeState mazeCopy = state.world.maze;
         game::navigation::CellCoordCache cacheCopy = cellCache;

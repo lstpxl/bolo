@@ -227,7 +227,7 @@ void UpdateSpawnerSystem(GameState& state, float deltaSeconds, Random& random) {
             .pathWaypointIndex = 0,
             .alive = true,
         });
-        if (spawnedEnemy.type == EnemyType::Assassin) {
+        if (spawnedEnemy.type == EnemyType::Assassin || spawnedEnemy.type == EnemyType::Hunter) {
             state.world.navigationCache.playerFlowFieldSpawnRequestActive = true;
         }
         base.activeEnemies += 1;

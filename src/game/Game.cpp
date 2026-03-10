@@ -1,6 +1,8 @@
 #include "game/Game.h"
 
+#include <algorithm>
 #include <cstdint>
+#include "game/model/EntityTypes.h"
 #include "game/systems/CollisionSystem.h"
 #include "game/systems/EnemySystem.h"
 #include "game/systems/MazeSystem.h"
@@ -8,7 +10,6 @@
 #include "game/systems/ProjectileSystem.h"
 #include "game/systems/SpawnerSystem.h"
 #include "core/Profiling.h"
-#include <algorithm>
 #include <random>
 
 namespace {
@@ -251,6 +252,20 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const GameplayVie
         state_.world.player.fuel = 0.0F;
         state_.world.startModeRemainingSeconds = GameplayConstants::kStartModeDurationSeconds;
         PlacePlayerAtSafeSpawn(state_, view, random_);
+
+        state_.world.navigationCache.playerFlowField.Invalidate();
+        state_.world.navigationCache.flowFieldInvalidationGeneration += 1;
+        const bool hasFlowConsumers =
+            std::any_of(state_.world.enemies.begin(),
+                        state_.world.enemies.end(),
+                        [](const EnemyTank& e) {
+                            return e.alive && (e.type == EnemyType::Assassin || e.type == EnemyType::Hunter);
+                        });
+        if (hasFlowConsumers) {
+            state_.world.navigationCache.playerFlowFieldSpawnRequestActive = true;
+        } else {
+            state_.world.navigationCache.playerFlowFieldCacheActive = false;
+        }
     }
 
     // Level complete handling.

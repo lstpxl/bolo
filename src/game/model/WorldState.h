@@ -15,6 +15,7 @@ struct NavigationRuntimeCache {
     game::spatial::EnemyCellOccupancy enemyCellOccupancy{};
     bool playerFlowFieldCacheActive = false;
     bool playerFlowFieldSpawnRequestActive = false;
+    int flowFieldInvalidationGeneration = 0;
     int playerFlowFieldAge = 0;
 };
 

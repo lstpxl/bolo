@@ -14,6 +14,7 @@ public:
     void Rebuild(const MazeState& maze, const CellCoordCache& cellCache,
         const std::vector<EnemyBase>& bases);
     void OverrideNextCellHash(int fromCellHash, int toCellHash);
+    void Invalidate();
 
     bool HasBuild() const { return hasBuild_; }
     bool IsBuiltFor(std::uint32_t playerCellVersion) const;

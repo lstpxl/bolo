@@ -24,23 +24,23 @@ struct GameplayConstants {
 
     // Enemy tuning.
     static constexpr float kEnemyDroneSpeed = 1.0F;                  // world-units / second
-    static constexpr float kEnemyTorpedoSpeed = 2.0F;                // world-units / second
-    static constexpr float kEnemyHunterSpeed = 3.0F;                 // world-units / second
+    static constexpr float kEnemyTorpedoSpeed = 3.0F;                // world-units / second
+    static constexpr float kEnemyHunterSpeed = 2.5F;                 // world-units / second
     static constexpr float kEnemyAssassinSpeed = 4.0F;               // world-units / second
     static constexpr float kEnemyDroneFireInterval = 3.0F;           // seconds
     static constexpr float kEnemyTorpedoFireInterval = 2.0F;         // seconds
     static constexpr float kEnemyHunterFireInterval = 1.5F;          // seconds
     static constexpr float kEnemyAssassinFireInterval = 1.0F;        // seconds
     static constexpr float kEnemyProjectileSpeed = 7.0F;             // world-units / second
-    static constexpr float kEnemyAggroRangeUnits = 140.0F;           // world-units
-    static constexpr float kEnemyFireRangeUnits = 180.0F;            // world-units
+    static constexpr float kEnemyAggroRangeUnits = 16.0F;           // world-units
+    static constexpr float kEnemyFireRangeUnits = 24.0F;            // world-units
     static constexpr int kDroneMaxLevel = 2;                         // level index
     static constexpr int kTorpedoMaxLevel = 4;                       // level index
     static constexpr int kHunterMaxLevel = 7;                        // level index
     static constexpr float kEnemyAssassinPredictionSeconds = 0.8F;   // seconds
     static constexpr float kEnemyAiRetargetMinSeconds = 0.7F;        // seconds
     static constexpr float kEnemyAiRetargetRandomSeconds = 0.9F;     // seconds
-    static constexpr int kMaxAliveEnemies = 999;                     // enemies
+    static constexpr int kMaxAliveEnemies = 200;                     // enemies
     static constexpr int kMaxAliveEnemiesPerBase = 24;               // enemies / base
     static constexpr float kEnemyInitialFireCooldownSeconds = 0.2F;  // seconds
     static constexpr float kBaseSpawnCooldownSeconds = 0.9F;         // seconds
@@ -53,7 +53,7 @@ struct GameplayConstants {
     static constexpr float kHunterDetectRangeUnits = 12.0F;          // world-units
     static constexpr float kHunterMinDistanceUnits = 3.0F;           // world-units
     static constexpr float kHunterMaxDistanceUnits = 6.0F;           // world-units
-    static constexpr float kAssassinMinDistanceUnits = 3.0F;         // world-units
+    static constexpr float kAssassinMinDistanceUnits = 4.0F;         // world-units
 
     // Shared explosion animation parameters (all explosion spritesheets use these).
     static constexpr int kExplosionFrameCount = 6;                             // frames

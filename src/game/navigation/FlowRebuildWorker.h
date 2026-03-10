@@ -11,6 +11,7 @@ struct FlowRebuildWorker {
     PlayerFlowField pendingFlowField{};
     std::future<void> future{};
     bool inFlight = false;
+    int buildGeneration = 0;
 
     // Block until any in-flight rebuild finishes. Call before resetting level state.
     void Drain() {

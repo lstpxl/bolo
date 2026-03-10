@@ -168,6 +168,10 @@ void PlayerFlowField::Rebuild(const MazeState& maze, const CellCoordCache& cellC
     hasBuild_ = true;
 }
 
+void PlayerFlowField::Invalidate() {
+    hasBuild_ = false;
+}
+
 void PlayerFlowField::OverrideNextCellHash(int fromCellHash, int toCellHash) {
     if (!hasBuild_) {
         return;

@@ -409,7 +409,6 @@ void InitializeMazeWorld(GameState& state, const GameplayView& view, Random& ran
     state.world.playerTurnLostPending = false;
     state.world.levelCleared = false;
     state.world.levelClearMessageSeconds = 0.0F;
-    state.world.navigationCache.playerFlowFieldSpawnRequestActive = true;
     state.world.panModeActive = false;
     state.world.panTarget = state.world.player.position;
 }
