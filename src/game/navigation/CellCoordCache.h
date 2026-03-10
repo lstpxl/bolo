@@ -3,13 +3,9 @@
 #include <cstdint>
 #include "core/Types.h"
 #include "game/model/EntityTypes.h"
+#include "game/navigation/MazeCellCoord.h"
 
 namespace game::navigation {
-
-struct MazeCellCoord {
-    int x = 0;
-    int y = 0;
-};
 
 class CellCoordCache {
 public:

@@ -177,7 +177,7 @@ void ApplyCheapTierMovement(
     }
 
     if (enemy.type == EnemyType::Assassin) {
-        const game::navigation::MazeCellCoord enemyCell = cellCache.WorldToCell(enemy.position);
+        const game::navigation::MazeCellCoord& enemyCell = enemy.cellCoord;
         const int enemyCellHash = cellCache.CellHash(enemyCell.x, enemyCell.y);
         const bool enteredNewCell = enemy.cachedFlowFromCellHash != enemyCellHash;
         if (enteredNewCell) {

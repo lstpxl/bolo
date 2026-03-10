@@ -173,12 +173,14 @@ bool IsInPlayerViewport(const Vec2f& point, const GameState& state, const Gamepl
         point.y >= center.y - halfHeight && point.y <= center.y + halfHeight;
 }
 
-EnemySimTier DetermineEnemySimTier(const EnemyTank& enemy, const GameState& state, const GameplayView& view) {
-    const float cellWidthUnits = static_cast<float>(state.world.maze.cellSizeUnits);
-    const float fullTierRadiusUnits =
-        (view.viewportWidthUnits * 0.5F + cellWidthUnits) * 1.5F;
-    const float fullTierRadiusSq = fullTierRadiusUnits * fullTierRadiusUnits;
-    const bool nearPlayer = DistanceSq(enemy.position, state.world.player.position) <= fullTierRadiusSq;
+EnemySimTier DetermineEnemySimTier(
+    const EnemyTank& enemy,
+    const game::navigation::CellCoordCache& cellCache) {
+    constexpr int fullTierRadiusCells = 3;
+    const game::navigation::MazeCellCoord playerCell = cellCache.PlayerCell();
+    const int dx = std::abs(enemy.cellCoord.x - playerCell.x);
+    const int dy = std::abs(enemy.cellCoord.y - playerCell.y);
+    const bool nearPlayer = std::max(dx, dy) <= fullTierRadiusCells;
     const bool forceFullForTorpedoState =
         enemy.type == EnemyType::Torpedo &&
         enemy.torpedoMoveMode != TorpedoMoveMode::Move;
@@ -359,6 +361,49 @@ profiling::Scope EnemyTypeProfileScope(EnemyType type) {
     return profiling::Scope::EnemyTypeDroneUpdate;
 }
 
+/**
+ * @brief Try to apply a completed flow rebuild to the navigation cache.
+ * If the flow rebuild is completed and the generation is greater than or equal to the current generation,
+ * the pending flow field is swapped into the live flow field.
+ * @param flowWorker
+ * @param navigationCache 
+ */
+void TryApplyCompletedFlowRebuild(
+    game::navigation::FlowRebuildWorker& flowWorker,
+    NavigationRuntimeCache& navigationCache) {
+    if (!flowWorker.inFlight ||
+        flowWorker.future.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
+        return;
+    }
+    flowWorker.future.get();
+    if (flowWorker.buildGeneration >= navigationCache.flowFieldInvalidationGeneration) {
+        std::swap(navigationCache.playerFlowField, flowWorker.pendingFlowField);
+    }
+    flowWorker.inFlight = false;
+}
+
+void ScheduleFlowRebuild(
+    game::navigation::FlowRebuildWorker& flowWorker,
+    NavigationRuntimeCache& navigationCache,
+    const WorldState& world) {
+    if (flowWorker.inFlight) {
+        return;
+    }
+    flowWorker.buildGeneration = navigationCache.flowFieldInvalidationGeneration;
+    flowWorker.inFlight = true;
+    MazeState mazeCopy = world.maze;
+    game::navigation::CellCoordCache cacheCopy = navigationCache.cellCoords;
+    std::vector<EnemyBase> basesCopy = world.enemyBases;
+    flowWorker.future = std::async(
+        std::launch::async,
+        [&pending = flowWorker.pendingFlowField,
+         m = std::move(mazeCopy),
+         c = std::move(cacheCopy),
+         b = std::move(basesCopy)]() mutable {
+            pending.Rebuild(m, c, b);
+        });
+}
+
 }  // namespace
 
 void UpdateEnemySystem(
@@ -385,47 +430,19 @@ void UpdateEnemySystem(
                  static_cast<int>(GameplayConstants::kMaxAliveEnemies));
     occupancy.Reserve(cellCache.WidthCells(), cellCache.HeightCells(), maxEnemies);
     for (int i = 0; i < static_cast<int>(state.world.enemies.size()); ++i) {
-        const EnemyTank& e = state.world.enemies[static_cast<std::size_t>(i)];
+        EnemyTank& e = state.world.enemies[static_cast<std::size_t>(i)];
         if (!e.alive) {
             occupancy.Remove(i);
             continue;
         }
         const game::navigation::MazeCellCoord c =
             cellCache.WorldToCell(frameStartPositions[static_cast<std::size_t>(i)]);
+        e.cellCoord = c;
         occupancy.SetCell(i, c.x, c.y);
     }
     game::navigation::PlayerFlowField& playerFlowField = navigationCache.playerFlowField;
 
-    // Collect a completed background rebuild and swap it into the live field.
-    if (flowWorker.inFlight &&
-        flowWorker.future.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
-        flowWorker.future.get();
-        if (flowWorker.buildGeneration >= navigationCache.flowFieldInvalidationGeneration) {
-            std::swap(navigationCache.playerFlowField, flowWorker.pendingFlowField);
-        }
-        flowWorker.inFlight = false;
-    }
-
-    // Schedule an async rebuild. Skips silently if one is already in flight.
-    // The live playerFlowField continues to be used until the rebuild completes.
-    auto scheduleFlowRebuild = [&]() {
-        if (flowWorker.inFlight) {
-            return;
-        }
-        flowWorker.buildGeneration = navigationCache.flowFieldInvalidationGeneration;
-        flowWorker.inFlight = true;
-        MazeState mazeCopy = state.world.maze;
-        game::navigation::CellCoordCache cacheCopy = cellCache;
-        std::vector<EnemyBase> basesCopy = state.world.enemyBases;
-        flowWorker.future = std::async(
-            std::launch::async,
-            [&pending = flowWorker.pendingFlowField,
-             m = std::move(mazeCopy),
-             c = std::move(cacheCopy),
-             b = std::move(basesCopy)]() mutable {
-                pending.Rebuild(m, c, b);
-            });
-    };
+    TryApplyCompletedFlowRebuild(flowWorker, navigationCache);
 
     if (kUseFlowFieldPathGuidance) {
         const int previousPlayerCellHash = cellCache.PlayerCellHash();
@@ -435,7 +452,7 @@ void UpdateEnemySystem(
             if (navigationCache.playerFlowFieldCacheActive) {
                 navigationCache.playerFlowFieldAge += 1;
                 if (navigationCache.playerFlowFieldAge > kMaxFlowFieldAge) {
-                    scheduleFlowRebuild();
+                    ScheduleFlowRebuild(flowWorker, navigationCache, state.world);
                     navigationCache.playerFlowFieldAge = 0;
                     gEnemyRuntimeWindowStats.navFlowRebuilds += 1;
                 } else {
@@ -453,7 +470,7 @@ void UpdateEnemySystem(
             navigationCache.playerFlowFieldSpawnRequestActive = false;
             navigationCache.playerFlowFieldCacheActive = true;
             if (!playerFlowField.HasBuild()) {
-                scheduleFlowRebuild();
+                ScheduleFlowRebuild(flowWorker, navigationCache, state.world);
                 navigationCache.playerFlowFieldAge = 0;
                 gEnemyRuntimeWindowStats.navFlowRebuilds += 1;
             }
@@ -482,7 +499,7 @@ void UpdateEnemySystem(
         profiling::ScopedProfile enemyTypeScope(EnemyTypeProfileScope(enemy.type), true);
 
         const EnemySimTier previousTier = enemy.simTier;
-        enemy.simTier = DetermineEnemySimTier(enemy, state, view);
+        enemy.simTier = DetermineEnemySimTier(enemy, cellCache);
         const bool reenteredFullTier =
             previousTier == EnemySimTier::Cheap &&
             enemy.simTier == EnemySimTier::Full;
@@ -535,12 +552,13 @@ void UpdateEnemySystem(
                 needsInitialFlowBuild);
             if (needsInitialFlowBuild && enemy.type == EnemyType::Assassin) {
                 navigationCache.playerFlowFieldCacheActive = true;
-                scheduleFlowRebuild();
+                ScheduleFlowRebuild(flowWorker, navigationCache, state.world);
                 navigationCache.playerFlowFieldAge = 0;
                 gEnemyRuntimeWindowStats.navFlowRebuilds += 1;
             }
             const game::navigation::MazeCellCoord cheapCell =
                 cellCache.WorldToCell(enemy.position);
+            enemy.cellCoord = cheapCell;
             occupancy.SetCell(enemyIndex, cheapCell.x, cheapCell.y);
             continue;
         }
@@ -803,7 +821,7 @@ void UpdateEnemySystem(
                                 navigationCache.playerFlowFieldCacheActive = true;
                                 // Kick off a background rebuild; assassin falls through to
                                 // prediction-based heading this frame.
-                                scheduleFlowRebuild();
+                                ScheduleFlowRebuild(flowWorker, navigationCache, state.world);
                                 navigationCache.playerFlowFieldAge = 0;
                                 gEnemyRuntimeWindowStats.navFlowRebuilds += 1;
                             }
@@ -1068,6 +1086,7 @@ void UpdateEnemySystem(
 
         const game::navigation::MazeCellCoord fullCell =
             cellCache.WorldToCell(enemy.position);
+        enemy.cellCoord = fullCell;
         occupancy.SetCell(enemyIndex, fullCell.x, fullCell.y);
     }
 

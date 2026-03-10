@@ -54,6 +54,12 @@ bool CellCoordCache::IsValidCell(int cellX, int cellY) const {
     return cellX >= 0 && cellX < widthCells_ && cellY >= 0 && cellY < heightCells_;
 }
 
+/**
+ * @brief Update the player cell based on the player position.
+ * 
+ * @param playerPosition 
+ * @return true if the player cell was updated, false otherwise
+ */
 bool CellCoordCache::UpdatePlayerCell(const Vec2f& playerPosition) {
     if (widthCells_ <= 0 || heightCells_ <= 0) {
         return false;
