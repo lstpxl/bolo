@@ -17,12 +17,6 @@ constexpr float kSpawnProbeMaxUnits = 8.0F;
 
 game::EnemySpawnChoice PickSpawnEnemyForLevel(int level, Random& random) {
     std::vector<game::EnemySpawnChoice> candidates = game::EnemyTypesForLevel(level);
-    // Level 9: assassin-only debug level for flow-field testing.
-    if (level == 9) {
-        if (auto subtype = game::EnemyTypeAppearsAtLevel(EnemyType::Assassin, 9)) {
-            candidates = {{game::EnemySpawnChoice{.type = EnemyType::Assassin, .subtype = *subtype}}};
-        }
-    }
     if (candidates.empty()) {
         return game::EnemySpawnChoice{.type = EnemyType::Drone, .subtype = EnemySubtype::Advanced};
     }
