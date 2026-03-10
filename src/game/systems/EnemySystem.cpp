@@ -378,7 +378,6 @@ void UpdateEnemySystem(
 
     NavigationRuntimeCache& navigationCache = state.world.navigationCache;
     game::navigation::CellCoordCache& cellCache = navigationCache.cellCoords;
-    cellCache.ConfigureFromMaze(state.world.maze);
 
     game::spatial::EnemyCellOccupancy& occupancy = navigationCache.enemyCellOccupancy;
     const int maxEnemies =

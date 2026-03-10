@@ -336,6 +336,8 @@ void InitializeMazeWorld(GameState& state, const GameplayView& view, Random& ran
     state.world.maze.heightCells = GameplayConstants::kMazeHeightCells;
     state.world.maze.cellSizeUnits = GameplayConstants::kMazeCellSizeUnits;
 
+    state.world.navigationCache.cellCoords.ConfigureFromMaze(state.world.maze);
+
     do {
         GenerateConnectedMaze(state.world.maze, random, state.menuSettings.mazeDensity);
     } while (

@@ -4,6 +4,7 @@
 
 namespace game::navigation {
 
+
 void CellCoordCache::ConfigureFromMaze(const MazeState& maze) {
     widthCells_ = std::max(0, maze.widthCells);
     heightCells_ = std::max(0, maze.heightCells);
