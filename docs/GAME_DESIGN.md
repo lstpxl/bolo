@@ -81,10 +81,10 @@ Defined in `src/game/GameState.h`.
 
 Enemy spawn table behavior (`src/game/systems/SpawnerSystem.cpp`):
 
-- Spawn selection uses a fixed 9-entry table of `(EnemyType, EnemySubtype)`, one entry per level slot.
-- On spawn at level `L`, choose one random entry from slots `1..L` (inclusive) and use that entry's type/subtype.
-- Current table entries are all `Advanced` subtypes:
-  - `1..2` Drone, `3..4` Torpedo, `5..7` Hunter, `8..9` Assassin.
+- Spawn selection uses `game::EnemyTypeAppearsAtLevel(type, level)` in `src/game/EnemyAppearance.h` to determine which enemy types (and subtypes) can appear at each level.
+- On spawn at level `L`, build the candidate set from types that return a subtype for `L`, then pick one at random.
+- Current appearance ranges (see `EnemyAppearance.h`):
+  - Drone `1..5`, Torpedo `3..6`, Hunter `5..8`, Assassin `8+`.
 - Global alive-enemy cap is `999`.
 - Per-base simultaneous alive cap is `24` enemies.
 - **Level 9 (debug):** Assassins only, 6 per base max, assassin speed ×4. Intended for flow-field debugging.

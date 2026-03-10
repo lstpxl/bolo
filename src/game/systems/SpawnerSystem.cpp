@@ -1,10 +1,11 @@
 #include "game/systems/SpawnerSystem.h"
 
-#include <algorithm>
 #include <array>
 #include <cmath>
+#include <vector>
 #include "core/AngleMath.h"
 #include "core/Random.h"
+#include "game/EnemyAppearance.h"
 #include "game/GameQueries.h"
 #include "game/geometry/WorldGeometry.h"
 
@@ -14,31 +15,19 @@ constexpr float kDiagonalSpawnCoreShiftUnits = 0.5F;
 constexpr float kRequiredSpawnClearUnits = 6.0F;
 constexpr float kSpawnProbeMaxUnits = 8.0F;
 
-struct EnemySpawnEntry {
-    EnemyType type;
-    EnemySubtype subtype;
-};
-
-constexpr std::array<EnemySpawnEntry, 9> kEnemySpawnTable{{
-    {.type = EnemyType::Drone, .subtype = EnemySubtype::Advanced},    // level 1
-    {.type = EnemyType::Drone, .subtype = EnemySubtype::Advanced},    // level 2
-    {.type = EnemyType::Torpedo, .subtype = EnemySubtype::Advanced},  // level 3
-    {.type = EnemyType::Torpedo, .subtype = EnemySubtype::Advanced},  // level 4
-    {.type = EnemyType::Hunter, .subtype = EnemySubtype::Advanced},   // level 5
-    {.type = EnemyType::Hunter, .subtype = EnemySubtype::Advanced},   // level 6
-    {.type = EnemyType::Hunter, .subtype = EnemySubtype::Advanced},   // level 7
-    {.type = EnemyType::Assassin, .subtype = EnemySubtype::Advanced}, // level 8
-    {.type = EnemyType::Assassin, .subtype = EnemySubtype::Advanced}, // level 9
-}};
-
-EnemySpawnEntry PickSpawnEnemyForLevel(int level, Random& random) {
+game::EnemySpawnChoice PickSpawnEnemyForLevel(int level, Random& random) {
+    std::vector<game::EnemySpawnChoice> candidates = game::EnemyTypesForLevel(level);
     // Level 9: assassin-only debug level for flow-field testing.
     if (level == 9) {
-        return kEnemySpawnTable[8];  // Assassin
+        if (auto subtype = game::EnemyTypeAppearsAtLevel(EnemyType::Assassin, 9)) {
+            candidates = {{game::EnemySpawnChoice{.type = EnemyType::Assassin, .subtype = *subtype}}};
+        }
     }
-    const int clampedLevel = std::max(1, std::min(level, static_cast<int>(kEnemySpawnTable.size())));
-    const int pickedIndex = random.NextInt(0, clampedLevel - 1);
-    return kEnemySpawnTable[static_cast<std::size_t>(pickedIndex)];
+    if (candidates.empty()) {
+        return game::EnemySpawnChoice{.type = EnemyType::Drone, .subtype = EnemySubtype::Advanced};
+    }
+    const int pickedIndex = random.NextInt(0, static_cast<int>(candidates.size()) - 1);
+    return candidates[static_cast<std::size_t>(pickedIndex)];
 }
 
 struct SpawnRayChoice {
@@ -153,7 +142,7 @@ void UpdateSpawnerSystem(GameState& state, float deltaSeconds, Random& random) {
             continue;
         }
 
-        const EnemySpawnEntry spawnedEnemy = PickSpawnEnemyForLevel(state.menuSettings.levelNumber, random);
+        const game::EnemySpawnChoice spawnedEnemy = PickSpawnEnemyForLevel(state.menuSettings.levelNumber, random);
         const SpawnRayChoice spawnDirection = PickSpawnDirection(state.world, base.position, random);
         if (!spawnDirection.found) {
             // Failed attempt: wait a full interval before retrying.
