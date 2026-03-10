@@ -102,7 +102,13 @@ add_executable(
     src/game/systems/EnemyDrone.cpp
     src/game/systems/EnemyHunter.cpp
     src/game/systems/EnemySystem.cpp
+    src/game/systems/EnemySystemCheapTier.cpp
+    src/game/systems/EnemySystemCollision.cpp
+    src/game/systems/EnemySystemCombatPhase.cpp
     src/game/systems/EnemySystemHelpers.cpp
+    src/game/systems/EnemySystemPathfinding.cpp
+    src/game/systems/EnemySystemTelemetry.cpp
+    src/game/systems/EnemySystemUncouple.cpp
     src/game/systems/EnemyTorpedo.cpp
     src/game/systems/MazeSystem.cpp
     src/game/systems/PlayerSystem.cpp
