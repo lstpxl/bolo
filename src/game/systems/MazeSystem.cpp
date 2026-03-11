@@ -1,6 +1,7 @@
 #include "game/systems/MazeSystem.h"
 
 #include <algorithm>
+#include "core/Log.h"
 #include "game/EnemyAppearance.h"
 #include <array>
 #include <cmath>
@@ -415,8 +416,15 @@ void InitializeMazeWorld(GameState& state, const GameplayView& view, Random& ran
     state.world.panModeActive = false;
     state.world.panTarget = state.world.player.position;
 
-    if (game::LevelHasFlowConsumers(state.menuSettings.levelNumber)) {
-        state.world.navigationCache.playerFlowField.SetCacheActive(true);
+    const bool shouldHaveFlowActive =
+        game::LevelHasFlowConsumers(state.menuSettings.levelNumber) &&
+        !state.menuSettings.invisibility;
+    bolt::log::Debug("[FLOW] InitializeMazeWorld: invisibility=%d level=%d shouldHaveFlowActive=%d",
+        state.menuSettings.invisibility ? 1 : 0, state.menuSettings.levelNumber, shouldHaveFlowActive ? 1 : 0);
+    state.world.navigationCache.playerFlowField.SetCacheActive(shouldHaveFlowActive);
+    if (shouldHaveFlowActive) {
+        state.world.navigationCache.playerFlowField.Invalidate();
+        state.world.navigationCache.flowFieldInvalidationGeneration += 1;
     }
 }
 

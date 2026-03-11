@@ -20,7 +20,6 @@ This file describes the current BOLT implementation in this repository:
 2. Player selects:
    - `Level` in range `1..9`
    - `Density` in range `1..5`
-   - `Invisibility` on/off
 3. Player starts a generated maze run.
 4. Player navigates the maze and interacts with enemy bases/tanks (expanded combat rules are still in progress).
 5. Player can return to menu during gameplay with START/Enter.
@@ -110,7 +109,7 @@ Input is collected in `src/platform/Input.cpp`.
   - forward: Up arrow / D-pad up
   - decelerate: Down arrow / D-pad down
   - These keys affect throttle only, not the move joystick target (prevents brake acceleration artifact).
-- **Mac keyboard:** Cursor keys (Up/Down/Left/Right) control tank movement and turn; WASD control camera pan when pan mode is active (P toggles)—camera moves one cell per frame while each direction key is held.
+- **Mac keyboard:** Cursor keys (Up/Down/Left/Right) control tank movement and turn; WASD control camera pan when pan mode is active (P toggles)—camera moves one cell per frame while each direction key is held. Invisibility is toggled by I key during gameplay (default off).
 - Return to menu while playing:
   - Enter (keyboard) or Start (gamepad)
 - Exit app:
@@ -122,9 +121,8 @@ Input is collected in `src/platform/Input.cpp`.
 - Navigate: Up/Down
 - Change slider: Left/Right
 - Select: Enter/Space or gamepad south/east face button
-- `Invisibility` checkbox can be toggled via Left/Right or Select when focused.
 - `Debug info` checkbox can be toggled via Left/Right or Select when focused.
-- Default menu values at app start are `Level = 4`, `Density = 1`, `Invisibility = On`, `Debug info = Off`.
+- Default menu values at app start are `Level = 4`, `Density = 1`, `Debug info = Off`. Invisibility defaults to off and is toggled during gameplay by I key.
 
 ## Movement Model
 
@@ -250,7 +248,7 @@ Enemy movement/steering code uses **`kEnemyWallAvoidanceRadiusUnits`** (same as 
   - Modes: `Pursuit` (default) and temporary `Uncouple`.
   - Uses a pure player-directed maze flow-field for pursuit steering (no waypoint A* path following in the active runtime branch).
   - Flow-field build treats cells occupied by undestroyed bases as blocking (non-traversable).
-  - Flow-field is *active* only when the level can spawn assassins or hunters (levels 5+). On levels without these consumers (e.g. level 4), the flow field is inactive and not built.
+  - Flow-field is *active* only when the level can spawn assassins or hunters (levels 5+) and invisibility is off. On levels without these consumers (e.g. level 4) or when invisibility is on, the flow field is inactive and not built. Toggling invisibility off (I key) activates and invalidates the flow field so it rebuilds toward the player.
   - Flow-field initial build is requested at level init (InitializeMazeWorld), not during enemy processing. This ensures assassins never wait for a build; the field is ready when the first assassin spawns.
   - Player respawn invalidates the flow field so it is rebuilt for the new player position; any in-flight background rebuild for the old position is discarded.
   - Each assassin computes and caches only the next flow-field step heading per current cell; cached heading is reused until the assassin leaves that cell.
@@ -297,7 +295,7 @@ Enemy movement/steering code uses **`kEnemyWallAvoidanceRadiusUnits`** (same as 
 
 ### Invisibility Mode
 
-- When menu `Invisibility` is enabled, enemies treat player as non-detectable:
+- When invisibility is enabled (I key during gameplay), enemies treat player as non-detectable:
   - no aggro/chase transition based on player visibility/range
   - no enemy projectile firing at player
 - Assassin behavior override in invisibility mode:
@@ -372,8 +370,7 @@ Menu rendering is in `src/ui/MenuScreen.cpp`.
   - title
   - level slider (1..9)
   - density slider (1..5)
-  - invisibility checkbox
-  - debug info checkbox (positioned to the right of invisibility)
+  - debug info checkbox
   - Start and Quit buttons
   - bottom-aligned build number text
 - While the menu is visible, a low-volume generated 8-bit/chiptune loop plays in the background.

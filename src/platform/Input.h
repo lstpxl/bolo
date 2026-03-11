@@ -25,6 +25,7 @@ struct FrameInput {
     bool menuNavigateRightPressed = false;
     bool menuSelectPressed = false;
     bool panTogglePressed = false;
+    bool invisibilityTogglePressed = false;
     bool panNorthPressed = false;
     bool panSouthPressed = false;
     bool panWestPressed = false;

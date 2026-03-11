@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <cmath>
 #include <string>
+#include "core/Log.h"
 #include "core/Profiling.h"
 #include "core/ResourceLocator.h"
 #include "game/GameQueries.h"
@@ -921,6 +922,22 @@ void HudPanel::DrawPrepared(const GameState& state, const AppConfig& config, con
             constexpr int kPanLabelFontSize = 20;
             const int panLabelW = MeasureText("P", kPanLabelFontSize);
             DrawText("P", centerX - panLabelW / 2, centerY - kPanLabelFontSize / 2, kPanLabelFontSize, YELLOW);
+        }
+
+        {
+            static int hudInvisLogCount = 0;
+            if (++hudInvisLogCount <= 10) {
+                bolt::log::Debug("[INVIS] HUD compass block invisibility=%d (log #%d)",
+                    state.menuSettings.invisibility ? 1 : 0, hudInvisLogCount);
+            }
+        }
+        if (state.menuSettings.invisibility) {
+            constexpr int kInvisibilityLabelFontSize = 20;
+            constexpr int kInvisibilityLabelPadding = 4;
+            const int invisLabelW = MeasureText("I", kInvisibilityLabelFontSize);
+            const int invisX = layout.contentX + layout.leftBlockSize - invisLabelW - kInvisibilityLabelPadding;
+            const int invisY = layout.blocksY + kInvisibilityLabelPadding;
+            DrawText("I", invisX, invisY, kInvisibilityLabelFontSize, YELLOW);
         }
 
         if (state.world.levelCleared || state.world.levelClearMessageSeconds > 0.0F) {

@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <cstdint>
+#include "core/Log.h"
+#include "game/EnemyAppearance.h"
 #include "game/model/EntityTypes.h"
 #include "game/systems/CollisionSystem.h"
 #include "game/systems/EnemySystem.h"
@@ -43,8 +45,11 @@ void Game::RequestMenu() {
 }
 
 void Game::StartGame(const AppConfig& config, const GameplayView& view) {
+    bolt::log::Debug("[FLOW] StartGame: draining worker, invisibility=%d", state_.menuSettings.invisibility ? 1 : 0);
     flowWorker_.Drain();
     modeController_.StartGame(state_, state_.menuSettings, config, view, random_);
+    bolt::log::Debug("[FLOW] StartGame done: invisibility=%d level=%d",
+        state_.menuSettings.invisibility ? 1 : 0, state_.menuSettings.levelNumber);
 }
 
 void Game::Update(const FrameInput& input, float deltaSeconds, const GameplayView& view) {
@@ -58,6 +63,18 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const GameplayVie
         state_.world.panModeActive = !state_.world.panModeActive;
         if (state_.world.panModeActive) {
             state_.world.panTarget = state_.world.player.position;
+        }
+    }
+    if (input.invisibilityTogglePressed) {
+        state_.menuSettings.invisibility = !state_.menuSettings.invisibility;
+        const bool shouldHaveFlowActive =
+            game::LevelHasFlowConsumers(state_.menuSettings.levelNumber) && !state_.menuSettings.invisibility;
+        bolt::log::Debug("[INVIS] I pressed: invisibility=%d shouldHaveFlowActive=%d level=%d",
+            state_.menuSettings.invisibility ? 1 : 0, shouldHaveFlowActive ? 1 : 0, state_.menuSettings.levelNumber);
+        state_.world.navigationCache.playerFlowField.SetCacheActive(shouldHaveFlowActive);
+        if (shouldHaveFlowActive) {
+            state_.world.navigationCache.playerFlowField.Invalidate();
+            state_.world.navigationCache.flowFieldInvalidationGeneration += 1;
         }
     }
     if (state_.world.panModeActive) {
@@ -261,11 +278,11 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const GameplayVie
                         [](const EnemyTank& e) {
                             return e.alive && (e.type == EnemyType::Assassin || e.type == EnemyType::Hunter);
                         });
-        if (hasFlowConsumers) {
-            state_.world.navigationCache.playerFlowField.SetCacheActive(true);
-        } else {
-            state_.world.navigationCache.playerFlowField.SetCacheActive(false);
-        }
+        const bool shouldHaveFlowActive =
+            hasFlowConsumers && !state_.menuSettings.invisibility;
+        bolt::log::Debug("[FLOW] Respawn: invisibility=%d hasFlowConsumers=%d shouldHaveFlowActive=%d",
+            state_.menuSettings.invisibility ? 1 : 0, hasFlowConsumers ? 1 : 0, shouldHaveFlowActive ? 1 : 0);
+        state_.world.navigationCache.playerFlowField.SetCacheActive(shouldHaveFlowActive);
     }
 
     // Level complete handling.
@@ -276,6 +293,8 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const GameplayVie
         }
     }
     if (aliveBases == 0) {
+        bolt::log::Debug("[FLOW] Level complete: draining, invisibility=%d", state_.menuSettings.invisibility ? 1 : 0);
+        flowWorker_.Drain();
         const int score = state_.world.score;
         const int lives = state_.world.player.lives;
         InitializeMazeWorld(state_, view, random_);

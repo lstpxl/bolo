@@ -17,10 +17,9 @@ public:
     enum class FocusedControl {
         Level = 0,
         Density = 1,
-        Invisibility = 2,
-        DebugInfo = 3,
-        Start = 4,
-        Quit = 5,
+        DebugInfo = 2,
+        Start = 3,
+        Quit = 4,
     };
 
     MenuScreenResult Render(
@@ -31,7 +30,6 @@ public:
 private:
     int levelNumber_ = 4;
     int mazeDensity_ = 1;
-    bool invisibility_ = true;
     bool debugInfo_ = false;
     FocusedControl focusedControl_ = FocusedControl::Start;
     bool quitConfirmationOpen_ = false;

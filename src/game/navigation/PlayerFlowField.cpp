@@ -6,6 +6,7 @@
 #include <deque>
 #include <future>
 #include <limits>
+#include "core/Log.h"
 #include "game/model/GameplayConstants.h"
 #include "game/model/WorldState.h"
 #include "game/navigation/FlowRebuildWorker.h"
@@ -221,6 +222,7 @@ void ScheduleRebuild(game::navigation::FlowRebuildWorker& flowWorker,
     NavigationRuntimeCache& navigationCache,
     const WorldState& world) {
     if (flowWorker.inFlight) {
+        bolt::log::Debug("[FLOW] ScheduleRebuild: skip (inFlight)");
         return;
     }
     flowWorker.buildGeneration = navigationCache.flowFieldInvalidationGeneration;
@@ -236,6 +238,7 @@ void ScheduleRebuild(game::navigation::FlowRebuildWorker& flowWorker,
          b = std::move(basesCopy)]() mutable {
             pending.Rebuild(m, c, b);
         });
+    bolt::log::Debug("[FLOW] ScheduleRebuild: started gen=%d", flowWorker.buildGeneration);
 }
 }  // namespace
 
@@ -245,6 +248,10 @@ void PlayerFlowField::OnPlayerCellChanged(int newCellX, int newCellY,
     const ::WorldState& world,
     FlowFieldUpdateStats* outStats) {
     if (!cacheActive_) {
+        static int skipCount = 0;
+        if (++skipCount <= 3) {
+            bolt::log::Debug("[FLOW] OnPlayerCellChanged: skip (cacheActive=false) cell=%d,%d", newCellX, newCellY);
+        }
         return;
     }
     if (lastCellX_ == newCellX && lastCellY_ == newCellY) {
@@ -292,9 +299,16 @@ void PlayerFlowField::Update(FlowRebuildWorker& flowWorker,
     } else {
         flowWorker.future.get();
         if (flowWorker.buildGeneration >= navigationCache.flowFieldInvalidationGeneration) {
+            bolt::log::Debug("[FLOW] Update: swapping in completed build gen=%d",
+                flowWorker.buildGeneration);
+            const bool preserveCacheActive = cacheActive_;
             std::swap(*this, flowWorker.pendingFlowField);
+            cacheActive_ = preserveCacheActive;  // async build has default false; we control this
             lastCellX_ = builtForCellX_;
             lastCellY_ = builtForCellY_;
+        } else {
+            bolt::log::Debug("[FLOW] Update: discarding stale build gen=%d invGen=%d",
+                flowWorker.buildGeneration, navigationCache.flowFieldInvalidationGeneration);
         }
         flowWorker.inFlight = false;
     }
@@ -305,10 +319,17 @@ void PlayerFlowField::Update(FlowRebuildWorker& flowWorker,
     }
 
     if (cacheActive_ && !hasBuild_ && !flowWorker.inFlight) {
+        bolt::log::Debug("[FLOW] Update: scheduling initial rebuild cell=%d,%d", currentCellX, currentCellY);
         ScheduleRebuild(flowWorker, navigationCache, world);
         age_ = 0;
         if (outStats) {
             outStats->rebuildScheduled = true;
+        }
+    } else if (!hasBuild_) {
+        static int noBuildCount = 0;
+        if (++noBuildCount <= 5) {
+            bolt::log::Debug("[FLOW] Update: no build yet cacheActive=%d inFlight=%d cell=%d,%d",
+                cacheActive_ ? 1 : 0, flowWorker.inFlight ? 1 : 0, currentCellX, currentCellY);
         }
     }
 }

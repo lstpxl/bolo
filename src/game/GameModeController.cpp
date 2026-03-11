@@ -1,5 +1,6 @@
 #include "game/GameModeController.h"
 
+#include "core/Log.h"
 #include "game/systems/MazeSystem.h"
 
 GameMode GameModeController::Mode() const {
@@ -17,6 +18,8 @@ void GameModeController::StartGame(
     const GameplayView& view,
     Random& random) {
     (void)config;
+    bolt::log::Debug("[FLOW] GameModeController::StartGame: settings.invisibility=%d level=%d",
+        settings.invisibility ? 1 : 0, settings.levelNumber);
     state.menuSettings = settings;
     state.world.player.lives = GameplayConstants::kStartingLives;
     state.world.player.fuel = 0.0F;

@@ -38,7 +38,6 @@ MenuScreenResult MenuScreen::Render(
     const FrameInput& input) {
     levelNumber_ = std::clamp(currentSettings.levelNumber, kMinLevelNumber, kMaxLevelNumber);
     mazeDensity_ = std::clamp(currentSettings.mazeDensity, kMinMazeDensity, kMaxMazeDensity);
-    invisibility_ = currentSettings.invisibility;
     debugInfo_ = currentSettings.debugInfo;
     bool interactionOccurred = false;
 
@@ -75,7 +74,7 @@ MenuScreenResult MenuScreen::Render(
     const float levelGaugeY = levelLabelY + 28.0F;
     const float densityLabelY = levelGaugeY + 32.0F;
     const float densityGaugeY = densityLabelY + 28.0F;
-    const float invisibilityY = densityGaugeY + 38.0F;
+    const float debugInfoY = densityGaugeY + 38.0F;
     const float buildTextY = panel.y + panel.height - 20.0F;
     const float quitButtonY = buildTextY - 38.0F - 60.0F;
     const float startButtonY = quitButtonY - 60.0F;
@@ -108,9 +107,7 @@ MenuScreenResult MenuScreen::Render(
 
     const Rectangle levelGauge = Rectangle{gaugeX, levelGaugeY, gaugeWidth, 28.0F};
     const Rectangle densityGauge = Rectangle{gaugeX, densityGaugeY, gaugeWidth, 28.0F};
-    const Rectangle invisibilityControl = Rectangle{gaugeX + 8.0F, invisibilityY, 28.0F, 28.0F};
-    const Rectangle debugInfoControl =
-        Rectangle{gaugeX + gaugeWidth * 0.58F, invisibilityY, 28.0F, 28.0F};
+    const Rectangle debugInfoControl = Rectangle{gaugeX + 8.0F, debugInfoY, 28.0F, 28.0F};
     const Rectangle startButton = Rectangle{buttonsX, startButtonY, controlsWidth, 30.0F};
     const Rectangle quitButton = Rectangle{buttonsX, quitButtonY, controlsWidth, 30.0F};
 
@@ -174,19 +171,6 @@ MenuScreenResult MenuScreen::Render(
         interactionOccurred = true;
     }
 
-    bool invisibilityValue = invisibility_;
-    if (!quitConfirmationOpen_ && focusedControl_ == FocusedControl::Invisibility) {
-        if (input.menuNavigateLeftPressed || input.menuNavigateRightPressed || input.menuSelectPressed) {
-            invisibilityValue = !invisibilityValue;
-            interactionOccurred = true;
-        }
-    }
-    GuiCheckBox(invisibilityControl, "Invisibility", &invisibilityValue);
-    if (invisibilityValue != invisibility_) {
-        interactionOccurred = true;
-    }
-    invisibility_ = invisibilityValue;
-
     bool debugInfoValue = debugInfo_;
     if (!quitConfirmationOpen_ && focusedControl_ == FocusedControl::DebugInfo) {
         if (input.menuNavigateLeftPressed || input.menuNavigateRightPressed || input.menuSelectPressed) {
@@ -220,9 +204,6 @@ MenuScreenResult MenuScreen::Render(
 
     ui::primitives::DrawFocusRing(levelGauge, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Level);
     ui::primitives::DrawFocusRing(densityGauge, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Density);
-    ui::primitives::DrawFocusRing(
-        invisibilityControl,
-        !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Invisibility);
     ui::primitives::DrawFocusRing(debugInfoControl, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::DebugInfo);
     ui::primitives::DrawFocusRing(startButton, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Start);
     ui::primitives::DrawFocusRing(quitButton, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Quit);
@@ -273,7 +254,7 @@ MenuScreenResult MenuScreen::Render(
             MenuSettings{
                 .levelNumber = levelNumber_,
                 .mazeDensity = mazeDensity_,
-                .invisibility = invisibility_,
+                .invisibility = currentSettings.invisibility,
                 .debugInfo = debugInfo_,
             },
     };

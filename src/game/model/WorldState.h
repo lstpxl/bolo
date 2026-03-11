@@ -60,7 +60,7 @@ struct GameState {
     MenuSettings menuSettings{
         .levelNumber = 4,
         .mazeDensity = 1,
-        .invisibility = true,
+        .invisibility = false,
         .debugInfo = false,
     };
     WorldState world{};
