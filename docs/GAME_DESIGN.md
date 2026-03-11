@@ -250,11 +250,10 @@ Enemy movement/steering code uses **`kEnemyWallAvoidanceRadiusUnits`** (same as 
   - Modes: `Pursuit` (default) and temporary `Uncouple`.
   - Uses a pure player-directed maze flow-field for pursuit steering (no waypoint A* path following in the active runtime branch).
   - Flow-field build treats cells occupied by undestroyed bases as blocking (non-traversable).
-  - Flow-field is *active* only when at least one assassin or hunter exists. On levels without these consumers (e.g. level 4), the flow field is inactive and not built.
-  - Flow-field becomes active (and triggers initial build) when an assassin or hunter spawns. It is not activated on level init.
+  - Flow-field is *active* only when the level can spawn assassins or hunters (levels 5+). On levels without these consumers (e.g. level 4), the flow field is inactive and not built.
+  - Flow-field initial build is requested at level init (InitializeMazeWorld), not during enemy processing. This ensures assassins never wait for a build; the field is ready when the first assassin spawns.
   - Player respawn invalidates the flow field so it is rebuilt for the new player position; any in-flight background rebuild for the old position is discarded.
   - Each assassin computes and caches only the next flow-field step heading per current cell; cached heading is reused until the assassin leaves that cell.
-  - Flow-field initial build is requested by assassin when no build exists, or when assassin/hunter-spawn flow request becomes active.
   - Assassin steering does not require player-cell-version freshness; cached flow-field data remains valid until scheduled cache refresh.
   - Flow-field cache refresh runs only while cache is active and player crosses cell borders: cache `age` starts at `0`, increments on each refresh attempt, early-exits while `age <= 2`, and rebuilds when `age > 2` (effective rebuild cadence: once per 3 player-cell changes). On each early-exit transition `A -> B`, flow direction for cell `A` is patched to point to cell `B`.
   - A* waypoint path builder remains in code as a disabled backup branch and is not wired into active assassin pursuit.

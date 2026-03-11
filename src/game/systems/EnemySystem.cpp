@@ -475,14 +475,11 @@ void UpdateEnemySystem(
                 }
             }
         }
-        if (navigationCache.playerFlowFieldSpawnRequestActive) {
-            navigationCache.playerFlowFieldSpawnRequestActive = false;
-            navigationCache.playerFlowFieldCacheActive = true;
-            if (!playerFlowField.HasBuild()) {
-                ScheduleFlowRebuild(flowWorker, navigationCache, state.world);
-                navigationCache.playerFlowFieldAge = 0;
-                gEnemyRuntimeWindowStats.navFlowRebuilds += 1;
-            }
+        if (navigationCache.playerFlowFieldCacheActive && !playerFlowField.HasBuild() &&
+            !flowWorker.inFlight) {
+            ScheduleFlowRebuild(flowWorker, navigationCache, state.world);
+            navigationCache.playerFlowFieldAge = 0;
+            gEnemyRuntimeWindowStats.navFlowRebuilds += 1;
         }
     }
 
@@ -557,12 +554,6 @@ void UpdateEnemySystem(
                 cheapSpeed,
                 random,
                 needsInitialFlowBuild);
-            if (needsInitialFlowBuild && enemy.type == EnemyType::Assassin) {
-                navigationCache.playerFlowFieldCacheActive = true;
-                ScheduleFlowRebuild(flowWorker, navigationCache, state.world);
-                navigationCache.playerFlowFieldAge = 0;
-                gEnemyRuntimeWindowStats.navFlowRebuilds += 1;
-            }
             const game::navigation::MazeCellCoord cheapCell =
                 cellCache.WorldToCell(enemy.position);
             enemy.cellCoord = cheapCell;
@@ -824,14 +815,6 @@ void UpdateEnemySystem(
                                 enemy,
                                 needsInitialFlowBuild,
                                 movementHeading);
-                            if (!flowHeadingSelected && needsInitialFlowBuild) {
-                                navigationCache.playerFlowFieldCacheActive = true;
-                                // Kick off a background rebuild; assassin falls through to
-                                // prediction-based heading this frame.
-                                ScheduleFlowRebuild(flowWorker, navigationCache, state.world);
-                                navigationCache.playerFlowFieldAge = 0;
-                                gEnemyRuntimeWindowStats.navFlowRebuilds += 1;
-                            }
                         }
 
                         enemy.pathWaypointCount = 0;

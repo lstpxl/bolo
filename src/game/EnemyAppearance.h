@@ -54,4 +54,15 @@ inline std::vector<EnemySpawnChoice> EnemyTypesForLevel(int level) {
     }
 }
 
+/// Returns true if the level can spawn Assassin or Hunter (flow-field consumers).
+inline bool LevelHasFlowConsumers(int level) {
+    const std::vector<EnemySpawnChoice> types = EnemyTypesForLevel(level);
+    for (const EnemySpawnChoice& c : types) {
+        if (c.type == EnemyType::Assassin || c.type == EnemyType::Hunter) {
+            return true;
+        }
+    }
+    return false;
+}
+
 }  // namespace game

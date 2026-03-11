@@ -1,6 +1,7 @@
 #include "game/systems/MazeSystem.h"
 
 #include <algorithm>
+#include "game/EnemyAppearance.h"
 #include <array>
 #include <cmath>
 #include <limits>
@@ -413,6 +414,10 @@ void InitializeMazeWorld(GameState& state, const GameplayView& view, Random& ran
     state.world.levelClearMessageSeconds = 0.0F;
     state.world.panModeActive = false;
     state.world.panTarget = state.world.player.position;
+
+    if (game::LevelHasFlowConsumers(state.menuSettings.levelNumber)) {
+        state.world.navigationCache.playerFlowFieldCacheActive = true;
+    }
 }
 
 bool PlacePlayerAtSafeSpawn(GameState& state, const GameplayView& view, Random& random) {

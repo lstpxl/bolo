@@ -262,7 +262,7 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const GameplayVie
                             return e.alive && (e.type == EnemyType::Assassin || e.type == EnemyType::Hunter);
                         });
         if (hasFlowConsumers) {
-            state_.world.navigationCache.playerFlowFieldSpawnRequestActive = true;
+            state_.world.navigationCache.playerFlowFieldCacheActive = true;
         } else {
             state_.world.navigationCache.playerFlowFieldCacheActive = false;
         }
