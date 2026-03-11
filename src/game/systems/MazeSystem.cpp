@@ -416,7 +416,7 @@ void InitializeMazeWorld(GameState& state, const GameplayView& view, Random& ran
     state.world.panTarget = state.world.player.position;
 
     if (game::LevelHasFlowConsumers(state.menuSettings.levelNumber)) {
-        state.world.navigationCache.playerFlowFieldCacheActive = true;
+        state.world.navigationCache.playerFlowField.SetCacheActive(true);
     }
 }
 

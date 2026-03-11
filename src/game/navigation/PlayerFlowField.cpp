@@ -1,10 +1,14 @@
 #include "game/navigation/PlayerFlowField.h"
 
 #include <array>
+#include <chrono>
 #include <cmath>
 #include <deque>
+#include <future>
 #include <limits>
 #include "game/model/GameplayConstants.h"
+#include "game/model/WorldState.h"
+#include "game/navigation/FlowRebuildWorker.h"
 
 namespace game::navigation {
 
@@ -165,11 +169,15 @@ void PlayerFlowField::Rebuild(const MazeState& maze, const CellCoordCache& cellC
     }
 
     builtForPlayerCellVersion_ = cellCache.PlayerCellVersion();
+    builtForCellX_ = playerCell.x;
+    builtForCellY_ = playerCell.y;
     hasBuild_ = true;
 }
 
 void PlayerFlowField::Invalidate() {
     hasBuild_ = false;
+    lastCellX_ = -1;
+    lastCellY_ = -1;
 }
 
 void PlayerFlowField::OverrideNextCellHash(int fromCellHash, int toCellHash) {
@@ -204,6 +212,105 @@ Vec2f PlayerFlowField::NextCellCenter(int fromCellHash, const CellCoordCache& ce
     const int cellX = nextHash % cellCache.WidthCells();
     const int cellY = nextHash / cellCache.WidthCells();
     return cellCache.CellCenter(cellX, cellY);
+}
+
+namespace {
+constexpr int kMaxFlowFieldAge = 2;
+
+void ScheduleRebuild(game::navigation::FlowRebuildWorker& flowWorker,
+    NavigationRuntimeCache& navigationCache,
+    const WorldState& world) {
+    if (flowWorker.inFlight) {
+        return;
+    }
+    flowWorker.buildGeneration = navigationCache.flowFieldInvalidationGeneration;
+    flowWorker.inFlight = true;
+    MazeState mazeCopy = world.maze;
+    game::navigation::CellCoordCache cacheCopy = navigationCache.cellCoords;
+    std::vector<EnemyBase> basesCopy = world.enemyBases;
+    flowWorker.future = std::async(
+        std::launch::async,
+        [&pending = flowWorker.pendingFlowField,
+         m = std::move(mazeCopy),
+         c = std::move(cacheCopy),
+         b = std::move(basesCopy)]() mutable {
+            pending.Rebuild(m, c, b);
+        });
+}
+}  // namespace
+
+void PlayerFlowField::OnPlayerCellChanged(int newCellX, int newCellY,
+    FlowRebuildWorker& flowWorker,
+    ::NavigationRuntimeCache& navigationCache,
+    const ::WorldState& world,
+    FlowFieldUpdateStats* outStats) {
+    if (!cacheActive_) {
+        return;
+    }
+    if (lastCellX_ == newCellX && lastCellY_ == newCellY) {
+        return;
+    }
+    const int prevX = lastCellX_;
+    const int prevY = lastCellY_;
+
+    age_ += 1;
+    if (outStats) {
+        outStats->playerCellChanged = true;
+    }
+
+    if (age_ > kMaxFlowFieldAge) {
+        if (!flowWorker.inFlight) {
+            ScheduleRebuild(flowWorker, navigationCache, world);
+            age_ = 0;
+            if (outStats) {
+                outStats->rebuildScheduled = true;
+            }
+        }
+    } else {
+        if (hasBuild_ && widthCells_ > 0 &&
+            prevX >= 0 && prevY >= 0 &&
+            newCellX >= 0 && newCellY >= 0) {
+            const int prevHash = prevY * widthCells_ + prevX;
+            const int currHash = newCellY * widthCells_ + newCellX;
+            if (prevHash != currHash) {
+                OverrideNextCellHash(prevHash, currHash);
+            }
+        }
+    }
+
+    lastCellX_ = newCellX;
+    lastCellY_ = newCellY;
+}
+
+void PlayerFlowField::Update(FlowRebuildWorker& flowWorker,
+    ::NavigationRuntimeCache& navigationCache,
+    const ::WorldState& world,
+    int currentCellX, int currentCellY,
+    FlowFieldUpdateStats* outStats) {
+    if (!flowWorker.inFlight ||
+        flowWorker.future.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
+    } else {
+        flowWorker.future.get();
+        if (flowWorker.buildGeneration >= navigationCache.flowFieldInvalidationGeneration) {
+            std::swap(*this, flowWorker.pendingFlowField);
+            lastCellX_ = builtForCellX_;
+            lastCellY_ = builtForCellY_;
+        }
+        flowWorker.inFlight = false;
+    }
+
+    if (lastCellX_ != currentCellX || lastCellY_ != currentCellY) {
+        OnPlayerCellChanged(currentCellX, currentCellY, flowWorker, navigationCache, world, outStats);
+        return;
+    }
+
+    if (cacheActive_ && !hasBuild_ && !flowWorker.inFlight) {
+        ScheduleRebuild(flowWorker, navigationCache, world);
+        age_ = 0;
+        if (outStats) {
+            outStats->rebuildScheduled = true;
+        }
+    }
 }
 
 }  // namespace game::navigation

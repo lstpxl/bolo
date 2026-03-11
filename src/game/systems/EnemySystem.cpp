@@ -46,7 +46,6 @@ constexpr float kTorpedoPlayerDetectIntervalSeconds = 0.25F;
 constexpr float kParallelWallSideProbeUnits = 0.75F;
 constexpr float kParallelWallContactThresholdUnits = 0.18F;
 constexpr bool kUseFlowFieldPathGuidance = true;
-constexpr int kMaxFlowFieldAge = 2;
 constexpr bool kUseAssassinFlowFieldOnlyNavigation = true;
 constexpr bool kUseAssassinAStarBackupNavigation = false;
 constexpr float kUncouplePriorityEpsilon = 0.05F;
@@ -359,49 +358,6 @@ profiling::Scope EnemyTypeProfileScope(EnemyType type) {
     return profiling::Scope::EnemyTypeDroneUpdate;
 }
 
-/**
- * @brief Try to apply a completed flow rebuild to the navigation cache.
- * If the flow rebuild is completed and the generation is greater than or equal to the current generation,
- * the pending flow field is swapped into the live flow field.
- * @param flowWorker
- * @param navigationCache 
- */
-void TryApplyCompletedFlowRebuild(
-    game::navigation::FlowRebuildWorker& flowWorker,
-    NavigationRuntimeCache& navigationCache) {
-    if (!flowWorker.inFlight ||
-        flowWorker.future.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
-        return;
-    }
-    flowWorker.future.get();
-    if (flowWorker.buildGeneration >= navigationCache.flowFieldInvalidationGeneration) {
-        std::swap(navigationCache.playerFlowField, flowWorker.pendingFlowField);
-    }
-    flowWorker.inFlight = false;
-}
-
-void ScheduleFlowRebuild(
-    game::navigation::FlowRebuildWorker& flowWorker,
-    NavigationRuntimeCache& navigationCache,
-    const WorldState& world) {
-    if (flowWorker.inFlight) {
-        return;
-    }
-    flowWorker.buildGeneration = navigationCache.flowFieldInvalidationGeneration;
-    flowWorker.inFlight = true;
-    MazeState mazeCopy = world.maze;
-    game::navigation::CellCoordCache cacheCopy = navigationCache.cellCoords;
-    std::vector<EnemyBase> basesCopy = world.enemyBases;
-    flowWorker.future = std::async(
-        std::launch::async,
-        [&pending = flowWorker.pendingFlowField,
-         m = std::move(mazeCopy),
-         c = std::move(cacheCopy),
-         b = std::move(basesCopy)]() mutable {
-            pending.Rebuild(m, c, b);
-        });
-}
-
 }  // namespace
 
 void UpdateEnemySystem(
@@ -451,34 +407,20 @@ void UpdateEnemySystem(
     rayQueryOccupancy.BuildFromPositions(state.world, &frameStartPositions);
     game::navigation::PlayerFlowField& playerFlowField = navigationCache.playerFlowField;
 
-    TryApplyCompletedFlowRebuild(flowWorker, navigationCache);
-
+    cellCache.UpdatePlayerCell(state.world.player.position);
     if (kUseFlowFieldPathGuidance) {
-        const int previousPlayerCellHash = cellCache.PlayerCellHash();
-        const bool playerCrossedCellBorder = cellCache.UpdatePlayerCell(state.world.player.position);
-        if (playerCrossedCellBorder) {
+        game::navigation::FlowFieldUpdateStats flowStats;
+        playerFlowField.Update(
+            flowWorker,
+            navigationCache,
+            state.world,
+            cellCache.PlayerCell().x,
+            cellCache.PlayerCell().y,
+            &flowStats);
+        if (flowStats.playerCellChanged) {
             gEnemyRuntimeWindowStats.navPlayerCellChanges += 1;
-            if (navigationCache.playerFlowFieldCacheActive) {
-                navigationCache.playerFlowFieldAge += 1;
-                if (navigationCache.playerFlowFieldAge > kMaxFlowFieldAge) {
-                    ScheduleFlowRebuild(flowWorker, navigationCache, state.world);
-                    navigationCache.playerFlowFieldAge = 0;
-                    gEnemyRuntimeWindowStats.navFlowRebuilds += 1;
-                } else {
-                    const int currentPlayerCellHash = cellCache.PlayerCellHash();
-                    if (playerFlowField.HasBuild() &&
-                        previousPlayerCellHash >= 0 &&
-                        currentPlayerCellHash >= 0 &&
-                        previousPlayerCellHash != currentPlayerCellHash) {
-                        playerFlowField.OverrideNextCellHash(previousPlayerCellHash, currentPlayerCellHash);
-                    }
-                }
-            }
         }
-        if (navigationCache.playerFlowFieldCacheActive && !playerFlowField.HasBuild() &&
-            !flowWorker.inFlight) {
-            ScheduleFlowRebuild(flowWorker, navigationCache, state.world);
-            navigationCache.playerFlowFieldAge = 0;
+        if (flowStats.rebuildScheduled) {
             gEnemyRuntimeWindowStats.navFlowRebuilds += 1;
         }
     }
