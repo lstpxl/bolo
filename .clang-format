@@ -2,7 +2,7 @@ BasedOnStyle: Google
 Language: Cpp
 
 # Brace on new line
-BreakBeforeBraces: Allman
+BreakBeforeBraces: Linux
 
 # Break after ( for function params
 BreakAfterOpenBracketFunction: true
