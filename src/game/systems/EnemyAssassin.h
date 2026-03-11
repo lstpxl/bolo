@@ -14,15 +14,13 @@ bool TrySelectAssassinFlowNextStep(
     const game::navigation::CellCoordCache& cellCache,
     const game::navigation::PlayerFlowField& flowField,
     EnemyTank& enemy,
-    bool& outNeedsInitialFlowBuild,
     float& outHeadingRadians);
 
 bool BuildAssassinCheapFlowSegment(
     WorldState& world,
     const game::navigation::CellCoordCache& cellCache,
     const game::navigation::PlayerFlowField& flowField,
-    EnemyTank& enemy,
-    bool& outNeedsInitialFlowBuild);
+    EnemyTank& enemy);
 
 bool TryGetAssassinFlowHeading(
     const game::navigation::CellCoordCache& cellCache,

@@ -79,11 +79,8 @@ bool TrySelectAssassinFlowNextStep(
     const game::navigation::CellCoordCache& cellCache,
     const game::navigation::PlayerFlowField& flowField,
     EnemyTank& enemy,
-    bool& outNeedsInitialFlowBuild,
     float& outHeadingRadians) {
-    outNeedsInitialFlowBuild = false;
     if (!flowField.HasBuild()) {
-        outNeedsInitialFlowBuild = true;
         gEnemyRuntimeWindowStats.navFlowMisses += 1;
         return false;
     }
@@ -135,11 +132,8 @@ bool BuildAssassinCheapFlowSegment(
     WorldState& world,
     const game::navigation::CellCoordCache& cellCache,
     const game::navigation::PlayerFlowField& flowField,
-    EnemyTank& enemy,
-    bool& outNeedsInitialFlowBuild) {
-    outNeedsInitialFlowBuild = false;
+    EnemyTank& enemy) {
     if (!flowField.HasBuild()) {
-        outNeedsInitialFlowBuild = true;
         gEnemyRuntimeWindowStats.navFlowMisses += 1;
         return false;
     }

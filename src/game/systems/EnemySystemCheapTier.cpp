@@ -124,7 +124,6 @@ void BuildOffscreenSegment(WorldState& world, EnemyTank& enemy, float segmentLen
 void AdvanceCheapTierTimers(
     GameState& state,
     EnemyTank& enemy,
-    const EnemyPerception& perception,
     float deltaSeconds,
     bool playerInvisible,
     const GameplayView& view) {
@@ -141,12 +140,7 @@ void AdvanceCheapTierTimers(
         enemy.torpedoPlayerDetectTimerSeconds -= deltaSeconds;
         if (enemy.torpedoPlayerDetectTimerSeconds <= 0.0F) {
             enemy.torpedoPlayerDetectTimerSeconds = kOffscreenTorpedoDetectIntervalSeconds;
-            enemy.torpedoPlayerDetected =
-                !playerInvisible &&
-                perception.distanceToPlayer <= GameplayConstants::kTorpedoDetectRangeUnits &&
-                !game::geometry::IsSegmentObscuredByWall(state.world, enemy.position, state.world.player.position);
-            enemy.torpedoLastKnownPlayerHeadingRadians =
-                std::atan2(perception.toPlayer.x, -perception.toPlayer.y);
+            enemy.torpedoPlayerDetected = false;
         }
     }
 
@@ -157,6 +151,8 @@ void AdvanceCheapTierTimers(
             RestoreFromUncoupleMode(enemy);
         }
     }
+    (void)state;
+    (void)playerInvisible;
     (void)view;
 }
 
@@ -168,9 +164,7 @@ void ApplyCheapTierMovement(
     int enemyIndex,
     float deltaSeconds,
     float speed,
-    Random& random,
-    bool& outNeedsInitialFlowBuild) {
-    outNeedsInitialFlowBuild = false;
+    Random& random) {
     float segmentLength = kOffscreenSegmentLengthUnits;
     if (enemy.type == EnemyType::Torpedo) {
         segmentLength = kOffscreenTorpedoSegmentLengthUnits;
@@ -196,8 +190,7 @@ void ApplyCheapTierMovement(
                     state.world,
                     cellCache,
                     flowField,
-                    enemy,
-                    outNeedsInitialFlowBuild)) {
+                    enemy)) {
                 enemy.offscreenSegmentActive = false;
                 enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
             }
