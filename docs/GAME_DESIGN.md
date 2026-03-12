@@ -248,7 +248,7 @@ Enemy movement/steering code uses **`kEnemyWallAvoidanceRadiusUnits`** (same as 
   - Modes: `Pursuit` (default) and temporary `Uncouple`.
   - Uses a pure player-directed maze flow-field for pursuit steering (no waypoint A* path following in the active runtime branch).
   - Flow-field build treats cells occupied by undestroyed bases as blocking (non-traversable).
-  - Flow-field is *active* only when the level can spawn assassins or hunters (levels 5+) and invisibility is off. On levels without these consumers (e.g. level 4) or when invisibility is on, the flow field is inactive and not built. Toggling invisibility off (I key) activates and invalidates the flow field so it rebuilds toward the player.
+- Flow-field is *active* only when the level can spawn assassins or hunters (levels 5+) and invisibility is off. On levels without these consumers (e.g. level 4) or when invisibility is on, the flow field is inactive and not built. Toggling invisibility (I key) always invalidates the current flow cache: invisibility on clears stale flow immediately; invisibility off activates flow rebuild toward the player.
   - Flow-field initial build is requested at level init (InitializeMazeWorld), not during enemy processing. This ensures assassins never wait for a build; the field is ready when the first assassin spawns.
   - Player respawn invalidates the flow field so it is rebuilt for the new player position; any in-flight background rebuild for the old position is discarded.
   - Each assassin computes and caches only the next flow-field step heading per current cell; cached heading is reused until the assassin leaves that cell.
@@ -285,6 +285,7 @@ Enemy movement/steering code uses **`kEnemyWallAvoidanceRadiusUnits`** (same as 
   - offscreen torpedo player-detection checks run at a lower frequency than full simulation.
 - Assassin exception:
   - while cheap-tier, assassin segment selection is flow-field-driven and recomputed on cell transitions (or when no active segment exists).
+  - if no flow build exists (for example while invisibility is on), cheap-tier assassins do not traverse cached segments; they stay idle until a valid flow build is available again.
   - cheap-tier segment build recovery uses staged methods based on consecutive build failures: stage `0` for fail count `0..2` (strict edge-constrained solve), stage `1` for `3..5` (relaxed edge tolerance and corner margin), stage `2` for `>=6` (deterministic emergency target solve).
   - stage `2` includes an embedded-wall escape: if assassin starts inside wall-avoidance space, it first picks the nearest local safe target (`current cell center`, `next cell center`, or emergency target) and allows one bounded short crossing (`<= 1.5 * cellSize`) only when start is inside wall and target is outside wall-avoidance space.
   - successful segment build resets cheap-tier segment fail counters and method stage to `0`.

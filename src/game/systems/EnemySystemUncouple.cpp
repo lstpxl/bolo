@@ -26,6 +26,7 @@ constexpr float kUncoupleRandomForceScale = 0.08F;
 constexpr float kUncoupleReentryDistanceUnits = 1.5F;
 constexpr float kUncouplePriorityCrowdingRangeUnits = GameplayConstants::kEnemyPreferredSeparationUnits * 1.5F;
 constexpr float kUncouplePriorityClearProbeUnits = 3.0F;
+constexpr float kUncoupleBlockedHeadingThresholdUnits = 0.10F;
 constexpr std::uint64_t kUncoupleEventSampleCap = 16U;
 
 float NormalizeAngle(float angleRadians) {
@@ -88,6 +89,41 @@ float SelectUncoupleHeading(
     float fallbackHeading,
     Random& random) {
     const EnemyTank& self = enemies[static_cast<std::size_t>(selfIndex)];
+    auto chooseQuantizedHeadingWithClearance = [&](float desiredHeading) {
+        const float quantizedDesired = QuantizeToEightDirections(desiredHeading);
+        const float quantizedClear = game::geometry::FreeDistanceAhead(
+            world,
+            self.position,
+            quantizedDesired,
+            kUncouplePriorityClearProbeUnits,
+            GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
+            1.0F);
+        if (quantizedClear > kUncoupleBlockedHeadingThresholdUnits) {
+            return quantizedDesired;
+        }
+
+        float bestHeading = quantizedDesired;
+        float bestScore = -1000000.0F;
+        for (int step = 0; step < 8; ++step) {
+            const float candidateHeading = NormalizeAngle(static_cast<float>(step) * kEightDirectionStep);
+            const float clear = game::geometry::FreeDistanceAhead(
+                world,
+                self.position,
+                candidateHeading,
+                kUncouplePriorityClearProbeUnits,
+                GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
+                1.0F);
+            const float alignDesired = std::cos(SignedAngleDelta(candidateHeading, desiredHeading));
+            const float alignFallback = std::cos(SignedAngleDelta(candidateHeading, fallbackHeading));
+            const float score = clear * 2.0F + alignDesired * 0.6F + alignFallback * 0.25F;
+            if (score > bestScore) {
+                bestScore = score;
+                bestHeading = candidateHeading;
+            }
+        }
+        return bestHeading;
+    };
+
     Vec2f separationForce{.x = 0.0F, .y = 0.0F};
     Vec2f obstacleAvoidanceForce{.x = 0.0F, .y = 0.0F};
     Vec2f wallAvoidanceForce{.x = 0.0F, .y = 0.0F};
@@ -177,9 +213,9 @@ float SelectUncoupleHeading(
 
     const Vec2f awayDir = NormalizeOrZero(summedForce);
     if (awayDir.x == 0.0F && awayDir.y == 0.0F) {
-        return QuantizeToEightDirections(fallbackHeading);
+        return chooseQuantizedHeadingWithClearance(fallbackHeading);
     }
-    return QuantizeToEightDirections(std::atan2(awayDir.x, -awayDir.y));
+    return chooseQuantizedHeadingWithClearance(std::atan2(awayDir.x, -awayDir.y));
 }
 
 void EnterUncoupleMode(
@@ -258,14 +294,20 @@ void EnterUncoupleMode(
     const bool shouldSample = alreadyUncouple || reason == UncoupleReason::SelfWallContact;
     if (shouldSample && stats.uncoupleSamplesPrinted < kUncoupleEventSampleCap) {
         bolt::log::Profile(
-            "[ENEMY_UNCOUPLE_EVENT] id=%d reason=%s alreadyUncouple=%d timerBeforeReset=%.3f movedLastFrame=%.3f pos=(%.2f,%.2f)\n",
+            "[ENEMY_UNCOUPLE_EVENT] id=%d reason=%s alreadyUncouple=%d timerBeforeReset=%.3f "
+            "movedLastFrame=%.3f pos=(%.2f,%.2f) headingBefore=%.3f desiredHeading=%.3f "
+            "leader=%d preMode=%d\n",
             uncoupleIndex,
             UncoupleReasonLabel(reason),
             alreadyUncouple ? 1 : 0,
             timerBeforeReset,
             movedLastFrameUnits,
             uncoupled.position.x,
-            uncoupled.position.y);
+            uncoupled.position.y,
+            uncoupled.headingRadians,
+            uncoupled.desiredHeadingRadians,
+            leadingIndex,
+            static_cast<int>(uncoupled.preUncoupleAiMode));
         stats.uncoupleSamplesPrinted += 1;
     }
 }

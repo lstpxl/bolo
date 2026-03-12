@@ -51,6 +51,8 @@ constexpr bool kUseFlowFieldPathGuidance = true;
 constexpr bool kUseAssassinFlowFieldOnlyNavigation = true;
 constexpr bool kUseAssassinAStarBackupNavigation = false;
 constexpr float kUncouplePriorityEpsilon = 0.05F;
+constexpr int kAssassinWallPhaseUncouple = 1;
+constexpr int kAssassinWallPhaseFull = 2;
 
 EnemyRuntimeStats gEnemyRuntimeStats{};
 std::uint64_t gLastEnemyStatsPrintedFrame = 0;
@@ -562,9 +564,14 @@ void UpdateEnemySystem(
             enemy.type, enemy.subtype, perception.assassinHasLineOfSight,
             state.menuSettings.levelNumber);
         bool preserveContinuousHeading = false;
+        bool handledByUncoupleMovement = false;
+        const bool startedInsideWallAvoid = enemy.type == EnemyType::Assassin &&
+            game::geometry::IsPointInWall(
+                state.world, enemy.position, GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
+        const char* movementSourceLabel = "full_ai";
+        int movementSourceBucket = kAssassinWallPhaseFull;
         {
             profiling::ScopedProfile phaseScope(profiling::Scope::EnemyAiDecision, true);
-            bool handledByUncouple = false;
             if (enemy.aiMode == EnemyAiMode::Uncouple) {
                 enemy.aiStateTimerSeconds =
                     std::max(0.0F, enemy.aiStateTimerSeconds - deltaSeconds);
@@ -581,13 +588,13 @@ void UpdateEnemySystem(
                         state.world, state.world.enemies, enemyIndex, uncoupleFallbackHeading,
                         random);
                     enemy.desiredHeadingRadians = movementHeading;
-                    handledByUncouple = true;
+                    handledByUncoupleMovement = true;
                 } else {
                     RestoreFromUncoupleMode(enemy);
                 }
             }
 
-            if (!handledByUncouple && enemy.type == EnemyType::Drone) {
+            if (!handledByUncoupleMovement && enemy.type == EnemyType::Drone) {
                 if (enemy.aiMode != EnemyAiMode::Watch && enemy.aiMode != EnemyAiMode::Wander) {
                     enemy.aiMode = EnemyAiMode::Wander;
                     enemy.aiModeElapsedSeconds = 0.0F;
@@ -636,7 +643,7 @@ void UpdateEnemySystem(
                         speed = 0.0F;
                     }
                 }
-            } else if (!handledByUncouple && enemy.type == EnemyType::Torpedo) {
+            } else if (!handledByUncoupleMovement && enemy.type == EnemyType::Torpedo) {
                 enemy.torpedoPlayerDetectTimerSeconds -= deltaSeconds;
                 if (enemy.torpedoPlayerDetectTimerSeconds <= 0.0F) {
                     enemy.torpedoPlayerDetectTimerSeconds = kTorpedoPlayerDetectIntervalSeconds;
@@ -710,7 +717,7 @@ void UpdateEnemySystem(
                         }
                     }
                 }
-            } else if (!handledByUncouple && enemy.type == EnemyType::Hunter) {
+            } else if (!handledByUncoupleMovement && enemy.type == EnemyType::Hunter) {
                 const bool canChase =
                     !playerInvisible && !perception.playerObscured &&
                     perception.distanceToPlayer <= GameplayConstants::kHunterDetectRangeUnits;
@@ -761,7 +768,7 @@ void UpdateEnemySystem(
                         enemy.aiMode = EnemyAiMode::Scout;
                     }
                 }
-            } else if (!handledByUncouple) {
+            } else if (!handledByUncoupleMovement) {
                 enemy.aiMode = EnemyAiMode::Pursuit;
                 if (!playerInvisible &&
                     perception.distanceToPlayer < GameplayConstants::kAssassinMinDistanceUnits) {
@@ -864,6 +871,10 @@ void UpdateEnemySystem(
                     }
                 }
             }
+        }
+        if (handledByUncoupleMovement) {
+            movementSourceLabel = "uncouple";
+            movementSourceBucket = kAssassinWallPhaseUncouple;
         }
 
         const Vec2f previousPosition = enemy.position;
@@ -998,6 +1009,39 @@ void UpdateEnemySystem(
                 const bool edgeOnWallContact =
                     moving && !segmentWallHit &&
                     IsEdgeOnWallContact(state.world, candidatePosition, movementHeading);
+                if (enemy.type == EnemyType::Assassin && moving) {
+                    const bool candidateInsideWallAvoid = game::geometry::IsPointInWall(
+                        state.world, candidatePosition, GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
+                    if (!startedInsideWallAvoid && candidateInsideWallAvoid) {
+                        const float clearAhead = game::geometry::FreeDistanceAhead(
+                            state.world,
+                            previousPosition,
+                            movementHeading,
+                            std::max(1.5F, Distance(candidatePosition, previousPosition) + 0.5F),
+                            GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
+                            1.0F);
+                        bolt::log::Profile(
+                            "[ENEMY_ASSASSIN_WALL_CAUSE] id=%d source=%s "
+                            "posPrev=(%.3f,%.3f) posCandidate=(%.3f,%.3f) heading=%.3f "
+                            "speed=%.3f delta=%.3f clearAhead=%.3f segmentWallHit=%d edgeOnWall=%d "
+                            "insideWallAvoidPrev=%d insideWallAvoidCandidate=%d aiMode=%s\n",
+                            enemyIndex,
+                            movementSourceLabel,
+                            previousPosition.x,
+                            previousPosition.y,
+                            candidatePosition.x,
+                            candidatePosition.y,
+                            movementHeading,
+                            speed,
+                            deltaSeconds,
+                            clearAhead,
+                            segmentWallHit ? 1 : 0,
+                            edgeOnWallContact ? 1 : 0,
+                            startedInsideWallAvoid ? 1 : 0,
+                            candidateInsideWallAvoid ? 1 : 0,
+                            EnemyAiModeLabel(enemy.aiMode));
+                    }
+                }
                 if (segmentWallHit || edgeOnWallContact) {
                     const float movedLastFrameUnits = Distance(candidatePosition, previousPosition);
                     enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
@@ -1019,6 +1063,44 @@ void UpdateEnemySystem(
                     };
                     enemy.position = candidatePosition;
                     enemy.headingRadians = movementHeading;
+                }
+                if (enemy.type == EnemyType::Assassin) {
+                    const bool nowInsideWallAvoid = game::geometry::IsPointInWall(
+                        state.world, enemy.position, GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
+                    if (!startedInsideWallAvoid && nowInsideWallAvoid) {
+                        gEnemyRuntimeWindowStats.assassinWallAvoidEntriesByPhase
+                            [static_cast<std::size_t>(movementSourceBucket)] += 1;
+                        const game::navigation::MazeCellCoord wallCell = cellCache.WorldToCell(enemy.position);
+                        const int wallCellHash = cellCache.CellHash(wallCell.x, wallCell.y);
+                        const int flowNextHash = playerFlowField.HasBuild()
+                            ? playerFlowField.NextCellHash(wallCellHash)
+                            : -1;
+                        const bool insideWallTank = game::geometry::IsPointInWall(
+                            state.world, enemy.position, GameplayConstants::kTankCollisionRadiusUnits);
+                        const bool insideBase = game::geometry::IsPointInUndestroyedBase(
+                            state.world, enemy.position, GameplayConstants::kTankCollisionRadiusUnits);
+                        bolt::log::Profile(
+                            "[ENEMY_ASSASSIN_WALL_STATE_CHANGE] id=%d phase=%s insideWallAvoid=1 "
+                            "posFrom=(%.3f,%.3f) posTo=(%.3f,%.3f) cell=(%d,%d) cellHash=%d "
+                            "flowNextHash=%d heading=%.3f speed=%.3f aiMode=%s "
+                            "insideWallTank=%d insideBase=%d\n",
+                            enemyIndex,
+                            movementSourceLabel,
+                            previousPosition.x,
+                            previousPosition.y,
+                            enemy.position.x,
+                            enemy.position.y,
+                            wallCell.x,
+                            wallCell.y,
+                            wallCellHash,
+                            flowNextHash,
+                            movementHeading,
+                            speed,
+                            EnemyAiModeLabel(enemy.aiMode),
+                            insideWallTank ? 1 : 0,
+                            insideBase ? 1 : 0);
+                    }
+                    enemy.cheapSegmentInsideWallAvoidLastFrame = nowInsideWallAvoid;
                 }
             }
 

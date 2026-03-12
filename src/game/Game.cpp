@@ -72,10 +72,11 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const GameplayVie
         bolt::log::Debug("[INVIS] I pressed: invisibility=%d shouldHaveFlowActive=%d level=%d",
             state_.menuSettings.invisibility ? 1 : 0, shouldHaveFlowActive ? 1 : 0, state_.menuSettings.levelNumber);
         state_.world.navigationCache.playerFlowField.SetCacheActive(shouldHaveFlowActive);
-        if (shouldHaveFlowActive) {
-            state_.world.navigationCache.playerFlowField.Invalidate();
-            state_.world.navigationCache.flowFieldInvalidationGeneration += 1;
-        }
+        // Always invalidate on visibility mode transition:
+        // - invisibility ON: clear any stale flow immediately (cheap-tier assassins should idle)
+        // - invisibility OFF: force rebuild for current player cell
+        state_.world.navigationCache.playerFlowField.Invalidate();
+        state_.world.navigationCache.flowFieldInvalidationGeneration += 1;
     }
     if (state_.world.panModeActive) {
         const float cellSize = static_cast<float>(state_.world.maze.cellSizeUnits);

@@ -215,6 +215,14 @@ void EmitEnemyPeriodicWindowLogs(const EnemyRuntimeStats& frameStats, std::uint6
         static_cast<unsigned long long>(gEnemyRuntimeWindowStats.assassinCheapEmergencySuccesses),
         static_cast<unsigned long long>(gEnemyRuntimeWindowStats.assassinCheapNoFlowSkips));
     bolt::log::Profile(
+        "[ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=%llu uncouple=%llu full=%llu}\n",
+        static_cast<unsigned long long>(
+            gEnemyRuntimeWindowStats.assassinWallAvoidEntriesByPhase[0]),
+        static_cast<unsigned long long>(
+            gEnemyRuntimeWindowStats.assassinWallAvoidEntriesByPhase[1]),
+        static_cast<unsigned long long>(
+            gEnemyRuntimeWindowStats.assassinWallAvoidEntriesByPhase[2]));
+    bolt::log::Profile(
         "[ENEMY_SAP] updates=%llu active=%llu pairs=%llu repairs{x=%llu y=%llu}\n",
         static_cast<unsigned long long>(gEnemyRuntimeWindowStats.sapUpdateCalls),
         static_cast<unsigned long long>(gEnemyRuntimeWindowStats.sapActiveItems),

@@ -22,6 +22,7 @@ constexpr float kSegmentBuildMinLengthUnits = 2.0F;
 constexpr float kOffscreenSegmentLengthUnits = 8.0F;
 constexpr float kOffscreenTorpedoSegmentLengthUnits = 12.0F;
 constexpr float kOffscreenTorpedoDetectIntervalSeconds = 0.6F;
+constexpr int kAssassinWallPhaseCheap = 0;
 
 int StageBucketIndex(int stage) {
     if (stage <= 0) {
@@ -178,13 +179,17 @@ void ApplyCheapTierMovement(
     Random& random) {
     const Vec2f cheapStartPosition = enemy.position;
     bool lastInsideWallAvoid = enemy.cheapSegmentInsideWallAvoidLastFrame;
-    auto updateAssassinWallState = [&](const char* phaseLabel) {
+    auto updateAssassinWallState = [&](const char* phaseLabel, int phaseBucket) {
         if (enemy.type != EnemyType::Assassin) {
             return;
         }
         const bool nowInsideWallAvoid = game::geometry::IsPointInWall(
             state.world, enemy.position, GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
         if (!lastInsideWallAvoid && nowInsideWallAvoid) {
+            if (phaseBucket == kAssassinWallPhaseCheap) {
+                gEnemyRuntimeWindowStats
+                    .assassinWallAvoidEntriesByPhase[static_cast<std::size_t>(phaseBucket)] += 1;
+            }
             const game::navigation::MazeCellCoord wallCell = cellCache.WorldToCell(enemy.position);
             const int wallCellHash = cellCache.CellHash(wallCell.x, wallCell.y);
             const int flowNextHash = flowField.HasBuild()
@@ -251,6 +256,20 @@ void ApplyCheapTierMovement(
     }
 
     if (enemy.type == EnemyType::Assassin) {
+        // Cheap-tier assassins must not drift on stale segments without flow guidance.
+        // This is expected while invisibility is enabled and flow cache is inactive.
+        if (!flowField.HasBuild()) {
+            enemy.offscreenSegmentActive = false;
+            enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
+            enemy.cheapSegmentBuildFailCount = 0;
+            enemy.cheapSegmentLastFailCellHash = -1;
+            enemy.cheapSegmentLastFailReason = CheapSegmentFailReason::None;
+            enemy.cheapSegmentBuildMethodStage = 0;
+            gEnemyRuntimeWindowStats.assassinCheapNoFlowSkips += 1;
+            updateAssassinWallState("cheap_no_flow_idle", kAssassinWallPhaseCheap);
+            return;
+        }
+
         const game::navigation::MazeCellCoord& enemyCell = enemy.cellCoord;
         const int enemyCellHash = cellCache.CellHash(enemyCell.x, enemyCell.y);
         const bool enteredNewCell = enemy.cachedFlowFromCellHash != enemyCellHash;
@@ -342,7 +361,7 @@ void ApplyCheapTierMovement(
 
     if (!enemy.offscreenSegmentActive || std::fabs(speed) <= 0.0001F) {
         enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
-        updateAssassinWallState("cheap_early_return");
+        updateAssassinWallState("cheap_early_return", kAssassinWallPhaseCheap);
         return;
     }
 
@@ -354,10 +373,47 @@ void ApplyCheapTierMovement(
     const float maxStep = std::max(0.0F, effectiveSpeed * deltaSeconds);
     const float remaining = Distance(enemy.position, enemy.offscreenSegmentEnd);
     const float step = std::min(maxStep, remaining);
-    enemy.position = Vec2f{
+    const Vec2f candidatePosition{
         .x = enemy.position.x + dir.x * step,
         .y = enemy.position.y + dir.y * step,
     };
+    if (enemy.type == EnemyType::Assassin) {
+        const bool startInsideWallAvoid = game::geometry::IsPointInWall(
+            state.world, enemy.position, GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
+        const bool candidateInsideWallAvoid = game::geometry::IsPointInWall(
+            state.world, candidatePosition, GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
+        if (!startInsideWallAvoid && candidateInsideWallAvoid) {
+            const float clearAhead = game::geometry::FreeDistanceAhead(
+                state.world,
+                enemy.position,
+                enemy.offscreenCachedHeadingRadians,
+                std::max(1.5F, step + 0.5F),
+                GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
+                1.0F);
+            bolt::log::Profile(
+                "[ENEMY_ASSASSIN_WALL_CAUSE] id=%d source=cheap_segment "
+                "posPrev=(%.3f,%.3f) posCandidate=(%.3f,%.3f) segEnd=(%.3f,%.3f) "
+                "heading=%.3f speed=%.3f delta=%.3f step=%.3f clearAhead=%.3f "
+                "insideWallAvoidPrev=%d insideWallAvoidCandidate=%d failCount=%d methodStage=%d\n",
+                enemyIndex,
+                enemy.position.x,
+                enemy.position.y,
+                candidatePosition.x,
+                candidatePosition.y,
+                enemy.offscreenSegmentEnd.x,
+                enemy.offscreenSegmentEnd.y,
+                enemy.offscreenCachedHeadingRadians,
+                effectiveSpeed,
+                deltaSeconds,
+                step,
+                clearAhead,
+                startInsideWallAvoid ? 1 : 0,
+                candidateInsideWallAvoid ? 1 : 0,
+                enemy.cheapSegmentBuildFailCount,
+                enemy.cheapSegmentBuildMethodStage);
+        }
+    }
+    enemy.position = candidatePosition;
     enemy.headingRadians = enemy.offscreenCachedHeadingRadians;
     enemy.velocity = Vec2f{
         .x = dir.x * effectiveSpeed,
@@ -367,6 +423,6 @@ void ApplyCheapTierMovement(
     if (enemy.type == EnemyType::Torpedo && enemy.torpedoMoveMode == TorpedoMoveMode::Move) {
         enemy.torpedoStraightDistanceSinceTurnUnits += step;
     }
-    updateAssassinWallState("cheap_post_move");
+    updateAssassinWallState("cheap_post_move", kAssassinWallPhaseCheap);
     (void)enemyIndex;
 }
