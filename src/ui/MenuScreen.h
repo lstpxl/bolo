@@ -28,7 +28,7 @@ public:
         const FrameInput& input);
 
 private:
-    int levelNumber_ = 4;
+    int levelNumber_ = kDefaultGameLevelNumber;
     int mazeDensity_ = 1;
     bool debugInfo_ = false;
     FocusedControl focusedControl_ = FocusedControl::Start;

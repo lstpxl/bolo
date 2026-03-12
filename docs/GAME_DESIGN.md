@@ -122,7 +122,7 @@ Input is collected in `src/platform/Input.cpp`.
 - Change slider: Left/Right
 - Select: Enter/Space or gamepad south/east face button
 - `Debug info` checkbox can be toggled via Left/Right or Select when focused.
-- Default menu values at app start are `Level = 4`, `Density = 1`, `Debug info = Off`. Invisibility defaults to off and is toggled during gameplay by I key.
+- Default menu values at app start are `Level = 9`, `Density = 1`, `Debug info = Off`. Invisibility defaults to off and is toggled during gameplay by I key.
 
 ## Movement Model
 
@@ -285,6 +285,9 @@ Enemy movement/steering code uses **`kEnemyWallAvoidanceRadiusUnits`** (same as 
   - offscreen torpedo player-detection checks run at a lower frequency than full simulation.
 - Assassin exception:
   - while cheap-tier, assassin segment selection is flow-field-driven and recomputed on cell transitions (or when no active segment exists).
+  - cheap-tier segment build recovery uses staged methods based on consecutive build failures: stage `0` for fail count `0..2` (strict edge-constrained solve), stage `1` for `3..5` (relaxed edge tolerance and corner margin), stage `2` for `>=6` (deterministic emergency target solve).
+  - stage `2` includes an embedded-wall escape: if assassin starts inside wall-avoidance space, it first picks the nearest local safe target (`current cell center`, `next cell center`, or emergency target) and allows one bounded short crossing (`<= 1.5 * cellSize`) only when start is inside wall and target is outside wall-avoidance space.
+  - successful segment build resets cheap-tier segment fail counters and method stage to `0`.
   - each cheap-tier assassin segment must leave the current cell and continue `1` world-unit beyond that exit.
   - cheap-tier assassin segment exits are constrained to the flow-target edge with corner avoidance: edge crossing must be at least `1.0` world-unit from either corner.
   - if current flow direction matches previous flow direction, the segment is axis-aligned (`horizontal`/`vertical`) through the cell.
@@ -345,6 +348,7 @@ World rendering is in `src/platform/Renderer2D.cpp`.
 - Instrumented fixed-step scopes include: frame total, fixed-step update, `Game::Update`, system updates (AI/player/projectile/collision/spawner/maze), enemy update, assassin pathfinding phases, and enemy separation/frontal-collision resolution.
 - A periodic console report is emitted every `120` frames and sorted by average scope time, including fixed-step budget percentage and allocation snapshot deltas.
 - Memory telemetry tracks global C++ allocations/deallocations (`new/delete`) with per-frame and per-scope deltas plus current live and peak bytes.
+- macOS debug builds have a maze-click probe: left mouse click in gameplay maze area logs `[ENEMY_CLICK_DEBUG]`, then `[ENEMY_CLICK_DEBUG_ENEMY]`, `[ENEMY_CLICK_DEBUG_STATE]`, and `[ENEMY_CLICK_DEBUG_NAV]` lines for every alive enemy in the clicked cell (plus near-radius fallback), ending with `[ENEMY_CLICK_DEBUG_RESULT]`.
 
 ## Audio Events
 

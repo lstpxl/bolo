@@ -5,6 +5,9 @@ struct Vec2f {
     float y;
 };
 
+/** Default level number at app start and when returning to menu. Single source of truth. */
+constexpr int kDefaultGameLevelNumber = 9;
+
 struct MenuSettings {
     int levelNumber;
     int mazeDensity;

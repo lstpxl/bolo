@@ -58,7 +58,7 @@ struct WorldState {
 
 struct GameState {
     MenuSettings menuSettings{
-        .levelNumber = 4,
+        .levelNumber = kDefaultGameLevelNumber,
         .mazeDensity = 1,
         .invisibility = false,
         .debugInfo = false,
