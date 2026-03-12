@@ -133,6 +133,83 @@ float EnemySubtypeSpeedMultiplier(EnemyType type, EnemySubtype subtype)
     return 1.0F;
 }
 
+const char* EnemyTypeLabel(EnemyType type)
+{
+    switch (type) {
+        case EnemyType::Drone:
+            return "Drone";
+        case EnemyType::Torpedo:
+            return "Torpedo";
+        case EnemyType::Hunter:
+            return "Hunter";
+        case EnemyType::Assassin:
+            return "Assassin";
+    }
+    return "Unknown";
+}
+
+const char* EnemySubtypeLabel(EnemySubtype subtype)
+{
+    switch (subtype) {
+        case EnemySubtype::Basic:
+            return "Basic";
+        case EnemySubtype::Advanced:
+            return "Advanced";
+        case EnemySubtype::Lord:
+            return "Lord";
+    }
+    return "Unknown";
+}
+
+const char* EnemyAiModeLabel(EnemyAiMode mode)
+{
+    switch (mode) {
+        case EnemyAiMode::Wander:
+            return "Wander";
+        case EnemyAiMode::Watch:
+            return "Watch";
+        case EnemyAiMode::Scout:
+            return "Scout";
+        case EnemyAiMode::Chase:
+            return "Chase";
+        case EnemyAiMode::Rotate:
+            return "Rotate";
+        case EnemyAiMode::Path:
+            return "Path";
+        case EnemyAiMode::Pursuit:
+            return "Pursuit";
+        case EnemyAiMode::Uncouple:
+            return "Uncouple";
+    }
+    return "Unknown";
+}
+
+const char* EnemySimTierLabel(EnemySimTier tier)
+{
+    switch (tier) {
+        case EnemySimTier::Full:
+            return "Full";
+        case EnemySimTier::Cheap:
+            return "Cheap";
+    }
+    return "Unknown";
+}
+
+const char* TorpedoMoveModeLabel(TorpedoMoveMode mode)
+{
+    switch (mode) {
+        case TorpedoMoveMode::Move:
+            return "Move";
+        case TorpedoMoveMode::Retreat:
+            return "Retreat";
+        case TorpedoMoveMode::Targeting:
+            return "Targeting";
+        case TorpedoMoveMode::Rotate:
+            return "Rotate";
+    }
+    return "Unknown";
+}
+
 float EnemySpeed(EnemyType type, EnemySubtype subtype, bool assassinHasLineOfSight, int levelNumber)
 {
     float baseSpeed = GameplayConstants::kEnemyDroneSpeed;
@@ -414,7 +491,22 @@ void UpdateEnemySystem(
             previousTier == EnemySimTier::Cheap && enemy.simTier == EnemySimTier::Full;
         if (reenteredFullTier) {
             reenteredFullTierMask[static_cast<std::size_t>(enemyIndex)] = 1U;
+            if (enemy.type == EnemyType::Assassin && enemy.offscreenSegmentActive) {
+                bolt::log::Profile(
+                    "[ENEMY_ASSASSIN_SEGMENT_DROP] id=%d reason=tier_reentered_full "
+                    "pos=(%.3f,%.3f) cell=(%d,%d)\n",
+                    enemyIndex,
+                    enemy.position.x,
+                    enemy.position.y,
+                    enemy.cellCoord.x,
+                    enemy.cellCoord.y);
+            }
             enemy.offscreenSegmentActive = false;
+            enemy.cheapSegmentBuildFailCount = 0;
+            enemy.cheapSegmentLastFailCellHash = -1;
+            enemy.cheapSegmentLastFailReason = CheapSegmentFailReason::None;
+            enemy.cheapSegmentBuildMethodStage = 0;
+            enemy.cheapSegmentInsideWallAvoidLastFrame = false;
             if (enemy.type == EnemyType::Assassin) {
                 enemy.pathWaypointCount = 0;
                 enemy.pathWaypointIndex = 0;
@@ -425,6 +517,22 @@ void UpdateEnemySystem(
         }
 
         if (enemy.simTier == EnemySimTier::Cheap) {
+            if (enemy.type == EnemyType::Assassin && previousTier != EnemySimTier::Cheap) {
+                const bool insideWallOnCheapEntry = game::geometry::IsPointInWall(
+                    state.world, enemy.position, GameplayConstants::kTankCollisionRadiusUnits);
+                if (insideWallOnCheapEntry) {
+                    bolt::log::Profile(
+                        "[ENEMY_ASSASSIN_CHEAP_ENTRY_IN_WALL] id=%d pos=(%.3f,%.3f) cell=(%d,%d) "
+                        "cachedFlowFromHash=%d expectedPathHash=%d\n",
+                        enemyIndex,
+                        enemy.position.x,
+                        enemy.position.y,
+                        enemy.cellCoord.x,
+                        enemy.cellCoord.y,
+                        enemy.cachedFlowFromCellHash,
+                        enemy.expectedPathCellHash);
+                }
+            }
             AdvanceCheapTierTimers(state, enemy, deltaSeconds, playerInvisible, view);
 
             float cheapSpeed =
@@ -440,6 +548,8 @@ void UpdateEnemySystem(
             occupancy.SetCell(enemyIndex, cheapCell.x, cheapCell.y);
             continue;
         }
+
+        // Cheap tier can't get here
 
         EnemyPerception perception{};
         {
@@ -984,3 +1094,138 @@ void UpdateEnemySystem(
 }
 
 const EnemyRuntimeStats& GetEnemyRuntimeStats() { return gEnemyRuntimeStats; }
+
+void DebugLogEnemiesAtPosition(
+    const GameState& state,
+    const Vec2f& worldPosition,
+    const game::navigation::MazeCellCoord& clickedCell)
+{
+    constexpr float kClickMatchRadiusUnits = 1.5F;
+    const float matchRadiusSq = kClickMatchRadiusUnits * kClickMatchRadiusUnits;
+    const game::navigation::CellCoordCache& cellCache = state.world.navigationCache.cellCoords;
+    const bool flowHasBuild = state.world.navigationCache.playerFlowField.HasBuild();
+    int loggedCount = 0;
+
+    for (int i = 0; i < static_cast<int>(state.world.enemies.size()); ++i) {
+        const EnemyTank& enemy = state.world.enemies[static_cast<std::size_t>(i)];
+        if (!enemy.alive) {
+            continue;
+        }
+        const bool cellMatch = enemy.cellCoord.x == clickedCell.x && enemy.cellCoord.y == clickedCell.y;
+        const bool radiusMatch = DistanceSq(enemy.position, worldPosition) <= matchRadiusSq;
+        if (!cellMatch && !radiusMatch) {
+            continue;
+        }
+
+        const bool insideWall = game::geometry::IsPointInWall(
+            state.world, enemy.position, GameplayConstants::kTankCollisionRadiusUnits);
+        const bool insideBase = game::geometry::IsPointInUndestroyedBase(
+            state.world, enemy.position, GameplayConstants::kTankCollisionRadiusUnits);
+        const float clearAhead = game::geometry::FreeDistanceAhead(
+            state.world,
+            enemy.position,
+            enemy.headingRadians,
+            6.0F,
+            GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
+            1.0F);
+        const float distPlayer = Distance(enemy.position, state.world.player.position);
+        const float nearestBase = NearestBaseDistance(state.world, enemy.position);
+        const int enemyCellHash = cellCache.CellHash(enemy.cellCoord.x, enemy.cellCoord.y);
+        const int flowNextHash =
+            flowHasBuild ? state.world.navigationCache.playerFlowField.NextCellHash(enemyCellHash) : -1;
+        const bool hasCurrentWaypoint =
+            enemy.pathWaypointCount > 0 &&
+            enemy.pathWaypointIndex >= 0 &&
+            enemy.pathWaypointIndex < enemy.pathWaypointCount;
+        const Vec2f currentWaypoint = hasCurrentWaypoint
+            ? enemy.pathWaypoints[static_cast<std::size_t>(enemy.pathWaypointIndex)]
+            : Vec2f{.x = 0.0F, .y = 0.0F};
+
+        bolt::log::Profile(
+            "[ENEMY_CLICK_DEBUG_ENEMY] id=%d matchCell=%d matchRadius=%d "
+            "type=%s subtype=%s tier=%s ai=%s preUncouple=%s alive=%d "
+            "pos=(%.3f,%.3f) vel=(%.3f,%.3f) heading=%.3f desiredHeading=%.3f "
+            "cell=(%d,%d) cellHash=%d clickCell=(%d,%d)\n",
+            i,
+            cellMatch ? 1 : 0,
+            radiusMatch ? 1 : 0,
+            EnemyTypeLabel(enemy.type),
+            EnemySubtypeLabel(enemy.subtype),
+            EnemySimTierLabel(enemy.simTier),
+            EnemyAiModeLabel(enemy.aiMode),
+            EnemyAiModeLabel(enemy.preUncoupleAiMode),
+            enemy.alive ? 1 : 0,
+            enemy.position.x,
+            enemy.position.y,
+            enemy.velocity.x,
+            enemy.velocity.y,
+            enemy.headingRadians,
+            enemy.desiredHeadingRadians,
+            enemy.cellCoord.x,
+            enemy.cellCoord.y,
+            enemyCellHash,
+            clickedCell.x,
+            clickedCell.y);
+
+        bolt::log::Profile(
+            "[ENEMY_CLICK_DEBUG_STATE] id=%d fireCd=%.3f aiState=%.3f aiElapsed=%.3f "
+            "selfAwareInt=%.3f selfAwareTimer=%.3f insideWall=%d insideBase=%d "
+            "distPlayer=%.3f nearestBase=%.3f clearAhead6=%.3f torpedoMode=%s "
+            "torpedoStraight=%.3f hold=%.3f retreat=%.3f detectTimer=%.3f detected=%d "
+            "waypoints=%d idx=%d hasWp=%d wp=(%.3f,%.3f)\n",
+            i,
+            enemy.fireCooldownSeconds,
+            enemy.aiStateTimerSeconds,
+            enemy.aiModeElapsedSeconds,
+            enemy.selfAwarenessIntervalSeconds,
+            enemy.selfAwarenessTimerSeconds,
+            insideWall ? 1 : 0,
+            insideBase ? 1 : 0,
+            distPlayer,
+            nearestBase,
+            clearAhead,
+            TorpedoMoveModeLabel(enemy.torpedoMoveMode),
+            enemy.torpedoStraightDistanceSinceTurnUnits,
+            enemy.torpedoMoveDecisionHoldRemainingUnits,
+            enemy.torpedoRetreatMovedUnits,
+            enemy.torpedoPlayerDetectTimerSeconds,
+            enemy.torpedoPlayerDetected ? 1 : 0,
+            enemy.pathWaypointCount,
+            enemy.pathWaypointIndex,
+            hasCurrentWaypoint ? 1 : 0,
+            currentWaypoint.x,
+            currentWaypoint.y);
+
+        bolt::log::Profile(
+            "[ENEMY_CLICK_DEBUG_NAV] id=%d cachedPlayerHash=%d expectedPathHash=%d "
+            "cachedFlowFromHash=%d cachedFlowHeading=%.3f flowHasBuild=%d flowNextHash=%d "
+            "offscreenActive=%d offscreenHeading=%.3f offscreenEnd=(%.3f,%.3f) "
+            "cheapCrowdedSlow=%d cheapFailCount=%d cheapLastFailCellHash=%d "
+            "cheapLastFailReason=%d cheapMethodStage=%d\n",
+            i,
+            enemy.cachedPlayerCellHash,
+            enemy.expectedPathCellHash,
+            enemy.cachedFlowFromCellHash,
+            enemy.cachedFlowHeadingRadians,
+            flowHasBuild ? 1 : 0,
+            flowNextHash,
+            enemy.offscreenSegmentActive ? 1 : 0,
+            enemy.offscreenCachedHeadingRadians,
+            enemy.offscreenSegmentEnd.x,
+            enemy.offscreenSegmentEnd.y,
+            enemy.cheapTierCrowdedSlowMode ? 1 : 0,
+            enemy.cheapSegmentBuildFailCount,
+            enemy.cheapSegmentLastFailCellHash,
+            static_cast<int>(enemy.cheapSegmentLastFailReason),
+            enemy.cheapSegmentBuildMethodStage);
+        loggedCount += 1;
+    }
+
+    bolt::log::Profile(
+        "[ENEMY_CLICK_DEBUG_RESULT] clickWorld=(%.3f,%.3f) clickCell=(%d,%d) found=%d\n",
+        worldPosition.x,
+        worldPosition.y,
+        clickedCell.x,
+        clickedCell.y,
+        loggedCount);
+}

@@ -111,7 +111,9 @@ PathfindingPool& GetPathfindingPool() {
 }
 
 float HeuristicManhattan(int x, int y, int tx, int ty) {
-    return static_cast<float>(std::abs(tx - x) + std::abs(ty - y));
+    return static_cast<float>(game::navigation::CellDistance(
+        game::navigation::MazeCellCoord{.x = x, .y = y},
+        game::navigation::MazeCellCoord{.x = tx, .y = ty}));
 }
 
 void BuildEnemyOccupancy(

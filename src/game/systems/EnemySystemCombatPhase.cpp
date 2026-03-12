@@ -62,6 +62,7 @@ EnemyPerception RunPerceptionPhase(
                 const float headingToBase = std::atan2(toBase.x, -toBase.y);
                 const float relativeBearing = core::angle::AngleDistance(enemy.headingRadians, headingToBase);
                 if (relativeBearing >= kDroneBaseBearingThresholdRadians) {
+                    // means the drone is facing at least 80° away from the base
                     enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
                     EnterDroneWatchMode(state.world, enemy, random);
                 }

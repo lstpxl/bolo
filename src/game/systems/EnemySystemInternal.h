@@ -48,6 +48,11 @@ struct EnemyRuntimeWindowStats {
     std::uint64_t navFlowMisses = 0;
     std::uint64_t navPathBuildCalls = 0;
     std::uint64_t navPathBuildSuccesses = 0;
+    std::array<std::uint64_t, 3> assassinCheapBuildFailsByStage{};
+    std::array<std::uint64_t, 3> assassinCheapBuildRecoveriesByStage{};
+    std::uint64_t assassinCheapEmergencyAttempts = 0;
+    std::uint64_t assassinCheapEmergencySuccesses = 0;
+    std::uint64_t assassinCheapNoFlowSkips = 0;
     std::uint64_t sapUpdateCalls = 0;
     std::uint64_t sapActiveItems = 0;
     std::uint64_t sapCandidatePairs = 0;

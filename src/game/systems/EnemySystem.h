@@ -1,7 +1,9 @@
 #pragma once
 
+#include "core/Types.h"
 #include "core/Random.h"
 #include "game/GameplayView.h"
+#include "game/navigation/MazeCellCoord.h"
 #include "game/navigation/FlowRebuildWorker.h"
 
 struct GameState;
@@ -25,3 +27,8 @@ void UpdateEnemySystem(
     Random& random,
     game::navigation::FlowRebuildWorker& flowWorker);
 const EnemyRuntimeStats& GetEnemyRuntimeStats();
+
+void DebugLogEnemiesAtPosition(
+    const GameState& state,
+    const Vec2f& worldPosition,
+    const game::navigation::MazeCellCoord& clickedCell);

@@ -215,11 +215,27 @@ void EnterUncoupleMode(
         stats.uncoupleReentryResets += 1;
     }
     if (uncoupled.aiMode != EnemyAiMode::Uncouple) {
+        if (uncoupled.type == EnemyType::Assassin && uncoupled.offscreenSegmentActive) {
+            bolt::log::Profile(
+                "[ENEMY_ASSASSIN_SEGMENT_DROP] id=%d reason=enter_uncouple "
+                "uncoupleReason=%s pos=(%.3f,%.3f) cell=(%d,%d)\n",
+                uncoupleIndex,
+                UncoupleReasonLabel(reason),
+                uncoupled.position.x,
+                uncoupled.position.y,
+                uncoupled.cellCoord.x,
+                uncoupled.cellCoord.y);
+        }
         uncoupled.preUncoupleAiMode = uncoupled.aiMode;
         uncoupled.aiMode = EnemyAiMode::Uncouple;
         uncoupled.aiModeElapsedSeconds = 0.0F;
         uncoupled.aiStateTimerSeconds = kEnemyUncoupleDurationSeconds;
         uncoupled.offscreenSegmentActive = false;
+        uncoupled.cheapSegmentBuildFailCount = 0;
+        uncoupled.cheapSegmentLastFailCellHash = -1;
+        uncoupled.cheapSegmentLastFailReason = CheapSegmentFailReason::None;
+        uncoupled.cheapSegmentBuildMethodStage = 0;
+        uncoupled.cheapSegmentInsideWallAvoidLastFrame = false;
     } else {
         uncoupled.aiMode = EnemyAiMode::Uncouple;
     }

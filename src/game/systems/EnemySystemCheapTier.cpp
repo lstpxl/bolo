@@ -4,6 +4,7 @@
 #include <array>
 #include <cmath>
 #include "core/AngleMath.h"
+#include "core/Log.h"
 #include "core/Profiling.h"
 #include "game/geometry/WorldGeometry.h"
 #include "game/model/GameplayConstants.h"
@@ -21,6 +22,16 @@ constexpr float kSegmentBuildMinLengthUnits = 2.0F;
 constexpr float kOffscreenSegmentLengthUnits = 8.0F;
 constexpr float kOffscreenTorpedoSegmentLengthUnits = 12.0F;
 constexpr float kOffscreenTorpedoDetectIntervalSeconds = 0.6F;
+
+int StageBucketIndex(int stage) {
+    if (stage <= 0) {
+        return 0;
+    }
+    if (stage == 1) {
+        return 1;
+    }
+    return 2;
+}
 
 float NormalizeAngle(float angleRadians) {
     return core::angle::NormalizeAngle(angleRadians);
@@ -165,6 +176,75 @@ void ApplyCheapTierMovement(
     float deltaSeconds,
     float speed,
     Random& random) {
+    const Vec2f cheapStartPosition = enemy.position;
+    bool lastInsideWallAvoid = enemy.cheapSegmentInsideWallAvoidLastFrame;
+    auto updateAssassinWallState = [&](const char* phaseLabel) {
+        if (enemy.type != EnemyType::Assassin) {
+            return;
+        }
+        const bool nowInsideWallAvoid = game::geometry::IsPointInWall(
+            state.world, enemy.position, GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
+        if (!lastInsideWallAvoid && nowInsideWallAvoid) {
+            const game::navigation::MazeCellCoord wallCell = cellCache.WorldToCell(enemy.position);
+            const int wallCellHash = cellCache.CellHash(wallCell.x, wallCell.y);
+            const int flowNextHash = flowField.HasBuild()
+                ? flowField.NextCellHash(wallCellHash)
+                : -1;
+            bool insideWallTank = game::geometry::IsPointInWall(
+                state.world, enemy.position, GameplayConstants::kTankCollisionRadiusUnits);
+            bool insideBase = game::geometry::IsPointInUndestroyedBase(
+                state.world, enemy.position, GameplayConstants::kTankCollisionRadiusUnits);
+            int overlapCount = 0;
+            float nearestEnemyDistance = 9999.0F;
+            for (std::size_t i = 0; i < state.world.enemies.size(); ++i) {
+                if (static_cast<int>(i) == enemyIndex) {
+                    continue;
+                }
+                const EnemyTank& other = state.world.enemies[i];
+                if (!other.alive) {
+                    continue;
+                }
+                const float dist = Distance(enemy.position, other.position);
+                nearestEnemyDistance = std::min(nearestEnemyDistance, dist);
+                if (dist < GameplayConstants::kEnemyPreferredSeparationUnits) {
+                    overlapCount += 1;
+                }
+            }
+            if (nearestEnemyDistance > 9998.0F) {
+                nearestEnemyDistance = -1.0F;
+            }
+            bolt::log::Profile(
+                "[ENEMY_ASSASSIN_WALL_STATE_CHANGE] id=%d phase=%s insideWallAvoid=1 "
+                "posFrom=(%.3f,%.3f) posTo=(%.3f,%.3f) cell=(%d,%d) cellHash=%d flowNextHash=%d "
+                "offscreenActive=%d segEnd=(%.3f,%.3f) heading=%.3f "
+                "failCount=%d methodStage=%d failReason=%d "
+                "insideWallTank=%d insideBase=%d overlapCount=%d nearestEnemyDist=%.3f\n",
+                enemyIndex,
+                phaseLabel,
+                cheapStartPosition.x,
+                cheapStartPosition.y,
+                enemy.position.x,
+                enemy.position.y,
+                wallCell.x,
+                wallCell.y,
+                wallCellHash,
+                flowNextHash,
+                enemy.offscreenSegmentActive ? 1 : 0,
+                enemy.offscreenSegmentEnd.x,
+                enemy.offscreenSegmentEnd.y,
+                enemy.offscreenCachedHeadingRadians,
+                enemy.cheapSegmentBuildFailCount,
+                enemy.cheapSegmentBuildMethodStage,
+                static_cast<int>(enemy.cheapSegmentLastFailReason),
+                insideWallTank ? 1 : 0,
+                insideBase ? 1 : 0,
+                overlapCount,
+                nearestEnemyDistance);
+        }
+        lastInsideWallAvoid = nowInsideWallAvoid;
+        enemy.cheapSegmentInsideWallAvoidLastFrame = nowInsideWallAvoid;
+    };
+
     float segmentLength = kOffscreenSegmentLengthUnits;
     if (enemy.type == EnemyType::Torpedo) {
         segmentLength = kOffscreenTorpedoSegmentLengthUnits;
@@ -186,13 +266,69 @@ void ApplyCheapTierMovement(
             !enemy.offscreenSegmentActive ||
             DistanceSq(enemy.position, enemy.offscreenSegmentEnd) <= 0.04F;
         if (enteredNewCell || reachedSegmentEnd) {
+            const bool wasSegmentActive = enemy.offscreenSegmentActive;
+            int methodStage = 0;
+            if (enemy.cheapSegmentBuildFailCount >= 6) {
+                methodStage = 2;
+            } else if (enemy.cheapSegmentBuildFailCount >= 3) {
+                methodStage = 1;
+            }
+            enemy.cheapSegmentBuildMethodStage = methodStage;
             if (!BuildAssassinCheapFlowSegment(
                     state.world,
                     cellCache,
                     flowField,
-                    enemy)) {
+                    enemy,
+                    enemyIndex,
+                    methodStage)) {
                 enemy.offscreenSegmentActive = false;
                 enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
+                if (enemy.cheapSegmentLastFailReason != CheapSegmentFailReason::None) {
+                    enemy.cheapSegmentBuildFailCount += 1;
+                    enemy.cheapSegmentLastFailCellHash = enemyCellHash;
+                    const int stageBucket = StageBucketIndex(methodStage);
+                    gEnemyRuntimeWindowStats
+                        .assassinCheapBuildFailsByStage[static_cast<std::size_t>(stageBucket)] +=
+                        1;
+                    bolt::log::Profile(
+                        "[ENEMY_ASSASSIN_SEGMENT_DROP] id=%d reason=cheap_flow_build_failed "
+                        "wasActive=%d enteredNewCell=%d reachedSegmentEnd=%d "
+                        "pos=(%.3f,%.3f) cell=(%d,%d) failCount=%d methodStage=%d failReason=%d\n",
+                        enemyIndex,
+                        wasSegmentActive ? 1 : 0,
+                        enteredNewCell ? 1 : 0,
+                        reachedSegmentEnd ? 1 : 0,
+                        enemy.position.x,
+                        enemy.position.y,
+                        enemy.cellCoord.x,
+                        enemy.cellCoord.y,
+                        enemy.cheapSegmentBuildFailCount,
+                        enemy.cheapSegmentBuildMethodStage,
+                        static_cast<int>(enemy.cheapSegmentLastFailReason));
+                } else {
+                    // Expected no-flow state (for example while player is dead): no escalation/log spam.
+                    enemy.cheapSegmentBuildFailCount = 0;
+                    enemy.cheapSegmentLastFailCellHash = -1;
+                    enemy.cheapSegmentBuildMethodStage = 0;
+                    gEnemyRuntimeWindowStats.assassinCheapNoFlowSkips += 1;
+                }
+            } else {
+                if (enemy.cheapSegmentBuildFailCount > 0) {
+                    const int stageBucket = StageBucketIndex(methodStage);
+                    gEnemyRuntimeWindowStats.assassinCheapBuildRecoveriesByStage
+                        [static_cast<std::size_t>(stageBucket)] += 1;
+                    bolt::log::Profile(
+                        "[ENEMY_ASSASSIN_SEGMENT_RECOVER] id=%d reason=build_recovered "
+                        "cellHash=%d recoveredAfter=%d methodStage=%d\n",
+                        enemyIndex,
+                        enemyCellHash,
+                        enemy.cheapSegmentBuildFailCount,
+                        methodStage);
+                }
+                enemy.cheapSegmentBuildFailCount = 0;
+                enemy.cheapSegmentLastFailCellHash = -1;
+                enemy.cheapSegmentLastFailReason = CheapSegmentFailReason::None;
+                enemy.cheapSegmentBuildMethodStage = 0;
             }
         }
     } else {
@@ -206,6 +342,7 @@ void ApplyCheapTierMovement(
 
     if (!enemy.offscreenSegmentActive || std::fabs(speed) <= 0.0001F) {
         enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
+        updateAssassinWallState("cheap_early_return");
         return;
     }
 
@@ -230,5 +367,6 @@ void ApplyCheapTierMovement(
     if (enemy.type == EnemyType::Torpedo && enemy.torpedoMoveMode == TorpedoMoveMode::Move) {
         enemy.torpedoStraightDistanceSinceTurnUnits += step;
     }
+    updateAssassinWallState("cheap_post_move");
     (void)enemyIndex;
 }

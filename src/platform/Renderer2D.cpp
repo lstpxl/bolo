@@ -9,6 +9,7 @@
 #include "core/Log.h"
 #include "core/Profiling.h"
 #include "core/ResourceLocator.h"
+#include "game/systems/EnemySystem.h"
 #include "raylib.h"
 
 namespace {
@@ -606,6 +607,48 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
     };
     camera.rotation = 0.0F;
     camera.zoom = static_cast<float>(GameplayConstants::kPixelsPerUnit);
+
+#if defined(__APPLE__) && !defined(NDEBUG)
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        const Vector2 mouse = GetMousePosition();
+        const bool clickInWorldViewport =
+            mouse.x >= worldViewport.x &&
+            mouse.x < worldViewport.x + worldViewport.width &&
+            mouse.y >= worldViewport.y &&
+            mouse.y < worldViewport.y + worldViewport.height;
+        if (clickInWorldViewport) {
+            const Vector2 clickWorldRaylib = GetScreenToWorld2D(mouse, camera);
+            const Vec2f clickWorld{
+                .x = clickWorldRaylib.x,
+                .y = clickWorldRaylib.y,
+            };
+            const game::navigation::MazeCellCoord clickCell =
+                state.world.navigationCache.cellCoords.WorldToCell(clickWorld);
+            const bool clickInsideMaze =
+                clickWorld.x >= 0.0F &&
+                clickWorld.y >= 0.0F &&
+                clickWorld.x < static_cast<float>(state.world.maze.widthCells * state.world.maze.cellSizeUnits) &&
+                clickWorld.y < static_cast<float>(state.world.maze.heightCells * state.world.maze.cellSizeUnits);
+            const game::navigation::MazeCellCoord playerCell =
+                state.world.navigationCache.cellCoords.PlayerCell();
+            bolt::log::Profile(
+                "[ENEMY_CLICK_DEBUG] screen=(%.1f,%.1f) world=(%.3f,%.3f) inMaze=%d "
+                "cell=(%d,%d) playerCell=(%d,%d) playerHash=%d flowHasBuild=%d\n",
+                mouse.x,
+                mouse.y,
+                clickWorld.x,
+                clickWorld.y,
+                clickInsideMaze ? 1 : 0,
+                clickCell.x,
+                clickCell.y,
+                playerCell.x,
+                playerCell.y,
+                state.world.navigationCache.cellCoords.PlayerCellHash(),
+                state.world.navigationCache.playerFlowField.HasBuild() ? 1 : 0);
+            DebugLogEnemiesAtPosition(state, clickWorld, clickCell);
+        }
+    }
+#endif
 
     BeginScissorMode(0, 0, worldWidth, config.screenHeight);
     const float mazeWidthUnits = static_cast<float>(state.world.maze.widthCells * state.world.maze.cellSizeUnits);

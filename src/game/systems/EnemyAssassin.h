@@ -20,7 +20,9 @@ bool BuildAssassinCheapFlowSegment(
     WorldState& world,
     const game::navigation::CellCoordCache& cellCache,
     const game::navigation::PlayerFlowField& flowField,
-    EnemyTank& enemy);
+    EnemyTank& enemy,
+    int enemyIndex,
+    int methodStage);
 
 bool TryGetAssassinFlowHeading(
     const game::navigation::CellCoordCache& cellCache,

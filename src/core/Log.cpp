@@ -105,7 +105,11 @@ void Profile(const char* fmt, ...) {
     va_start(args, fmt);
     std::vsnprintf(buf.data(), buf.size(), fmt, args);
     va_end(args);
-    gProfileLogger->info("{}", buf.data());
+    std::string line(buf.data());
+    while (!line.empty() && (line.back() == '\n' || line.back() == '\r')) {
+        line.pop_back();
+    }
+    gProfileLogger->info("{}", line);
 }
 
 }  // namespace bolt::log

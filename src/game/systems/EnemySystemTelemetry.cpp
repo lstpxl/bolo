@@ -196,6 +196,25 @@ void EmitEnemyPeriodicWindowLogs(const EnemyRuntimeStats& frameStats, std::uint6
         static_cast<unsigned long long>(gEnemyRuntimeWindowStats.navPathBuildSuccesses),
         pathBuildSuccessPct);
     bolt::log::Profile(
+        "[ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=%llu s1=%llu s2=%llu} "
+        "recoverByStage{s0=%llu s1=%llu s2=%llu} emergency{attempt=%llu success=%llu} "
+        "noFlowSkips=%llu\n",
+        static_cast<unsigned long long>(
+            gEnemyRuntimeWindowStats.assassinCheapBuildFailsByStage[0]),
+        static_cast<unsigned long long>(
+            gEnemyRuntimeWindowStats.assassinCheapBuildFailsByStage[1]),
+        static_cast<unsigned long long>(
+            gEnemyRuntimeWindowStats.assassinCheapBuildFailsByStage[2]),
+        static_cast<unsigned long long>(
+            gEnemyRuntimeWindowStats.assassinCheapBuildRecoveriesByStage[0]),
+        static_cast<unsigned long long>(
+            gEnemyRuntimeWindowStats.assassinCheapBuildRecoveriesByStage[1]),
+        static_cast<unsigned long long>(
+            gEnemyRuntimeWindowStats.assassinCheapBuildRecoveriesByStage[2]),
+        static_cast<unsigned long long>(gEnemyRuntimeWindowStats.assassinCheapEmergencyAttempts),
+        static_cast<unsigned long long>(gEnemyRuntimeWindowStats.assassinCheapEmergencySuccesses),
+        static_cast<unsigned long long>(gEnemyRuntimeWindowStats.assassinCheapNoFlowSkips));
+    bolt::log::Profile(
         "[ENEMY_SAP] updates=%llu active=%llu pairs=%llu repairs{x=%llu y=%llu}\n",
         static_cast<unsigned long long>(gEnemyRuntimeWindowStats.sapUpdateCalls),
         static_cast<unsigned long long>(gEnemyRuntimeWindowStats.sapActiveItems),

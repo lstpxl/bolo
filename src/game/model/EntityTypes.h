@@ -75,6 +75,17 @@ enum class EnemySimTier {
     Cheap,
 };
 
+enum class CheapSegmentFailReason {
+    None = 0,
+    NoFlowBuild = 1,
+    InvalidNextCell = 2,
+    NonCardinalFlowStep = 3,
+    MidpointTooClose = 4,
+    EdgeExitFailed = 5,
+    SegmentIntersectsWall = 6,
+    EmergencyFallbackBlocked = 7,
+};
+
 struct EnemyTank {
     static constexpr int kMaxPathWaypoints = 96;
 
@@ -116,6 +127,11 @@ struct EnemyTank {
     int expectedPathCellHash = -1;
     int cachedFlowFromCellHash = -1;
     float cachedFlowHeadingRadians = 0.0F;
+    int cheapSegmentBuildFailCount = 0;
+    int cheapSegmentLastFailCellHash = -1;
+    CheapSegmentFailReason cheapSegmentLastFailReason = CheapSegmentFailReason::None;
+    int cheapSegmentBuildMethodStage = 0;
+    bool cheapSegmentInsideWallAvoidLastFrame = false;
     bool cheapTierCrowdedSlowMode = false;  // assassins: 0.5x speed when another enemy in same cell
     bool alive = true;
 };
