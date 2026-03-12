@@ -118,6 +118,12 @@ struct EnemyTank {
     float offscreenCachedHeadingRadians = 0.0F;
     Vec2f offscreenSegmentEnd{.x = 0.0F, .y = 0.0F};
     bool offscreenSegmentActive = false;
+    bool hunterScoutPathActive = false;
+    int hunterScoutTargetCellHash = -1;
+    std::array<Vec2f, 2> hunterScoutSegmentPoints{};
+    int hunterScoutSegmentCount = 0;
+    int hunterScoutSegmentIndex = 0;
+    float hunterScoutCachedHeadingRadians = 0.0F;
     int originBaseIndex = -1;
     std::array<Vec2f, kMaxPathWaypoints> pathWaypoints{};
     int pathWaypointCount = 0;

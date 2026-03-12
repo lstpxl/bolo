@@ -722,9 +722,11 @@ void UpdateEnemySystem(
                     !playerInvisible && !perception.playerObscured &&
                     perception.distanceToPlayer <= GameplayConstants::kHunterDetectRangeUnits;
                 if (canChase) {
+                    InvalidateHunterScoutPath(enemy);
                     enemy.aiMode = EnemyAiMode::Chase;
                     enemy.aiModeElapsedSeconds = 0.0F;
                 } else if (enemy.aiMode == EnemyAiMode::Chase) {
+                    InvalidateHunterScoutPath(enemy);
                     enemy.aiMode = EnemyAiMode::Scout;
                     enemy.aiModeElapsedSeconds = 0.0F;
                 }
@@ -741,6 +743,7 @@ void UpdateEnemySystem(
                         speed = 0.0F;
                     }
                 } else if (enemy.aiMode == EnemyAiMode::Rotate) {
+                    InvalidateHunterScoutPath(enemy);
                     speed = 0.0F;
                     preserveContinuousHeading = true;
                     movementHeading = NormalizeAngle(
@@ -757,13 +760,18 @@ void UpdateEnemySystem(
                         enemy.aiModeElapsedSeconds = 0.0F;
                     }
                 } else {
-                    bool shouldRotate = false;
-                    movementHeading =
-                        SelectScoutHeadingWithFallback(state.world, enemy, true, shouldRotate);
-                    if (shouldRotate) {
+                    Vec2f scoutTargetPoint{};
+                    if (!SelectHunterScoutMotion(
+                            state.world,
+                            cellCache,
+                            enemy,
+                            random,
+                            movementHeading,
+                            scoutTargetPoint)) {
                         enemy.aiMode = EnemyAiMode::Rotate;
                         enemy.aiModeElapsedSeconds = 0.0F;
                         speed = 0.0F;
+                        InvalidateHunterScoutPath(enemy);
                     } else {
                         enemy.aiMode = EnemyAiMode::Scout;
                     }

@@ -243,7 +243,13 @@ Enemy movement/steering code uses **`kEnemyWallAvoidanceRadiusUnits`** (same as 
   - Modes: `Scout`, `Chase`, and rotate fallback.
   - Enters Chase when player has LOS and distance `<12`.
   - Chase keeps stand-off band `3..6` units (approach if farther, retreat if closer, stop inside band).
-  - Scout obstacle handling: try `±45°`, then `±90°`; if no option yields `>=3` clear units, rotate clockwise until clear.
+  - Scout uses a two-level planner shared across Full/Cheap tiers:
+    - **Cell-level choice:** all heading decisions use 8 integer direction indices (0..7). Current float heading is converted to dir index first; relative turn cost, scoring, and tie-break use integer math. Float heading is derived from dir index only at movement output.
+    - Evaluate all 8 neighbor directions; score each by traversable run length with heading penalty `-20%` per `45°` turn from current heading (`longer and straighter` wins, random tie-break).
+    - Cells occupied by alive bases are treated as blocked.
+    - **Segment-level execution:** build a persisted `1` or `2` segment path toward the chosen neighbor-cell center.
+    - Direct segment is preferred; for diagonal half-block cases, endpoint adjustment within `2` units around target center is attempted, then a `2`-segment bend path is attempted.
+    - If no valid Scout path can be built, hunter enters rotate fallback.
 - Assassin:
   - Modes: `Pursuit` (default) and temporary `Uncouple`.
   - Uses a pure player-directed maze flow-field for pursuit steering (no waypoint A* path following in the active runtime branch).
@@ -270,13 +276,16 @@ Enemy movement/steering code uses **`kEnemyWallAvoidanceRadiusUnits`** (same as 
   - `Cheap`: enemy is outside that radius and not in forced-full exceptions.
 - In `Cheap` tier, enemies use cached segment movement:
   - heading is quantized to 8-way direction
-  - next segment heading is chosen from `forward/-45/+45` by longest wall-only clearance (capped at `15`), with random tie-break
+  - drones/torpedoes choose next segment heading from `forward/-45/+45` by longest wall-only clearance (capped at `15`), with random tie-break
   - segment length is randomized in `[2, (bestClear-4)]` (clamped by per-type segment cap)
   - movement advances toward cached endpoint and endpoint is recomputed only when current endpoint is reached
   - no wall/enemy/base collision checks are executed while traversing the current cheap-tier segment
   - on cheap-tier segment-build failure (`bestClear - 4 < 2`):
     - drone picks a random 8-way heading, remains without an active segment for that frame, then retries segment build on the next cheap-tier update
     - torpedo rotates heading by `45°` counterclockwise, remains without an active segment for that frame, then retries segment build on the next cheap-tier update
+- Hunter exception:
+  - cheap-tier Hunter `Scout` uses the same two-level planner as full-tier `Scout` (8-direction cell scoring + persisted 1/2 segment path), so Scout steering behavior is tier-consistent.
+  - tier difference remains collision handling: cheap-tier hunters skip full-tier enemy-collision post-passes.
 - Cheap-tier enemies do not participate in enemy-enemy frontal-collision and separation post-passes.
 - Cheap-tier enemies do not run enemy-enemy or enemy-base collision checks at all; wall clearance is evaluated only when selecting the next cheap-tier segment.
 - Torpedo exception:

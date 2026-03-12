@@ -9,6 +9,7 @@
 #include "game/geometry/WorldGeometry.h"
 #include "game/model/GameplayConstants.h"
 #include "game/systems/EnemyAssassin.h"
+#include "game/systems/EnemyHunter.h"
 #include "game/systems/EnemySystemHelpers.h"
 #include "game/systems/EnemySystemInternal.h"
 #include "game/systems/EnemySystemUncouple.h"
@@ -249,6 +250,9 @@ void ApplyCheapTierMovement(
         lastInsideWallAvoid = nowInsideWallAvoid;
         enemy.cheapSegmentInsideWallAvoidLastFrame = nowInsideWallAvoid;
     };
+    bool usingHunterScoutPath = false;
+    Vec2f hunterScoutTargetPoint{};
+    float hunterScoutHeading = enemy.headingRadians;
 
     float segmentLength = kOffscreenSegmentLengthUnits;
     if (enemy.type == EnemyType::Torpedo) {
@@ -350,6 +354,18 @@ void ApplyCheapTierMovement(
                 enemy.cheapSegmentBuildMethodStage = 0;
             }
         }
+    } else if (enemy.type == EnemyType::Hunter && enemy.aiMode == EnemyAiMode::Scout) {
+        if (SelectHunterScoutMotion(
+                state.world,
+                cellCache,
+                enemy,
+                random,
+                hunterScoutHeading,
+                hunterScoutTargetPoint)) {
+            usingHunterScoutPath = true;
+        } else {
+            InvalidateHunterScoutPath(enemy);
+        }
     } else {
         const bool reachedSegmentEnd =
             !enemy.offscreenSegmentActive ||
@@ -359,7 +375,8 @@ void ApplyCheapTierMovement(
         }
     }
 
-    if (!enemy.offscreenSegmentActive || std::fabs(speed) <= 0.0001F) {
+    const bool hasMovementPath = usingHunterScoutPath || enemy.offscreenSegmentActive;
+    if (!hasMovementPath || std::fabs(speed) <= 0.0001F) {
         enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
         updateAssassinWallState("cheap_early_return", kAssassinWallPhaseCheap);
         return;
@@ -369,9 +386,13 @@ void ApplyCheapTierMovement(
     if (enemy.type == EnemyType::Assassin && enemy.cheapTierCrowdedSlowMode) {
         effectiveSpeed *= 0.5F;
     }
-    const Vec2f dir = DirectionFromHeading(enemy.offscreenCachedHeadingRadians);
+    const float activeHeading =
+        usingHunterScoutPath ? hunterScoutHeading : enemy.offscreenCachedHeadingRadians;
+    const Vec2f activeTargetPoint =
+        usingHunterScoutPath ? hunterScoutTargetPoint : enemy.offscreenSegmentEnd;
+    const Vec2f dir = DirectionFromHeading(activeHeading);
     const float maxStep = std::max(0.0F, effectiveSpeed * deltaSeconds);
-    const float remaining = Distance(enemy.position, enemy.offscreenSegmentEnd);
+    const float remaining = Distance(enemy.position, activeTargetPoint);
     const float step = std::min(maxStep, remaining);
     const Vec2f candidatePosition{
         .x = enemy.position.x + dir.x * step,
@@ -386,7 +407,7 @@ void ApplyCheapTierMovement(
             const float clearAhead = game::geometry::FreeDistanceAhead(
                 state.world,
                 enemy.position,
-                enemy.offscreenCachedHeadingRadians,
+                activeHeading,
                 std::max(1.5F, step + 0.5F),
                 GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
                 1.0F);
@@ -414,7 +435,7 @@ void ApplyCheapTierMovement(
         }
     }
     enemy.position = candidatePosition;
-    enemy.headingRadians = enemy.offscreenCachedHeadingRadians;
+    enemy.headingRadians = activeHeading;
     enemy.velocity = Vec2f{
         .x = dir.x * effectiveSpeed,
         .y = dir.y * effectiveSpeed,
