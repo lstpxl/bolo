@@ -840,13 +840,24 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
                 } else {
                     DrawRectangleRec(destRect, EnemyColorForType(enemy.type));
                 }
-                if (enemy.type == EnemyType::Hunter) {
-                    if (enemy.hunterScoutPathActive &&
+                if (state.menuSettings.debugInfo &&
+                    (enemy.type == EnemyType::Hunter || enemy.type == EnemyType::Assassin)) {
+                    if (enemy.type == EnemyType::Hunter &&
+                        enemy.hunterScoutPathActive &&
                         enemy.hunterScoutSegmentIndex >= 0 &&
                         enemy.hunterScoutSegmentIndex < enemy.hunterScoutSegmentCount) {
                         const Vec2f segmentTarget =
                             enemy.hunterScoutSegmentPoints[static_cast<std::size_t>(enemy.hunterScoutSegmentIndex)];
                         const Vector2 targetScreenPosition = WorldToSnappedScreen(segmentTarget, camera);
+                        DrawLine(
+                            static_cast<int>(enemyScreenPosition.x),
+                            static_cast<int>(enemyScreenPosition.y),
+                            static_cast<int>(targetScreenPosition.x),
+                            static_cast<int>(targetScreenPosition.y),
+                            GREEN);
+                    } else if (enemy.type == EnemyType::Assassin && enemy.offscreenSegmentActive) {
+                        const Vector2 targetScreenPosition =
+                            WorldToSnappedScreen(enemy.offscreenSegmentEnd, camera);
                         DrawLine(
                             static_cast<int>(enemyScreenPosition.x),
                             static_cast<int>(enemyScreenPosition.y),
