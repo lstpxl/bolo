@@ -317,6 +317,7 @@ bool LoadAbsolute10BitmapFont(Font& outFont) {
 constexpr float kMenuTitleRenderSize = 128.0F;
 constexpr int kMenuTitleX = 10;
 constexpr int kMenuTitleY = 10;
+constexpr Color kBoltWordmarkColor = Color{224, 206, 4, 255};
 constexpr int kBetaLabelFontBaseSize = 16;
 constexpr float kBetaLabelRenderSize = 16.0F;
 constexpr float kBetaLabelYOffset = 10.0F;
@@ -416,9 +417,9 @@ MenuScreenResult MenuScreen::Render(
             Vector2{static_cast<float>(kMenuTitleX), static_cast<float>(kMenuTitleY)},
             kMenuTitleRenderSize,
             0.0F,
-            YELLOW);
+            kBoltWordmarkColor);
     } else {
-        DrawText("Bolt", kMenuTitleX, kMenuTitleY, 20, YELLOW);
+        DrawText("Bolt", kMenuTitleX, kMenuTitleY, 20, kBoltWordmarkColor);
     }
     const float betaLabelY = static_cast<float>(kMenuTitleY) + kMenuTitleRenderSize + kBetaLabelYOffset;
     if (betaFontLoaded_) {
