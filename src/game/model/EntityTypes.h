@@ -84,6 +84,7 @@ enum class CheapSegmentFailReason {
     EdgeExitFailed = 5,
     SegmentIntersectsWall = 6,
     EmergencyFallbackBlocked = 7,
+    SegmentEndpointInvalid = 8,
 };
 
 struct EnemyTank {

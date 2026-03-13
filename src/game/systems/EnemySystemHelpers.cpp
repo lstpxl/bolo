@@ -55,6 +55,14 @@ float NearestBaseDistance(const WorldState& world, const Vec2f& p) {
     return nearest;
 }
 
+bool IsValidSegmentEndpoint(const WorldState& world, const Vec2f& point) {
+    if (game::geometry::IsPointInWall(world, point, GameplayConstants::kWallClearanceForAvoidance)) {
+        return false;
+    }
+    return !game::geometry::IsPointInUndestroyedBase(
+        world, point, GameplayConstants::kWallClearanceForAvoidance);
+}
+
 Vec2f NearestBasePosition(const WorldState& world, const Vec2f& p) {
     Vec2f nearestPos = p;
     float nearest = std::numeric_limits<float>::infinity();

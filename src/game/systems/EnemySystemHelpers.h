@@ -17,6 +17,10 @@ Vec2f NormalizeOrZero(const Vec2f& v);
 float NearestBaseDistance(const WorldState& world, const Vec2f& p);
 Vec2f NearestBasePosition(const WorldState& world, const Vec2f& p);
 
+/// Returns true if a segment endpoint is valid (clear of walls and bases).
+/// Matches the clearance check used by hunters when building scout segments.
+bool IsValidSegmentEndpoint(const WorldState& world, const Vec2f& point);
+
 int RandomRotateDirection(Random& random);
 
 float ChooseBestTurnHeading(

@@ -148,15 +148,6 @@ bool SegmentIntersectsWall(
         world, from, to, GameplayConstants::kWallClearanceForAvoidance);
 }
 
-bool IsValidSegmentEndpoint(const WorldState& world, const Vec2f& point)
-{
-    if (game::geometry::IsPointInWall(world, point, GameplayConstants::kWallClearanceForAvoidance)) {
-        return false;
-    }
-    return !game::geometry::IsPointInUndestroyedBase(
-        world, point, GameplayConstants::kWallClearanceForAvoidance);
-}
-
 bool BuildHunterScoutSegments(
     const WorldState& world,
     const game::navigation::CellCoordCache& cellCache,

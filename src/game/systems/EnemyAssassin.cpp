@@ -211,8 +211,7 @@ bool BuildAssassinCheapFlowSegment(
         Vec2f targetDir = NormalizeOrZero(toTarget);
         float headingRadians = fallbackHeadingRadians;
         if (targetDir.x != 0.0F || targetDir.y != 0.0F) {
-            headingRadians = core::angle::QuantizeToEightDirections(
-                std::atan2(targetDir.x, -targetDir.y));
+            headingRadians = std::atan2(targetDir.x, -targetDir.y);
         }
         const Vec2f headingDir = core::angle::DirectionFromHeading(headingRadians);
         const float headingToTargetDot = headingDir.x * targetDir.x + headingDir.y * targetDir.y;
@@ -420,6 +419,12 @@ bool BuildAssassinCheapFlowSegment(
             logEmergencyBlocked("segment_intersects_wall");
             return false;
         }
+        if (!IsValidSegmentEndpoint(world, chosenTarget)) {
+            gEnemyRuntimeWindowStats.navFlowMisses += 1;
+            logFail("emergency_fallback_blocked", CheapSegmentFailReason::EmergencyFallbackBlocked);
+            logEmergencyBlocked("segment_endpoint_invalid");
+            return false;
+        }
         const Vec2f toTarget{
             .x = chosenTarget.x - enemy.position.x,
             .y = chosenTarget.y - enemy.position.y,
@@ -431,7 +436,7 @@ bool BuildAssassinCheapFlowSegment(
             logEmergencyBlocked("zero_direction_to_target");
             return false;
         }
-        const float heading = core::angle::QuantizeToEightDirections(std::atan2(dir.x, -dir.y));
+        const float heading = std::atan2(dir.x, -dir.y);
         commitSuccess(chosenTarget, heading);
         gEnemyRuntimeWindowStats.assassinCheapEmergencySuccesses += 1;
         bolt::log::Profile(
@@ -642,6 +647,11 @@ bool BuildAssassinCheapFlowSegment(
             GameplayConstants::kWallClearanceForAvoidance)) {
         gEnemyRuntimeWindowStats.navFlowMisses += 1;
         logFail("segment_intersects_wall", CheapSegmentFailReason::SegmentIntersectsWall);
+        return false;
+    }
+    if (!IsValidSegmentEndpoint(world, segmentTarget)) {
+        gEnemyRuntimeWindowStats.navFlowMisses += 1;
+        logFail("segment_endpoint_invalid", CheapSegmentFailReason::SegmentEndpointInvalid);
         return false;
     }
 
