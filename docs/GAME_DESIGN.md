@@ -396,6 +396,8 @@ Menu rendering is in `src/ui/MenuScreen.cpp`.
   - debug info checkbox
   - Start and Quit buttons
   - bottom-aligned build number text
+- A decorative `Bolt` wordmark is drawn at the top-left corner (`10,10`) in yellow using the bitmap atlas `resources/fonts/absolute_10.png` plus metadata `resources/fonts/absolute_10.txt`; glyphs are rendered with point filtering (anti-aliasing disabled) at 128px screen size (8x).
+- A `Beta Version` subtitle is drawn below that wordmark in gray using `resources/fonts/pixuf.ttf` loaded and rendered at 16px (Pixuf native size), with point filtering (anti-aliasing disabled).
 - While the menu is visible, a low-volume generated 8-bit/chiptune loop plays in the background.
 - Quit opens confirmation dialog.
 

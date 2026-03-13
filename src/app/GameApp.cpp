@@ -71,6 +71,9 @@ int GameApp::Run() {
     if (!renderer_.LoadResources()) {
         bolt::log::Warning("RENDER: Failed to load one or more renderer resources");
     }
+    if (!menuScreen_.LoadResources()) {
+        bolt::log::Warning("MENU: Failed to load one or more menu resources");
+    }
     int activePresentationScale = 1;
     if (kPresentationScale > 1) {
         presentationTarget_ = LoadRenderTexture(config_.screenWidth, config_.screenHeight);
@@ -202,6 +205,7 @@ int GameApp::Run() {
         presentationTargetLoaded_ = false;
     }
     debugOverlayRenderer_.ReleaseResources();
+    menuScreen_.UnloadResources();
     renderer_.UnloadResources();
     if (audioReady_) {
         if (menuMusicGeneratorReady_) {

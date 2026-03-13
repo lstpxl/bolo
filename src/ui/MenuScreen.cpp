@@ -1,8 +1,17 @@
 #include "ui/MenuScreen.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cmath>
+#include <fstream>
+#include <iterator>
+#include <string_view>
+#include <string>
+#include <unordered_map>
+#include <vector>
 #include "app/BuildInfo.h"
+#include "core/Log.h"
+#include "core/ResourceLocator.h"
 #include "ui/UiPrimitives.h"
 #include "raygui.h"
 #include "raylib.h"
@@ -30,7 +39,327 @@ MenuScreen::FocusedControl PreviousFocusedControl(MenuScreen::FocusedControl cur
 int RoundToNearestInt(float value) {
     return static_cast<int>(std::round(value));
 }
+
+std::string Trim(std::string_view value) {
+    std::size_t start = 0;
+    while (start < value.size() && std::isspace(static_cast<unsigned char>(value[start])) != 0) {
+        ++start;
+    }
+    std::size_t end = value.size();
+    while (end > start && std::isspace(static_cast<unsigned char>(value[end - 1])) != 0) {
+        --end;
+    }
+    return std::string(value.substr(start, end - start));
+}
+
+bool ParseIntegerAfterLabel(
+    std::string_view text,
+    std::string_view label,
+    int& outValue) {
+    const std::size_t labelPos = text.find(label);
+    if (labelPos == std::string_view::npos) {
+        return false;
+    }
+    std::size_t valueStart = labelPos + label.size();
+    while (valueStart < text.size() && std::isspace(static_cast<unsigned char>(text[valueStart])) != 0) {
+        ++valueStart;
+    }
+    std::size_t valueEnd = valueStart;
+    while (valueEnd < text.size() && std::isdigit(static_cast<unsigned char>(text[valueEnd])) != 0) {
+        ++valueEnd;
+    }
+    if (valueEnd == valueStart) {
+        return false;
+    }
+    outValue = std::stoi(std::string(text.substr(valueStart, valueEnd - valueStart)));
+    return true;
+}
+
+std::vector<int> Utf8ToCodepoints(const std::string& input) {
+    std::vector<int> codepoints;
+    codepoints.reserve(input.size());
+    for (std::size_t i = 0; i < input.size();) {
+        const unsigned char c0 = static_cast<unsigned char>(input[i]);
+        if ((c0 & 0x80U) == 0) {
+            codepoints.push_back(static_cast<int>(c0));
+            ++i;
+            continue;
+        }
+        if ((c0 & 0xE0U) == 0xC0U && i + 1 < input.size()) {
+            const unsigned char c1 = static_cast<unsigned char>(input[i + 1]);
+            const int cp = (static_cast<int>(c0 & 0x1FU) << 6) | static_cast<int>(c1 & 0x3FU);
+            codepoints.push_back(cp);
+            i += 2;
+            continue;
+        }
+        if ((c0 & 0xF0U) == 0xE0U && i + 2 < input.size()) {
+            const unsigned char c1 = static_cast<unsigned char>(input[i + 1]);
+            const unsigned char c2 = static_cast<unsigned char>(input[i + 2]);
+            const int cp =
+                (static_cast<int>(c0 & 0x0FU) << 12) |
+                (static_cast<int>(c1 & 0x3FU) << 6) |
+                static_cast<int>(c2 & 0x3FU);
+            codepoints.push_back(cp);
+            i += 3;
+            continue;
+        }
+        if ((c0 & 0xF8U) == 0xF0U && i + 3 < input.size()) {
+            const unsigned char c1 = static_cast<unsigned char>(input[i + 1]);
+            const unsigned char c2 = static_cast<unsigned char>(input[i + 2]);
+            const unsigned char c3 = static_cast<unsigned char>(input[i + 3]);
+            const int cp =
+                (static_cast<int>(c0 & 0x07U) << 18) |
+                (static_cast<int>(c1 & 0x3FU) << 12) |
+                (static_cast<int>(c2 & 0x3FU) << 6) |
+                static_cast<int>(c3 & 0x3FU);
+            codepoints.push_back(cp);
+            i += 4;
+            continue;
+        }
+        ++i;
+    }
+    return codepoints;
+}
+
+std::string UnescapeQuotedString(const std::string& escaped) {
+    std::string result;
+    result.reserve(escaped.size());
+    for (std::size_t i = 0; i < escaped.size(); ++i) {
+        const char c = escaped[i];
+        if (c == '\\' && i + 1 < escaped.size()) {
+            const char n = escaped[i + 1];
+            if (n == '\\' || n == '"') {
+                result.push_back(n);
+                ++i;
+                continue;
+            }
+        }
+        result.push_back(c);
+    }
+    return result;
+}
+
+bool ParseSpacingMap(
+    const std::string& spacingData,
+    std::unordered_map<int, int>& advanceByCodepoint) {
+    std::size_t pos = 0;
+    while (true) {
+        const std::size_t open = spacingData.find('[', pos);
+        if (open == std::string::npos) {
+            break;
+        }
+        std::size_t numStart = open + 1;
+        while (numStart < spacingData.size() && spacingData[numStart] == ' ') {
+            ++numStart;
+        }
+        std::size_t numEnd = numStart;
+        while (numEnd < spacingData.size() && std::isdigit(static_cast<unsigned char>(spacingData[numEnd])) != 0) {
+            ++numEnd;
+        }
+        if (numEnd == numStart || numEnd >= spacingData.size() || spacingData[numEnd] != ',') {
+            pos = open + 1;
+            continue;
+        }
+        const int advance = std::stoi(spacingData.substr(numStart, numEnd - numStart));
+        std::size_t quoteStart = spacingData.find('"', numEnd + 1);
+        if (quoteStart == std::string::npos) {
+            return false;
+        }
+        std::size_t quoteEnd = quoteStart + 1;
+        bool escaped = false;
+        for (; quoteEnd < spacingData.size(); ++quoteEnd) {
+            const char ch = spacingData[quoteEnd];
+            if (escaped) {
+                escaped = false;
+                continue;
+            }
+            if (ch == '\\') {
+                escaped = true;
+                continue;
+            }
+            if (ch == '"') {
+                break;
+            }
+        }
+        if (quoteEnd >= spacingData.size()) {
+            return false;
+        }
+        const std::string escapedChars = spacingData.substr(quoteStart + 1, quoteEnd - quoteStart - 1);
+        const std::string chars = UnescapeQuotedString(escapedChars);
+        for (int codepoint : Utf8ToCodepoints(chars)) {
+            advanceByCodepoint[codepoint] = advance;
+        }
+        pos = quoteEnd + 1;
+    }
+    return !advanceByCodepoint.empty();
+}
+
+bool LoadAbsolute10BitmapFont(Font& outFont) {
+    const std::string pngPath = core::resources::ResolveResourcePath("fonts", "absolute_10.png");
+    const std::string txtPath = core::resources::ResolveResourcePath("fonts", "absolute_10.txt");
+    if (pngPath.empty() || txtPath.empty()) {
+        bolt::log::Warning("MENU: absolute_10 bitmap font files not found in resources/fonts");
+        return false;
+    }
+
+    std::ifstream metadataFile(txtPath);
+    if (!metadataFile.is_open()) {
+        bolt::log::Warning("MENU: failed to open bitmap font metadata: %s", txtPath.c_str());
+        return false;
+    }
+    const std::string metadata(
+        (std::istreambuf_iterator<char>(metadataFile)),
+        std::istreambuf_iterator<char>());
+    metadataFile.close();
+
+    int charWidth = 0;
+    int charHeight = 0;
+    if (!ParseIntegerAfterLabel(metadata, "Character width:", charWidth) ||
+        !ParseIntegerAfterLabel(metadata, "Character height:", charHeight) ||
+        charWidth <= 0 || charHeight <= 0) {
+        bolt::log::Warning("MENU: invalid character size metadata in %s", txtPath.c_str());
+        return false;
+    }
+
+    const std::size_t charsetLabelPos = metadata.find("Character set:");
+    const std::size_t spacingLabelPos = metadata.find("Spacing data:");
+    if (charsetLabelPos == std::string::npos || spacingLabelPos == std::string::npos ||
+        spacingLabelPos <= charsetLabelPos) {
+        bolt::log::Warning("MENU: malformed bitmap font metadata sections in %s", txtPath.c_str());
+        return false;
+    }
+
+    const std::size_t charsetValueStart = charsetLabelPos + std::string_view("Character set:").size();
+    const std::string charset = Trim(
+        std::string_view(metadata).substr(charsetValueStart, spacingLabelPos - charsetValueStart));
+    const std::vector<int> charsetCodepoints = Utf8ToCodepoints(charset);
+    if (charsetCodepoints.empty()) {
+        bolt::log::Warning("MENU: bitmap font character set is empty in %s", txtPath.c_str());
+        return false;
+    }
+
+    std::unordered_map<int, int> advanceByCodepoint;
+    const std::string spacingData = metadata.substr(spacingLabelPos);
+    if (!ParseSpacingMap(spacingData, advanceByCodepoint)) {
+        bolt::log::Warning("MENU: failed to parse spacing data in %s", txtPath.c_str());
+        return false;
+    }
+
+    Texture2D texture = LoadTexture(pngPath.c_str());
+    if (texture.id == 0) {
+        bolt::log::Warning("MENU: failed to load bitmap font texture from %s", pngPath.c_str());
+        return false;
+    }
+    SetTextureFilter(texture, TEXTURE_FILTER_POINT);
+
+    const int columns = texture.width / charWidth;
+    const int rows = texture.height / charHeight;
+    const int maxGlyphs = columns * rows;
+    const int glyphCount = static_cast<int>(charsetCodepoints.size());
+    if (columns <= 0 || rows <= 0 || glyphCount > maxGlyphs) {
+        bolt::log::Warning(
+            "MENU: bitmap atlas capacity mismatch (%d glyphs, capacity %d) from %s",
+            glyphCount,
+            maxGlyphs,
+            pngPath.c_str());
+        UnloadTexture(texture);
+        return false;
+    }
+
+    Rectangle* recs = static_cast<Rectangle*>(MemAlloc(static_cast<unsigned int>(sizeof(Rectangle) * glyphCount)));
+    GlyphInfo* glyphs = static_cast<GlyphInfo*>(MemAlloc(static_cast<unsigned int>(sizeof(GlyphInfo) * glyphCount)));
+    if (recs == nullptr || glyphs == nullptr) {
+        if (recs != nullptr) {
+            MemFree(recs);
+        }
+        if (glyphs != nullptr) {
+            MemFree(glyphs);
+        }
+        UnloadTexture(texture);
+        bolt::log::Warning("MENU: failed to allocate bitmap font glyph data");
+        return false;
+    }
+
+    for (int i = 0; i < glyphCount; ++i) {
+        const int codepoint = charsetCodepoints[static_cast<std::size_t>(i)];
+        const int atlasX = (i % columns) * charWidth;
+        const int atlasY = (i / columns) * charHeight;
+        recs[i] = Rectangle{
+            .x = static_cast<float>(atlasX),
+            .y = static_cast<float>(atlasY),
+            .width = static_cast<float>(charWidth),
+            .height = static_cast<float>(charHeight),
+        };
+        glyphs[i] = GlyphInfo{
+            .value = codepoint,
+            .offsetX = 0,
+            .offsetY = 0,
+            .advanceX = charWidth,
+            .image = Image{},
+        };
+        const auto it = advanceByCodepoint.find(codepoint);
+        if (it != advanceByCodepoint.end()) {
+            glyphs[i].advanceX = it->second;
+        }
+    }
+
+    outFont = Font{
+        .baseSize = charHeight,
+        .glyphCount = glyphCount,
+        .glyphPadding = 0,
+        .texture = texture,
+        .recs = recs,
+        .glyphs = glyphs,
+    };
+    return true;
+}
+
+constexpr float kMenuTitleRenderSize = 128.0F;
+constexpr int kMenuTitleX = 10;
+constexpr int kMenuTitleY = 10;
+constexpr int kBetaLabelFontBaseSize = 16;
+constexpr float kBetaLabelRenderSize = 16.0F;
+constexpr float kBetaLabelYOffset = 10.0F;
 }  // namespace
+
+bool MenuScreen::LoadResources() {
+    UnloadResources();
+    titleFontLoaded_ = LoadAbsolute10BitmapFont(titleFont_);
+    if (!titleFontLoaded_) {
+        titleFont_ = Font{};
+    }
+    const std::string betaFontPath = core::resources::ResolveResourcePath("fonts", "pixuf.ttf");
+    if (betaFontPath.empty()) {
+        bolt::log::Warning("MENU: pixuf.ttf not found in resources/fonts");
+        betaFont_ = Font{};
+        betaFontLoaded_ = false;
+    } else {
+        betaFont_ = LoadFontEx(betaFontPath.c_str(), kBetaLabelFontBaseSize, nullptr, 0);
+        betaFontLoaded_ = betaFont_.texture.id != 0;
+        if (!betaFontLoaded_) {
+            bolt::log::Warning("MENU: failed to load beta font from %s", betaFontPath.c_str());
+            betaFont_ = Font{};
+        } else {
+            SetTextureFilter(betaFont_.texture, TEXTURE_FILTER_POINT);
+        }
+    }
+    return titleFontLoaded_ || betaFontLoaded_;
+}
+
+void MenuScreen::UnloadResources() {
+    if (!titleFontLoaded_) {
+    } else {
+        UnloadFont(titleFont_);
+        titleFont_ = Font{};
+        titleFontLoaded_ = false;
+    }
+    if (!betaFontLoaded_) {
+        return;
+    }
+    UnloadFont(betaFont_);
+    betaFont_ = Font{};
+    betaFontLoaded_ = false;
+}
 
 MenuScreenResult MenuScreen::Render(
     const MenuSettings& currentSettings,
@@ -80,6 +409,29 @@ MenuScreenResult MenuScreen::Render(
     const float startButtonY = quitButtonY - 60.0F;
 
     DrawRectangleRounded(panel, 0.05F, 8, Color{38, 45, 58, 240});
+    if (titleFontLoaded_) {
+        DrawTextEx(
+            titleFont_,
+            "Bolt",
+            Vector2{static_cast<float>(kMenuTitleX), static_cast<float>(kMenuTitleY)},
+            kMenuTitleRenderSize,
+            0.0F,
+            YELLOW);
+    } else {
+        DrawText("Bolt", kMenuTitleX, kMenuTitleY, 20, YELLOW);
+    }
+    const float betaLabelY = static_cast<float>(kMenuTitleY) + kMenuTitleRenderSize + kBetaLabelYOffset;
+    if (betaFontLoaded_) {
+        DrawTextEx(
+            betaFont_,
+            "Beta Version",
+            Vector2{static_cast<float>(kMenuTitleX), betaLabelY},
+            kBetaLabelRenderSize,
+            0.0F,
+            GRAY);
+    } else {
+        DrawText("Beta Version", kMenuTitleX, static_cast<int>(betaLabelY), 20, GRAY);
+    }
     const int titleFontSize = 40;
     DrawText(
         "BOLT",

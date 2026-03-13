@@ -3,6 +3,7 @@
 #include "app/AppConfig.h"
 #include "core/Types.h"
 #include "platform/Input.h"
+#include "raylib.h"
 #include "ui/ConfirmationDialog.h"
 
 struct MenuScreenResult {
@@ -26,8 +27,14 @@ public:
         const MenuSettings& currentSettings,
         const AppConfig& config,
         const FrameInput& input);
+    bool LoadResources();
+    void UnloadResources();
 
 private:
+    Font titleFont_{};
+    bool titleFontLoaded_ = false;
+    Font betaFont_{};
+    bool betaFontLoaded_ = false;
     int levelNumber_ = kDefaultGameLevelNumber;
     int mazeDensity_ = 1;
     bool debugInfo_ = false;
