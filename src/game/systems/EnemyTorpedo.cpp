@@ -40,7 +40,7 @@ float SelectBestLongStraightHeading(const WorldState& world, const EnemyTank& en
             enemy.position,
             candidate,
             kTorpedoLongPathProbeUnits,
-            GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
+            GameplayConstants::kWallClearanceForAvoidance,
             kEnemyPlanningClearanceScale);
         if (clearDist > bestClear) {
             bestClear = clearDist;
@@ -71,7 +71,7 @@ float SelectTorpedoMoveHeading(
         enemy.position,
         straightHeading,
         kSegmentBuildProbeMaxUnits,
-        GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
+        GameplayConstants::kWallClearanceForAvoidance,
         kEnemyPlanningClearanceScale,
         rayQueryOccupancy);
     const float leftHeading = core::angle::QuantizeToEightDirections(straightHeading - kEightDirectionStep);
@@ -83,7 +83,7 @@ float SelectTorpedoMoveHeading(
         enemy.position,
         leftHeading,
         kSegmentBuildProbeMaxUnits,
-        GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
+        GameplayConstants::kWallClearanceForAvoidance,
         kEnemyPlanningClearanceScale,
         rayQueryOccupancy);
     const float rightClear = game::geometry::FreeDistanceAheadWithEnemies(
@@ -93,7 +93,7 @@ float SelectTorpedoMoveHeading(
         enemy.position,
         rightHeading,
         kSegmentBuildProbeMaxUnits,
-        GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
+        GameplayConstants::kWallClearanceForAvoidance,
         kEnemyPlanningClearanceScale,
         rayQueryOccupancy);
 

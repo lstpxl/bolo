@@ -63,7 +63,7 @@ void UpdateCollisionSystem(GameState& state, float deltaSeconds) {
                     if (game::geometry::IsPointInWall(
                             world,
                             enemy.position,
-                            GameplayConstants::kTankCollisionRadiusUnits)) {
+                            GameplayConstants::kWallClearanceForHard)) {
                         gEnemyCollisionDeathDebugWindowStats.projectileKillWallContact += 1;
                     }
                     enemy.alive = false;
@@ -118,7 +118,7 @@ void UpdateCollisionSystem(GameState& state, float deltaSeconds) {
         return;
     }
 
-    if (game::geometry::IsPointInWall(world, world.player.position, GameplayConstants::kTankCollisionRadiusUnits)) {
+    if (game::geometry::IsPointInWall(world, world.player.position, GameplayConstants::kWallClearanceForHard)) {
         world.player.alive = false;
         world.playerTurnLostPending = true;
         return;
@@ -145,8 +145,8 @@ void UpdateCollisionSystem(GameState& state, float deltaSeconds) {
         }
         const float dx = std::fabs(world.player.position.x - base.position.x);
         const float dy = std::fabs(world.player.position.y - base.position.y);
-        const float halfBase = GameplayConstants::kEnemyBaseSizeUnits * 0.5F;
-        if (dx <= halfBase && dy <= halfBase) {
+        const float baseThreshold = GameplayConstants::kPlayerBaseHardCollisionUnits;
+        if (dx <= baseThreshold && dy <= baseThreshold) {
             world.player.alive = false;
             world.playerTurnLostPending = true;
             return;

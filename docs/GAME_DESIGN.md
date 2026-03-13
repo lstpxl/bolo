@@ -166,13 +166,14 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
 
 ### Collision System and Radius Usage
 
-`CollisionSystem.cpp` currently uses these constants (you can decide whether to migrate to the enemy dual-radius names):
+`CollisionSystem.cpp` uses:
 
-- **`kTankCollisionRadiusUnits`** – wall checks (IsPointInWall) for player and enemy; projectile-kill debug.
-- **`kPlayerEnemyCollisionRadius`** – player–enemy overlap (`2 × kTankCollisionRadiusUnits`).
+- **`kWallClearanceForHard`** – wall checks (IsPointInWall) for player and enemy; projectile-kill debug (expansion beyond wall half-thickness = `kEntityRadiusUnits`).
+- **`kPlayerEnemyCollisionRadius`** – player–enemy overlap (`2 × kEntityRadiusUnits`).
 - **`kProjectileHitRadius`** – projectile vs enemy/player hit detection (0.7 units).
+- **`kPlayerBaseHardCollisionUnits`** – player death when inside base (halfBase + entityRadius).
 
-Enemy movement/steering code uses **`kEnemyWallAvoidanceRadiusUnits`** (same as `kEnemyAvoidanceRadiusUnits`) for clearance queries.
+Enemy movement/steering code uses **`kWallClearanceForAvoidance`** (passed into geometry) and **`kEnemyWallAvoidanceUnits`** / **`kEnemyAvoidanceRadiusUnits`** for clearance queries. Wall model: finite line extruded as pill by half-thickness; bases use the same formula (halfSize + entityRadius + optional clearance).
 
 ### Enemy Separation and Mutual Collision
 
@@ -187,14 +188,18 @@ Enemy movement/steering code uses **`kEnemyWallAvoidanceRadiusUnits`** (same as 
 - `Uncouple` mode is available to all enemy types and temporarily overrides their normal AI mode to move away from nearby enemies, then restores the previous mode when the timer expires.
 - On near-separation conflicts (`distance < preferred separation`), enemies are no longer position-pushed directly in the collision pass; both enemies enter `Uncouple` mode instead.
 - Re-entering `Uncouple` while already in `Uncouple` does not reset the remaining uncouple timer.
+- Re-entering `Uncouple` from enemy-pair collision paths while already in `Uncouple` also preserves the current uncouple heading target (no heading retarget on pair re-entry); wall-contact re-entry can still refresh heading.
 - For near-separation re-entry, if both enemies are already in `Uncouple`, re-triggering is gated by a stricter center-distance threshold (`<= 1.5` units); otherwise, the regular preferred-separation threshold (`< 2.0`) is used.
 - Wall-contact uncouple (segment or edge-on wall hit during movement) likewise does not reset the timer on re-entry when already in `Uncouple`; the pre-`EnterUncoupleMode` timer zero is skipped.
 - `Uncouple` per-step steering combines force components as `pathFollowing + (separation + obstacleAvoidance + wallAvoidance) + randomNoise`.
 - `pathFollowing` is always clamped so its magnitude is not greater than `separation` magnitude for that step.
+- Uncouple priority/yield (used to break deadlocks between two uncouple agents) is restricted to overlap recovery only: it cannot create a new preferred-separation violation, cannot reduce spacing while already under preferred separation, and cannot cross the hard overlap distance.
+- Uncouple heading candidate scoring and uncouple-priority clear-ahead scoring use static-obstacle plus enemy-aware clearance (not walls-only), so selected uncouple headings avoid dense enemy lanes when alternatives exist.
 - `obstacleAvoidance` is computed from nearby enemies ahead of the desired uncouple direction (short-range, direction-aware).
 - `wallAvoidance` uses short-range clearance probes around the enemy and pushes away from blocked directions.
 - While in `Uncouple`, each enemy also receives a tiny per-update random force component to break deadlocks/equilibrium (for example exact-overlap pairs or groups contesting narrow passages).
 - Full-tier movement wall handling additionally checks side-clearance while moving (edge-on/parallel-to-wall case); if side contact risk is detected, enemy enters `Uncouple` mode instead of sliding into wall-stick behavior.
+- On full-tier wall-contact handling (`segmentWallHit` or edge-on wall contact), the enemy also runs a short-range recovery search to reposition its center to the nearest valid non-wall/non-base point (using avoidance clearance) before continuing uncouple behavior. This prevents persistent "stuck at wall endpoint" states.
 - On death, an enemy explosion animation plays at the enemy's position: `resources/textures/explosion-1.png` is a 6-frame horizontal spritesheet (each frame `32×32` px), played at `0.15s` per frame (total `0.9s`). Up to `64` simultaneous explosions are tracked in `WorldState::enemyExplosions`. The explosion is rendered at `32×32` screen pixels (1× source scale), centered on the death position. The enemy entity is removed from the simulation immediately on death; only the explosion visual persists.
 - When a base is destroyed, a one-shot explosion animation plays at the base center: `resources/textures/explosion-3-large.png` is a 6-frame horizontal spritesheet (each frame `64×64` px), played at `0.15s` per frame (total `0.9s`). Up to `6` simultaneous base explosions are tracked in `WorldState::baseExplosions`. The explosion is rendered as `4×4` world units (`64` screen pixels at `16px/unit`), centered on the base. Spawning is gated by `EnemyBase::explosionPlayed` so each base triggers at most one explosion.
 - Player death uses `resources/textures/explosion-2.png` (6-frame `32×32` px horizontal spritesheet, `0.15s` per frame). The animation plays once at `kPlayerExplosionRenderWorldUnits = 2` world units (`32` screen pixels), centered at the player's death position. Rendered in world space inside the `BeginMode2D` camera block. The animation does not loop; after `0.9s` (6 frames) nothing is drawn for the remaining death-mode duration.
@@ -245,10 +250,13 @@ Enemy movement/steering code uses **`kEnemyWallAvoidanceRadiusUnits`** (same as 
   - Chase keeps stand-off band `3..6` units (approach if farther, retreat if closer, stop inside band).
   - Scout uses a two-level planner shared across Full/Cheap tiers:
     - **Cell-level choice:** all heading decisions use 8 integer direction indices (0..7). Current float heading is converted to dir index first; relative turn cost, scoring, and tie-break use integer math. Float heading is derived from dir index only at movement output.
-    - Evaluate all 8 neighbor directions; score each by traversable run length with heading penalty `-20%` per `45°` turn from current heading (`longer and straighter` wins, random tie-break).
+    - Evaluate all 8 neighbor directions; score uses exponential-decay weighting:
+      `score = (1 - core::math::ExpDecayA1K07(runCells)) * core::math::ExpDecayA1K07(enemiesInFirstCell) * (1 - 0.2 * turnSteps)`.
+      Here `runCells` is traversable run length in the candidate direction, `enemiesInFirstCell` is alive enemies in the first cell of that direction, and `turnSteps` is relative heading turn cost in 45-degree steps.
     - Cells occupied by alive bases are treated as blocked.
     - **Segment-level execution:** build a persisted `1` or `2` segment path toward the chosen neighbor-cell center.
     - Direct segment is preferred; for diagonal half-block cases, endpoint adjustment within `2` units around target center is attempted, then a `2`-segment bend path is attempted.
+    - Candidate scout segment endpoints are rejected if they lie inside wall-avoidance space (using `kWallClearanceForAvoidance`), preventing path endpoints from being placed too close to wall endpoints/corners.
     - If no valid Scout path can be built, hunter enters rotate fallback.
 - Assassin:
   - Modes: `Pursuit` (default) and temporary `Uncouple`.
@@ -285,6 +293,7 @@ Enemy movement/steering code uses **`kEnemyWallAvoidanceRadiusUnits`** (same as 
     - torpedo rotates heading by `45°` counterclockwise, remains without an active segment for that frame, then retries segment build on the next cheap-tier update
 - Hunter exception:
   - cheap-tier Hunter `Scout` uses the same two-level planner as full-tier `Scout` (8-direction cell scoring + persisted 1/2 segment path), so Scout steering behavior is tier-consistent.
+  - cheap-tier Hunter scout segment traversal uses continuous heading toward current segment target point (no 8-way heading snap during traversal), preventing drift away from validated segment geometry.
   - tier difference remains collision handling: cheap-tier hunters skip full-tier enemy-collision post-passes.
 - Cheap-tier enemies do not participate in enemy-enemy frontal-collision and separation post-passes.
 - Cheap-tier enemies do not run enemy-enemy or enemy-base collision checks at all; wall clearance is evaluated only when selecting the next cheap-tier segment.

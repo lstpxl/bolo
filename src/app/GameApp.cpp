@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <string>
 #include "core/Log.h"
+#include "core/Math.h"
 #include "core/Profiling.h"
 #include "core/ResourceLocator.h"
 #include "raylib.h"
@@ -57,6 +58,8 @@ GameplayView BuildGameplayView(const AppConfig& config) {
 }  // namespace
 
 int GameApp::Run() {
+    core::math::InitializeLookupTables();
+
     InitWindow(
         config_.screenWidth * kPresentationScale,
         config_.screenHeight * kPresentationScale,

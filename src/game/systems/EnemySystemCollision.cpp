@@ -92,8 +92,8 @@ void ResolveEnemyCollisionsSinglePass(
             }
 
             const bool inBase =
-                game::geometry::IsPointInUndestroyedBase(world, a.position, 1.0F) ||
-                game::geometry::IsPointInUndestroyedBase(world, b.position, 1.0F);
+                game::geometry::IsPointInUndestroyedBase(world, a.position, GameplayConstants::kWallClearanceForAvoidance) ||
+                game::geometry::IsPointInUndestroyedBase(world, b.position, GameplayConstants::kWallClearanceForAvoidance);
 
             frameStats.frontalPairsVisited += 1;
             gEnemyRuntimeWindowStats.frontalPairsByType[PairTypeMatrixIndex(a.type, b.type)] += 1;
@@ -122,9 +122,10 @@ void ResolveEnemyCollisionsSinglePass(
 
             profiling::ScopedProfile separationPairScope(profiling::Scope::EnemySeparationPairResolve, true);
             const float distSq = DistanceSq(a.position, b.position);
+            // Close-overlap pairs are already handled in the frontal branch above.
+            // Avoid re-entering uncouple again in separation for the same pair/frame.
             if (distSq <= killDistSq) {
-                enterUncoupleMode(world.enemies, j, i, kReasonSeparationProximity);
-                enterUncoupleMode(world.enemies, i, j, kReasonSeparationProximity);
+                return;
             }
             if (distSq >= separationDistSq) {
                 return;

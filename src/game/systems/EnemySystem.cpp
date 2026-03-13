@@ -75,9 +75,9 @@ std::uint64_t gLastEnemyStatsPrintedFrame = 0;
         stats.killDebugEnemyEnemyReenterBoth += 1;
     }
     const bool wallA = game::geometry::IsPointInWall(
-        world, a.position, GameplayConstants::kTankCollisionRadiusUnits);
+        world, a.position, GameplayConstants::kWallClearanceForHard);
     const bool wallB = game::geometry::IsPointInWall(
-        world, b.position, GameplayConstants::kTankCollisionRadiusUnits);
+        world, b.position, GameplayConstants::kWallClearanceForHard);
     if (wallA || wallB) {
         stats.killDebugEnemyEnemyWallContact += 1;
     }
@@ -272,12 +272,54 @@ bool IsEdgeOnWallContact(
     const float rightHeading = NormalizeAngle(movementHeadingRadians + (kPi * 0.5F));
     const float leftClear = game::geometry::FreeDistanceAhead(
         world, candidatePosition, leftHeading, kParallelWallSideProbeUnits,
-        GameplayConstants::kEnemyWallAvoidanceRadiusUnits, 1.0F);
+        GameplayConstants::kWallClearanceForAvoidance, 1.0F);
     const float rightClear = game::geometry::FreeDistanceAhead(
         world, candidatePosition, rightHeading, kParallelWallSideProbeUnits,
-        GameplayConstants::kEnemyWallAvoidanceRadiusUnits, 1.0F);
+        GameplayConstants::kWallClearanceForAvoidance, 1.0F);
     return leftClear <= kParallelWallContactThresholdUnits ||
            rightClear <= kParallelWallContactThresholdUnits;
+}
+
+Vec2f ResolveWallContactRecoveryPosition(
+    const WorldState& world,
+    const Vec2f& currentPosition,
+    float movementHeadingRadians,
+    float maxRecoveryDistance)
+{
+    const float clearance = GameplayConstants::kWallClearanceForAvoidance;
+    if (!game::geometry::IsPointInWall(world, currentPosition, clearance) &&
+        !game::geometry::IsPointInUndestroyedBase(world, currentPosition, clearance)) {
+        return currentPosition;
+    }
+
+    constexpr float kRecoveryStepUnits = 0.05F;
+    constexpr std::array<float, 7> kRecoveryHeadingOffsets{
+        kPi,
+        kPi - kEightDirectionStep,
+        kPi + kEightDirectionStep,
+        kPi - kEightDirectionStep * 2.0F,
+        kPi + kEightDirectionStep * 2.0F,
+        kPi - kEightDirectionStep * 3.0F,
+        kPi + kEightDirectionStep * 3.0F,
+    };
+
+    const float searchDistance = std::max(0.25F, maxRecoveryDistance);
+    for (float dist = kRecoveryStepUnits; dist <= searchDistance; dist += kRecoveryStepUnits) {
+        for (float offset : kRecoveryHeadingOffsets) {
+            const float heading = NormalizeAngle(movementHeadingRadians + offset);
+            const Vec2f dir = DirectionFromHeading(heading);
+            const Vec2f candidate{
+                .x = currentPosition.x + dir.x * dist,
+                .y = currentPosition.y + dir.y * dist,
+            };
+            if (!game::geometry::IsPointInWall(world, candidate, clearance) &&
+                !game::geometry::IsPointInUndestroyedBase(world, candidate, clearance)) {
+                return candidate;
+            }
+        }
+    }
+
+    return currentPosition;
 }
 
 [[maybe_unused]] void DecrementOriginBaseAliveCount(WorldState& world, EnemyTank& enemy)
@@ -311,7 +353,7 @@ bool TrySeparationTurn(
         };
         if (SegmentIntersectsWall(
                 world, self.position, candidate,
-                GameplayConstants::kEnemyWallAvoidanceRadiusUnits)) {
+                GameplayConstants::kWallClearanceForAvoidance)) {
             continue;
         }
         float nearestSq = std::numeric_limits<float>::infinity();
@@ -369,13 +411,12 @@ bool IsMovementBlockedByEnemies(
     };
 
     constexpr float kSeparationProgressEpsilon = 0.001F;
+    const float hardMinSeparation = GameplayConstants::kEnemyMutualKillDistanceUnits;
     for (int i = 0; i < static_cast<int>(enemies.size()); ++i) {
         if (i == selfIndex) {
             continue;
         }
-        if (otherYieldsToSelf(i)) {
-            continue;
-        }
+        const bool yieldedByPriority = otherYieldsToSelf(i);
         const EnemyTank& other = enemies[static_cast<std::size_t>(i)];
         if (!other.alive) {
             continue;
@@ -389,6 +430,23 @@ bool IsMovementBlockedByEnemies(
         const float toDistance = Distance(to, otherObstacle);
         const bool separatingFromOverlap =
             fromDistance < minSeparation && toDistance > fromDistance + kSeparationProgressEpsilon;
+
+        // Priority yield is only a deadlock-breaker for already-overlapping uncouple peers.
+        // It must never allow deeper overlap, new preferred-separation violations, or retreating
+        // back into crowding after an overlap started resolving.
+        if (yieldedByPriority) {
+            if (toDistance < hardMinSeparation) {
+                return true;
+            }
+            if (fromDistance >= minSeparation && toDistance < minSeparation) {
+                return true;
+            }
+            if (fromDistance < minSeparation &&
+                toDistance < fromDistance + kSeparationProgressEpsilon) {
+                return true;
+            }
+            continue;
+        }
 
         if (toDistance < minSeparation && !separatingFromOverlap) {
             return true;
@@ -521,7 +579,7 @@ void UpdateEnemySystem(
         if (enemy.simTier == EnemySimTier::Cheap) {
             if (enemy.type == EnemyType::Assassin && previousTier != EnemySimTier::Cheap) {
                 const bool insideWallOnCheapEntry = game::geometry::IsPointInWall(
-                    state.world, enemy.position, GameplayConstants::kTankCollisionRadiusUnits);
+                    state.world, enemy.position, GameplayConstants::kWallClearanceForHard);
                 if (insideWallOnCheapEntry) {
                     bolt::log::Profile(
                         "[ENEMY_ASSASSIN_CHEAP_ENTRY_IN_WALL] id=%d pos=(%.3f,%.3f) cell=(%d,%d) "
@@ -567,7 +625,7 @@ void UpdateEnemySystem(
         bool handledByUncoupleMovement = false;
         const bool startedInsideWallAvoid = enemy.type == EnemyType::Assassin &&
             game::geometry::IsPointInWall(
-                state.world, enemy.position, GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
+                state.world, enemy.position, GameplayConstants::kWallClearanceForAvoidance);
         const char* movementSourceLabel = "full_ai";
         int movementSourceBucket = kAssassinWallPhaseFull;
         {
@@ -610,7 +668,7 @@ void UpdateEnemySystem(
                     const float clearDistance = game::geometry::FreeDistanceAhead(
                         state.world, enemy.position, movementHeading,
                         GameplayConstants::kEnemyRequiredClearRunUnits + 0.5F,
-                        GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
+                        GameplayConstants::kWallClearanceForAvoidance,
                         kEnemyPlanningClearanceScale);
                     if (enemy.aiModeElapsedSeconds >=
                         GameplayConstants::kSlowRotateFullTurnSeconds) {
@@ -659,7 +717,7 @@ void UpdateEnemySystem(
                     const float forwardClear = game::geometry::FreeDistanceAheadWithEnemies(
                         state.world, state.world.enemies, enemyIndex, enemy.position,
                         enemy.headingRadians, kTorpedoNearCollisionCheckDistanceUnits,
-                        GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
+                        GameplayConstants::kWallClearanceForAvoidance,
                         kEnemyPlanningClearanceScale, &rayQueryOccupancy);
                     if (enemy.torpedoRetreatMovedUnits >= kTorpedoRetreatExitClearanceUnits &&
                         forwardClear >= kTorpedoRetreatExitClearanceUnits) {
@@ -685,7 +743,7 @@ void UpdateEnemySystem(
                         const float nearClear = game::geometry::FreeDistanceAheadWithEnemies(
                             state.world, state.world.enemies, enemyIndex, enemy.position,
                             straightHeading, kTorpedoNearCollisionCheckDistanceUnits,
-                            GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
+                            GameplayConstants::kWallClearanceForAvoidance,
                             kEnemyPlanningClearanceScale, &rayQueryOccupancy);
                         if (nearClear < kTorpedoImmediateObstacleDistanceUnits) {
                             enemy.torpedoMoveMode = TorpedoMoveMode::Retreat;
@@ -753,7 +811,7 @@ void UpdateEnemySystem(
                     const float clearDistance = game::geometry::FreeDistanceAhead(
                         state.world, enemy.position, movementHeading,
                         GameplayConstants::kEnemyRequiredClearRunUnits + 0.5F,
-                        GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
+                        GameplayConstants::kWallClearanceForAvoidance,
                         kEnemyPlanningClearanceScale);
                     if (clearDistance > GameplayConstants::kEnemyRequiredClearRunUnits) {
                         enemy.aiMode = EnemyAiMode::Scout;
@@ -813,7 +871,7 @@ void UpdateEnemySystem(
                     } else if (kUseAssassinAStarBackupNavigation) {
                         const float obstacleAhead = game::geometry::FreeDistanceAhead(
                             state.world, enemy.position, enemy.headingRadians, 2.0F,
-                            GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
+                            GameplayConstants::kWallClearanceForAvoidance,
                             kEnemyPlanningClearanceScale);
                         const bool needRepathObstacle = obstacleAhead < 2.0F;
                         const bool needRepathEmpty =
@@ -1013,20 +1071,20 @@ void UpdateEnemySystem(
                 const bool segmentWallHit =
                     moving && SegmentIntersectsWall(
                                   state.world, previousPosition, candidatePosition,
-                                  GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
+                                  GameplayConstants::kWallClearanceForAvoidance);
                 const bool edgeOnWallContact =
                     moving && !segmentWallHit &&
                     IsEdgeOnWallContact(state.world, candidatePosition, movementHeading);
                 if (enemy.type == EnemyType::Assassin && moving) {
                     const bool candidateInsideWallAvoid = game::geometry::IsPointInWall(
-                        state.world, candidatePosition, GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
+                        state.world, candidatePosition, GameplayConstants::kWallClearanceForAvoidance);
                     if (!startedInsideWallAvoid && candidateInsideWallAvoid) {
                         const float clearAhead = game::geometry::FreeDistanceAhead(
                             state.world,
                             previousPosition,
                             movementHeading,
                             std::max(1.5F, Distance(candidatePosition, previousPosition) + 0.5F),
-                            GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
+                            GameplayConstants::kWallClearanceForAvoidance,
                             1.0F);
                         bolt::log::Profile(
                             "[ENEMY_ASSASSIN_WALL_CAUSE] id=%d source=%s "
@@ -1053,6 +1111,11 @@ void UpdateEnemySystem(
                 if (segmentWallHit || edgeOnWallContact) {
                     const float movedLastFrameUnits = Distance(candidatePosition, previousPosition);
                     enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
+                    enemy.position = ResolveWallContactRecoveryPosition(
+                        state.world,
+                        enemy.position,
+                        movementHeading,
+                        movedLastFrameUnits + 0.75F);
                     // Only zero timer when entering uncouple from non-uncouple; preserve it on
                     // re-entry so the assassin can accumulate movement progress and eventually
                     // escape.
@@ -1074,7 +1137,7 @@ void UpdateEnemySystem(
                 }
                 if (enemy.type == EnemyType::Assassin) {
                     const bool nowInsideWallAvoid = game::geometry::IsPointInWall(
-                        state.world, enemy.position, GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
+                        state.world, enemy.position, GameplayConstants::kWallClearanceForAvoidance);
                     if (!startedInsideWallAvoid && nowInsideWallAvoid) {
                         gEnemyRuntimeWindowStats.assassinWallAvoidEntriesByPhase
                             [static_cast<std::size_t>(movementSourceBucket)] += 1;
@@ -1084,9 +1147,9 @@ void UpdateEnemySystem(
                             ? playerFlowField.NextCellHash(wallCellHash)
                             : -1;
                         const bool insideWallTank = game::geometry::IsPointInWall(
-                            state.world, enemy.position, GameplayConstants::kTankCollisionRadiusUnits);
+                            state.world, enemy.position, GameplayConstants::kWallClearanceForHard);
                         const bool insideBase = game::geometry::IsPointInUndestroyedBase(
-                            state.world, enemy.position, GameplayConstants::kTankCollisionRadiusUnits);
+                            state.world, enemy.position, GameplayConstants::kWallClearanceForHard);
                         bolt::log::Profile(
                             "[ENEMY_ASSASSIN_WALL_STATE_CHANGE] id=%d phase=%s insideWallAvoid=1 "
                             "posFrom=(%.3f,%.3f) posTo=(%.3f,%.3f) cell=(%d,%d) cellHash=%d "
@@ -1208,15 +1271,15 @@ void DebugLogEnemiesAtPosition(
         }
 
         const bool insideWall = game::geometry::IsPointInWall(
-            state.world, enemy.position, GameplayConstants::kTankCollisionRadiusUnits);
+            state.world, enemy.position, GameplayConstants::kWallClearanceForHard);
         const bool insideBase = game::geometry::IsPointInUndestroyedBase(
-            state.world, enemy.position, GameplayConstants::kTankCollisionRadiusUnits);
+            state.world, enemy.position, GameplayConstants::kWallClearanceForHard);
         const float clearAhead = game::geometry::FreeDistanceAhead(
             state.world,
             enemy.position,
             enemy.headingRadians,
             6.0F,
-            GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
+            GameplayConstants::kWallClearanceForAvoidance,
             1.0F);
         const float distPlayer = Distance(enemy.position, state.world.player.position);
         const float nearestBase = NearestBaseDistance(state.world, enemy.position);

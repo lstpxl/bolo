@@ -60,7 +60,7 @@ bool SelectDroneReturnToBaseHeading(
             enemy.position,
             candidate,
             kDroneReturnRequiredClearRunUnits,
-            GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
+            GameplayConstants::kWallClearanceForAvoidance,
             kEnemyPlanningClearanceScale);
         if (clearDistance < kDroneReturnRequiredClearRunUnits) {
             continue;
@@ -158,7 +158,7 @@ bool SelectDroneWatchEscapeHeading(
             self.position,
             candidateHeading,
             GameplayConstants::kEnemyRequiredClearRunUnits + 0.5F,
-            GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
+            GameplayConstants::kWallClearanceForAvoidance,
             kEnemyPlanningClearanceScale);
         if (clearDistance <= GameplayConstants::kEnemyRequiredClearRunUnits) {
             continue;

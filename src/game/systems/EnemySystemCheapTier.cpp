@@ -73,21 +73,21 @@ void BuildOffscreenSegment(WorldState& world, EnemyTank& enemy, float segmentLen
                 enemy.position,
                 forwardHeading,
                 kSegmentBuildProbeMaxUnits,
-                GameplayConstants::kEnemyWallAvoidanceRadiusUnits)},
+                GameplayConstants::kWallClearanceForAvoidance)},
         {.heading = leftHeading,
             .clearDistance = FreeDistanceAheadWallsOnly(
                 world,
                 enemy.position,
                 leftHeading,
                 kSegmentBuildProbeMaxUnits,
-                GameplayConstants::kEnemyWallAvoidanceRadiusUnits)},
+                GameplayConstants::kWallClearanceForAvoidance)},
         {.heading = rightHeading,
             .clearDistance = FreeDistanceAheadWallsOnly(
                 world,
                 enemy.position,
                 rightHeading,
                 kSegmentBuildProbeMaxUnits,
-                GameplayConstants::kEnemyWallAvoidanceRadiusUnits)},
+                GameplayConstants::kWallClearanceForAvoidance)},
     }};
     float bestClear = -1.0F;
     for (const Candidate& candidate : candidates) {
@@ -185,7 +185,7 @@ void ApplyCheapTierMovement(
             return;
         }
         const bool nowInsideWallAvoid = game::geometry::IsPointInWall(
-            state.world, enemy.position, GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
+            state.world, enemy.position, GameplayConstants::kWallClearanceForAvoidance);
         if (!lastInsideWallAvoid && nowInsideWallAvoid) {
             if (phaseBucket == kAssassinWallPhaseCheap) {
                 gEnemyRuntimeWindowStats
@@ -197,9 +197,9 @@ void ApplyCheapTierMovement(
                 ? flowField.NextCellHash(wallCellHash)
                 : -1;
             bool insideWallTank = game::geometry::IsPointInWall(
-                state.world, enemy.position, GameplayConstants::kTankCollisionRadiusUnits);
+                state.world, enemy.position, GameplayConstants::kWallClearanceForHard);
             bool insideBase = game::geometry::IsPointInUndestroyedBase(
-                state.world, enemy.position, GameplayConstants::kTankCollisionRadiusUnits);
+                state.world, enemy.position, GameplayConstants::kWallClearanceForHard);
             int overlapCount = 0;
             float nearestEnemyDistance = 9999.0F;
             for (std::size_t i = 0; i < state.world.enemies.size(); ++i) {
@@ -361,7 +361,8 @@ void ApplyCheapTierMovement(
                 enemy,
                 random,
                 hunterScoutHeading,
-                hunterScoutTargetPoint)) {
+                hunterScoutTargetPoint,
+                false)) {
             usingHunterScoutPath = true;
         } else {
             InvalidateHunterScoutPath(enemy);
@@ -400,16 +401,16 @@ void ApplyCheapTierMovement(
     };
     if (enemy.type == EnemyType::Assassin) {
         const bool startInsideWallAvoid = game::geometry::IsPointInWall(
-            state.world, enemy.position, GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
+            state.world, enemy.position, GameplayConstants::kWallClearanceForAvoidance);
         const bool candidateInsideWallAvoid = game::geometry::IsPointInWall(
-            state.world, candidatePosition, GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
+            state.world, candidatePosition, GameplayConstants::kWallClearanceForAvoidance);
         if (!startInsideWallAvoid && candidateInsideWallAvoid) {
             const float clearAhead = game::geometry::FreeDistanceAhead(
                 state.world,
                 enemy.position,
                 activeHeading,
                 std::max(1.5F, step + 0.5F),
-                GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
+                GameplayConstants::kWallClearanceForAvoidance,
                 1.0F);
             bolt::log::Profile(
                 "[ENEMY_ASSASSIN_WALL_CAUSE] id=%d source=cheap_segment "

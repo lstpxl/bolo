@@ -5,6 +5,7 @@
 #include <cmath>
 
 #include "core/AngleMath.h"
+#include "core/Math.h"
 #include "game/geometry/WorldGeometry.h"
 #include "game/model/GameplayConstants.h"
 #include "game/systems/EnemySystemHelpers.h"
@@ -144,13 +145,16 @@ bool SegmentIntersectsWall(
     const WorldState& world, const Vec2f& from, const Vec2f& to)
 {
     return game::geometry::SegmentIntersectsWall(
-        world, from, to, GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
+        world, from, to, GameplayConstants::kWallClearanceForAvoidance);
 }
 
 bool IsValidSegmentEndpoint(const WorldState& world, const Vec2f& point)
 {
+    if (game::geometry::IsPointInWall(world, point, GameplayConstants::kWallClearanceForAvoidance)) {
+        return false;
+    }
     return !game::geometry::IsPointInUndestroyedBase(
-        world, point, GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
+        world, point, GameplayConstants::kWallClearanceForAvoidance);
 }
 
 bool BuildHunterScoutSegments(
@@ -278,14 +282,39 @@ bool EnsureHunterScoutPath(
     for (int i = 0; i < kDirectionCount; ++i) {
         const int dx = kDirectionDx[static_cast<std::size_t>(i)];
         const int dy = kDirectionDy[static_cast<std::size_t>(i)];
+        const int nextCellX = fromCell.x + dx;
+        const int nextCellY = fromCell.y + dy;
         const int turnSteps = RelativeHeadingStepsInt(currentDirIndex, i);
         const int runCells = MeasureDirectionalRunCells(world, cellCache, fromCell, dx, dy);
-        const float penalty = std::max(0.0F, 1.0F - kHeadingPenaltyPerTurnStep * static_cast<float>(turnSteps));
+        const float turnWeight =
+            std::max(0.0F, 1.0F - kHeadingPenaltyPerTurnStep * static_cast<float>(turnSteps));
+        int enemiesInFirstCell = 0;
+        if (runCells > 0 && cellCache.IsValidCell(nextCellX, nextCellY)) {
+            for (const EnemyTank& other : world.enemies) {
+                if (!other.alive) {
+                    continue;
+                }
+                if (other.cellCoord.x == nextCellX && other.cellCoord.y == nextCellY) {
+                    enemiesInFirstCell += 1;
+                }
+            }
+        }
+        const int decayRunCells = std::clamp(
+            runCells,
+            core::math::kExpDecayA1K07MinX,
+            core::math::kExpDecayA1K07MaxX);
+        const int decayFirstCellEnemies = std::clamp(
+            enemiesInFirstCell,
+            core::math::kExpDecayA1K07MinX,
+            core::math::kExpDecayA1K07MaxX);
+        const float runDecay = static_cast<float>(core::math::ExpDecayA1K07(decayRunCells));
+        const float enemyDecay = static_cast<float>(core::math::ExpDecayA1K07(decayFirstCellEnemies));
+        const float weight = (1.0F - runDecay) * enemyDecay * turnWeight;
         candidates[static_cast<std::size_t>(i)] = DirectionCandidate{
             .directionIndex = i,
             .runCells = runCells,
             .headingStepCost = turnSteps,
-            .score = static_cast<float>(runCells) * penalty};
+            .score = weight};
     }
     std::sort(
         candidates.begin(),
@@ -354,7 +383,7 @@ float SelectScoutHeadingWithFallback(
     const float lookahead = game::geometry::FreeDistanceAhead(
         world, enemy.position, enemy.headingRadians,
         GameplayConstants::kEnemyLookaheadObstacleUnits,
-        GameplayConstants::kEnemyWallAvoidanceRadiusUnits, kEnemyPlanningClearanceScale);
+        GameplayConstants::kWallClearanceForAvoidance, kEnemyPlanningClearanceScale);
     if (lookahead >= GameplayConstants::kEnemyLookaheadObstacleUnits) {
         shouldRotate = false;
         return enemy.headingRadians;
@@ -399,7 +428,8 @@ bool SelectHunterScoutMotion(
     EnemyTank& enemy,
     Random& random,
     float& outHeadingRadians,
-    Vec2f& outTargetPoint)
+    Vec2f& outTargetPoint,
+    bool snapHeadingToEightDirections)
 {
     if (!EnsureHunterScoutPath(world, cellCache, enemy, random)) {
         return false;
@@ -418,8 +448,12 @@ bool SelectHunterScoutMotion(
         return false;
     }
     const float rawHeading = std::atan2(toTarget.x, -toTarget.y);
-    const int movementDirIndex = HeadingRadiansToDirIndex(rawHeading);
-    outHeadingRadians = DirIndexToHeadingRadians(movementDirIndex);
+    if (snapHeadingToEightDirections) {
+        const int movementDirIndex = HeadingRadiansToDirIndex(rawHeading);
+        outHeadingRadians = DirIndexToHeadingRadians(movementDirIndex);
+    } else {
+        outHeadingRadians = core::angle::NormalizeAngle(rawHeading);
+    }
     outTargetPoint = targetPoint;
     enemy.hunterScoutCachedHeadingRadians = outHeadingRadians;
     return true;

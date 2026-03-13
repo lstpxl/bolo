@@ -42,9 +42,9 @@ bool CanStepToNeighbor(
         return false;
     }
     const bool startInsideBase =
-        IsPointInUndestroyedBase(world, CellCenter(cellCache, x, y), GameplayConstants::kTankCollisionRadiusUnits);
+        IsPointInUndestroyedBase(world, CellCenter(cellCache, x, y), GameplayConstants::kWallClearanceForHard);
     if (!startInsideBase &&
-        IsPointInUndestroyedBase(world, CellCenter(cellCache, nx, ny), GameplayConstants::kTankCollisionRadiusUnits)) {
+        IsPointInUndestroyedBase(world, CellCenter(cellCache, nx, ny), GameplayConstants::kWallClearanceForHard)) {
         return false;
     }
     const MazeCell& cell = world.maze.cells[static_cast<std::size_t>(CellIndex(cellCache, x, y))];

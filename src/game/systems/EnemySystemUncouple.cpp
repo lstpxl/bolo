@@ -91,12 +91,14 @@ float SelectUncoupleHeading(
     const EnemyTank& self = enemies[static_cast<std::size_t>(selfIndex)];
     auto chooseQuantizedHeadingWithClearance = [&](float desiredHeading) {
         const float quantizedDesired = QuantizeToEightDirections(desiredHeading);
-        const float quantizedClear = game::geometry::FreeDistanceAhead(
+        const float quantizedClear = game::geometry::FreeDistanceAheadWithEnemies(
             world,
+            enemies,
+            selfIndex,
             self.position,
             quantizedDesired,
             kUncouplePriorityClearProbeUnits,
-            GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
+            GameplayConstants::kWallClearanceForAvoidance,
             1.0F);
         if (quantizedClear > kUncoupleBlockedHeadingThresholdUnits) {
             return quantizedDesired;
@@ -106,12 +108,14 @@ float SelectUncoupleHeading(
         float bestScore = -1000000.0F;
         for (int step = 0; step < 8; ++step) {
             const float candidateHeading = NormalizeAngle(static_cast<float>(step) * kEightDirectionStep);
-            const float clear = game::geometry::FreeDistanceAhead(
+            const float clear = game::geometry::FreeDistanceAheadWithEnemies(
                 world,
+                enemies,
+                selfIndex,
                 self.position,
                 candidateHeading,
                 kUncouplePriorityClearProbeUnits,
-                GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
+                GameplayConstants::kWallClearanceForAvoidance,
                 1.0F);
             const float alignDesired = std::cos(SignedAngleDelta(candidateHeading, desiredHeading));
             const float alignFallback = std::cos(SignedAngleDelta(candidateHeading, fallbackHeading));
@@ -180,7 +184,7 @@ float SelectUncoupleHeading(
             self.position,
             heading,
             kUncoupleWallProbeRangeUnits,
-            GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
+            GameplayConstants::kWallClearanceForAvoidance,
             1.0F);
         if (clear >= kUncoupleWallProbeRangeUnits) {
             continue;
@@ -276,20 +280,26 @@ void EnterUncoupleMode(
         uncoupled.aiMode = EnemyAiMode::Uncouple;
     }
 
-    float uncoupleHeading = QuantizeToEightDirections(uncoupled.headingRadians);
-    if (leadingIndex >= 0 && leadingIndex < static_cast<int>(enemies.size())) {
-        const EnemyTank& leader = enemies[static_cast<std::size_t>(leadingIndex)];
-        if (leader.alive) {
-            const Vec2f awayDir = NormalizeOrZero(Vec2f{
-                .x = uncoupled.position.x - leader.position.x,
-                .y = uncoupled.position.y - leader.position.y,
-            });
-            if (awayDir.x != 0.0F || awayDir.y != 0.0F) {
-                uncoupleHeading = QuantizeToEightDirections(std::atan2(awayDir.x, -awayDir.y));
+    // Preserve heading on uncouple re-entry for pair collisions to prevent
+    // oscillation from repeated same-frame re-triggers in crowded chokepoints.
+    const bool shouldRefreshHeading =
+        !alreadyUncouple || reason == UncoupleReason::SelfWallContact;
+    if (shouldRefreshHeading) {
+        float uncoupleHeading = QuantizeToEightDirections(uncoupled.headingRadians);
+        if (leadingIndex >= 0 && leadingIndex < static_cast<int>(enemies.size())) {
+            const EnemyTank& leader = enemies[static_cast<std::size_t>(leadingIndex)];
+            if (leader.alive) {
+                const Vec2f awayDir = NormalizeOrZero(Vec2f{
+                    .x = uncoupled.position.x - leader.position.x,
+                    .y = uncoupled.position.y - leader.position.y,
+                });
+                if (awayDir.x != 0.0F || awayDir.y != 0.0F) {
+                    uncoupleHeading = QuantizeToEightDirections(std::atan2(awayDir.x, -awayDir.y));
+                }
             }
         }
+        uncoupled.desiredHeadingRadians = uncoupleHeading;
     }
-    uncoupled.desiredHeadingRadians = uncoupleHeading;
 
     const bool shouldSample = alreadyUncouple || reason == UncoupleReason::SelfWallContact;
     if (shouldSample && stats.uncoupleSamplesPrinted < kUncoupleEventSampleCap) {
@@ -342,12 +352,14 @@ float ComputeUncoupleEscapeScore(
         }
     }
 
-    const float clearAhead = game::geometry::FreeDistanceAhead(
+    const float clearAhead = game::geometry::FreeDistanceAheadWithEnemies(
         world,
+        enemies,
+        selfIndex,
         self.position,
         strategicHeading,
         kUncouplePriorityClearProbeUnits,
-        GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
+        GameplayConstants::kWallClearanceForAvoidance,
         1.0F);
     const float alignment = std::cos(SignedAngleDelta(self.headingRadians, strategicHeading));
 

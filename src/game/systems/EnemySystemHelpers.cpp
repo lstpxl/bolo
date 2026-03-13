@@ -92,7 +92,7 @@ float ChooseBestTurnHeading(
             origin,
             candidate,
             requiredDistance + 2.0F,
-            GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
+            GameplayConstants::kWallClearanceForAvoidance,
             kEnemyPlanningClearanceScale);
         if (freeDist > bestDistance) {
             bestDistance = freeDist;

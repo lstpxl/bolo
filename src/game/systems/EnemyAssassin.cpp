@@ -220,23 +220,23 @@ bool BuildAssassinCheapFlowSegment(
             world,
             enemy.position,
             target,
-            GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
+            GameplayConstants::kWallClearanceForAvoidance);
         const bool commitPosInsideWallTank = game::geometry::IsPointInWall(
             world,
             enemy.position,
-            GameplayConstants::kTankCollisionRadiusUnits);
+            GameplayConstants::kWallClearanceForHard);
         const bool targetPosInsideWallTank = game::geometry::IsPointInWall(
             world,
             target,
-            GameplayConstants::kTankCollisionRadiusUnits);
+            GameplayConstants::kWallClearanceForHard);
         const bool commitPosInsideWallAvoid = game::geometry::IsPointInWall(
             world,
             enemy.position,
-            GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
+            GameplayConstants::kWallClearanceForAvoidance);
         const bool targetPosInsideWallAvoid = game::geometry::IsPointInWall(
             world,
             target,
-            GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
+            GameplayConstants::kWallClearanceForAvoidance);
         bolt::log::Profile(
             "[ENEMY_ASSASSIN_SEGMENT_COMMIT_DIAG] id=%d stage=%d pos=(%.3f,%.3f) "
             "segEnd=(%.3f,%.3f) heading=%.3f dirFromHeading=(%.3f,%.3f) "
@@ -283,18 +283,18 @@ bool BuildAssassinCheapFlowSegment(
             .y = nextCenter.y + flowDirection.y * 0.5F,
         };
         const bool startInsideWallAvoid = game::geometry::IsPointInWall(
-            world, enemy.position, GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
+            world, enemy.position, GameplayConstants::kWallClearanceForAvoidance);
         auto isSafeEmergencyTarget = [&](const Vec2f& target) {
             if (!game::geometry::IsPointInsideMaze(
-                    world, target, GameplayConstants::kTankCollisionRadiusUnits)) {
+                    world, target, GameplayConstants::kWallClearanceForHard)) {
                 return false;
             }
             if (game::geometry::IsPointInUndestroyedBase(
-                    world, target, GameplayConstants::kTankCollisionRadiusUnits)) {
+                    world, target, GameplayConstants::kWallClearanceForHard)) {
                 return false;
             }
             if (game::geometry::IsPointInWall(
-                    world, target, GameplayConstants::kEnemyWallAvoidanceRadiusUnits)) {
+                    world, target, GameplayConstants::kWallClearanceForAvoidance)) {
                 return false;
             }
             return true;
@@ -327,13 +327,13 @@ bool BuildAssassinCheapFlowSegment(
         }
         auto logEmergencyBlocked = [&](const char* reason) {
             bool insideWallTank = game::geometry::IsPointInWall(
-                world, enemy.position, GameplayConstants::kTankCollisionRadiusUnits);
+                world, enemy.position, GameplayConstants::kWallClearanceForHard);
             bool insideWallAvoidance = game::geometry::IsPointInWall(
-                world, enemy.position, GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
+                world, enemy.position, GameplayConstants::kWallClearanceForAvoidance);
             bool insideBase = game::geometry::IsPointInUndestroyedBase(
-                world, enemy.position, GameplayConstants::kTankCollisionRadiusUnits);
+                world, enemy.position, GameplayConstants::kWallClearanceForHard);
             bool insideMaze = game::geometry::IsPointInsideMaze(
-                world, enemy.position, GameplayConstants::kTankCollisionRadiusUnits);
+                world, enemy.position, GameplayConstants::kWallClearanceForHard);
             int overlapCount = 0;
             float nearestEnemyDistance = 9999.0F;
             for (std::size_t i = 0; i < world.enemies.size(); ++i) {
@@ -361,21 +361,21 @@ bool BuildAssassinCheapFlowSegment(
                 enemy.position,
                 toTargetHeading,
                 6.0F,
-                GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
+                GameplayConstants::kWallClearanceForAvoidance,
                 1.0F);
             const float clearLeft = game::geometry::FreeDistanceAhead(
                 world,
                 enemy.position,
                 core::angle::NormalizeAngle(toTargetHeading - (kPi * 0.5F)),
                 6.0F,
-                GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
+                GameplayConstants::kWallClearanceForAvoidance,
                 1.0F);
             const float clearRight = game::geometry::FreeDistanceAhead(
                 world,
                 enemy.position,
                 core::angle::NormalizeAngle(toTargetHeading + (kPi * 0.5F)),
                 6.0F,
-                GameplayConstants::kEnemyWallAvoidanceRadiusUnits,
+                GameplayConstants::kWallClearanceForAvoidance,
                 1.0F);
 
             bolt::log::Profile(
@@ -404,7 +404,7 @@ bool BuildAssassinCheapFlowSegment(
                 clearRight);
         };
         const bool targetInsideWallAvoid = game::geometry::IsPointInWall(
-            world, chosenTarget, GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
+            world, chosenTarget, GameplayConstants::kWallClearanceForAvoidance);
         const float targetDistance = Distance(enemy.position, chosenTarget);
         const bool allowEmbeddedEscapeCrossing = startInsideWallAvoid &&
             !targetInsideWallAvoid &&
@@ -413,7 +413,7 @@ bool BuildAssassinCheapFlowSegment(
                 world,
                 enemy.position,
                 chosenTarget,
-                GameplayConstants::kEnemyWallAvoidanceRadiusUnits) &&
+                GameplayConstants::kWallClearanceForAvoidance) &&
             !allowEmbeddedEscapeCrossing) {
             gEnemyRuntimeWindowStats.navFlowMisses += 1;
             logFail("emergency_fallback_blocked", CheapSegmentFailReason::EmergencyFallbackBlocked);
@@ -639,7 +639,7 @@ bool BuildAssassinCheapFlowSegment(
             world,
             enemy.position,
             segmentTarget,
-            GameplayConstants::kEnemyWallAvoidanceRadiusUnits)) {
+            GameplayConstants::kWallClearanceForAvoidance)) {
         gEnemyRuntimeWindowStats.navFlowMisses += 1;
         logFail("segment_intersects_wall", CheapSegmentFailReason::SegmentIntersectsWall);
         return false;

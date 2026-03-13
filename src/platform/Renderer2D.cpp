@@ -1,14 +1,16 @@
 #include "platform/Renderer2D.h"
 
 #include <algorithm>
-#include <cstddef>
-#include <cmath>
 #include <array>
+#include <cmath>
+#include <cstddef>
 #include <cstdint>
+#include <cstdio>
 #include <string>
 #include "core/Log.h"
 #include "core/Profiling.h"
 #include "core/ResourceLocator.h"
+#include "game/geometry/WorldGeometry.h"
 #include "game/systems/EnemySystem.h"
 #include "raylib.h"
 
@@ -837,6 +839,51 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
                     DrawTexturePro(enemyTankSheet_, sourceRect, destRect, Vector2{0.0F, 0.0F}, 0.0F, WHITE);
                 } else {
                     DrawRectangleRec(destRect, EnemyColorForType(enemy.type));
+                }
+                if (enemy.type == EnemyType::Hunter) {
+                    if (enemy.hunterScoutPathActive &&
+                        enemy.hunterScoutSegmentIndex >= 0 &&
+                        enemy.hunterScoutSegmentIndex < enemy.hunterScoutSegmentCount) {
+                        const Vec2f segmentTarget =
+                            enemy.hunterScoutSegmentPoints[static_cast<std::size_t>(enemy.hunterScoutSegmentIndex)];
+                        const Vector2 targetScreenPosition = WorldToSnappedScreen(segmentTarget, camera);
+                        DrawLine(
+                            static_cast<int>(enemyScreenPosition.x),
+                            static_cast<int>(enemyScreenPosition.y),
+                            static_cast<int>(targetScreenPosition.x),
+                            static_cast<int>(targetScreenPosition.y),
+                            GREEN);
+                    }
+                    const float cx = enemyScreenPosition.x;
+                    const float cy = enemyScreenPosition.y;
+                    const float radiusHardPx =
+                        GameplayConstants::kWallClearanceForHard * camera.zoom;
+                    const float radiusAvoidPx =
+                        GameplayConstants::kWallClearanceForAvoidance * camera.zoom;
+                    DrawCircleLines(static_cast<int>(cx), static_cast<int>(cy), radiusHardPx, WHITE);
+                    DrawCircleLines(static_cast<int>(cx), static_cast<int>(cy), radiusAvoidPx, GRAY);
+                    const float distToWall = game::geometry::DistanceToNearestWall(
+                        state.world, enemy.position, 20.0F);
+                    const bool avoidViolation = game::geometry::IsPointInWall(
+                        state.world, enemy.position, GameplayConstants::kWallClearanceForAvoidance);
+                    const bool hardViolation = game::geometry::IsPointInWall(
+                        state.world, enemy.position, GameplayConstants::kWallClearanceForHard);
+                    char buf[32];
+                    Color textColor = WHITE;
+                    if (hardViolation) {
+                        std::snprintf(buf, sizeof(buf), "[%.1f]", distToWall);
+                        textColor = RED;
+                    } else if (avoidViolation) {
+                        std::snprintf(buf, sizeof(buf), "(%.1f)", distToWall);
+                        textColor = YELLOW;
+                    } else {
+                        std::snprintf(buf, sizeof(buf), "%.1f", distToWall);
+                    }
+                    constexpr int kDebugFontSize = 10;
+                    const int textW = MeasureText(buf, kDebugFontSize);
+                    const float textX = cx - static_cast<float>(textW) * 0.5F;
+                    const float textY = cy - radiusAvoidPx - static_cast<float>(kDebugFontSize) - 2.0F;
+                    DrawText(buf, static_cast<int>(textX), static_cast<int>(textY), kDebugFontSize, textColor);
                 }
             }
 

@@ -37,4 +37,7 @@ float FreeDistanceAheadWithEnemies(const WorldState& world,
     float planningClearanceScale = 1.0F,
     const game::spatial::EnemyCellOccupancy* rayQueryOccupancy = nullptr);
 
+/// Returns distance to nearest wall in any of 8 directions (for debug visualization).
+float DistanceToNearestWall(const WorldState& world, const Vec2f& point, float maxProbeDistance);
+
 }  // namespace game::geometry

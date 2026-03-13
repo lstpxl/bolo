@@ -46,7 +46,7 @@ SpawnRayChoice PickSpawnDirection(const WorldState& world, const Vec2f& baseCent
             baseCenter,
             heading,
             kSpawnProbeMaxUnits,
-            GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
+            GameplayConstants::kWallClearanceForAvoidance);
         choices[static_cast<std::size_t>(i)] = SpawnRayChoice{
             .heading = heading,
             .clearDistance = clearDistance,
@@ -73,7 +73,7 @@ SpawnRayChoice PickSpawnDirection(const WorldState& world, const Vec2f& baseCent
 }
 
 bool IsSpawnPositionFree(const GameState& state, const Vec2f& spawnPosition) {
-    if (game::geometry::IsPointInWall(state.world, spawnPosition, GameplayConstants::kEnemyWallAvoidanceRadiusUnits)) {
+    if (game::geometry::IsPointInWall(state.world, spawnPosition, GameplayConstants::kWallClearanceForAvoidance)) {
         return false;
     }
     const float minDistanceSq =
@@ -174,7 +174,7 @@ void UpdateSpawnerSystem(GameState& state, float deltaSeconds, Random& random) {
             spawnPosition,
             spawnDirection.heading,
             kRequiredSpawnClearUnits,
-            GameplayConstants::kEnemyWallAvoidanceRadiusUnits);
+            GameplayConstants::kWallClearanceForAvoidance);
         if (forwardClearWithEnemies < kRequiredSpawnClearUnits) {
             // Failed attempt: wait a full interval before retrying.
             ResetSpawnTimerAfterFailedAttempt(base);

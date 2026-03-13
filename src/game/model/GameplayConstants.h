@@ -6,10 +6,18 @@ struct GameplayConstants {
     static constexpr int kMazeWidthCells = 60;               // cells
     static constexpr int kMazeHeightCells = 60;              // cells
     static constexpr int kMazeCellSizeUnits = 6;             // world-units / cell
-    static constexpr float kWallThicknessUnits = 0.125F;     // world-units (2px at 16px/unit)
-    static constexpr float kEntitySizeUnits = 1.0F;          // world-units
+    
+    static constexpr float kEntitySizeUnits = 0.875F;          // world-units (7px x 2 scale at 16px/unit)
     static constexpr float kEnemyBaseSizeUnits = 3.0F;       // world-units
     static constexpr int kEnemyBaseCount = 6;                // bases / maze
+
+    static constexpr float kEntityRadiusUnits = kEntitySizeUnits * 0.5F; // world-units
+
+    static constexpr float kWallHalfThicknessPixels = 1.0F;             // pixels 
+    static constexpr float kWallHalfThicknessUnits =
+        kWallHalfThicknessPixels / static_cast<float>(kPixelsPerUnit);  // world-units
+    static constexpr float kWallThicknessUnits = 
+        2.0F * kWallHalfThicknessUnits;                                 // world-units
 
     // Player tuning.
     static constexpr int kStartingLives = 4;                         // lives
@@ -25,7 +33,7 @@ struct GameplayConstants {
     // Enemy tuning.
     static constexpr float kEnemyDroneSpeed = 1.0F;                  // world-units / second
     static constexpr float kEnemyTorpedoSpeed = 3.0F;                // world-units / second
-    static constexpr float kEnemyHunterSpeed = 2.5F;                 // world-units / second
+    static constexpr float kEnemyHunterSpeed = 3.0F;                 // world-units / second
     static constexpr float kEnemyAssassinSpeed = 4.0F;               // world-units / second
     static constexpr float kEnemyDroneFireInterval = 3.0F;           // seconds
     static constexpr float kEnemyTorpedoFireInterval = 2.0F;         // seconds
@@ -82,22 +90,48 @@ struct GameplayConstants {
     static constexpr float kDeathExplosionDurationSeconds = 3.0F;    // seconds
 
     // Projectiles and collisions.
-    static constexpr float kTankCollisionDiameterPixels = 9.0F;        // pixels
-    static constexpr float kTankCollisionRadiusUnits =
-        (kTankCollisionDiameterPixels * 0.5F) / static_cast<float>(kPixelsPerUnit); // world-units
-    static constexpr float kEnemyWallClearancePixels = 2.0F;           // pixels
-    static constexpr float kEnemyWallClearanceUnits =
-        kEnemyWallClearancePixels / static_cast<float>(kPixelsPerUnit); // world-units
-    static constexpr float kEnemyWallAvoidanceRadiusUnits =
-        kTankCollisionRadiusUnits + kEnemyWallClearanceUnits;           // world-units
+    // Clearance constants (expansion beyond wall half-thickness or base half-size).
+    static constexpr float kWallClearanceUnits = 0.05F;                 // world-units
+    static constexpr float kEnemyWallAvoidanceClearanceUnits = 0.5F;   // world-units
+    static constexpr float kEnemyEnemyClearanceUnits = 0.5F;                 // world-units
+
+    // Wall collisions (wall = finite line extruded as pill by half-thickness).
+    static constexpr float kEnemyWallHardCollisionUnits =
+        kWallHalfThicknessUnits + kEntityRadiusUnits;                   // world-units
+    static constexpr float kEnemyWallSoftCollisionUnits =
+        kWallHalfThicknessUnits + kEntityRadiusUnits + kWallClearanceUnits;  // world-units
+    static constexpr float kEnemyWallAvoidanceUnits =
+        kWallHalfThicknessUnits + kEntityRadiusUnits +
+        kEnemyWallAvoidanceClearanceUnits;                              // world-units
+    static constexpr float kPlayerWallHardCollisionUnits =
+        kWallHalfThicknessUnits + kEntityRadiusUnits;                  // world-units
+    static constexpr float kPlayerWallSoftCollisionUnits =
+        kWallHalfThicknessUnits + kEntityRadiusUnits + kWallClearanceUnits;  // world-units
+
+    // Base collisions (same formula as wall: halfSize + entityRadius + optional clearance).
+    static constexpr float kEnemyBaseHardCollisionUnits =
+        kEnemyBaseSizeUnits * 0.5F + kEntityRadiusUnits;
+    static constexpr float kEnemyBaseSoftCollisionUnits =
+        kEnemyBaseHardCollisionUnits + kWallClearanceUnits;
+    static constexpr float kEnemyBaseAvoidanceUnits =
+        kEnemyBaseHardCollisionUnits + kEnemyWallAvoidanceClearanceUnits;
+    static constexpr float kPlayerBaseHardCollisionUnits = kEnemyBaseHardCollisionUnits;
+    static constexpr float kPlayerBaseSoftCollisionUnits = kEnemyBaseSoftCollisionUnits;
+
+    // Clearance to pass into geometry (expansion beyond wall half-thickness).
+    static constexpr float kWallClearanceForHard = kEntityRadiusUnits;
+    static constexpr float kWallClearanceForSoft = kEntityRadiusUnits + kWallClearanceUnits;
+    static constexpr float kWallClearanceForAvoidance =
+        kEntityRadiusUnits + kEnemyWallAvoidanceClearanceUnits;
 
     // Enemy dual-radius model (universal for all types):
-    static constexpr float kEnemyCollisionRadiusUnits = kTankCollisionRadiusUnits;  // hard radius: collision
-    static constexpr float kEnemyAvoidanceRadiusUnits = kEnemyWallAvoidanceRadiusUnits;  // soft radius: steering
+    static constexpr float kEnemyCollisionRadiusUnits = kEntityRadiusUnits;   // hard radius: collision
+    static constexpr float kEnemyAvoidanceRadiusUnits =
+        kEnemyEnemyClearanceUnits + kEntityRadiusUnits + kEntityRadiusUnits;  // soft radius: clearance + 2×radius
 
     static constexpr float kProjectileLifetimeSeconds = 3.0F;          // seconds
     static constexpr float kProjectileHitRadius = 0.7F;                // world-units
-    static constexpr float kPlayerEnemyCollisionRadius = kTankCollisionRadiusUnits * 2.0F; // world-units
+    static constexpr float kPlayerEnemyCollisionRadius = kEntityRadiusUnits * 2.0F;  // world-units (sum of radii)
     static constexpr float kLineOfSightSampleSpacing = 0.08F;          // world-units
 
     // Fuel/rules.

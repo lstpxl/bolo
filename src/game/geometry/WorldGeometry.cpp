@@ -203,7 +203,7 @@ bool IsPointInWall(const WorldState& world, const Vec2f& point, float clearanceU
     const MazeCell& cell = world.maze.cells[static_cast<std::size_t>(cellY * world.maze.widthCells + cellX)];
     const float localX = point.x - static_cast<float>(cellX) * cellSize;
     const float localY = point.y - static_cast<float>(cellY) * cellSize;
-    const float wallLimit = GameplayConstants::kWallThicknessUnits + clearanceUnits;
+    const float wallLimit = GameplayConstants::kWallHalfThicknessUnits + clearanceUnits;
     return (cell.northWall && localY <= wallLimit) || (cell.southWall && localY >= cellSize - wallLimit) ||
         (cell.westWall && localX <= wallLimit) || (cell.eastWall && localX >= cellSize - wallLimit);
 }
@@ -318,7 +318,7 @@ float FreeDistanceAheadGridImpl(const WorldState& world, const Vec2f& from, floa
     const float cellSize = static_cast<float>(world.maze.cellSizeUnits);
     int cellX = std::clamp(static_cast<int>(from.x / cellSize), 0, world.maze.widthCells - 1);
     int cellY = std::clamp(static_cast<int>(from.y / cellSize), 0, world.maze.heightCells - 1);
-    const float wallLimit = GameplayConstants::kWallThicknessUnits + planningClearance;
+    const float wallLimit = GameplayConstants::kWallHalfThicknessUnits + planningClearance;
 
     // Fast path: if the whole candidate segment stays in one cell, avoid DDA stepping.
     const Vec2f end{
@@ -456,5 +456,18 @@ float FreeDistanceAheadWithEnemies(const WorldState& world,
         dist += AdaptiveStepAt(dist, probeDistance);
     }
     return probeDistance;
+}
+
+float DistanceToNearestWall(const WorldState& world, const Vec2f& point, float maxProbeDistance) {
+    constexpr float kPi = 3.14159265358979323846F;
+    constexpr float kStep = kPi / 4.0F;
+    float minDist = maxProbeDistance;
+    for (int i = 0; i < 8; ++i) {
+        const float heading = static_cast<float>(i) * kStep;
+        const float d = FreeDistanceAheadGridWallsOnly(
+            world, point, heading, maxProbeDistance, 0.0F, 1.0F);
+        minDist = std::min(minDist, d);
+    }
+    return minDist;
 }
 }  // namespace game::geometry

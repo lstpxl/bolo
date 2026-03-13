@@ -16,4 +16,5 @@ bool SelectHunterScoutMotion(
     EnemyTank& enemy,
     Random& random,
     float& outHeadingRadians,
-    Vec2f& outTargetPoint);
+    Vec2f& outTargetPoint,
+    bool snapHeadingToEightDirections = true);

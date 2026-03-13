@@ -6,7 +6,7 @@ struct Vec2f {
 };
 
 /** Default level number at app start and when returning to menu. Single source of truth. */
-constexpr int kDefaultGameLevelNumber = 9;
+constexpr int kDefaultGameLevelNumber = 8;
 
 struct MenuSettings {
     int levelNumber;
