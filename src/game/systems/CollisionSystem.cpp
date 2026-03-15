@@ -124,7 +124,7 @@ void UpdateCollisionSystem(GameState& state, float deltaSeconds) {
         return;
     }
 
-    for (const EnemyTank& enemy : world.enemies) {
+    for (EnemyTank& enemy : world.enemies) {
         if (!enemy.alive) {
             continue;
         }
@@ -135,6 +135,10 @@ void UpdateCollisionSystem(GameState& state, float deltaSeconds) {
             GameplayConstants::kPlayerEnemyCollisionRadius * GameplayConstants::kPlayerEnemyCollisionRadius) {
             world.player.alive = false;
             world.playerTurnLostPending = true;
+            if (enemy.type == EnemyType::Torpedo && enemy.aiMode == EnemyAiMode::Ram) {
+                enemy.alive = false;
+                DecrementOriginBaseAliveCount(world, enemy);
+            }
             return;
         }
     }

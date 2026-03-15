@@ -207,3 +207,95 @@ bool SelectDroneWatchEscapeHeading(
     selectedHeading = bestHeading;
     return true;
 }
+
+bool SelectDronePursuitHeading(
+    const WorldState& world,
+    const std::vector<EnemyTank>& enemies,
+    int selfIndex,
+    const Vec2f& playerPosition,
+    float stepDistance,
+    float playerAvoidDistanceUnits,
+    float& selectedHeading) {
+    if (selfIndex < 0 || selfIndex >= static_cast<int>(enemies.size())) {
+        return false;
+    }
+    const EnemyTank& self = enemies[static_cast<std::size_t>(selfIndex)];
+    const Vec2f toPlayer{
+        .x = playerPosition.x - self.position.x,
+        .y = playerPosition.y - self.position.y,
+    };
+    if (std::fabs(toPlayer.x) < 0.0001F && std::fabs(toPlayer.y) < 0.0001F) {
+        return false;
+    }
+
+    const float desiredHeading = std::atan2(toPlayer.x, -toPlayer.y);
+    const float playerAvoidSq = playerAvoidDistanceUnits * playerAvoidDistanceUnits;
+    const std::array<float, 8> offsets{
+        0.0F,
+        kEightDirectionStep,
+        -kEightDirectionStep,
+        kEightDirectionStep * 2.0F,
+        -kEightDirectionStep * 2.0F,
+        kEightDirectionStep * 3.0F,
+        -kEightDirectionStep * 3.0F,
+        kEightDirectionStep * 4.0F};
+
+    bool found = false;
+    float bestHeading = self.headingRadians;
+    float bestError = std::numeric_limits<float>::infinity();
+    for (float offset : offsets) {
+        const float candidateHeading =
+            core::angle::QuantizeToEightDirections(desiredHeading + offset);
+        const float clearDistance = game::geometry::FreeDistanceAhead(
+            world,
+            self.position,
+            candidateHeading,
+            std::max(stepDistance, 0.5F),
+            GameplayConstants::kWallClearanceForAvoidance,
+            kEnemyPlanningClearanceScale);
+        if (clearDistance < stepDistance) {
+            continue;
+        }
+        const Vec2f dir = core::angle::DirectionFromHeading(candidateHeading);
+        const Vec2f candidatePosition{
+            .x = self.position.x + dir.x * stepDistance,
+            .y = self.position.y + dir.y * stepDistance,
+        };
+        if (DistanceSq(candidatePosition, playerPosition) < playerAvoidSq) {
+            continue;
+        }
+
+        bool collidesWithEnemy = false;
+        const float preferredSeparationSq = GameplayConstants::kEnemyPreferredSeparationUnits *
+            GameplayConstants::kEnemyPreferredSeparationUnits;
+        for (int i = 0; i < static_cast<int>(enemies.size()); ++i) {
+            if (i == selfIndex) {
+                continue;
+            }
+            const EnemyTank& other = enemies[static_cast<std::size_t>(i)];
+            if (!other.alive) {
+                continue;
+            }
+            if (DistanceSq(candidatePosition, other.position) < preferredSeparationSq) {
+                collidesWithEnemy = true;
+                break;
+            }
+        }
+        if (collidesWithEnemy) {
+            continue;
+        }
+
+        const float headingError = core::angle::AngleDistance(candidateHeading, desiredHeading);
+        if (!found || headingError < bestError) {
+            found = true;
+            bestError = headingError;
+            bestHeading = candidateHeading;
+        }
+    }
+
+    if (!found) {
+        return false;
+    }
+    selectedHeading = bestHeading;
+    return true;
+}

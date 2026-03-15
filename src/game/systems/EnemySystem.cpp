@@ -2,11 +2,9 @@
 
 #include <algorithm>
 #include <array>
-#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
-#include <future>
 #include <limits>
 #include <vector>
 
@@ -182,8 +180,10 @@ const char* EnemyAiModeLabel(EnemyAiMode mode)
             return "Pursuit";
         case EnemyAiMode::Uncouple:
             return "Uncouple";
-        case EnemyAiMode::Move:
-            return "Move";
+        case EnemyAiMode::Fly:
+            return "Fly";
+        case EnemyAiMode::Ram:
+            return "Ram";
         case EnemyAiMode::Retreat:
             return "Retreat";
         case EnemyAiMode::Targeting:
@@ -246,7 +246,7 @@ EnemySimTier DetermineEnemySimTier(
     const int dy = std::abs(enemy.cellCoord.y - playerCell.y);
     const bool nearPlayer = std::max(dx, dy) <= fullTierRadiusCells;
     const bool forceFullForTorpedoState =
-        enemy.type == EnemyType::Torpedo && enemy.aiMode != EnemyAiMode::Move;
+        enemy.type == EnemyType::Torpedo && enemy.aiMode != EnemyAiMode::Fly;
     return (nearPlayer || forceFullForTorpedoState) ? EnemySimTier::Full : EnemySimTier::Cheap;
 }
 
@@ -612,6 +612,7 @@ void UpdateEnemySystem(
         float speed = EnemySpeed(
             enemy.type, enemy.subtype, perception.assassinHasLineOfSight,
             state.menuSettings.levelNumber);
+        float targetSpeed = speed;
         bool preserveContinuousHeading = false;
         bool handledByUncoupleMovement = false;
         const bool startedInsideWallAvoid = enemy.type == EnemyType::Assassin &&
@@ -648,8 +649,30 @@ void UpdateEnemySystem(
                     enemy.aiMode = EnemyAiMode::Wander;
                     enemy.aiModeElapsedSeconds = 0.0F;
                 }
-                if (enemy.aiMode == EnemyAiMode::Watch) {
-                    speed = 0.0F;
+                const bool droneSeesPlayer =
+                    state.world.player.alive &&
+                    !playerInvisible &&
+                    !perception.playerObscured &&
+                    perception.distanceToPlayer <= GameplayConstants::kDroneDetectRangeUnits;
+                if (droneSeesPlayer) {
+                    targetSpeed = std::abs(speed) * GameplayConstants::kDronePursuitSpeedFactor;
+                    const float stepDistance = std::max(0.0F, targetSpeed * deltaSeconds);
+                    float pursuitHeading = movementHeading;
+                    if (SelectDronePursuitHeading(
+                            state.world,
+                            state.world.enemies,
+                            enemyIndex,
+                            state.world.player.position,
+                            stepDistance,
+                            GameplayConstants::kDronePlayerAvoidanceDistanceUnits,
+                            pursuitHeading)) {
+                        movementHeading = pursuitHeading;
+                        enemy.aiMode = EnemyAiMode::Wander;
+                    } else if (enemy.aiMode == EnemyAiMode::Watch) {
+                        targetSpeed = 0.0F;
+                    }
+                } else if (enemy.aiMode == EnemyAiMode::Watch) {
+                    targetSpeed = 0.0F;
                     preserveContinuousHeading = true;
                     movementHeading = NormalizeAngle(
                         enemy.headingRadians +
@@ -689,7 +712,7 @@ void UpdateEnemySystem(
                         SelectScoutHeadingWithFallback(state.world, enemy, false, shouldWatch);
                     if (shouldWatch) {
                         EnterDroneWatchMode(state.world, enemy, random);
-                        speed = 0.0F;
+                        targetSpeed = 0.0F;
                     }
                 }
             } else if (!handledByUncoupleMovement && enemy.type == EnemyType::Torpedo) {
@@ -697,14 +720,34 @@ void UpdateEnemySystem(
                 if (enemy.torpedoPlayerDetectTimerSeconds <= 0.0F) {
                     enemy.torpedoPlayerDetectTimerSeconds = kTorpedoPlayerDetectIntervalSeconds;
                     enemy.torpedoPlayerDetected =
-                        !playerInvisible && !perception.playerObscured &&
-                        perception.distanceToPlayer <= GameplayConstants::kTorpedoDetectRangeUnits;
+                        state.world.player.alive &&
+                        !playerInvisible &&
+                        !perception.playerObscured &&
+                        perception.distanceToPlayer <= GameplayConstants::kTorpedoRamDetectRangeUnits;
                     enemy.torpedoLastKnownPlayerHeadingRadians =
                         std::atan2(perception.toPlayer.x, -perception.toPlayer.y);
                 }
-                if (enemy.aiMode == EnemyAiMode::Retreat) {
+                if (enemy.torpedoPlayerDetected) {
+                    enemy.aiMode = EnemyAiMode::Ram;
+                    enemy.torpedoMoveDecisionHoldRemainingUnits = 0.0F;
+                    enemy.torpedoRetreatMovedUnits = 0.0F;
+                } else if (enemy.aiMode == EnemyAiMode::Ram) {
+                    enemy.aiMode = EnemyAiMode::Fly;
+                    enemy.torpedoMoveDecisionHoldRemainingUnits = 0.0F;
+                }
+                if (enemy.aiMode == EnemyAiMode::Ram) {
+                    preserveContinuousHeading = true;
+                    const float headingToPlayer =
+                        std::atan2(perception.toPlayer.x, -perception.toPlayer.y);
+                    movementHeading = UpdateTorpedoHeadingToward(
+                        enemy.headingRadians,
+                        headingToPlayer,
+                        GameplayConstants::kTorpedoRamTurnSpeedRadiansPerSecond,
+                        deltaSeconds);
+                    targetSpeed = std::abs(speed);
+                } else if (enemy.aiMode == EnemyAiMode::Retreat) {
                     movementHeading = QuantizeToEightDirections(enemy.headingRadians);
-                    speed = -std::abs(speed) * kTorpedoRetreatSpeedFactor;
+                    targetSpeed = -std::abs(speed) * kTorpedoRetreatSpeedFactor;
                     const float forwardClear = game::geometry::FreeDistanceAheadWithEnemies(
                         state.world, state.world.enemies, enemyIndex, enemy.position,
                         enemy.headingRadians, kTorpedoNearCollisionCheckDistanceUnits,
@@ -712,19 +755,20 @@ void UpdateEnemySystem(
                         kEnemyPlanningClearanceScale, &rayQueryOccupancy);
                     if (enemy.torpedoRetreatMovedUnits >= kTorpedoRetreatExitClearanceUnits &&
                         forwardClear >= kTorpedoRetreatExitClearanceUnits) {
-                        speed = 0.0F;
+                        targetSpeed = 0.0F;
                         EnterTorpedoTargetingMode(enemy);
                     }
                 } else if (enemy.aiMode == EnemyAiMode::Targeting) {
-                    speed = 0.0F;
+                    targetSpeed = 0.0F;
                     enemy.torpedoChosenHeadingRadians =
                         SelectBestLongStraightHeading(state.world, enemy);
                     EnterTorpedoRotateMode(enemy);
                 } else if (enemy.aiMode == EnemyAiMode::Rotate) {
-                    speed = 0.0F;
+                    targetSpeed = 0.0F;
                     preserveContinuousHeading = true;
                     movementHeading = UpdateTorpedoRotateHeading(enemy, deltaSeconds);
                 } else {
+                    enemy.aiMode = EnemyAiMode::Fly;
                     const float straightHeading = QuantizeToEightDirections(enemy.headingRadians);
                     const bool lockHeadingForBaseExit =
                         IsPointInUndestroyedBase(state.world, enemy.position, 1.0F);
@@ -741,7 +785,7 @@ void UpdateEnemySystem(
                             enemy.torpedoRetreatMovedUnits = 0.0F;
                             enemy.torpedoMoveDecisionHoldRemainingUnits = 0.0F;
                             movementHeading = straightHeading;
-                            speed = -std::abs(speed) * kTorpedoRetreatSpeedFactor;
+                            targetSpeed = -std::abs(speed) * kTorpedoRetreatSpeedFactor;
                         } else if (!lockHeadingForBaseExit &&
                                    nearClear < kTorpedoNearCollisionCheckDistanceUnits) {
                             enemy.torpedoMoveDecisionHoldRemainingUnits = 0.0F;
@@ -762,7 +806,7 @@ void UpdateEnemySystem(
                             enemy.torpedoRetreatMovedUnits = 0.0F;
                             enemy.torpedoMoveDecisionHoldRemainingUnits = 0.0F;
                             movementHeading = straightHeading;
-                            speed = -std::abs(speed) * kTorpedoRetreatSpeedFactor;
+                            targetSpeed = -std::abs(speed) * kTorpedoRetreatSpeedFactor;
                         }
                     }
                 }
@@ -929,6 +973,16 @@ void UpdateEnemySystem(
                 }
             }
         }
+        if (enemy.type == EnemyType::Torpedo) {
+            const float maxSpeedDelta =
+                GameplayConstants::kTorpedoAccelerationUnitsPerSecondSq * deltaSeconds;
+            const float speedDelta = targetSpeed - enemy.torpedoCurrentSpeedUnitsPerSecond;
+            const float clampedDelta = std::clamp(speedDelta, -maxSpeedDelta, maxSpeedDelta);
+            enemy.torpedoCurrentSpeedUnitsPerSecond += clampedDelta;
+            speed = enemy.torpedoCurrentSpeedUnitsPerSecond;
+        } else {
+            speed = targetSpeed;
+        }
         if (handledByUncoupleMovement) {
             movementSourceLabel = "uncouple";
             movementSourceBucket = kAssassinWallPhaseUncouple;
@@ -1063,6 +1117,14 @@ void UpdateEnemySystem(
                     moving && SegmentIntersectsWall(
                                   state.world, previousPosition, candidatePosition,
                                   GameplayConstants::kWallClearanceForAvoidance);
+                const bool torpedoHardWallHit =
+                    moving &&
+                    enemy.type == EnemyType::Torpedo &&
+                    game::geometry::SegmentIntersectsWall(
+                        state.world,
+                        previousPosition,
+                        candidatePosition,
+                        GameplayConstants::kWallClearanceForHard);
                 const bool edgeOnWallContact =
                     moving && !segmentWallHit &&
                     IsEdgeOnWallContact(state.world, candidatePosition, movementHeading);
@@ -1100,6 +1162,13 @@ void UpdateEnemySystem(
                     }
                 }
                 if (segmentWallHit || edgeOnWallContact) {
+                    if (torpedoHardWallHit) {
+                        enemy.alive = false;
+                        enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
+                        enemy.torpedoCurrentSpeedUnitsPerSecond = 0.0F;
+                        DecrementOriginBaseAliveCount(state.world, enemy);
+                        continue;
+                    }
                     const float movedLastFrameUnits = Distance(candidatePosition, previousPosition);
                     enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
                     enemy.position = ResolveWallContactRecoveryPosition(
@@ -1167,7 +1236,7 @@ void UpdateEnemySystem(
             }
 
             if (enemy.type == EnemyType::Torpedo &&
-                enemy.aiMode == EnemyAiMode::Move) {
+                enemy.aiMode == EnemyAiMode::Fly) {
                 const float movedDistance = Distance(enemy.position, previousPosition);
                 if (movedDistance > 0.0001F) {
                     enemy.torpedoStraightDistanceSinceTurnUnits += movedDistance;
@@ -1181,6 +1250,10 @@ void UpdateEnemySystem(
                     enemy.torpedoRetreatMovedUnits += movedDistance;
                 }
             }
+        }
+
+        if (!enemy.alive) {
+            continue;
         }
 
         {

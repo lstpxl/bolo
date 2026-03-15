@@ -257,17 +257,16 @@ bool IsSegmentObscuredByWall(const WorldState& world, const Vec2f& from, const V
     if (length <= 0.001F) {
         return false;
     }
-    const float invLen = 1.0F / length;
-    float dist = kAdaptiveFineSpacing;
-    while (dist < length) {
-        const float t = dist * invLen;
-        const Vec2f sample{.x = from.x + dx * t, .y = from.y + dy * t};
-        if (IsPointInWall(world, sample, 0.0F)) {
-            return true;
-        }
-        dist += AdaptiveStepAt(dist, length);
-    }
-    return false;
+    const float heading = std::atan2(dx, -dy);
+    const float clearDistance = FreeDistanceAheadGridWallsOnly(
+        world,
+        from,
+        heading,
+        length,
+        0.0F,
+        1.0F);
+    constexpr float kEpsilon = 0.001F;
+    return clearDistance + kEpsilon < length;
 }
 
 float FreeDistanceAheadContinuous(const WorldState& world, const Vec2f& from, float headingRadians,

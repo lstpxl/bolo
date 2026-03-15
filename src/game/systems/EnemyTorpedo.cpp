@@ -5,7 +5,6 @@
 #include "core/Profiling.h"
 #include "game/geometry/WorldGeometry.h"
 #include "game/model/GameplayConstants.h"
-#include "game/systems/EnemySystemHelpers.h"
 #include "game/systems/EnemySystemInternal.h"
 #include "game/spatial/EnemyCellOccupancy.h"
 
@@ -14,6 +13,7 @@ namespace {
 constexpr float kPi = 3.14159265358979323846F;
 constexpr float kEightDirectionStep = kPi / 4.0F;
 constexpr float kCosThirtyDegrees = 0.8660254F;
+constexpr float kCosTwentyDegrees = 0.9396926F;
 constexpr float kTorpedoLongPathProbeUnits = 24.0F;
 constexpr float kTorpedoImmediateObstacleDistanceUnits = 1.0F;
 constexpr float kSegmentBuildProbeMaxUnits = 15.0F;
@@ -27,6 +27,12 @@ bool PlayerAheadForTorpedo(const EnemyTank& enemy, const Vec2f& toPlayerNormaliz
     const Vec2f forward = core::angle::DirectionFromHeading(enemy.headingRadians);
     const float dot = forward.x * toPlayerNormalized.x + forward.y * toPlayerNormalized.y;
     return dot >= kCosThirtyDegrees;
+}
+
+bool PlayerAheadForTorpedoRam(const EnemyTank& enemy, const Vec2f& toPlayerNormalized) {
+    const Vec2f forward = core::angle::DirectionFromHeading(enemy.headingRadians);
+    const float dot = forward.x * toPlayerNormalized.x + forward.y * toPlayerNormalized.y;
+    return dot >= kCosTwentyDegrees;
 }
 
 float SelectBestLongStraightHeading(const WorldState& world, const EnemyTank& enemy) {
@@ -170,11 +176,25 @@ float UpdateTorpedoRotateHeading(EnemyTank& enemy, float deltaSeconds) {
     if (std::fabs(signedDelta) <= rotateStep + 0.0001F) {
         const float heading =
             core::angle::QuantizeToEightDirections(enemy.torpedoRotateTargetHeadingRadians);
-        enemy.aiMode = EnemyAiMode::Move;
+        enemy.aiMode = EnemyAiMode::Fly;
         enemy.torpedoStraightDistanceSinceTurnUnits = 0.0F;
         enemy.torpedoMoveDecisionHoldRemainingUnits = 0.0F;
         return heading;
     }
     const float direction = signedDelta > 0.0F ? 1.0F : -1.0F;
     return core::angle::NormalizeAngle(enemy.headingRadians + direction * rotateStep);
+}
+
+float UpdateTorpedoHeadingToward(
+    float currentHeadingRadians,
+    float targetHeadingRadians,
+    float maxTurnSpeedRadiansPerSecond,
+    float deltaSeconds) {
+    const float rotateStep = maxTurnSpeedRadiansPerSecond * deltaSeconds;
+    const float signedDelta = core::angle::SignedAngleDelta(currentHeadingRadians, targetHeadingRadians);
+    if (std::fabs(signedDelta) <= rotateStep + 0.0001F) {
+        return core::angle::NormalizeAngle(targetHeadingRadians);
+    }
+    const float direction = signedDelta > 0.0F ? 1.0F : -1.0F;
+    return core::angle::NormalizeAngle(currentHeadingRadians + direction * rotateStep);
 }

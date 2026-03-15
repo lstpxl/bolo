@@ -99,7 +99,9 @@ void RunFiringPhase(
     const bool enemyVisibleInViewport = IsInPlayerViewport(enemy.position, state, view);
     bool canFireTypeSpecific = true;
     if (enemy.type == EnemyType::Torpedo) {
-        canFireTypeSpecific = PlayerAheadForTorpedo(enemy, perception.toPlayerNormalized);
+        canFireTypeSpecific = (enemy.aiMode == EnemyAiMode::Ram)
+            ? PlayerAheadForTorpedoRam(enemy, perception.toPlayerNormalized)
+            : PlayerAheadForTorpedo(enemy, perception.toPlayerNormalized);
     }
     if (state.world.player.alive &&
         enemy.fireCooldownSeconds <= 0.0F &&

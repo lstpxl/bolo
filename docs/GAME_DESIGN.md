@@ -218,6 +218,9 @@ Enemy movement/steering code uses **`kWallClearanceForAvoidance`** (passed into 
 #### Drone
 
   - Modes: `Wander` and `Watch`.
+  - If drone has LOS to an alive player within `12` units, it enters player pursuit: speed is set to `50%` of its normal drone speed and heading is selected from 8-way directions toward the player.
+  - Pursuit heading selection prefers the nearest angular 8-way direction (typically straight or `45°` diagonal), while still enforcing wall and enemy clearance.
+  - During pursuit, drone applies player-specific spacing and will not choose a step that brings it within `4` units of the player center.
   - Wander: move straight; if obstacle is within `1` unit ahead, test `±45°` and pick longer free route.
   - If neither side offers `>=3` units of clear run, switch to Watch.
   - Watch: stop and rotate in a random direction (`clockwise` or `counter-clockwise`) chosen when entering Watch.
@@ -231,10 +234,16 @@ Enemy movement/steering code uses **`kWallClearanceForAvoidance`** (passed into 
 
 #### Torpedo
 
-  - Modes: `Move`, `Retreat`, `Targeting`, and `Rotate` (stored in `EnemyAiMode` alongside other type modes).
+  - Modes: `Fly`, `Ram`, `Retreat`, `Targeting`, and `Rotate` (stored in `EnemyAiMode` alongside other type modes).
   - Fast local-steering movement (no A* path planning), with turns constrained to `45°` increments only.
   - Spawn heading lock: after spawn, torpedo keeps initial heading while inside base footprint plus `1.0` world-unit clearance; turning decisions are disabled until this clearance is exited.
-  - Player detection for steering is throttled to every `0.25s` (cached between checks), using LOS and distance `<9` units.
+  - Player detection for ram transition is throttled to every `0.25s` (cached between checks), using LOS and distance `<=12` units.
+  - Torpedo enters `Ram` whenever an alive player is seen (LOS + `12` units), and returns to `Fly` when LOS/range is lost or the player dies.
+  - In `Ram`, torpedo continuously slews heading toward player at finite angular speed `45°/s` (continuous turn, not instant heading snap).
+  - In `Ram`, torpedo fires only when player is inside a tighter forward cone (`±20°`).
+  - If a `Ram` torpedo collides with player, both die (player death + torpedo explosion).
+  - Torpedo velocity is rate-limited in all modes by finite acceleration `2` world-units/s²; target speed changes (including retreat reverse) are not instantaneous.
+  - If torpedo makes hard wall contact before it can decelerate enough, it explodes.
   - Segment-direction selection evaluates exactly three headings (`forward`, `-45°`, `+45°`) and measures clearance up to `15` units.
   - In full-tier torpedo move logic, clearance uses full obstacle checks (walls + undestroyed bases + alive enemies).
   - In cheap-tier torpedo segment build, clearance is wall-only.
@@ -294,7 +303,7 @@ Enemy movement/steering code uses **`kWallClearanceForAvoidance`** (passed into 
 ### Offscreen Enemy Simulation LOD
 
 - Enemy simulation uses two runtime tiers:
-  - `Full`: enemy is within dynamic player-centered radius `d = (viewportWidth/2 + cellWidth) * 1.5`, or (for torpedo) in non-move recovery states.
+  - `Full`: enemy is within dynamic player-centered radius `d = (viewportWidth/2 + cellWidth) * 1.5`, or (for torpedo) in non-fly states.
   - `Cheap`: enemy is outside that radius and not in forced-full exceptions.
 - In `Cheap` tier, enemies use cached segment movement:
   - heading is quantized to 8-way direction
@@ -312,8 +321,8 @@ Enemy movement/steering code uses **`kWallClearanceForAvoidance`** (passed into 
 - Cheap-tier enemies do not participate in enemy-enemy frontal-collision and separation post-passes.
 - Cheap-tier enemies do not run enemy-enemy or enemy-base collision checks at all; wall clearance is evaluated only when selecting the next cheap-tier segment.
 - Torpedo exception:
-  - `Retreat`, `Targeting`, and `Rotate` remain `Full` tier even when offscreen.
-  - only torpedo `Move` (`EnemyAiMode::Move`) can use cheap-tier segment movement.
+  - `Ram`, `Retreat`, `Targeting`, and `Rotate` remain `Full` tier even when offscreen.
+  - only torpedo `Fly` (`EnemyAiMode::Fly`) can use cheap-tier segment movement.
   - offscreen torpedo player-detection checks run at a lower frequency than full simulation.
 - Assassin exception:
   - while cheap-tier, assassin segment selection is flow-field-driven and recomputed on cell transitions (or when no active segment exists).

@@ -384,6 +384,14 @@ void ApplyCheapTierMovement(
     }
 
     float effectiveSpeed = speed;
+    if (enemy.type == EnemyType::Torpedo) {
+        const float maxSpeedDelta =
+            GameplayConstants::kTorpedoAccelerationUnitsPerSecondSq * deltaSeconds;
+        const float speedDelta = speed - enemy.torpedoCurrentSpeedUnitsPerSecond;
+        const float clampedDelta = std::clamp(speedDelta, -maxSpeedDelta, maxSpeedDelta);
+        enemy.torpedoCurrentSpeedUnitsPerSecond += clampedDelta;
+        effectiveSpeed = enemy.torpedoCurrentSpeedUnitsPerSecond;
+    }
     if (enemy.type == EnemyType::Assassin && enemy.cheapTierCrowdedSlowMode) {
         effectiveSpeed *= 0.5F;
     }
@@ -442,7 +450,7 @@ void ApplyCheapTierMovement(
         .y = dir.y * effectiveSpeed,
     };
 
-    if (enemy.type == EnemyType::Torpedo && enemy.aiMode == EnemyAiMode::Move) {
+    if (enemy.type == EnemyType::Torpedo && enemy.aiMode == EnemyAiMode::Fly) {
         enemy.torpedoStraightDistanceSinceTurnUnits += step;
     }
     updateAssassinWallState("cheap_post_move", kAssassinWallPhaseCheap);

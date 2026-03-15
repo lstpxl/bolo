@@ -54,7 +54,13 @@ struct GameplayConstants {
     static constexpr float kEnemyLookaheadObstacleUnits = 1.0F;      // world-units
     static constexpr float kEnemyRequiredClearRunUnits = 3.0F;       // world-units
     static constexpr float kSlowRotateFullTurnSeconds = 4.0F;        // seconds
-    static constexpr float kTorpedoDetectRangeUnits = 9.0F;          // world-units
+    static constexpr float kTorpedoDetectRangeUnits = 9.0F;          // world-units (legacy non-ram sensing)
+    static constexpr float kTorpedoRamDetectRangeUnits = 12.0F;      // world-units
+    static constexpr float kTorpedoAccelerationUnitsPerSecondSq = 2.0F; // world-units / second^2
+    static constexpr float kTorpedoRamTurnSpeedRadiansPerSecond = 0.7853982F; // 45 deg / second
+    static constexpr float kDroneDetectRangeUnits = 12.0F;           // world-units
+    static constexpr float kDronePursuitSpeedFactor = 0.5F;          // unitless
+    static constexpr float kDronePlayerAvoidanceDistanceUnits = 4.0F; // world-units
     static constexpr float kHunterDetectRangeUnits = 12.0F;          // world-units
     static constexpr float kHunterMinDistanceUnits = 3.0F;           // world-units
     static constexpr float kHunterMaxDistanceUnits = 6.0F;           // world-units

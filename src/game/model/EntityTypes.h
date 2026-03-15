@@ -62,7 +62,8 @@ enum class EnemyAiMode {
     Pursuit,
     Uncouple,
     // Torpedo movement states (unified with aiMode; semantics match other type modes)
-    Move,
+    Fly,
+    Ram,
     Retreat,
     Targeting,
 };
@@ -111,6 +112,7 @@ struct EnemyTank {
     float torpedoLastKnownPlayerHeadingRadians = 0.0F;
     float torpedoChosenHeadingRadians = 0.0F;
     float torpedoRotateTargetHeadingRadians = 0.0F;
+    float torpedoCurrentSpeedUnitsPerSecond = 0.0F;
     EnemySimTier simTier = EnemySimTier::Full;
     float offscreenCachedHeadingRadians = 0.0F;
     Vec2f offscreenSegmentEnd{.x = 0.0F, .y = 0.0F};

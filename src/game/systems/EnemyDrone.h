@@ -20,3 +20,12 @@ bool SelectDroneWatchEscapeHeading(
     int selfIndex,
     float deltaSeconds,
     float& selectedHeading);
+
+bool SelectDronePursuitHeading(
+    const WorldState& world,
+    const std::vector<EnemyTank>& enemies,
+    int selfIndex,
+    const Vec2f& playerPosition,
+    float stepDistance,
+    float playerAvoidDistanceUnits,
+    float& selectedHeading);
