@@ -84,6 +84,7 @@ EnemyPerception RunPerceptionPhase(
     perception.playerObscured =
         playerInvisible ||
         game::geometry::IsSegmentObscuredByWall(state.world, enemy.position, state.world.player.position);
+    enemy.seesPlayer = state.world.player.alive && !perception.playerObscured;
     perception.assassinHasLineOfSight =
         enemy.type == EnemyType::Assassin && playerInAggroRange && !perception.playerObscured;
     return perception;

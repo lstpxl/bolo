@@ -534,6 +534,7 @@ void UpdateEnemySystem(
         if (!enemy.alive) {
             continue;
         }
+        enemy.seesPlayer = false;
         profiling::ScopedProfile enemyTypeScope(EnemyTypeProfileScope(enemy.type), true);
 
         const EnemySimTier previousTier = enemy.simTier;
@@ -650,9 +651,7 @@ void UpdateEnemySystem(
                     enemy.aiModeElapsedSeconds = 0.0F;
                 }
                 const bool droneSeesPlayer =
-                    state.world.player.alive &&
-                    !playerInvisible &&
-                    !perception.playerObscured &&
+                    enemy.seesPlayer &&
                     perception.distanceToPlayer <= GameplayConstants::kDroneDetectRangeUnits;
                 if (droneSeesPlayer) {
                     targetSpeed = std::abs(speed) * GameplayConstants::kDronePursuitSpeedFactor;
@@ -720,9 +719,7 @@ void UpdateEnemySystem(
                 if (enemy.torpedoPlayerDetectTimerSeconds <= 0.0F) {
                     enemy.torpedoPlayerDetectTimerSeconds = kTorpedoPlayerDetectIntervalSeconds;
                     enemy.torpedoPlayerDetected =
-                        state.world.player.alive &&
-                        !playerInvisible &&
-                        !perception.playerObscured &&
+                        enemy.seesPlayer &&
                         perception.distanceToPlayer <= GameplayConstants::kTorpedoRamDetectRangeUnits;
                     enemy.torpedoLastKnownPlayerHeadingRadians =
                         std::atan2(perception.toPlayer.x, -perception.toPlayer.y);
@@ -812,7 +809,7 @@ void UpdateEnemySystem(
                 }
             } else if (!handledByUncoupleMovement && enemy.type == EnemyType::Hunter) {
                 const bool canChase =
-                    !playerInvisible && !perception.playerObscured &&
+                    enemy.seesPlayer &&
                     perception.distanceToPlayer <= GameplayConstants::kHunterDetectRangeUnits;
                 if (canChase) {
                     InvalidateHunterScoutPath(enemy);

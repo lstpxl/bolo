@@ -818,6 +818,7 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
 
             const int enemySizePixels = kEnemyRenderSizePx;
             const int enemyHalfPixels = enemySizePixels / 2;
+            const Vector2 playerScreenPosition = WorldToSnappedScreen(state.world.player.position, camera);
             for (int i = 0; i < visibleEnemyCount; ++i) {
                 const EnemyTank& enemy = *visibleEnemies[static_cast<std::size_t>(i)];
                 const Vector2 enemyScreenPosition = WorldToSnappedScreen(enemy.position, camera);
@@ -841,6 +842,14 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
                     DrawRectangleRec(destRect, EnemyColorForType(enemy.type));
                 }
                 if (state.menuSettings.debugInfo) {
+                    if (enemy.seesPlayer) {
+                        DrawLine(
+                            static_cast<int>(enemyScreenPosition.x),
+                            static_cast<int>(enemyScreenPosition.y),
+                            static_cast<int>(playerScreenPosition.x),
+                            static_cast<int>(playerScreenPosition.y),
+                            RED);
+                    }
                     if (enemy.type == EnemyType::Hunter &&
                         enemy.hunterScoutPathActive &&
                         enemy.hunterScoutSegmentIndex >= 0 &&

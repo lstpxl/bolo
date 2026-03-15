@@ -138,6 +138,7 @@ struct EnemyTank {
     int cheapSegmentBuildMethodStage = 0;
     bool cheapSegmentInsideWallAvoidLastFrame = false;
     bool cheapTierCrowdedSlowMode = false;  // assassins: 0.5x speed when another enemy in same cell
+    bool seesPlayer = false;
     bool alive = true;
 };
 
