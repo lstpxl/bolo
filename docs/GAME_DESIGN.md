@@ -215,7 +215,8 @@ Enemy movement/steering code uses **`kWallClearanceForAvoidance`** (passed into 
 
 ### Enemy Type Behavior
 
-- Drone:
+#### Drone
+
   - Modes: `Wander` and `Watch`.
   - Wander: move straight; if obstacle is within `1` unit ahead, test `±45°` and pick longer free route.
   - If neither side offers `>=3` units of clear run, switch to Watch.
@@ -227,7 +228,10 @@ Enemy movement/steering code uses **`kWallClearanceForAvoidance`** (passed into 
   - On self-awareness timer restart, drone re-checks nearest-base distance; if distance is `>=36`, it first checks relative bearing to nearest base.
   - If relative bearing is `<80°`, drone keeps moving (already generally pointed toward base) and does not enter Watch.
   - If relative bearing is `>=80°`, drone stops and enters Watch.
-- Torpedo:
+
+#### Torpedo
+
+  - Modes: `Move`, `Retreat`, `Targeting`, and `Rotate` (stored in `EnemyAiMode` alongside other type modes).
   - Fast local-steering movement (no A* path planning), with turns constrained to `45°` increments only.
   - Spawn heading lock: after spawn, torpedo keeps initial heading while inside base footprint plus `1.0` world-unit clearance; turning decisions are disabled until this clearance is exited.
   - Player detection for steering is throttled to every `0.25s` (cached between checks), using LOS and distance `<9` units.
@@ -244,7 +248,9 @@ Enemy movement/steering code uses **`kWallClearanceForAvoidance`** (passed into 
   - After retreat completion, torpedo enters `Targeting` mode: picks and stores the heading with the longest straight clear path.
   - Rotate mode: rotates toward the stored chosen heading using the closer CW/CCW direction and returns to regular move mode when aligned.
   - Firing additionally requires player to be roughly ahead (`±30°`).
-- Hunter:
+
+#### Hunter
+
   - Modes: `Scout`, `Chase`, and rotate fallback.
   - Enters Chase when player has LOS and distance `<12`.
   - Chase keeps stand-off band `3..6` units (approach if farther, retreat if closer, stop inside band).
@@ -258,18 +264,26 @@ Enemy movement/steering code uses **`kWallClearanceForAvoidance`** (passed into 
     - Direct segment is preferred; for diagonal half-block cases, endpoint adjustment within `2` units around target center is attempted, then a `2`-segment bend path is attempted.
     - Candidate scout segment endpoints are rejected if they lie inside wall-avoidance space (using `kWallClearanceForAvoidance`), preventing path endpoints from being placed too close to wall endpoints/corners.
     - If no valid Scout path can be built, hunter enters rotate fallback.
-- Assassin:
+
+#### Assassin
+
   - Modes: `Pursuit` (default) and temporary `Uncouple`.
   - Uses a pure player-directed maze flow-field for pursuit steering (no waypoint A* path following in the active runtime branch).
+  - Each assassin computes and caches only the next flow-field step heading per current cell; cached heading is reused until the assassin leaves that cell.
+  - Avoids ramming by stopping/adjusting when player distance is under `3` units.
+
+### Player-Directed Flow-field
+
   - Flow-field build treats cells occupied by undestroyed bases as blocking (non-traversable).
-- Flow-field is *active* only when the level can spawn assassins or hunters (levels 5+) and invisibility is off. On levels without these consumers (e.g. level 4) or when invisibility is on, the flow field is inactive and not built. Toggling invisibility (I key) always invalidates the current flow cache: invisibility on clears stale flow immediately; invisibility off activates flow rebuild toward the player.
+  - Flow-field is *active* only when the level can spawn assassins or hunters (levels 5+) and invisibility is off. On levels without these consumers (e.g. level 4) or when invisibility is on, the flow field is inactive and not built. Toggling invisibility (I key) always invalidates the current flow cache: invisibility on clears stale flow immediately; invisibility off activates flow rebuild toward the player.
   - Flow-field initial build is requested at level init (InitializeMazeWorld), not during enemy processing. This ensures assassins never wait for a build; the field is ready when the first assassin spawns.
   - Player respawn invalidates the flow field so it is rebuilt for the new player position; any in-flight background rebuild for the old position is discarded.
-  - Each assassin computes and caches only the next flow-field step heading per current cell; cached heading is reused until the assassin leaves that cell.
-  - Assassin steering does not require player-cell-version freshness; cached flow-field data remains valid until scheduled cache refresh.
+  - Enemy steering does not require player-cell-version freshness; cached flow-field data remains valid until scheduled cache refresh.
   - Flow-field cache refresh runs only while cache is active and player crosses cell borders: cache `age` starts at `0`, increments on each refresh attempt, early-exits while `age <= 2`, and rebuilds when `age > 2` (effective rebuild cadence: once per 3 player-cell changes). On each early-exit transition `A -> B`, flow direction for cell `A` is patched to point to cell `B`.
+
+### A* waypoint path builder
+
   - A* waypoint path builder remains in code as a disabled backup branch and is not wired into active assassin pursuit.
-  - Avoids ramming by stopping/adjusting when player distance is under `3` units.
 
 ### Enemy Collision Broad Phase
 
@@ -299,7 +313,7 @@ Enemy movement/steering code uses **`kWallClearanceForAvoidance`** (passed into 
 - Cheap-tier enemies do not run enemy-enemy or enemy-base collision checks at all; wall clearance is evaluated only when selecting the next cheap-tier segment.
 - Torpedo exception:
   - `Retreat`, `Targeting`, and `Rotate` remain `Full` tier even when offscreen.
-  - only torpedo `Move` mode can use cheap-tier segment movement.
+  - only torpedo `Move` (`EnemyAiMode::Move`) can use cheap-tier segment movement.
   - offscreen torpedo player-detection checks run at a lower frequency than full simulation.
 - Assassin exception:
   - while cheap-tier, assassin segment selection is flow-field-driven and recomputed on cell transitions (or when no active segment exists).

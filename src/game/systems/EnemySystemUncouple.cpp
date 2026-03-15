@@ -50,7 +50,7 @@ EnemyAiMode DefaultAiModeForType(EnemyType type) {
     case EnemyType::Drone:
         return EnemyAiMode::Wander;
     case EnemyType::Torpedo:
-        return EnemyAiMode::Wander;
+        return EnemyAiMode::Move;
     case EnemyType::Hunter:
         return EnemyAiMode::Scout;
     case EnemyType::Assassin:

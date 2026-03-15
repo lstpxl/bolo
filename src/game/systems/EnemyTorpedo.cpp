@@ -154,11 +154,11 @@ float SelectTorpedoMoveHeading(
 }
 
 void EnterTorpedoTargetingMode(EnemyTank& enemy) {
-    enemy.torpedoMoveMode = TorpedoMoveMode::Targeting;
+    enemy.aiMode = EnemyAiMode::Targeting;
 }
 
 void EnterTorpedoRotateMode(EnemyTank& enemy) {
-    enemy.torpedoMoveMode = TorpedoMoveMode::Rotate;
+    enemy.aiMode = EnemyAiMode::Rotate;
     enemy.torpedoRotateTargetHeadingRadians = enemy.torpedoChosenHeadingRadians;
 }
 
@@ -170,7 +170,7 @@ float UpdateTorpedoRotateHeading(EnemyTank& enemy, float deltaSeconds) {
     if (std::fabs(signedDelta) <= rotateStep + 0.0001F) {
         const float heading =
             core::angle::QuantizeToEightDirections(enemy.torpedoRotateTargetHeadingRadians);
-        enemy.torpedoMoveMode = TorpedoMoveMode::Move;
+        enemy.aiMode = EnemyAiMode::Move;
         enemy.torpedoStraightDistanceSinceTurnUnits = 0.0F;
         enemy.torpedoMoveDecisionHoldRemainingUnits = 0.0F;
         return heading;

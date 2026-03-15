@@ -442,7 +442,7 @@ void ApplyCheapTierMovement(
         .y = dir.y * effectiveSpeed,
     };
 
-    if (enemy.type == EnemyType::Torpedo && enemy.torpedoMoveMode == TorpedoMoveMode::Move) {
+    if (enemy.type == EnemyType::Torpedo && enemy.aiMode == EnemyAiMode::Move) {
         enemy.torpedoStraightDistanceSinceTurnUnits += step;
     }
     updateAssassinWallState("cheap_post_move", kAssassinWallPhaseCheap);

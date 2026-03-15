@@ -186,6 +186,8 @@ void UpdateSpawnerSystem(GameState& state, float deltaSeconds, Random& random) {
             mode = EnemyAiMode::Scout;
         } else if (spawnedEnemy.type == EnemyType::Assassin) {
             mode = EnemyAiMode::Pursuit;
+        } else if (spawnedEnemy.type == EnemyType::Torpedo) {
+            mode = EnemyAiMode::Move;
         }
         const float selfAwarenessInterval = (spawnedEnemy.type == EnemyType::Drone)
             ? random.NextFloat(6.0F, 12.0F)

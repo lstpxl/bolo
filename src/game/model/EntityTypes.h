@@ -61,13 +61,10 @@ enum class EnemyAiMode {
     Path,
     Pursuit,
     Uncouple,
-};
-
-enum class TorpedoMoveMode {
+    // Torpedo movement states (unified with aiMode; semantics match other type modes)
     Move,
     Retreat,
     Targeting,
-    Rotate,
 };
 
 enum class EnemySimTier {
@@ -106,7 +103,6 @@ struct EnemyTank {
     Vec2f wanderDirection{.x = 0.0F, .y = -1.0F};
     int watchRotateDirection = 1;
     bool returnToBase = false;
-    TorpedoMoveMode torpedoMoveMode = TorpedoMoveMode::Move;
     float torpedoStraightDistanceSinceTurnUnits = 3.0F;
     float torpedoMoveDecisionHoldRemainingUnits = 0.0F;
     float torpedoRetreatMovedUnits = 0.0F;
