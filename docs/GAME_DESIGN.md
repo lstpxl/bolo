@@ -217,82 +217,82 @@ Enemy movement/steering code uses **`kWallClearanceForAvoidance`** (passed into 
 
 #### Drone
 
-  - Modes: `Wander` and `Watch`.
-  - If drone has LOS to an alive player within `12` units, it enters player pursuit: speed is set to `50%` of its normal drone speed and heading is selected from 8-way directions toward the player.
-  - Pursuit heading selection prefers the nearest angular 8-way direction (typically straight or `45°` diagonal), while still enforcing wall and enemy clearance.
-  - During pursuit, drone applies player-specific spacing and will not choose a step that brings it within `4` units of the player center.
-  - Wander: move straight; if obstacle is within `1` unit ahead, test `±45°` and pick longer free route.
-  - If neither side offers `>=3` units of clear run, switch to Watch.
-  - Watch: stop and rotate in a random direction (`clockwise` or `counter-clockwise`) chosen when entering Watch.
-  - On entering Watch, drone computes distance to nearest base; if distance is `>=36` units, `return-to-base` is enabled.
-  - After one full turn (`4s`), if `return-to-base` is enabled, evaluate candidate return headings toward nearest base and discard any heading with less than `6` units of obstacle-free route.
-  - If candidates remain, choose return heading by weighted random: best base-aligned candidate has `60%` weight, remaining `40%` is evenly distributed across the other candidates; if no candidates remain, stay in Watch and keep rotating.
-  - If `return-to-base` is not enabled, Watch exits only when clear run ahead `>3` and a heading can be selected that improves separation from nearby enemies.
-  - On self-awareness timer restart, drone re-checks nearest-base distance; if distance is `>=36`, it first checks relative bearing to nearest base.
-  - If relative bearing is `<80°`, drone keeps moving (already generally pointed toward base) and does not enter Watch.
-  - If relative bearing is `>=80°`, drone stops and enters Watch.
+- Modes: `Wander` and `Watch`.
+- If drone has LOS to an alive player within `12` units, it enters player pursuit: speed is set to `50%` of its normal drone speed and heading is selected from 8-way directions toward the player.
+- Pursuit heading selection prefers the nearest angular 8-way direction (typically straight or `45°` diagonal), while still enforcing wall and enemy clearance.
+- During pursuit, drone applies player-specific spacing and will not choose a step that brings it within `4` units of the player center.
+- Wander: move straight; if obstacle is within `1` unit ahead, test `±45°` and pick longer free route.
+- If neither side offers `>=3` units of clear run, switch to Watch.
+- Watch: stop and rotate in a random direction (`clockwise` or `counter-clockwise`) chosen when entering Watch.
+- On entering Watch, drone computes distance to nearest base; if distance is `>=36` units, `return-to-base` is enabled.
+- After one full turn (`4s`), if `return-to-base` is enabled, evaluate candidate return headings toward nearest base and discard any heading with less than `6` units of obstacle-free route.
+- If candidates remain, choose return heading by weighted random: best base-aligned candidate has `60%` weight, remaining `40%` is evenly distributed across the other candidates; if no candidates remain, stay in Watch and keep rotating.
+- If `return-to-base` is not enabled, Watch exits only when clear run ahead `>3` and a heading can be selected that improves separation from nearby enemies.
+- On self-awareness timer restart, drone re-checks nearest-base distance; if distance is `>=36`, it first checks relative bearing to nearest base.
+- If relative bearing is `<80°`, drone keeps moving (already generally pointed toward base) and does not enter Watch.
+- If relative bearing is `>=80°`, drone stops and enters Watch.
 
 #### Torpedo
 
-  - Modes: `Fly`, `Ram`, `Retreat`, `Targeting`, and `Rotate` (stored in `EnemyAiMode` alongside other type modes).
-  - Fast local-steering movement (no A* path planning), with turns constrained to `45°` increments only.
-  - Spawn heading lock: after spawn, torpedo keeps initial heading while inside base footprint plus `1.0` world-unit clearance; turning decisions are disabled until this clearance is exited.
-  - Player detection for ram transition is throttled to every `0.25s` (cached between checks), using LOS and distance `<=12` units.
-  - Torpedo enters `Ram` whenever an alive player is seen (LOS + `12` units), and returns to `Fly` when LOS/range is lost or the player dies.
-  - In `Ram`, torpedo continuously slews heading toward player at finite angular speed `45°/s` (continuous turn, not instant heading snap).
-  - In `Ram`, torpedo fires only when player is inside a tighter forward cone (`±20°`).
-  - If a `Ram` torpedo collides with player, both die (player death + torpedo explosion).
-  - Torpedo velocity is rate-limited in all modes by finite acceleration `2` world-units/s²; target speed changes (including retreat reverse) are not instantaneous.
-  - If torpedo makes hard wall contact before it can decelerate enough, it explodes.
-  - Segment-direction selection evaluates exactly three headings (`forward`, `-45°`, `+45°`) and measures clearance up to `15` units.
-  - In full-tier torpedo move logic, clearance uses full obstacle checks (walls + undestroyed bases + alive enemies).
-  - In cheap-tier torpedo segment build, clearance is wall-only.
-  - Heading pick uses longest clearance; ties are resolved randomly.
-  - Segment length uses `max = longestClearance - 4` and is sampled randomly in `[2, max]` (if `max < 2`, torpedo enters retreat fallback in full-tier move logic).
-  - In torpedo steering, "obstacle" checks include walls, undestroyed bases, and other alive enemies.
-  - Turn cooldown: must move straight at least `3` units before another turn.
-  - MOVE optimization: when a direction decision keeps straight heading, torpedo holds that decision for `1` world-unit of traveled distance (distance-based, not frame-based), and only performs near forward collision checks up to `3` units during that hold.
-  - If obstacle is directly ahead and straight/left/right are all effectively blocked, enters `Retreat` mode.
-  - Retreat mode: moves backward without turning at `10%` normal speed; it checks only retreat completion distance and near forward clearance to leave the mode.
-  - After retreat completion, torpedo enters `Targeting` mode: picks and stores the heading with the longest straight clear path.
-  - Rotate mode: rotates toward the stored chosen heading using the closer CW/CCW direction and returns to regular move mode when aligned.
-  - Firing additionally requires player to be roughly ahead (`±30°`).
+- Modes: `Fly`, `Ram`, `Retreat`, `Targeting`, and `Rotate` (stored in `EnemyAiMode` alongside other type modes).
+- Fast local-steering movement (no A* path planning), with turns constrained to `45°` increments only.
+- Spawn heading lock: after spawn, torpedo keeps initial heading while inside base footprint plus `1.0` world-unit clearance; turning decisions are disabled until this clearance is exited.
+- Player detection for ram transition is throttled to every `0.25s` (cached between checks), using LOS and distance `<=12` units.
+- Torpedo enters `Ram` whenever an alive player is seen (LOS + `12` units), and returns to `Fly` when LOS/range is lost or the player dies.
+- In `Ram`, torpedo continuously slews heading toward player at finite angular speed `45°/s` (continuous turn, not instant heading snap).
+- In `Ram`, torpedo fires only when player is inside a tighter forward cone (`±20°`).
+- If a `Ram` torpedo collides with player, both die (player death + torpedo explosion).
+- Torpedo velocity is rate-limited in all modes by finite acceleration `2` world-units/s²; target speed changes (including retreat reverse) are not instantaneous.
+- If torpedo makes hard wall contact before it can decelerate enough, it explodes.
+- Segment-direction selection evaluates exactly three headings (`forward`, `-45°`, `+45°`) and measures clearance up to `15` units.
+- In full-tier torpedo move logic, clearance uses full obstacle checks (walls + undestroyed bases + alive enemies).
+- In cheap-tier torpedo segment build, clearance is wall-only.
+- Heading pick uses longest clearance; ties are resolved randomly.
+- Segment length uses `max = longestClearance - 4` and is sampled randomly in `[2, max]` (if `max < 2`, torpedo enters retreat fallback in full-tier move logic).
+- In torpedo steering, "obstacle" checks include walls, undestroyed bases, and other alive enemies.
+- Turn cooldown: must move straight at least `3` units before another turn.
+- MOVE optimization: when a direction decision keeps straight heading, torpedo holds that decision for `1` world-unit of traveled distance (distance-based, not frame-based), and only performs near forward collision checks up to `3` units during that hold.
+- If obstacle is directly ahead and straight/left/right are all effectively blocked, enters `Retreat` mode.
+- Retreat mode: moves backward without turning at `10%` normal speed; it checks only retreat completion distance and near forward clearance to leave the mode.
+- After retreat completion, torpedo enters `Targeting` mode: picks and stores the heading with the longest straight clear path.
+- Rotate mode: rotates toward the stored chosen heading using the closer CW/CCW direction and returns to regular move mode when aligned.
+- Firing additionally requires player to be roughly ahead (`±30°`).
 
 #### Hunter
 
-  - Modes: `Scout`, `Chase`, and rotate fallback.
-  - Enters Chase when player has LOS and distance `<12`.
-  - Chase keeps stand-off band `3..6` units (approach if farther, retreat if closer, stop inside band).
-  - Scout uses a two-level planner shared across Full/Cheap tiers:
-    - **Cell-level choice:** all heading decisions use 8 integer direction indices (0..7). Current float heading is converted to dir index first; relative turn cost, scoring, and tie-break use integer math. Float heading is derived from dir index only at movement output.
-    - Evaluate all 8 neighbor directions; score uses exponential-decay weighting:
+- Modes: `Scout`, `Chase`, and rotate fallback.
+- Enters Chase when player has LOS and distance `<12`.
+- Chase keeps stand-off band `3..6` units (approach if farther, retreat if closer, stop inside band).
+- Scout uses a two-level planner shared across Full/Cheap tiers:
+  - **Cell-level choice:** all heading decisions use 8 integer direction indices (0..7). Current float heading is converted to dir index first; relative turn cost, scoring, and tie-break use integer math. Float heading is derived from dir index only at movement output.
+  - Evaluate all 8 neighbor directions; score uses exponential-decay weighting:
       `score = (1 - core::math::ExpDecayA1K07(runCells)) * core::math::ExpDecayA1K07(enemiesInFirstCell) * (1 - 0.2 * turnSteps)`.
       Here `runCells` is traversable run length in the candidate direction, `enemiesInFirstCell` is alive enemies in the first cell of that direction, and `turnSteps` is relative heading turn cost in 45-degree steps.
-    - Cells occupied by alive bases are treated as blocked.
-    - **Segment-level execution:** build a persisted `1` or `2` segment path toward the chosen neighbor-cell center.
-    - Direct segment is preferred; for diagonal half-block cases, endpoint adjustment within `2` units around target center is attempted, then a `2`-segment bend path is attempted.
-    - Candidate scout segment endpoints are rejected if they lie inside wall-avoidance space (using `kWallClearanceForAvoidance`), preventing path endpoints from being placed too close to wall endpoints/corners.
-    - If no valid Scout path can be built, hunter enters rotate fallback.
+  - Cells occupied by alive bases are treated as blocked.
+  - **Segment-level execution:** build a persisted `1` or `2` segment path toward the chosen neighbor-cell center.
+  - Direct segment is preferred; for diagonal half-block cases, endpoint adjustment within `2` units around target center is attempted, then a `2`-segment bend path is attempted.
+  - Candidate scout segment endpoints are rejected if they lie inside wall-avoidance space (using `kWallClearanceForAvoidance`), preventing path endpoints from being placed too close to wall endpoints/corners.
+  - If no valid Scout path can be built, hunter enters rotate fallback.
 
 #### Assassin
 
-  - Modes: `Pursuit` (default) and temporary `Uncouple`.
-  - Uses a pure player-directed maze flow-field for pursuit steering (no waypoint A* path following in the active runtime branch).
-  - Each assassin computes and caches only the next flow-field step heading per current cell; cached heading is reused until the assassin leaves that cell.
-  - Avoids ramming by stopping/adjusting when player distance is under `3` units.
+- Modes: `Pursuit` (default) and temporary `Uncouple`.
+- Uses a pure player-directed maze flow-field for pursuit steering (no waypoint A* path following in the active runtime branch).
+- Each assassin computes and caches only the next flow-field step heading per current cell; cached heading is reused until the assassin leaves that cell.
+- Avoids ramming by stopping/adjusting when player distance is under `3` units.
 
 ### Player-Directed Flow-field
 
-  - Flow-field build treats cells occupied by undestroyed bases as blocking (non-traversable).
-  - Flow-field is *active* only when the level can spawn assassins or hunters (levels 5+) and invisibility is off. On levels without these consumers (e.g. level 4) or when invisibility is on, the flow field is inactive and not built. Toggling invisibility (I key) always invalidates the current flow cache: invisibility on clears stale flow immediately; invisibility off activates flow rebuild toward the player.
-  - Flow-field initial build is requested at level init (InitializeMazeWorld), not during enemy processing. This ensures assassins never wait for a build; the field is ready when the first assassin spawns.
-  - Player respawn invalidates the flow field so it is rebuilt for the new player position; any in-flight background rebuild for the old position is discarded.
-  - Enemy steering does not require player-cell-version freshness; cached flow-field data remains valid until scheduled cache refresh.
-  - Flow-field cache refresh runs only while cache is active and player crosses cell borders: cache `age` starts at `0`, increments on each refresh attempt, early-exits while `age <= 2`, and rebuilds when `age > 2` (effective rebuild cadence: once per 3 player-cell changes). On each early-exit transition `A -> B`, flow direction for cell `A` is patched to point to cell `B`.
+- Flow-field build treats cells occupied by undestroyed bases as blocking (non-traversable).
+- Flow-field is *active* only when the level can spawn assassins or hunters (levels 5+) and invisibility is off. On levels without these consumers (e.g. level 4) or when invisibility is on, the flow field is inactive and not built. Toggling invisibility (I key) always invalidates the current flow cache: invisibility on clears stale flow immediately; invisibility off activates flow rebuild toward the player.
+- Flow-field initial build is requested at level init (InitializeMazeWorld), not during enemy processing. This ensures assassins never wait for a build; the field is ready when the first assassin spawns.
+- Player respawn invalidates the flow field so it is rebuilt for the new player position; any in-flight background rebuild for the old position is discarded.
+- Enemy steering does not require player-cell-version freshness; cached flow-field data remains valid until scheduled cache refresh.
+- Flow-field cache refresh runs only while cache is active and player crosses cell borders: cache `age` starts at `0`, increments on each refresh attempt, early-exits while `age <= 2`, and rebuilds when `age > 2` (effective rebuild cadence: once per 3 player-cell changes). On each early-exit transition `A -> B`, flow direction for cell `A` is patched to point to cell `B`.
 
 ### A* waypoint path builder
 
-  - A* waypoint path builder remains in code as a disabled backup branch and is not wired into active assassin pursuit.
+- A* waypoint path builder remains in code as a disabled backup branch and is not wired into active assassin pursuit.
 
 ### Enemy Collision Broad Phase
 
