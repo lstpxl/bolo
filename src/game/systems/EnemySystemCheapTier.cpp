@@ -6,9 +6,11 @@
 #include "core/AngleMath.h"
 #include "core/Log.h"
 #include "core/Profiling.h"
+#include "game/GameState.h"
 #include "game/geometry/WorldGeometry.h"
 #include "game/model/GameplayConstants.h"
 #include "game/systems/EnemyAssassin.h"
+#include "game/systems/EnemyDrone.h"
 #include "game/systems/EnemyHunter.h"
 #include "game/systems/EnemySystemHelpers.h"
 #include "game/systems/EnemySystemInternal.h"
@@ -34,10 +36,6 @@ int StageBucketIndex(int stage) {
         return 1;
     }
     return 2;
-}
-
-float NormalizeAngle(float angleRadians) {
-    return core::angle::NormalizeAngle(angleRadians);
 }
 
 float QuantizeToEightDirections(float angleRadians) {
@@ -112,10 +110,14 @@ void BuildOffscreenSegment(WorldState& world, EnemyTank& enemy, float segmentLen
     if (maxSegmentLength < kSegmentBuildMinLengthUnits) {
         if (enemy.type == EnemyType::Torpedo) {
             enemy.headingRadians = QuantizeToEightDirections(enemy.headingRadians - kEightDirectionStep);
-        } else if (enemy.type == EnemyType::Drone) {
-            const int randomStep = random.NextInt(0, 7);
-            enemy.headingRadians =
-                NormalizeAngle(static_cast<float>(randomStep) * kEightDirectionStep);
+            enemy.offscreenSegmentActive = false;
+            enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
+            gEnemyRuntimeWindowStats.segmentBuildFailsByType[static_cast<std::size_t>(typeIdx)] += 1;
+            return;
+        }
+        if (enemy.type == EnemyType::Drone) {
+            DroneReset(world, enemy, random);
+            return;
         }
         enemy.offscreenSegmentActive = false;
         enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
@@ -140,14 +142,28 @@ void AdvanceCheapTierTimers(
     EnemyTank& enemy,
     float deltaSeconds,
     bool playerInvisible,
-    const GameplayView& view) {
+    const GameplayView& view,
+    Random& random) {
     enemy.aiModeElapsedSeconds += deltaSeconds;
+
+    if (enemy.selfAwarenessIntervalSeconds <= 0.0F) {
+        enemy.selfAwarenessIntervalSeconds =
+            (enemy.type == EnemyType::Drone)
+                ? random.NextFloat(
+                      GameplayConstants::kDroneSelfAwarenessIntervalMinSeconds,
+                      GameplayConstants::kDroneSelfAwarenessIntervalMaxSeconds)
+                : random.NextFloat(4.0F, 8.0F);
+        enemy.selfAwarenessTimerSeconds = enemy.selfAwarenessIntervalSeconds;
+    }
     enemy.selfAwarenessTimerSeconds -= deltaSeconds;
     if (enemy.selfAwarenessTimerSeconds <= 0.0F) {
-        if (enemy.selfAwarenessIntervalSeconds <= 0.0F) {
-            enemy.selfAwarenessIntervalSeconds = (enemy.type == EnemyType::Drone) ? 9.0F : 6.0F;
+        TryDroneSelfAwarenessReset(state.world, enemy, random);
+        if (enemy.type == EnemyType::Drone) {
+            enemy.selfAwarenessIntervalSeconds = random.NextFloat(
+                GameplayConstants::kDroneSelfAwarenessIntervalMinSeconds,
+                GameplayConstants::kDroneSelfAwarenessIntervalMaxSeconds);
         }
-        enemy.selfAwarenessTimerSeconds += enemy.selfAwarenessIntervalSeconds;
+        enemy.selfAwarenessTimerSeconds = enemy.selfAwarenessIntervalSeconds;
     }
 
     if (enemy.type == EnemyType::Torpedo) {

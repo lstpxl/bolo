@@ -12,7 +12,8 @@ void AdvanceCheapTierTimers(
     EnemyTank& enemy,
     float deltaSeconds,
     bool playerInvisible,
-    const GameplayView& view);
+    const GameplayView& view,
+    Random& random);
 
 void ApplyCheapTierMovement(
     GameState& state,

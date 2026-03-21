@@ -560,6 +560,12 @@ void UpdateEnemySystem(
         }
 
         if (enemy.simTier == EnemySimTier::Cheap) {
+            if (enemy.type == EnemyType::Drone && enemy.droneWatchAlignToHeading) {
+                enemy.droneWatchAlignToHeading = false;
+                if (enemy.aiMode == EnemyAiMode::Watch) {
+                    enemy.aiMode = EnemyAiMode::Wander;
+                }
+            }
             if (enemy.type == EnemyType::Assassin && previousTier != EnemySimTier::Cheap) {
                 const bool insideWallOnCheapEntry = game::geometry::IsPointInWall(
                     state.world, enemy.position, GameplayConstants::kWallClearanceForHard);
@@ -576,7 +582,7 @@ void UpdateEnemySystem(
                         enemy.expectedPathCellHash);
                 }
             }
-            AdvanceCheapTierTimers(state, enemy, deltaSeconds, playerInvisible, view);
+            AdvanceCheapTierTimers(state, enemy, deltaSeconds, playerInvisible, view, random);
 
             float cheapSpeed =
                 EnemySpeed(enemy.type, enemy.subtype, false, state.menuSettings.levelNumber);
@@ -658,41 +664,60 @@ void UpdateEnemySystem(
                             pursuitHeading)) {
                         movementHeading = pursuitHeading;
                         enemy.aiMode = EnemyAiMode::Wander;
+                        enemy.droneWatchAlignToHeading = false;
                     } else if (enemy.aiMode == EnemyAiMode::Watch) {
                         targetSpeed = 0.0F;
                     }
                 } else if (enemy.aiMode == EnemyAiMode::Watch) {
                     targetSpeed = 0.0F;
                     preserveContinuousHeading = true;
-                    movementHeading = NormalizeAngle(
-                        enemy.headingRadians +
-                        static_cast<float>(enemy.watchRotateDirection) *
-                            (kPi * 2.0F / GameplayConstants::kSlowRotateFullTurnSeconds) *
-                            deltaSeconds);
-                    const float clearDistance = game::geometry::FreeDistanceAhead(
-                        state.world, enemy.position, movementHeading,
-                        GameplayConstants::kEnemyRequiredClearRunUnits + 0.5F,
-                        GameplayConstants::kWallClearanceForAvoidance,
-                        kEnemyPlanningClearanceScale);
-                    if (enemy.aiModeElapsedSeconds >=
-                        GameplayConstants::kSlowRotateFullTurnSeconds) {
-                        if (enemy.returnToBase) {
-                            float returnHeading = movementHeading;
-                            if (SelectDroneReturnToBaseHeading(
-                                    state.world, enemy, random, returnHeading)) {
-                                movementHeading = returnHeading;
-                                enemy.returnToBase = false;
-                                enemy.aiMode = EnemyAiMode::Wander;
-                                enemy.aiModeElapsedSeconds = 0.0F;
-                            }
-                        } else if (clearDistance > GameplayConstants::kEnemyRequiredClearRunUnits) {
-                            float escapeHeading = movementHeading;
-                            if (SelectDroneWatchEscapeHeading(
-                                    state.world, state.world.enemies, enemyIndex, deltaSeconds,
-                                    escapeHeading)) {
-                                movementHeading = escapeHeading;
-                                enemy.aiMode = EnemyAiMode::Wander;
-                                enemy.aiModeElapsedSeconds = 0.0F;
+                    if (enemy.droneWatchAlignToHeading) {
+                        const float targetH = enemy.droneWatchAlignHeadingRadians;
+                        const float maxTurnPerFrame =
+                            kPi * 2.0F / GameplayConstants::kSlowRotateFullTurnSeconds * deltaSeconds;
+                        const float bearingDelta =
+                            core::angle::SignedAngleDelta(enemy.headingRadians, targetH);
+                        const float step =
+                            std::clamp(bearingDelta, -maxTurnPerFrame, maxTurnPerFrame);
+                        movementHeading =
+                            core::angle::NormalizeAngle(enemy.headingRadians + step);
+                        if (core::angle::AngleDistance(movementHeading, targetH) < 0.06F) {
+                            movementHeading = targetH;
+                            enemy.droneWatchAlignToHeading = false;
+                            enemy.aiMode = EnemyAiMode::Wander;
+                            enemy.aiModeElapsedSeconds = 0.0F;
+                        }
+                    } else {
+                        movementHeading = NormalizeAngle(
+                            enemy.headingRadians +
+                            static_cast<float>(enemy.watchRotateDirection) *
+                                (kPi * 2.0F / GameplayConstants::kSlowRotateFullTurnSeconds) *
+                                deltaSeconds);
+                        const float clearDistance = game::geometry::FreeDistanceAhead(
+                            state.world, enemy.position, movementHeading,
+                            GameplayConstants::kEnemyRequiredClearRunUnits + 0.5F,
+                            GameplayConstants::kWallClearanceForAvoidance,
+                            kEnemyPlanningClearanceScale);
+                        if (enemy.aiModeElapsedSeconds >=
+                            GameplayConstants::kSlowRotateFullTurnSeconds) {
+                            if (enemy.returnToBase) {
+                                float returnHeading = movementHeading;
+                                if (SelectDroneReturnToBaseHeading(
+                                        state.world, enemy, random, returnHeading)) {
+                                    movementHeading = returnHeading;
+                                    enemy.returnToBase = false;
+                                    enemy.aiMode = EnemyAiMode::Wander;
+                                    enemy.aiModeElapsedSeconds = 0.0F;
+                                }
+                            } else if (clearDistance > GameplayConstants::kEnemyRequiredClearRunUnits) {
+                                float escapeHeading = movementHeading;
+                                if (SelectDroneWatchEscapeHeading(
+                                        state.world, state.world.enemies, enemyIndex, deltaSeconds,
+                                        escapeHeading)) {
+                                    movementHeading = escapeHeading;
+                                    enemy.aiMode = EnemyAiMode::Wander;
+                                    enemy.aiModeElapsedSeconds = 0.0F;
+                                }
                             }
                         }
                     }

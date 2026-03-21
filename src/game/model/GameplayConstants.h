@@ -37,7 +37,7 @@ struct GameplayConstants {
     // Enemy tuning.
     static constexpr float kEnemyDroneSpeed = 1.0F;                  // world-units / second
     /// Baseline torpedo speed; multiply by `EnemySubtypeSpeedMultiplier` (Basic = 0.75) where applied.
-    static constexpr float kEnemyTorpedoSpeed = 4.0F;                // world-units / second
+    static constexpr float kEnemyTorpedoSpeed = 6.0F;                // world-units / second
     /// Ram forward-speed ceiling: `2 × kEnemyTorpedoSpeed`; multiply by subtype where applied.
     static constexpr float kEnemyTorpedoSpeedMax = 2.0F * kEnemyTorpedoSpeed; // world-units / second
     static constexpr float kEnemyHunterSpeed = 3.0F;                 // world-units / second
@@ -74,8 +74,12 @@ struct GameplayConstants {
     static constexpr float kDronePursuitSpeedFactor = 0.5F;          // unitless
     static constexpr float kDronePlayerAvoidanceDistanceUnits = 4.0F; // world-units
     /// Minimum maze graph distance (cells) from nearest alive base for drone "return to base" / Watch distance gate.
-    /// Matches `36` world-units along cardinal edges (`36 / kMazeCellSizeUnits`).
-    static constexpr int kDroneReturnToBaseMinBaseDistanceCells = 36 / kMazeCellSizeUnits;
+    static constexpr int kDroneReturnToBaseMinBaseDistanceCells = 7;
+    /// Drone self-awareness timer roll range (full and cheap tier).
+    static constexpr float kDroneSelfAwarenessIntervalMinSeconds = 5.0F;
+    static constexpr float kDroneSelfAwarenessIntervalMaxSeconds = 8.0F;
+    /// If drone bearing differs from `BaseFlowField` step toward base by at least this (radians), self-awareness may `DroneReset`.
+    static constexpr float kDroneSelfAwarenessOffFlowBearingThresholdRadians = 1.3962634F;  // 80°
     static constexpr float kHunterDetectRangeUnits = 15.0F;          // world-units
     static constexpr float kHunterMinDistanceUnits = 3.0F;           // world-units
     static constexpr float kHunterMaxDistanceUnits = 6.0F;           // world-units

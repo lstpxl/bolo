@@ -10,7 +10,6 @@
 #include "game/systems/ProjectileSystem.h"
 
 namespace {
-constexpr float kDroneBaseBearingThresholdRadians = 1.3962634F;  // 80 degrees
 constexpr float kTorpedoRearBlindHalfAngleRadians = 0.7853982F;  // 45 degrees
 
 /// Max distance at which an enemy may spawn a projectile toward the player — aligned with
@@ -62,27 +61,21 @@ EnemyPerception RunPerceptionPhase(
     EnemyPerception perception{};
     if (enemy.selfAwarenessIntervalSeconds <= 0.0F) {
         enemy.selfAwarenessIntervalSeconds = (enemy.type == EnemyType::Drone)
-            ? random.NextFloat(6.0F, 12.0F)
+            ? random.NextFloat(
+                  GameplayConstants::kDroneSelfAwarenessIntervalMinSeconds,
+                  GameplayConstants::kDroneSelfAwarenessIntervalMaxSeconds)
             : random.NextFloat(4.0F, 8.0F);
         enemy.selfAwarenessTimerSeconds = enemy.selfAwarenessIntervalSeconds;
     }
     enemy.selfAwarenessTimerSeconds -= deltaSeconds;
     if (enemy.selfAwarenessTimerSeconds <= 0.0F) {
-        enemy.selfAwarenessTimerSeconds = enemy.selfAwarenessIntervalSeconds;
+        TryDroneSelfAwarenessReset(state.world, enemy, random);
         if (enemy.type == EnemyType::Drone) {
-            if (DroneIsFarEnoughForReturnToBase(state.world, enemy.position)) {
-                float headingToBase = 0.0F;
-                if (DroneTryHeadingTowardBaseAlongFlow(state.world, enemy.position, headingToBase)) {
-                    const float relativeBearing =
-                        core::angle::AngleDistance(enemy.headingRadians, headingToBase);
-                    if (relativeBearing >= kDroneBaseBearingThresholdRadians) {
-                        // Facing at least 80° off the maze flow step toward the nearest base.
-                        enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
-                        EnterDroneWatchMode(state.world, enemy, random);
-                    }
-                }
-            }
+            enemy.selfAwarenessIntervalSeconds = random.NextFloat(
+                GameplayConstants::kDroneSelfAwarenessIntervalMinSeconds,
+                GameplayConstants::kDroneSelfAwarenessIntervalMaxSeconds);
         }
+        enemy.selfAwarenessTimerSeconds = enemy.selfAwarenessIntervalSeconds;
     }
     enemy.aiModeElapsedSeconds += deltaSeconds;
     perception.toPlayer = Vec2f{

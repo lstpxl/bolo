@@ -103,6 +103,9 @@ struct EnemyTank {
     float desiredHeadingRadians = 0.0F;
     Vec2f wanderDirection{.x = 0.0F, .y = -1.0F};
     int watchRotateDirection = 1;
+    /// Full-tier DroneReset: Watch rotates toward this heading before returning to Wander.
+    bool droneWatchAlignToHeading = false;
+    float droneWatchAlignHeadingRadians = 0.0F;
     bool returnToBase = false;
     float torpedoStraightDistanceSinceTurnUnits = 3.0F;
     float torpedoMoveDecisionHoldRemainingUnits = 0.0F;

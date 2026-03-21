@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include "core/Types.h"
+#include "core/ExpDecayA1K02.h"
 #include "core/ExpDecayA1K07.h"
 #include "core/ExpDecayA1K09.h"
 
@@ -23,6 +24,7 @@ inline float ApproximateEuclideanDistanceOctile(const Vec2f& a, const Vec2f& b) 
 }
 
 inline void InitializeLookupTables() {
+    (void)kExpDecayA1K02Lookup;
     (void)kExpDecayA1K07Lookup;
     (void)kExpDecayA1K09Lookup;
 }

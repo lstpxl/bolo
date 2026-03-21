@@ -8,6 +8,13 @@
 
 void EnterDroneWatchMode(WorldState& world, EnemyTank& enemy, Random& random);
 
+/// Picks a scored heading and applies tier-specific recovery: cheap tier snaps heading and Wander;
+/// full tier enters Watch until aligned, then Wander.
+void DroneReset(WorldState& world, EnemyTank& enemy, Random& random);
+
+/// When self-awareness timer fires: if far from base, flow exists, and bearing to flow is wide, `DroneReset`.
+void TryDroneSelfAwarenessReset(WorldState& world, EnemyTank& enemy, Random& random);
+
 /// True when drone is far enough from the nearest alive base to consider return-to-base (uses `BaseDistanceField`
 /// graph distance in cells). Builds distance + flow caches if missing.
 bool DroneIsFarEnoughForReturnToBase(WorldState& world, const Vec2f& position);

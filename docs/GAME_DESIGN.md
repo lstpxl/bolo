@@ -213,9 +213,9 @@ Enemy movement/steering code uses **`kWallClearanceForAvoidance`** (passed into 
   - `FreeDistanceAheadGrid`: default static-obstacle clearance for gameplay AI; traverses maze grid cells/edges (DDA-style) and returns first hit distance against walls/bases.
   - `FreeDistanceAheadContinuous`: retained as sampled legacy implementation for offline comparison only; gameplay runtime does not call it.
 - Every spawned enemy gets a per-enemy self-awareness interval and timer:
-  - Drone: random in `6..12` seconds.
+  - Drone: random in `5..8` seconds (`GameplayConstants::kDroneSelfAwarenessIntervalMinSeconds` / `MaxSeconds`); after each expiry the next interval is re-rolled in the same range (full and cheap tier).
   - Other enemy types: random in `4..8` seconds.
-  - Timer is initialized from the interval and restarts from the same interval when it reaches `0`.
+  - Timer is initialized from the interval when missing; when it reaches `0`, non-drones restart from the same stored interval; drones pick a new random interval as above.
 
 ### AdjacentCellSegmentPlanner
 
@@ -247,8 +247,9 @@ Local planner for a **single step** to one of the **8 adjacent** maze cells (car
 - If candidates remain, choose return heading by weighted random: best base-aligned candidate has `60%` weight, remaining `40%` is evenly distributed across the other candidates; if no candidates remain, stay in Watch and keep rotating.
 - If `return-to-base` is not enabled, Watch exits only when clear run ahead `>3` and a heading can be selected that improves separation from nearby enemies.
 - On self-awareness timer restart, drone re-checks the same distance rule as Watch (`BaseDistanceField`, rebuilding caches if needed); if far enough, it checks relative bearing to `BaseFlowField`’s next step toward the nearest base (rebuilding caches if needed).
-- If relative bearing is `<80°`, drone keeps moving (already generally pointed toward base) and does not enter Watch.
-- If relative bearing is `>=80°`, drone stops and enters Watch.
+- If relative bearing is `<80°`, drone keeps moving (already generally pointed toward base) and does not trigger recovery.
+- If relative bearing is `>=80°`, drone stops and runs **`DroneReset`**: score-weighted random choice among 8 directions (same structure as hunter scout scoring: exponential decay on maze run length and first-cell enemy count, `core::math::ExpDecayA1K02(turnSteps)` from current heading to candidate, `core::math::ExpDecayA1K07(flowTurnSteps)` vs `BaseFlowField`’s next cardinal step when flow exists). **Cheap tier:** snap heading to the chosen direction and `Wander`. **Full tier:** enter `Watch` with a target heading, rotate in place at the same rate as normal Watch (`4s` full turn) until aligned (within a small angle), then `Wander`.
+- **Cheap-tier segment boxed-in:** when the forward / `±45°` probe cannot produce a segment (`bestClear - 4 < 2`), drone also runs **`DroneReset`** (same scoring) instead of picking a random heading.
 
 #### Torpedo
 
@@ -331,7 +332,7 @@ Local planner for a **single step** to one of the **8 adjacent** maze cells (car
   - movement advances toward cached endpoint and endpoint is recomputed only when current endpoint is reached
   - no wall/enemy/base collision checks are executed while traversing the current cheap-tier segment
   - on cheap-tier segment-build failure (`bestClear - 4 < 2`):
-    - drone picks a random 8-way heading, remains without an active segment for that frame, then retries segment build on the next cheap-tier update
+    - drone runs **`DroneReset`** (score-weighted 8-way direction, then snap heading and `Wander`); next update retries segment build from the new heading
 - Hunter exception:
   - cheap-tier Hunter `Scout` uses the same two-level planner as full-tier `Scout` (8-direction cell scoring + persisted 1/2 segment path), so Scout steering behavior is tier-consistent.
   - cheap-tier Hunter scout segment traversal uses continuous heading toward current segment target point (no 8-way heading snap during traversal), preventing drift away from validated segment geometry.
@@ -397,6 +398,7 @@ World rendering is in `src/platform/Renderer2D.cpp`.
 - Gameplay view draws top-left debug text (axes/perf/profiling) only when menu `Debug info` is enabled.
 - With `Debug info`, visible enemies also draw overlay diagnostics: **LOS** to player only when unobstructed (`seesPlayer`) **and** within type detection range — **gray** line (`Drone`: `kDroneDetectRangeUnits`; `Torpedo` not in `Ram`: `kTorpedoDetectRangeUnits`; `Hunter`: `kHunterDetectRangeUnits`; `Assassin`: `kEnemyAggroRangeUnits`); **`Torpedo` in `Ram`** uses **red** when within `kTorpedoRamDetectRangeUnits`; green line to current hunter scout waypoint or (for non-torpedo cheap-tier movement) cached segment end; yellow line to current torpedo `Fly` path waypoint when `torpedoFlyPathActive` (cheap- and full-tier); plus hard/avoidance radius circles and nearest-wall distance label.
 - Flow-field guidance arrows are drawn at maze-cell centers for visible cells when a flow field build exists. On macOS debug builds this overlay is always shown; on other builds it is gated by `Debug info`.
+- Base-distance field values (graph distance to nearest alive base) are drawn at cell centers in brown when `BaseDistanceField` has a build; same gating as the flow-field overlay. Unreachable cells show `-`.
 - HUD draws an icon counter strip above the radar blocks at font size `10`: base rectangle icon plus enemy type sprites (`Drone/Torpedo/Hunter/Assassin`) with per-type alive counts, tinted by corresponding minimap colors.
 - Debug-overlay text content is refreshed every `4` frames and cached between refreshes to reduce per-frame formatting/query overhead.
 - HUD minimap uses a persistent `60x60` logical render texture (maze-cell aligned) and blits it scaled `2x` to `120x120` in the HUD. The minimap is horizontally centered in HUD content and uses matching vertical margins above/below. Enemy/base markers are single-pixel points in that logical texture; player marker is drawn dynamically on top.

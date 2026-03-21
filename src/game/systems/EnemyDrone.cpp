@@ -1,10 +1,15 @@
 #include "game/systems/EnemyDrone.h"
 
+#include <algorithm>
+#include <array>
 #include <cmath>
 #include <limits>
 #include "core/AngleMath.h"
+#include "core/ExpDecayA1K02.h"
+#include "core/ExpDecayA1K07.h"
 #include "game/geometry/WorldGeometry.h"
 #include "game/model/GameplayConstants.h"
+#include "game/navigation/BaseFlowField.h"
 #include "game/systems/EnemySystemHelpers.h"
 
 namespace {
@@ -12,6 +17,9 @@ namespace {
 constexpr float kEightDirectionStep = 3.14159265358979323846F / 4.0F;
 constexpr float kDroneReturnRequiredClearRunUnits = 6.0F;
 constexpr float kEnemyPlanningClearanceScale = 1.5F;
+constexpr int kDirectionCount = 8;
+constexpr std::array<int, kDirectionCount> kDirectionDx{0, 1, 1, 1, 0, -1, -1, -1};
+constexpr std::array<int, kDirectionCount> kDirectionDy{-1, -1, 0, 1, 1, 1, 0, -1};
 
 void EnsureBaseDistanceAndFlowBuilt(WorldState& world) {
     NavigationRuntimeCache& nav = world.navigationCache;
@@ -24,6 +32,237 @@ void EnsureBaseDistanceAndFlowBuilt(WorldState& world) {
     if (!nav.baseFlowField.HasBuild()) {
         nav.baseFlowField.Rebuild(world.maze, nav.cellCoords, nav.baseDistanceField);
     }
+}
+
+bool IsCellBlockedByAliveBase(
+    const WorldState& world, const game::navigation::CellCoordCache& cellCache, int cellX, int cellY)
+{
+    for (const EnemyBase& base : world.enemyBases) {
+        if (base.destroyed) {
+            continue;
+        }
+        const game::navigation::MazeCellCoord baseCell = cellCache.WorldToCell(base.position);
+        if (baseCell.x == cellX && baseCell.y == cellY) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool CanTraverseCardinal(
+    const WorldState& world,
+    const game::navigation::CellCoordCache& cellCache,
+    int fromX,
+    int fromY,
+    int toX,
+    int toY)
+{
+    if (!cellCache.IsValidCell(toX, toY) || IsCellBlockedByAliveBase(world, cellCache, toX, toY)) {
+        return false;
+    }
+    const MazeCell& from =
+        world.maze.cells[static_cast<std::size_t>(fromY * world.maze.widthCells + fromX)];
+    if (toX == fromX + 1 && toY == fromY) {
+        return !from.eastWall;
+    }
+    if (toX == fromX - 1 && toY == fromY) {
+        return !from.westWall;
+    }
+    if (toY == fromY + 1 && toX == fromX) {
+        return !from.southWall;
+    }
+    if (toY == fromY - 1 && toX == fromX) {
+        return !from.northWall;
+    }
+    return false;
+}
+
+bool CanTraverseStep(
+    const WorldState& world,
+    const game::navigation::CellCoordCache& cellCache,
+    int fromX,
+    int fromY,
+    int toX,
+    int toY)
+{
+    if (!cellCache.IsValidCell(toX, toY) || IsCellBlockedByAliveBase(world, cellCache, toX, toY)) {
+        return false;
+    }
+    const int stepDx = toX - fromX;
+    const int stepDy = toY - fromY;
+    if (std::abs(stepDx) + std::abs(stepDy) == 1) {
+        return CanTraverseCardinal(world, cellCache, fromX, fromY, toX, toY);
+    }
+    if (std::abs(stepDx) != 1 || std::abs(stepDy) != 1) {
+        return false;
+    }
+
+    const int horizontalX = fromX + stepDx;
+    const int horizontalY = fromY;
+    const int verticalX = fromX;
+    const int verticalY = fromY + stepDy;
+    const bool horizontalThenVertical =
+        CanTraverseCardinal(world, cellCache, fromX, fromY, horizontalX, horizontalY) &&
+        CanTraverseCardinal(world, cellCache, horizontalX, horizontalY, toX, toY);
+    const bool verticalThenHorizontal =
+        CanTraverseCardinal(world, cellCache, fromX, fromY, verticalX, verticalY) &&
+        CanTraverseCardinal(world, cellCache, verticalX, verticalY, toX, toY);
+    return horizontalThenVertical || verticalThenHorizontal;
+}
+
+int MeasureDirectionalRunCells(
+    const WorldState& world,
+    const game::navigation::CellCoordCache& cellCache,
+    const game::navigation::MazeCellCoord& fromCell,
+    int dx,
+    int dy)
+{
+    int runCells = 0;
+    int currentX = fromCell.x;
+    int currentY = fromCell.y;
+    while (true) {
+        const int nextX = currentX + dx;
+        const int nextY = currentY + dy;
+        if (!CanTraverseStep(world, cellCache, currentX, currentY, nextX, nextY)) {
+            break;
+        }
+        runCells += 1;
+        currentX = nextX;
+        currentY = nextY;
+    }
+    return runCells;
+}
+
+int HeadingRadiansToDirIndex(float headingRadians)
+{
+    const float normalized = core::angle::NormalizeAngle(headingRadians);
+    const int step = static_cast<int>(std::round(normalized / kEightDirectionStep));
+    return (step % kDirectionCount + kDirectionCount) % kDirectionCount;
+}
+
+float DirIndexToHeadingRadians(int dirIndex)
+{
+    return static_cast<float>((dirIndex % kDirectionCount + kDirectionCount) % kDirectionCount) *
+        kEightDirectionStep;
+}
+
+int RelativeHeadingStepsInt(int fromDirIndex, int toDirIndex)
+{
+    const int delta = ((toDirIndex - fromDirIndex) % kDirectionCount + kDirectionCount) % kDirectionCount;
+    const int steps = delta <= 4 ? delta : kDirectionCount - delta;
+    return steps;
+}
+
+float SelectDroneResetHeading(WorldState& world, EnemyTank& enemy, Random& random)
+{
+    EnsureBaseDistanceAndFlowBuilt(world);
+    const game::navigation::CellCoordCache& cellCache = world.navigationCache.cellCoords;
+    const game::navigation::BaseFlowField& baseFlow = world.navigationCache.baseFlowField;
+    const game::navigation::MazeCellCoord fromCell = cellCache.WorldToCell(enemy.position);
+    const int currentDirIndex = HeadingRadiansToDirIndex(enemy.headingRadians);
+
+    int flowDirIndex = -1;
+    if (baseFlow.HasBuild() && cellCache.IsValidCell(fromCell.x, fromCell.y)) {
+        const int cellHash = cellCache.CellHash(fromCell.x, fromCell.y);
+        const int nextHash = baseFlow.NextCellHash(cellHash);
+        if (nextHash >= 0 && cellCache.WidthCells() > 0) {
+            const int nextX = nextHash % cellCache.WidthCells();
+            const int nextY = nextHash / cellCache.WidthCells();
+            const int fdx = nextX - fromCell.x;
+            const int fdy = nextY - fromCell.y;
+            for (int i = 0; i < kDirectionCount; ++i) {
+                if (kDirectionDx[static_cast<std::size_t>(i)] == fdx &&
+                    kDirectionDy[static_cast<std::size_t>(i)] == fdy) {
+                    flowDirIndex = i;
+                    break;
+                }
+            }
+        }
+    }
+
+    std::array<float, kDirectionCount> weights{};
+    float totalWeight = 0.0F;
+    for (int i = 0; i < kDirectionCount; ++i) {
+        const int dx = kDirectionDx[static_cast<std::size_t>(i)];
+        const int dy = kDirectionDy[static_cast<std::size_t>(i)];
+        const int runCells = MeasureDirectionalRunCells(world, cellCache, fromCell, dx, dy);
+        if (runCells <= 0) {
+            weights[static_cast<std::size_t>(i)] = 0.0F;
+            continue;
+        }
+        const int turnSteps = RelativeHeadingStepsInt(currentDirIndex, i);
+        const int decayTurnSteps = std::clamp(
+            turnSteps,
+            core::math::kExpDecayA1K02MinX,
+            core::math::kExpDecayA1K02MaxX);
+        const float turnWeight = static_cast<float>(core::math::ExpDecayA1K02(decayTurnSteps));
+        int enemiesInFirstCell = 0;
+        const int nextCellX = fromCell.x + dx;
+        const int nextCellY = fromCell.y + dy;
+        if (cellCache.IsValidCell(nextCellX, nextCellY)) {
+            for (const EnemyTank& other : world.enemies) {
+                if (!other.alive) {
+                    continue;
+                }
+                if (other.cellCoord.x == nextCellX && other.cellCoord.y == nextCellY) {
+                    enemiesInFirstCell += 1;
+                }
+            }
+        }
+        float flowWeight = 1.0F;
+        if (flowDirIndex >= 0) {
+            const int flowTurnSteps = RelativeHeadingStepsInt(i, flowDirIndex);
+            const int decayFlowTurnSteps = std::clamp(
+                flowTurnSteps,
+                core::math::kExpDecayA1K07MinX,
+                core::math::kExpDecayA1K07MaxX);
+            flowWeight = static_cast<float>(core::math::ExpDecayA1K07(decayFlowTurnSteps));
+        }
+        const int decayRunCells = std::clamp(
+            runCells,
+            core::math::kExpDecayA1K07MinX,
+            core::math::kExpDecayA1K07MaxX);
+        const int decayFirstCellEnemies = std::clamp(
+            enemiesInFirstCell,
+            core::math::kExpDecayA1K07MinX,
+            core::math::kExpDecayA1K07MaxX);
+        const float runDecay = static_cast<float>(core::math::ExpDecayA1K07(decayRunCells));
+        const float enemyDecay = static_cast<float>(core::math::ExpDecayA1K07(decayFirstCellEnemies));
+        const float weight = (1.0F - runDecay) * enemyDecay * turnWeight * flowWeight;
+        weights[static_cast<std::size_t>(i)] = weight;
+        totalWeight += weight;
+    }
+
+    int chosenIndex = 0;
+    if (totalWeight > 1.0e-6F) {
+        const float pick = random.NextFloat(0.0F, totalWeight);
+        float cumulative = 0.0F;
+        for (int i = 0; i < kDirectionCount; ++i) {
+            cumulative += weights[static_cast<std::size_t>(i)];
+            if (pick <= cumulative || i == kDirectionCount - 1) {
+                chosenIndex = i;
+                break;
+            }
+        }
+    } else {
+        std::array<int, kDirectionCount> runIndices{};
+        int runCount = 0;
+        for (int i = 0; i < kDirectionCount; ++i) {
+            const int dx = kDirectionDx[static_cast<std::size_t>(i)];
+            const int dy = kDirectionDy[static_cast<std::size_t>(i)];
+            if (MeasureDirectionalRunCells(world, cellCache, fromCell, dx, dy) > 0) {
+                runIndices[static_cast<std::size_t>(runCount)] = i;
+                ++runCount;
+            }
+        }
+        if (runCount > 0) {
+            chosenIndex = runIndices[static_cast<std::size_t>(random.NextInt(0, runCount - 1))];
+        } else {
+            chosenIndex = random.NextInt(0, kDirectionCount - 1);
+        }
+    }
+
+    return core::angle::QuantizeToEightDirections(DirIndexToHeadingRadians(chosenIndex));
 }
 
 }  // namespace
@@ -74,10 +313,50 @@ bool DroneTryHeadingTowardBaseAlongFlow(WorldState& world, const Vec2f& position
 }
 
 void EnterDroneWatchMode(WorldState& world, EnemyTank& enemy, Random& random) {
+    enemy.droneWatchAlignToHeading = false;
     enemy.aiMode = EnemyAiMode::Watch;
     enemy.aiModeElapsedSeconds = 0.0F;
     enemy.watchRotateDirection = RandomRotateDirection(random);
     enemy.returnToBase = DroneIsFarEnoughForReturnToBase(world, enemy.position);
+}
+
+void TryDroneSelfAwarenessReset(WorldState& world, EnemyTank& enemy, Random& random) {
+    if (enemy.type != EnemyType::Drone) {
+        return;
+    }
+    if (!DroneIsFarEnoughForReturnToBase(world, enemy.position)) {
+        return;
+    }
+    float headingToBase = 0.0F;
+    if (!DroneTryHeadingTowardBaseAlongFlow(world, enemy.position, headingToBase)) {
+        return;
+    }
+    const float relativeBearing =
+        core::angle::AngleDistance(enemy.headingRadians, headingToBase);
+    if (relativeBearing >= GameplayConstants::kDroneSelfAwarenessOffFlowBearingThresholdRadians) {
+        enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
+        DroneReset(world, enemy, random);
+    }
+}
+
+void DroneReset(WorldState& world, EnemyTank& enemy, Random& random) {
+    const float heading = SelectDroneResetHeading(world, enemy, random);
+
+    enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
+    enemy.offscreenSegmentActive = false;
+    if (enemy.simTier == EnemySimTier::Cheap) {
+        enemy.headingRadians = heading;
+        enemy.aiMode = EnemyAiMode::Wander;
+        enemy.aiModeElapsedSeconds = 0.0F;
+        enemy.droneWatchAlignToHeading = false;
+    } else {
+        enemy.droneWatchAlignHeadingRadians = heading;
+        enemy.droneWatchAlignToHeading = true;
+        enemy.aiMode = EnemyAiMode::Watch;
+        enemy.aiModeElapsedSeconds = 0.0F;
+        enemy.watchRotateDirection = RandomRotateDirection(random);
+        enemy.returnToBase = false;
+    }
 }
 
 bool SelectDroneReturnToBaseHeading(

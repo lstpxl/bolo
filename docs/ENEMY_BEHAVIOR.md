@@ -40,7 +40,7 @@ For each frame:
 `RunPerceptionPhase(...)` performs shared perception:
 
 - Update self-awareness timer:
-  - Drone interval random `6..12` seconds
+  - Drone interval random `5..8` seconds; re-rolled after each expiry; drone self-awareness action (`TryDroneSelfAwarenessReset` → optional `DroneReset`) runs on expiry in **both** full tier (here) and cheap tier (`AdvanceCheapTierTimers`).
   - Other enemy types random `4..8` seconds
 - Compute vector and distance to player.
 - Compute obscurity:
@@ -77,7 +77,7 @@ Per full-tier enemy:
 
 #### Cheap Tier
 
-- Shared timer updates run in `AdvanceCheapTierTimers(...)`.
+- Shared timer updates run in `AdvanceCheapTierTimers(...)` (self-awareness timer matches perception; drones call `TryDroneSelfAwarenessReset` when the timer expires).
 - Movement runs in `ApplyCheapTierMovement(...)`.
 - Cheap-tier behavior is type-specialized:
   - Drone/Torpedo: offscreen segment movement with sparse recompute.
@@ -204,11 +204,14 @@ Modes: `Wander`, `Watch`
 - Wander fallback uses scout-style heading fallback; if blocked, enters `Watch`.
 - Watch:
   - speed zero
-  - continuous rotation (full turn over `kSlowRotateFullTurnSeconds`)
-  - after a full turn, either:
+  - **Alignment Watch** (`droneWatchAlignToHeading`): after `DroneReset` on full tier, rotate toward the scored target heading at the same rate as normal Watch (full turn over `kSlowRotateFullTurnSeconds`); when aligned, return to `Wander`.
+  - **Normal Watch** otherwise: continuous rotation (full turn over `kSlowRotateFullTurnSeconds`) in a random spin direction chosen at Watch entry
+  - after a full turn (normal Watch only), either:
     - attempt weighted return-to-base heading with required clear run >= 6 units, or
     - attempt escape heading that improves spacing if clear run is sufficient
-- Self-awareness restart can trigger watch re-entry when far from base and facing away.
+- **`DroneReset`:** score-weighted random direction (8-way), hunter-style factors: maze run length, enemies in first cell along the ray, `core::math::ExpDecayA1K02(turnSteps)` from current heading to candidate, `core::math::ExpDecayA1K07(flowTurnSteps)` vs `BaseFlowField` next cardinal step toward base. Cheap tier: set heading and `Wander`. Full tier: `Watch` until aligned to target heading, then `Wander`.
+- Cheap-tier segment build failure (max segment length `< 2` after safety margin): **`DroneReset`** instead of a random heading.
+- Self-awareness restart when far from base and bearing `≥80°` to base-flow step: **`DroneReset`** (replaces unconditional Watch entry).
 
 ### Torpedo
 
