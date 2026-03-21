@@ -11,8 +11,6 @@
 #include "core/Random.h"
 
 namespace {
-constexpr float kRespawnMinDistanceFromBaseUnits = 30.0F;
-
 float RandomBaseGenerationInterval(Random& random) {
     const float base = GameplayConstants::kBaseSpawnCooldownSeconds;
     return random.NextFloat(base * 0.5F, base * 1.5F);
@@ -265,39 +263,147 @@ bool IsBaseVisibleFromPosition(
     return baseLeft < viewRight && baseRight > viewLeft && baseTop < viewBottom && baseBottom > viewTop;
 }
 
+bool IsCandidateOverlappingAliveBase(const WorldState& world, const Vec2f& candidate) {
+    for (const EnemyBase& base : world.enemyBases) {
+        if (base.destroyed) {
+            continue;
+        }
+        const float dx = std::fabs(base.position.x - candidate.x);
+        const float dy = std::fabs(base.position.y - candidate.y);
+        const float minSeparation = (GameplayConstants::kEnemyBaseSizeUnits * 0.5F) +
+            (GameplayConstants::kEntitySizeUnits * 0.5F);
+        if (dx < minSeparation && dy < minSeparation) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool IsBaseDistanceAllowed(int baseDistanceCells, int minBaseDistanceCells, int maxBaseDistanceCells) {
+    if (baseDistanceCells == std::numeric_limits<int>::max()) {
+        return false;
+    }
+    return baseDistanceCells >= minBaseDistanceCells && baseDistanceCells <= maxBaseDistanceCells;
+}
+
+bool HasEnemyInManhattanRange(
+    const GameState& state, int cellX, int cellY, int manhattanRangeCells) {
+    const auto& cellCache = state.world.navigationCache.cellCoords;
+    for (const EnemyTank& enemy : state.world.enemies) {
+        if (!enemy.alive) {
+            continue;
+        }
+        const game::navigation::MazeCellCoord enemyCell = cellCache.WorldToCell(enemy.position);
+        const int manhattan = std::abs(enemyCell.x - cellX) + std::abs(enemyCell.y - cellY);
+        if (manhattan <= manhattanRangeCells) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void ApplyPlayerSpawnPosition(WorldState& world, const Vec2f& position) {
+    world.player.position = position;
+    world.player.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
+    world.player.hullHeadingRadians = 0.0F;
+    world.player.turretHeadingRadians = 0.0F;
+    world.player.turnHoldDirection = 0;
+    world.player.turnHoldElapsedSeconds = 0.0F;
+    world.player.throttleNormalized = 0.0F;
+    world.player.fireCooldownSeconds = 0.0F;
+    world.player.alive = true;
+}
+
+bool PlacePlayerDeterministic(
+    GameState& state,
+    const GameplayView& view,
+    bool disallowBaseInView,
+    int minBaseDistanceCells,
+    int maxBaseDistanceCells,
+    bool disallowEnemiesNearSpawn,
+    bool strictDistanceBounds) {
+    int bestDistanceCells = -1;
+    Vec2f bestPosition = CellCenterPosition(state.world.maze, 0, 0);
+    bool found = false;
+    const auto& baseDistanceField = state.world.navigationCache.baseDistanceField;
+
+    for (int y = 0; y < state.world.maze.heightCells; ++y) {
+        for (int x = 0; x < state.world.maze.widthCells; ++x) {
+            const int baseDistanceCells = baseDistanceField.DistanceAtCell(x, y);
+            if (baseDistanceCells == std::numeric_limits<int>::max()) {
+                continue;
+            }
+            if (strictDistanceBounds &&
+                !IsBaseDistanceAllowed(baseDistanceCells, minBaseDistanceCells, maxBaseDistanceCells)) {
+                continue;
+            }
+            if (disallowEnemiesNearSpawn &&
+                HasEnemyInManhattanRange(
+                    state, x, y, GameplayConstants::kPlayerRespawnEnemyExclusionManhattanCells)) {
+                continue;
+            }
+
+            const Vec2f candidate = CellCenterPosition(state.world.maze, x, y);
+            if (IsCandidateOverlappingAliveBase(state.world, candidate)) {
+                continue;
+            }
+            if (disallowBaseInView) {
+                bool seesAnyBase = false;
+                for (const EnemyBase& base : state.world.enemyBases) {
+                    if (base.destroyed) {
+                        continue;
+                    }
+                    if (IsBaseVisibleFromPosition(
+                            base, candidate, view.viewportWidthUnits, view.viewportHeightUnits)) {
+                        seesAnyBase = true;
+                        break;
+                    }
+                }
+                if (seesAnyBase) {
+                    continue;
+                }
+            }
+
+            if (baseDistanceCells > bestDistanceCells) {
+                bestDistanceCells = baseDistanceCells;
+                bestPosition = candidate;
+                found = true;
+            }
+        }
+    }
+
+    if (!found) {
+        return false;
+    }
+    ApplyPlayerSpawnPosition(state.world, bestPosition);
+    return true;
+}
+
 bool TryPlacePlayer(
     GameState& state,
     const GameplayView& view,
     Random& random,
     bool disallowBaseInView,
-    float minBaseDistanceUnits) {
+    int minBaseDistanceCells,
+    int maxBaseDistanceCells,
+    bool disallowEnemiesNearSpawn) {
+    const auto& baseDistanceField = state.world.navigationCache.baseDistanceField;
     for (int attempts = 0; attempts < 5000; ++attempts) {
         const int cellX = random.NextInt(0, state.world.maze.widthCells - 1);
         const int cellY = random.NextInt(0, state.world.maze.heightCells - 1);
         const Vec2f candidate = CellCenterPosition(state.world.maze, cellX, cellY);
 
-        bool overlapsBase = false;
-        float nearestBaseDistanceSq = std::numeric_limits<float>::infinity();
-        for (const EnemyBase& base : state.world.enemyBases) {
-            if (base.destroyed) {
-                continue;
-            }
-            const float dx = std::fabs(base.position.x - candidate.x);
-            const float dy = std::fabs(base.position.y - candidate.y);
-            const float minSeparation = (GameplayConstants::kEnemyBaseSizeUnits * 0.5F) +
-                (GameplayConstants::kEntitySizeUnits * 0.5F);
-            if (dx < minSeparation && dy < minSeparation) {
-                overlapsBase = true;
-                break;
-            }
-            const float distSq = dx * dx + dy * dy;
-            nearestBaseDistanceSq = std::min(nearestBaseDistanceSq, distSq);
-        }
-        if (overlapsBase) {
+        if (IsCandidateOverlappingAliveBase(state.world, candidate)) {
             continue;
         }
-        if (minBaseDistanceUnits > 0.0F &&
-            nearestBaseDistanceSq < (minBaseDistanceUnits * minBaseDistanceUnits)) {
+        const int cellHash = state.world.navigationCache.cellCoords.CellHash(cellX, cellY);
+        const int baseDistanceCells = baseDistanceField.DistanceAtHash(cellHash);
+        if (!IsBaseDistanceAllowed(baseDistanceCells, minBaseDistanceCells, maxBaseDistanceCells)) {
+            continue;
+        }
+        if (disallowEnemiesNearSpawn &&
+            HasEnemyInManhattanRange(
+                state, cellX, cellY, GameplayConstants::kPlayerRespawnEnemyExclusionManhattanCells)) {
             continue;
         }
 
@@ -317,15 +423,7 @@ bool TryPlacePlayer(
             }
         }
 
-        state.world.player.position = candidate;
-        state.world.player.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
-        state.world.player.hullHeadingRadians = 0.0F;
-        state.world.player.turretHeadingRadians = 0.0F;
-        state.world.player.turnHoldDirection = 0;
-        state.world.player.turnHoldElapsedSeconds = 0.0F;
-        state.world.player.throttleNormalized = 0.0F;
-        state.world.player.fireCooldownSeconds = 0.0F;
-        state.world.player.alive = true;
+        ApplyPlayerSpawnPosition(state.world, candidate);
         return true;
     }
     return false;
@@ -395,16 +493,28 @@ void InitializeMazeWorld(GameState& state, const GameplayView& view, Random& ran
         }
     }
 
-    if (!TryPlacePlayer(state, view, random, true, 0.0F)) {
-        state.world.player.position = CellCenterPosition(state.world.maze, 0, 0);
-        state.world.player.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
-        state.world.player.hullHeadingRadians = 0.0F;
-        state.world.player.turretHeadingRadians = 0.0F;
-        state.world.player.turnHoldDirection = 0;
-        state.world.player.turnHoldElapsedSeconds = 0.0F;
-        state.world.player.throttleNormalized = 0.0F;
-        state.world.player.fireCooldownSeconds = 0.0F;
-        state.world.player.alive = true;
+    state.world.navigationCache.baseDistanceField.Rebuild(
+        state.world.maze,
+        state.world.navigationCache.cellCoords,
+        state.world.enemyBases);
+
+    if (!TryPlacePlayer(
+            state,
+            view,
+            random,
+            true,
+            GameplayConstants::kPlayerSpawnMinBaseDistanceCells,
+            GameplayConstants::kPlayerInitialSpawnMaxBaseDistanceCells,
+            false) &&
+        !PlacePlayerDeterministic(
+            state,
+            view,
+            true,
+            GameplayConstants::kPlayerSpawnMinBaseDistanceCells,
+            GameplayConstants::kPlayerInitialSpawnMaxBaseDistanceCells,
+            false,
+            true)) {
+        ApplyPlayerSpawnPosition(state.world, CellCenterPosition(state.world.maze, 0, 0));
     }
 
     state.world.player.fuel = GameplayConstants::kFuelMax;
@@ -429,41 +539,38 @@ void InitializeMazeWorld(GameState& state, const GameplayView& view, Random& ran
 }
 
 bool PlacePlayerAtSafeSpawn(GameState& state, const GameplayView& view, Random& random) {
-    if (TryPlacePlayer(state, view, random, false, kRespawnMinDistanceFromBaseUnits)) {
+    if (TryPlacePlayer(
+            state,
+            view,
+            random,
+            false,
+            GameplayConstants::kPlayerSpawnMinBaseDistanceCells,
+            GameplayConstants::kPlayerRespawnMaxBaseDistanceCells,
+            true)) {
         return true;
     }
-    // Deterministic fallback: choose the cell center farthest from any alive base.
-    float bestDistanceSq = -1.0F;
-    Vec2f bestPosition = CellCenterPosition(state.world.maze, 0, 0);
-    for (int y = 0; y < state.world.maze.heightCells; ++y) {
-        for (int x = 0; x < state.world.maze.widthCells; ++x) {
-            const Vec2f candidate = CellCenterPosition(state.world.maze, x, y);
-            float nearestBaseDistanceSq = std::numeric_limits<float>::infinity();
-            for (const EnemyBase& base : state.world.enemyBases) {
-                if (base.destroyed) {
-                    continue;
-                }
-                const float dx = base.position.x - candidate.x;
-                const float dy = base.position.y - candidate.y;
-                const float distSq = dx * dx + dy * dy;
-                nearestBaseDistanceSq = std::min(nearestBaseDistanceSq, distSq);
-            }
-            if (nearestBaseDistanceSq > bestDistanceSq) {
-                bestDistanceSq = nearestBaseDistanceSq;
-                bestPosition = candidate;
-            }
-        }
+    if (PlacePlayerDeterministic(
+            state,
+            view,
+            false,
+            GameplayConstants::kPlayerSpawnMinBaseDistanceCells,
+            GameplayConstants::kPlayerRespawnMaxBaseDistanceCells,
+            true,
+            true)) {
+        return true;
     }
-    state.world.player.position = bestPosition;
-    state.world.player.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
-    state.world.player.hullHeadingRadians = 0.0F;
-    state.world.player.turretHeadingRadians = 0.0F;
-    state.world.player.turnHoldDirection = 0;
-    state.world.player.turnHoldElapsedSeconds = 0.0F;
-    state.world.player.throttleNormalized = 0.0F;
-    state.world.player.fireCooldownSeconds = 0.0F;
-    state.world.player.alive = true;
-    return bestDistanceSq >= (kRespawnMinDistanceFromBaseUnits * kRespawnMinDistanceFromBaseUnits);
+    if (PlacePlayerDeterministic(
+            state,
+            view,
+            false,
+            GameplayConstants::kPlayerSpawnMinBaseDistanceCells,
+            GameplayConstants::kPlayerRespawnMaxBaseDistanceCells,
+            true,
+            false)) {
+        return false;
+    }
+    ApplyPlayerSpawnPosition(state.world, CellCenterPosition(state.world.maze, 0, 0));
+    return false;
 }
 
 void UpdateMazeSystem(GameState& state, float deltaSeconds) {

@@ -39,6 +39,7 @@ std::uint64_t gLastEnemyCollisionDebugPrintedFrame = 0;
 void UpdateCollisionSystem(GameState& state, float deltaSeconds) {
     (void)deltaSeconds;
     WorldState& world = state.world;
+    bool anyBaseDestroyed = false;
 
     for (Projectile& projectile : world.projectiles) {
         if (!projectile.alive) {
@@ -86,6 +87,7 @@ void UpdateCollisionSystem(GameState& state, float deltaSeconds) {
                 const float halfBase = GameplayConstants::kEnemyBaseSizeUnits * 0.5F;
                 if (dx <= halfBase && dy <= halfBase) {
                     base.destroyed = true;
+                    anyBaseDestroyed = true;
                     projectile.alive = false;
                     world.score += state.menuSettings.levelNumber * GameplayConstants::kBaseScorePerLevelMultiplier;
                     world.player.fuel = GameplayConstants::kFuelMax;
@@ -101,6 +103,14 @@ void UpdateCollisionSystem(GameState& state, float deltaSeconds) {
                 world.playerTurnLostPending = true;
             }
         }
+    }
+
+    if (anyBaseDestroyed) {
+        world.navigationCache.baseDistanceField.Invalidate();
+        world.navigationCache.baseDistanceField.Rebuild(
+            world.maze,
+            world.navigationCache.cellCoords,
+            world.enemyBases);
     }
 
     const auto& profiler = profiling::Profiler::Instance();

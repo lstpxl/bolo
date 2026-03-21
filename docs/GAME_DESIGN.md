@@ -58,10 +58,11 @@ Algorithm and constraints:
    - neighbor wall consistency (`IsMazeWallTopologyValid`)
    - both horizontal and vertical walls present across all quadrants (`IsWallDistributionValid`)
 4. Place exactly 6 enemy bases on unique cells.
-5. Place player randomly on cell centers with constraints:
+5. Place player on cell centers using `BaseDistanceField` (maze cardinal distance to nearest alive base):
+   - initial spawn distance bounds: `8..24` cells from nearest base
    - no overlap with any base footprint
    - no base visible in initial camera rectangle
-   - fallback spawn at cell `(0,0)` if random attempts fail
+   - deterministic fallback picks the farthest valid cell by base-distance, then `(0,0)` if none
 
 ## Entity Model
 
@@ -163,7 +164,9 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
 - Enemy wall movement keeps additional margin: enemy disc edge stays at least `2px` away from maze walls.
 - Start mode: at game start (and level restart after all bases are destroyed), player enters a `1.5s` lock where movement/fire are disabled and fuel fills from `0` to max on HUD.
 - Death mode: when player dies, player enters a `3s` lock with movement/fire disabled and a simple explosion animation before life loss + respawn resolution.
-- Respawn safety: respawn placement requires at least `30` world-units distance from every undestroyed base; if random placement cannot satisfy this, fallback chooses the farthest cell center from alive bases.
+- Respawn safety uses `BaseDistanceField` with bounds `8..36` cells from nearest alive base.
+- Respawn additionally requires no alive enemies within Manhattan distance `<= 3` cells.
+- If random respawn placement fails, fallback first picks the farthest strict-valid cell by base-distance; if no strict candidate exists, fallback relaxes base-distance bounds but still enforces enemy-clearance.
 
 ### Collision System and Radius Usage
 

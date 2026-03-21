@@ -93,6 +93,7 @@ add_executable(
     src/game/Game.cpp
     src/game/geometry/WorldGeometry.cpp
     src/game/navigation/AdjacentCellSegmentPlanner.cpp
+    src/game/navigation/BaseDistanceField.cpp
     src/game/navigation/CellCoordCache.cpp
     src/game/navigation/PlayerFlowField.cpp
     src/game/spatial/EnemyCellOccupancy.cpp
