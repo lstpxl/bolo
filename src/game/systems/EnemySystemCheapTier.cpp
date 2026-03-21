@@ -12,6 +12,7 @@
 #include "game/systems/EnemyHunter.h"
 #include "game/systems/EnemySystemHelpers.h"
 #include "game/systems/EnemySystemInternal.h"
+#include "game/systems/EnemyTorpedo.h"
 #include "game/systems/EnemySystemUncouple.h"
 
 namespace {
@@ -250,6 +251,9 @@ void ApplyCheapTierMovement(
         lastInsideWallAvoid = nowInsideWallAvoid;
         enemy.cheapSegmentInsideWallAvoidLastFrame = nowInsideWallAvoid;
     };
+    bool usingTorpedoFlyPath = false;
+    Vec2f torpedoFlyTargetPoint{};
+    float torpedoFlyHeading = enemy.headingRadians;
     bool usingHunterScoutPath = false;
     Vec2f hunterScoutTargetPoint{};
     float hunterScoutHeading = enemy.headingRadians;
@@ -354,6 +358,19 @@ void ApplyCheapTierMovement(
                 enemy.cheapSegmentBuildMethodStage = 0;
             }
         }
+    } else if (enemy.type == EnemyType::Torpedo && enemy.aiMode == EnemyAiMode::Fly) {
+        if (SelectTorpedoFlyMotion(
+                state.world,
+                cellCache,
+                enemy,
+                random,
+                torpedoFlyHeading,
+                torpedoFlyTargetPoint,
+                false)) {
+            usingTorpedoFlyPath = true;
+        } else {
+            InvalidateTorpedoFlyPath(enemy);
+        }
     } else if (enemy.type == EnemyType::Hunter && enemy.aiMode == EnemyAiMode::Scout) {
         if (SelectHunterScoutMotion(
                 state.world,
@@ -376,7 +393,7 @@ void ApplyCheapTierMovement(
         }
     }
 
-    const bool hasMovementPath = usingHunterScoutPath || enemy.offscreenSegmentActive;
+    const bool hasMovementPath = usingTorpedoFlyPath || usingHunterScoutPath || enemy.offscreenSegmentActive;
     if (!hasMovementPath || std::fabs(speed) <= 0.0001F) {
         enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
         updateAssassinWallState("cheap_early_return", kAssassinWallPhaseCheap);
@@ -385,20 +402,23 @@ void ApplyCheapTierMovement(
 
     float effectiveSpeed = speed;
     if (enemy.type == EnemyType::Torpedo) {
-        const float maxSpeedDelta =
-            GameplayConstants::kTorpedoAccelerationUnitsPerSecondSq * deltaSeconds;
-        const float speedDelta = speed - enemy.torpedoCurrentSpeedUnitsPerSecond;
-        const float clampedDelta = std::clamp(speedDelta, -maxSpeedDelta, maxSpeedDelta);
-        enemy.torpedoCurrentSpeedUnitsPerSecond += clampedDelta;
-        effectiveSpeed = enemy.torpedoCurrentSpeedUnitsPerSecond;
+        // Cheap tier: fixed cruise from `kEnemyTorpedoSpeed` × subtype (`Basic` = 0.75).
+        const float torpedoSubtypeMul =
+            EnemySubtypeSpeedMultiplier(EnemyType::Torpedo, enemy.subtype);
+        const float torpedoCheapSpeed =
+            GameplayConstants::kEnemyTorpedoSpeed * torpedoSubtypeMul;
+        enemy.torpedoCurrentSpeedUnitsPerSecond = torpedoCheapSpeed;
+        effectiveSpeed = torpedoCheapSpeed;
     }
     if (enemy.type == EnemyType::Assassin && enemy.cheapTierCrowdedSlowMode) {
         effectiveSpeed *= 0.5F;
     }
-    const float activeHeading =
-        usingHunterScoutPath ? hunterScoutHeading : enemy.offscreenCachedHeadingRadians;
-    const Vec2f activeTargetPoint =
-        usingHunterScoutPath ? hunterScoutTargetPoint : enemy.offscreenSegmentEnd;
+    const float activeHeading = usingTorpedoFlyPath
+        ? torpedoFlyHeading
+        : (usingHunterScoutPath ? hunterScoutHeading : enemy.offscreenCachedHeadingRadians);
+    const Vec2f activeTargetPoint = usingTorpedoFlyPath
+        ? torpedoFlyTargetPoint
+        : (usingHunterScoutPath ? hunterScoutTargetPoint : enemy.offscreenSegmentEnd);
     const Vec2f dir = DirectionFromHeading(activeHeading);
     const float maxStep = std::max(0.0F, effectiveSpeed * deltaSeconds);
     const float remaining = Distance(enemy.position, activeTargetPoint);

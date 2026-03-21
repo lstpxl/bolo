@@ -126,3 +126,13 @@ int EnemyTypeTelemetryIndex(EnemyType type) {
     }
     return 0;
 }
+
+float EnemySubtypeSpeedMultiplier(EnemyType type, EnemySubtype subtype) {
+    if (subtype == EnemySubtype::Basic) {
+        return 0.75F;
+    }
+    if (subtype == EnemySubtype::Lord && type == EnemyType::Hunter) {
+        return 1.25F;
+    }
+    return 1.0F;
+}

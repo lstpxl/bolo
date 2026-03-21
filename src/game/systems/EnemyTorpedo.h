@@ -5,6 +5,7 @@
 #include "core/Types.h"
 #include "game/model/EntityTypes.h"
 #include "game/model/WorldState.h"
+#include "game/navigation/CellCoordCache.h"
 
 namespace game::spatial {
 class EnemyCellOccupancy;
@@ -14,6 +15,17 @@ bool PlayerAheadForTorpedo(const EnemyTank& enemy, const Vec2f& toPlayerNormaliz
 bool PlayerAheadForTorpedoRam(const EnemyTank& enemy, const Vec2f& toPlayerNormalized);
 
 float SelectBestLongStraightHeading(const WorldState& world, const EnemyTank& enemy);
+
+void InvalidateTorpedoFlyPath(EnemyTank& enemy);
+
+bool SelectTorpedoFlyMotion(
+    const WorldState& world,
+    const game::navigation::CellCoordCache& cellCache,
+    EnemyTank& enemy,
+    Random& random,
+    float& outHeadingRadians,
+    Vec2f& outTargetPoint,
+    bool snapHeadingToEightDirections = true);
 
 float SelectTorpedoMoveHeading(
     const WorldState& world,

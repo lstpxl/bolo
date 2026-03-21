@@ -123,6 +123,13 @@ struct EnemyTank {
     int hunterScoutSegmentCount = 0;
     int hunterScoutSegmentIndex = 0;
     float hunterScoutCachedHeadingRadians = 0.0F;
+    bool torpedoFlyPathActive = false;
+    /// Planner adjacent cell for the current segment (hash matches `CellCoordCache::CellHash`); rebuild when entered.
+    int torpedoFlyTargetCellHash = -1;
+    std::array<Vec2f, 2> torpedoFlySegmentPoints{};
+    int torpedoFlySegmentCount = 0;
+    int torpedoFlySegmentIndex = 0;
+    float torpedoFlyCachedHeadingRadians = 0.0F;
     int originBaseIndex = -1;
     std::array<Vec2f, kMaxPathWaypoints> pathWaypoints{};
     int pathWaypointCount = 0;

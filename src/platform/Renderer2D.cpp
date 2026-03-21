@@ -843,12 +843,48 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
                 }
                 if (state.menuSettings.debugInfo) {
                     if (enemy.seesPlayer) {
-                        DrawLine(
-                            static_cast<int>(enemyScreenPosition.x),
-                            static_cast<int>(enemyScreenPosition.y),
-                            static_cast<int>(playerScreenPosition.x),
-                            static_cast<int>(playerScreenPosition.y),
-                            RED);
+                        const float dx = enemy.position.x - state.world.player.position.x;
+                        const float dy = enemy.position.y - state.world.player.position.y;
+                        const float distSq = dx * dx + dy * dy;
+                        Color losColor = GRAY;
+                        bool drawLos = false;
+                        switch (enemy.type) {
+                        case EnemyType::Drone: {
+                            const float r = GameplayConstants::kDroneDetectRangeUnits;
+                            drawLos = distSq <= r * r;
+                            break;
+                        }
+                        case EnemyType::Torpedo:
+                            if (enemy.aiMode == EnemyAiMode::Ram) {
+                                const float r = GameplayConstants::kTorpedoRamDetectRangeUnits;
+                                if (distSq <= r * r) {
+                                    drawLos = true;
+                                    losColor = RED;
+                                }
+                            } else {
+                                const float r = GameplayConstants::kTorpedoDetectRangeUnits;
+                                drawLos = distSq <= r * r;
+                            }
+                            break;
+                        case EnemyType::Hunter: {
+                            const float r = GameplayConstants::kHunterDetectRangeUnits;
+                            drawLos = distSq <= r * r;
+                            break;
+                        }
+                        case EnemyType::Assassin: {
+                            const float r = GameplayConstants::kEnemyAggroRangeUnits;
+                            drawLos = distSq <= r * r;
+                            break;
+                        }
+                        }
+                        if (drawLos) {
+                            DrawLine(
+                                static_cast<int>(enemyScreenPosition.x),
+                                static_cast<int>(enemyScreenPosition.y),
+                                static_cast<int>(playerScreenPosition.x),
+                                static_cast<int>(playerScreenPosition.y),
+                                losColor);
+                        }
                     }
                     if (enemy.type == EnemyType::Hunter &&
                         enemy.hunterScoutPathActive &&
@@ -863,6 +899,19 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
                             static_cast<int>(targetScreenPosition.x),
                             static_cast<int>(targetScreenPosition.y),
                             GREEN);
+                    } else if (enemy.type == EnemyType::Torpedo &&
+                               enemy.torpedoFlyPathActive &&
+                               enemy.torpedoFlySegmentIndex >= 0 &&
+                               enemy.torpedoFlySegmentIndex < enemy.torpedoFlySegmentCount) {
+                        const Vec2f segmentTarget =
+                            enemy.torpedoFlySegmentPoints[static_cast<std::size_t>(enemy.torpedoFlySegmentIndex)];
+                        const Vector2 targetScreenPosition = WorldToSnappedScreen(segmentTarget, camera);
+                        DrawLine(
+                            static_cast<int>(enemyScreenPosition.x),
+                            static_cast<int>(enemyScreenPosition.y),
+                            static_cast<int>(targetScreenPosition.x),
+                            static_cast<int>(targetScreenPosition.y),
+                            YELLOW);
                     } else if (enemy.offscreenSegmentActive) {
                         const Vector2 targetScreenPosition =
                             WorldToSnappedScreen(enemy.offscreenSegmentEnd, camera);

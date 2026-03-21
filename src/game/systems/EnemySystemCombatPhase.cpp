@@ -12,6 +12,23 @@
 namespace {
 constexpr float kDroneBaseBearingThresholdRadians = 1.3962634F;  // 80 degrees
 
+/// Max distance at which an enemy may spawn a projectile toward the player — aligned with
+/// per-type detection / debug LOS radii (`GameplayConstants`).
+float EnemyProjectileMaxRangeUnits(const EnemyTank& enemy) {
+    switch (enemy.type) {
+    case EnemyType::Drone:
+        return GameplayConstants::kDroneDetectRangeUnits;
+    case EnemyType::Torpedo:
+        return enemy.aiMode == EnemyAiMode::Ram ? GameplayConstants::kTorpedoRamDetectRangeUnits
+                                                 : GameplayConstants::kTorpedoDetectRangeUnits;
+    case EnemyType::Hunter:
+        return GameplayConstants::kHunterDetectRangeUnits;
+    case EnemyType::Assassin:
+        return GameplayConstants::kEnemyAggroRangeUnits;
+    }
+    return GameplayConstants::kDroneDetectRangeUnits;
+}
+
 bool IsInPlayerViewport(const Vec2f& point, const GameState& state, const GameplayView& view) {
     const float halfWidth = view.viewportWidthUnits * 0.5F;
     const float halfHeight = view.viewportHeightUnits * 0.5F;
@@ -104,13 +121,14 @@ void RunFiringPhase(
             ? PlayerAheadForTorpedoRam(enemy, perception.toPlayerNormalized)
             : PlayerAheadForTorpedo(enemy, perception.toPlayerNormalized);
     }
+    const float fireRange = EnemyProjectileMaxRangeUnits(enemy);
+    const float fireRangeSq = fireRange * fireRange;
     if (state.world.player.alive &&
         enemy.fireCooldownSeconds <= 0.0F &&
         enemyVisibleInViewport &&
         !perception.playerObscured &&
         canFireTypeSpecific &&
-        perception.distanceToPlayerSq <
-            (GameplayConstants::kEnemyFireRangeUnits * GameplayConstants::kEnemyFireRangeUnits)) {
+        perception.distanceToPlayerSq <= fireRangeSq) {
         const float headingToPlayer = std::atan2(perception.toPlayer.x, -perception.toPlayer.y);
         const float quantizedHeadingToPlayer = core::angle::QuantizeToEightDirections(headingToPlayer);
         SpawnProjectile(

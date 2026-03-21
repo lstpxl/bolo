@@ -32,7 +32,10 @@ struct GameplayConstants {
 
     // Enemy tuning.
     static constexpr float kEnemyDroneSpeed = 1.0F;                  // world-units / second
-    static constexpr float kEnemyTorpedoSpeed = 3.0F;                // world-units / second
+    /// Baseline torpedo speed; multiply by `EnemySubtypeSpeedMultiplier` (Basic = 0.75) where applied.
+    static constexpr float kEnemyTorpedoSpeed = 4.0F;                // world-units / second
+    /// Ram forward-speed ceiling: `2 × kEnemyTorpedoSpeed`; multiply by subtype where applied.
+    static constexpr float kEnemyTorpedoSpeedMax = 2.0F * kEnemyTorpedoSpeed; // world-units / second
     static constexpr float kEnemyHunterSpeed = 3.0F;                 // world-units / second
     static constexpr float kEnemyAssassinSpeed = 4.0F;               // world-units / second
     static constexpr float kEnemyDroneFireInterval = 3.0F;           // seconds
@@ -40,8 +43,8 @@ struct GameplayConstants {
     static constexpr float kEnemyHunterFireInterval = 1.5F;          // seconds
     static constexpr float kEnemyAssassinFireInterval = 1.0F;        // seconds
     static constexpr float kEnemyProjectileSpeed = 7.0F;             // world-units / second
-    static constexpr float kEnemyAggroRangeUnits = 16.0F;           // world-units
-    static constexpr float kEnemyFireRangeUnits = 24.0F;            // world-units
+    static constexpr float kEnemyAggroRangeUnits = 15.0F;           // world-units
+    // Enemy projectile max distance uses per-type detect ranges (see RunFiringPhase).
     static constexpr float kEnemyAssassinPredictionSeconds = 0.8F;   // seconds
     static constexpr float kEnemyAiRetargetMinSeconds = 0.7F;        // seconds
     static constexpr float kEnemyAiRetargetRandomSeconds = 0.9F;     // seconds
@@ -56,12 +59,17 @@ struct GameplayConstants {
     static constexpr float kSlowRotateFullTurnSeconds = 4.0F;        // seconds
     static constexpr float kTorpedoDetectRangeUnits = 9.0F;          // world-units (legacy non-ram sensing)
     static constexpr float kTorpedoRamDetectRangeUnits = 12.0F;      // world-units
-    static constexpr float kTorpedoAccelerationUnitsPerSecondSq = 2.0F; // world-units / second^2
-    static constexpr float kTorpedoRamTurnSpeedRadiansPerSecond = 0.7853982F; // 45 deg / second
-    static constexpr float kDroneDetectRangeUnits = 12.0F;           // world-units
+    /// Full-tier torpedo accel cap; multiply by `EnemySubtypeSpeedMultiplier` (Basic = 0.75) where applied.
+    static constexpr float kTorpedoFullTierAccelMaxUnitsPerSecondSq = 2.0F; // world-units / second^2
+    /// Full-tier torpedo max turn rate (Fly / Ram / Rotate / uncouple, etc.); radians / second.
+    // static constexpr float kTorpedoFullTierTurnSpeedRadiansPerSecond = 0.7853982F; // 45 deg / second
+    static constexpr float kTorpedoFullTierTurnSpeedRadiansPerSecond = 2.0F; // 45 deg / second
+    /// Midpoint shift along bend-to-opposite-bend direction for `AdjacentCellSegmentPlanner` diagonal 2-segment paths.
+    static constexpr float kAdjacentCellDiagonalMidpointShiftUnits = 1.75F; // world-units
+    static constexpr float kDroneDetectRangeUnits = 18.0F;           // world-units
     static constexpr float kDronePursuitSpeedFactor = 0.5F;          // unitless
     static constexpr float kDronePlayerAvoidanceDistanceUnits = 4.0F; // world-units
-    static constexpr float kHunterDetectRangeUnits = 12.0F;          // world-units
+    static constexpr float kHunterDetectRangeUnits = 15.0F;          // world-units
     static constexpr float kHunterMinDistanceUnits = 3.0F;           // world-units
     static constexpr float kHunterMaxDistanceUnits = 6.0F;           // world-units
     static constexpr float kAssassinMinDistanceUnits = 4.0F;         // world-units

@@ -32,3 +32,6 @@ float ChooseBestTurnHeading(
     float requiredDistance);
 
 int EnemyTypeTelemetryIndex(EnemyType type);
+
+/// Speed multiplier by subtype (`Basic` = `0.75`, Hunter `Lord` = `1.25`, else `1.0`).
+float EnemySubtypeSpeedMultiplier(EnemyType type, EnemySubtype subtype);

@@ -38,7 +38,6 @@ constexpr float kPi = 3.14159265358979323846F;
 constexpr float kEightDirectionStep = kPi / 4.0F;
 constexpr float kEnemyPlanningClearanceScale = 1.5F;
 constexpr float kTorpedoNearCollisionCheckDistanceUnits = 3.0F;
-constexpr float kTorpedoMoveDecisionHoldDistanceUnits = 1.0F;
 constexpr float kTorpedoRetreatExitClearanceUnits = 2.0F;
 constexpr float kTorpedoRetreatSpeedFactor = 0.1F;
 constexpr float kTorpedoImmediateObstacleDistanceUnits = 1.0F;
@@ -120,17 +119,6 @@ void EnterUncoupleByReasonCode(
         reason = UncoupleReason::SelfWallContact;
     }
     EnterUncoupleMode(enemies, selfIndex, partnerIndex, reason);
-}
-
-float EnemySubtypeSpeedMultiplier(EnemyType type, EnemySubtype subtype)
-{
-    if (subtype == EnemySubtype::Basic) {
-        return 0.75F;
-    }
-    if (subtype == EnemySubtype::Lord && type == EnemyType::Hunter) {
-        return 1.25F;
-    }
-    return 1.0F;
 }
 
 const char* EnemyTypeLabel(EnemyType type)
@@ -554,6 +542,9 @@ void UpdateEnemySystem(
                     enemy.cellCoord.y);
             }
             enemy.offscreenSegmentActive = false;
+            if (enemy.type == EnemyType::Torpedo) {
+                InvalidateTorpedoFlyPath(enemy);
+            }
             enemy.cheapSegmentBuildFailCount = 0;
             enemy.cheapSegmentLastFailCellHash = -1;
             enemy.cheapSegmentLastFailReason = CheapSegmentFailReason::None;
@@ -726,11 +717,10 @@ void UpdateEnemySystem(
                 }
                 if (enemy.torpedoPlayerDetected) {
                     enemy.aiMode = EnemyAiMode::Ram;
-                    enemy.torpedoMoveDecisionHoldRemainingUnits = 0.0F;
+                    InvalidateTorpedoFlyPath(enemy);
                     enemy.torpedoRetreatMovedUnits = 0.0F;
                 } else if (enemy.aiMode == EnemyAiMode::Ram) {
                     enemy.aiMode = EnemyAiMode::Fly;
-                    enemy.torpedoMoveDecisionHoldRemainingUnits = 0.0F;
                 }
                 if (enemy.aiMode == EnemyAiMode::Ram) {
                     preserveContinuousHeading = true;
@@ -739,9 +729,9 @@ void UpdateEnemySystem(
                     movementHeading = UpdateTorpedoHeadingToward(
                         enemy.headingRadians,
                         headingToPlayer,
-                        GameplayConstants::kTorpedoRamTurnSpeedRadiansPerSecond,
+                        GameplayConstants::kTorpedoFullTierTurnSpeedRadiansPerSecond,
                         deltaSeconds);
-                    targetSpeed = std::abs(speed);
+                    // Full-tier forward speed is integrated below from heading-based acceleration (not targetSpeed).
                 } else if (enemy.aiMode == EnemyAiMode::Retreat) {
                     movementHeading = QuantizeToEightDirections(enemy.headingRadians);
                     targetSpeed = -std::abs(speed) * kTorpedoRetreatSpeedFactor;
@@ -769,41 +759,50 @@ void UpdateEnemySystem(
                     const float straightHeading = QuantizeToEightDirections(enemy.headingRadians);
                     const bool lockHeadingForBaseExit =
                         IsPointInUndestroyedBase(state.world, enemy.position, 1.0F);
-                    if (lockHeadingForBaseExit ||
-                        enemy.torpedoMoveDecisionHoldRemainingUnits > 0.0F) {
+                    if (lockHeadingForBaseExit) {
+                        InvalidateTorpedoFlyPath(enemy);
                         movementHeading = straightHeading;
+                        preserveContinuousHeading = true;
                         const float nearClear = game::geometry::FreeDistanceAheadWithEnemies(
                             state.world, state.world.enemies, enemyIndex, enemy.position,
                             straightHeading, kTorpedoNearCollisionCheckDistanceUnits,
                             GameplayConstants::kWallClearanceForAvoidance,
                             kEnemyPlanningClearanceScale, &rayQueryOccupancy);
                         if (nearClear < kTorpedoImmediateObstacleDistanceUnits) {
+                            InvalidateTorpedoFlyPath(enemy);
                             enemy.aiMode = EnemyAiMode::Retreat;
                             enemy.torpedoRetreatMovedUnits = 0.0F;
-                            enemy.torpedoMoveDecisionHoldRemainingUnits = 0.0F;
                             movementHeading = straightHeading;
                             targetSpeed = -std::abs(speed) * kTorpedoRetreatSpeedFactor;
-                        } else if (!lockHeadingForBaseExit &&
-                                   nearClear < kTorpedoNearCollisionCheckDistanceUnits) {
-                            enemy.torpedoMoveDecisionHoldRemainingUnits = 0.0F;
-                        } else if (lockHeadingForBaseExit) {
-                            // Keep torpedo on its spawn heading until it clears base + margin.
-                            enemy.torpedoMoveDecisionHoldRemainingUnits = std::max(
-                                enemy.torpedoMoveDecisionHoldRemainingUnits,
-                                kTorpedoMoveDecisionHoldDistanceUnits);
                         }
                     } else {
-                        bool startRetreat = false;
-                        bool decidedStraight = true;
-                        movementHeading = SelectTorpedoMoveHeading(
-                            state.world, state.world.enemies, enemyIndex, enemy, random,
-                            startRetreat, decidedStraight, &rayQueryOccupancy);
-                        if (startRetreat) {
-                            enemy.aiMode = EnemyAiMode::Retreat;
-                            enemy.torpedoRetreatMovedUnits = 0.0F;
-                            enemy.torpedoMoveDecisionHoldRemainingUnits = 0.0F;
-                            movementHeading = straightHeading;
-                            targetSpeed = -std::abs(speed) * kTorpedoRetreatSpeedFactor;
+                        float flyPathHeading = enemy.headingRadians;
+                        Vec2f flyPathTarget{};
+                        if (SelectTorpedoFlyMotion(
+                                state.world,
+                                cellCache,
+                                enemy,
+                                random,
+                                flyPathHeading,
+                                flyPathTarget,
+                                false)) {
+                            preserveContinuousHeading = true;
+                            movementHeading = enemy.torpedoFlyCachedHeadingRadians;
+                        } else {
+                            bool startRetreat = false;
+                            bool decidedStraight = true;
+                            movementHeading = SelectTorpedoMoveHeading(
+                                state.world, state.world.enemies, enemyIndex, enemy, random,
+                                startRetreat, decidedStraight, &rayQueryOccupancy);
+                            if (startRetreat) {
+                                InvalidateTorpedoFlyPath(enemy);
+                                enemy.aiMode = EnemyAiMode::Retreat;
+                                enemy.torpedoRetreatMovedUnits = 0.0F;
+                                movementHeading = straightHeading;
+                                targetSpeed = -std::abs(speed) * kTorpedoRetreatSpeedFactor;
+                            } else {
+                                preserveContinuousHeading = true;
+                            }
                         }
                     }
                 }
@@ -971,12 +970,55 @@ void UpdateEnemySystem(
             }
         }
         if (enemy.type == EnemyType::Torpedo) {
-            const float maxSpeedDelta =
-                GameplayConstants::kTorpedoAccelerationUnitsPerSecondSq * deltaSeconds;
-            const float speedDelta = targetSpeed - enemy.torpedoCurrentSpeedUnitsPerSecond;
-            const float clampedDelta = std::clamp(speedDelta, -maxSpeedDelta, maxSpeedDelta);
-            enemy.torpedoCurrentSpeedUnitsPerSecond += clampedDelta;
-            speed = enemy.torpedoCurrentSpeedUnitsPerSecond;
+            const float torpedoSubtypeMul =
+                EnemySubtypeSpeedMultiplier(EnemyType::Torpedo, enemy.subtype);
+            const float maxAcc = GameplayConstants::kTorpedoFullTierAccelMaxUnitsPerSecondSq *
+                torpedoSubtypeMul;
+            const float dt = deltaSeconds;
+            const float vMaxRam =
+                GameplayConstants::kEnemyTorpedoSpeedMax * torpedoSubtypeMul;
+            const float kTorpedoCruise =
+                GameplayConstants::kEnemyTorpedoSpeed * torpedoSubtypeMul;
+            auto rampTowardTarget = [&](float current, float target) {
+                const float maxSpeedDelta = maxAcc * dt;
+                const float speedDelta = target - current;
+                const float clampedDelta = std::clamp(speedDelta, -maxSpeedDelta, maxSpeedDelta);
+                return current + clampedDelta;
+            };
+            if (enemy.aiMode == EnemyAiMode::Ram) {
+                if (enemy.seesPlayer) {
+                    const float headingToPlayer =
+                        std::atan2(perception.toPlayer.x, -perception.toPlayer.y);
+                    const float absRelRad = std::fabs(
+                        core::angle::SignedAngleDelta(enemy.headingRadians, headingToPlayer));
+                    constexpr float kAlignRad = kPi * 0.25F;   // 45°
+                    constexpr float kTurnScaleRad = kPi * 0.75F; // 135°
+                    float acc = 0.0F;
+                    if (absRelRad < kAlignRad) {
+                        acc = maxAcc * (kAlignRad - absRelRad) / kAlignRad;
+                    } else {
+                        acc = -maxAcc * absRelRad / kTurnScaleRad;
+                    }
+                    float v = enemy.torpedoCurrentSpeedUnitsPerSecond + acc * dt;
+                    v = std::clamp(v, 0.0F, vMaxRam);
+                    enemy.torpedoCurrentSpeedUnitsPerSecond = v;
+                    speed = v;
+                } else {
+                    enemy.torpedoCurrentSpeedUnitsPerSecond = rampTowardTarget(
+                        enemy.torpedoCurrentSpeedUnitsPerSecond, kTorpedoCruise);
+                    speed = enemy.torpedoCurrentSpeedUnitsPerSecond;
+                }
+            } else if (enemy.aiMode == EnemyAiMode::Fly) {
+                enemy.torpedoCurrentSpeedUnitsPerSecond = rampTowardTarget(
+                    enemy.torpedoCurrentSpeedUnitsPerSecond, kTorpedoCruise);
+                speed = enemy.torpedoCurrentSpeedUnitsPerSecond;
+            } else {
+                const float maxSpeedDelta = maxAcc * dt;
+                const float speedDelta = targetSpeed - enemy.torpedoCurrentSpeedUnitsPerSecond;
+                const float clampedDelta = std::clamp(speedDelta, -maxSpeedDelta, maxSpeedDelta);
+                enemy.torpedoCurrentSpeedUnitsPerSecond += clampedDelta;
+                speed = enemy.torpedoCurrentSpeedUnitsPerSecond;
+            }
         } else {
             speed = targetSpeed;
         }
@@ -988,7 +1030,26 @@ void UpdateEnemySystem(
         const Vec2f previousPosition = enemy.position;
         {
             profiling::ScopedProfile phaseScope(profiling::Scope::EnemyAiMovement, true);
-            if (preserveContinuousHeading) {
+            const bool torpedoFullTierContinuousHeading =
+                enemy.type == EnemyType::Torpedo && enemy.simTier == EnemySimTier::Full;
+            if (torpedoFullTierContinuousHeading) {
+                if (enemy.aiMode == EnemyAiMode::Fly && enemy.torpedoFlyPathActive) {
+                    movementHeading = UpdateTorpedoHeadingToward(
+                        enemy.headingRadians,
+                        enemy.torpedoFlyCachedHeadingRadians,
+                        GameplayConstants::kTorpedoFullTierTurnSpeedRadiansPerSecond,
+                        deltaSeconds);
+                } else if (
+                    enemy.aiMode != EnemyAiMode::Ram && enemy.aiMode != EnemyAiMode::Rotate) {
+                    const float turnTarget = QuantizeToEightDirections(movementHeading);
+                    movementHeading = UpdateTorpedoHeadingToward(
+                        enemy.headingRadians,
+                        turnTarget,
+                        GameplayConstants::kTorpedoFullTierTurnSpeedRadiansPerSecond,
+                        deltaSeconds);
+                }
+            }
+            if (preserveContinuousHeading || torpedoFullTierContinuousHeading) {
                 movementHeading = NormalizeAngle(movementHeading);
             } else {
                 movementHeading = QuantizeToEightDirections(movementHeading);
@@ -999,109 +1060,123 @@ void UpdateEnemySystem(
                 .y = enemy.position.y + snappedDirection.y * speed * deltaSeconds,
             };
 
-            // Keep enemies from overlapping: turn first, stop second.
-            {
-                profiling::ScopedProfile sepScope(
-                    profiling::Scope::EnemyMovementSeparationProbe, true);
-                constexpr float sepSq = GameplayConstants::kEnemyPreferredSeparationUnits *
-                                        GameplayConstants::kEnemyPreferredSeparationUnits;
-                float minDistSqToOthers = std::numeric_limits<float>::infinity();
-                float currentMinDistSqToOthers = std::numeric_limits<float>::infinity();
-                const float selfUncoupleScore =
-                    enemyIndex < static_cast<int>(uncoupleEscapeScores.size())
-                        ? uncoupleEscapeScores[static_cast<std::size_t>(enemyIndex)]
-                        : -1000.0F;
-                for (int i = 0; i < static_cast<int>(state.world.enemies.size()); ++i) {
-                    if (i == enemyIndex) {
-                        continue;
-                    }
-                    const EnemyTank& other = state.world.enemies[static_cast<std::size_t>(i)];
-                    if (!other.alive) {
-                        continue;
-                    }
-                    if (enemy.aiMode == EnemyAiMode::Uncouple &&
-                        other.aiMode == EnemyAiMode::Uncouple &&
-                        i < static_cast<int>(uncoupleEscapeScores.size())) {
-                        const float otherScore = uncoupleEscapeScores[static_cast<std::size_t>(i)];
-                        const bool otherYieldsToSelf =
-                            (selfUncoupleScore > otherScore + kUncouplePriorityEpsilon) ||
-                            (std::fabs(selfUncoupleScore - otherScore) <=
-                                    kUncouplePriorityEpsilon &&
-                                enemyIndex < i);
-                        if (otherYieldsToSelf) {
+            // Full-tier torpedo: if the intended step hits a hard wall/base segment, do not apply
+            // separation stall/turn — allow the wall pass to register a hard crash (too fast to "stop").
+            const bool torpedoFullTierPrioritizeHardWallCrash =
+                enemy.type == EnemyType::Torpedo &&
+                enemy.simTier == EnemySimTier::Full &&
+                std::fabs(speed) > 0.001F &&
+                SegmentIntersectsWall(
+                    state.world,
+                    previousPosition,
+                    candidatePosition,
+                    GameplayConstants::kWallClearanceForHard);
+
+            if (!torpedoFullTierPrioritizeHardWallCrash) {
+                // Keep enemies from overlapping: turn first, stop second.
+                {
+                    profiling::ScopedProfile sepScope(
+                        profiling::Scope::EnemyMovementSeparationProbe, true);
+                    constexpr float sepSq = GameplayConstants::kEnemyPreferredSeparationUnits *
+                                            GameplayConstants::kEnemyPreferredSeparationUnits;
+                    float minDistSqToOthers = std::numeric_limits<float>::infinity();
+                    float currentMinDistSqToOthers = std::numeric_limits<float>::infinity();
+                    const float selfUncoupleScore =
+                        enemyIndex < static_cast<int>(uncoupleEscapeScores.size())
+                            ? uncoupleEscapeScores[static_cast<std::size_t>(enemyIndex)]
+                            : -1000.0F;
+                    for (int i = 0; i < static_cast<int>(state.world.enemies.size()); ++i) {
+                        if (i == enemyIndex) {
                             continue;
                         }
+                        const EnemyTank& other = state.world.enemies[static_cast<std::size_t>(i)];
+                        if (!other.alive) {
+                            continue;
+                        }
+                        if (enemy.aiMode == EnemyAiMode::Uncouple &&
+                            other.aiMode == EnemyAiMode::Uncouple &&
+                            i < static_cast<int>(uncoupleEscapeScores.size())) {
+                            const float otherScore = uncoupleEscapeScores[static_cast<std::size_t>(i)];
+                            const bool otherYieldsToSelf =
+                                (selfUncoupleScore > otherScore + kUncouplePriorityEpsilon) ||
+                                (std::fabs(selfUncoupleScore - otherScore) <=
+                                        kUncouplePriorityEpsilon &&
+                                    enemyIndex < i);
+                            if (otherYieldsToSelf) {
+                                continue;
+                            }
+                        }
+                        currentMinDistSqToOthers = std::min(
+                            currentMinDistSqToOthers, DistanceSq(enemy.position, other.position));
+                        minDistSqToOthers =
+                            std::min(minDistSqToOthers, DistanceSq(candidatePosition, other.position));
                     }
-                    currentMinDistSqToOthers = std::min(
-                        currentMinDistSqToOthers, DistanceSq(enemy.position, other.position));
-                    minDistSqToOthers =
-                        std::min(minDistSqToOthers, DistanceSq(candidatePosition, other.position));
-                }
-                constexpr float kSeparationProgressEpsilonSq = 0.01F;
-                const bool makingSeparationProgress =
-                    minDistSqToOthers > currentMinDistSqToOthers + kSeparationProgressEpsilonSq;
-                if (std::fabs(speed) > 0.0F && minDistSqToOthers < sepSq &&
-                    !makingSeparationProgress) {
-                    float turnHeading = movementHeading;
-                    Vec2f turnCandidate = candidatePosition;
-                    if (TrySeparationTurn(
-                            state.world, state.world.enemies, enemyIndex, speed, deltaSeconds,
-                            turnHeading, turnCandidate)) {
-                        movementHeading = turnHeading;
-                        candidatePosition = turnCandidate;
-                    } else {
-                        speed = 0.0F;
-                        candidatePosition = enemy.position;
-                        enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
-                        if (enemy.type == EnemyType::Drone) {
-                            EnterDroneWatchMode(state.world, enemy, random);
+                    constexpr float kSeparationProgressEpsilonSq = 0.01F;
+                    const bool makingSeparationProgress =
+                        minDistSqToOthers > currentMinDistSqToOthers + kSeparationProgressEpsilonSq;
+                    if (std::fabs(speed) > 0.0F && minDistSqToOthers < sepSq &&
+                        !makingSeparationProgress) {
+                        float turnHeading = movementHeading;
+                        Vec2f turnCandidate = candidatePosition;
+                        if (TrySeparationTurn(
+                                state.world, state.world.enemies, enemyIndex, speed, deltaSeconds,
+                                turnHeading, turnCandidate)) {
+                            movementHeading = turnHeading;
+                            candidatePosition = turnCandidate;
+                        } else {
+                            speed = 0.0F;
+                            candidatePosition = enemy.position;
+                            enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
+                            if (enemy.type == EnemyType::Drone) {
+                                EnterDroneWatchMode(state.world, enemy, random);
+                            }
                         }
                     }
                 }
-            }
 
-            {
-                profiling::ScopedProfile overlapScope(
-                    profiling::Scope::EnemyMovementOverlapCheck, true);
-                bool blocked = false;
-                if (std::fabs(speed) > 0.0F) {
-                    {
-                        profiling::ScopedProfile scope(
-                            profiling::Scope::EnemyMovementOverlapIsBlocked, true);
-                        blocked = IsMovementBlockedByEnemies(
-                            state.world.enemies, frameStartPositions, enemyIndex, previousPosition,
-                            candidatePosition, GameplayConstants::kEnemyPreferredSeparationUnits,
-                            &uncoupleEscapeScores);
+                {
+                    profiling::ScopedProfile overlapScope(
+                        profiling::Scope::EnemyMovementOverlapCheck, true);
+                    bool blocked = false;
+                    if (std::fabs(speed) > 0.0F) {
+                        {
+                            profiling::ScopedProfile scope(
+                                profiling::Scope::EnemyMovementOverlapIsBlocked, true);
+                            blocked = IsMovementBlockedByEnemies(
+                                state.world.enemies, frameStartPositions, enemyIndex, previousPosition,
+                                candidatePosition, GameplayConstants::kEnemyPreferredSeparationUnits,
+                                &uncoupleEscapeScores);
+                        }
                     }
-                }
-                if (blocked) {
-                    float turnHeading = movementHeading;
-                    Vec2f turnCandidate = candidatePosition;
-                    bool foundTurn = false;
-                    {
-                        profiling::ScopedProfile scope(
-                            profiling::Scope::EnemyMovementOverlapSeparationTurn, true);
-                        foundTurn = TrySeparationTurn(
-                            state.world, state.world.enemies, enemyIndex, speed, deltaSeconds,
-                            turnHeading, turnCandidate);
-                    }
-                    bool turnValid = false;
-                    if (foundTurn) {
-                        profiling::ScopedProfile scope(
-                            profiling::Scope::EnemyMovementOverlapTurnValid, true);
-                        turnValid = !IsMovementBlockedByEnemies(
-                            state.world.enemies, frameStartPositions, enemyIndex, previousPosition,
-                            turnCandidate, GameplayConstants::kEnemyPreferredSeparationUnits,
-                            &uncoupleEscapeScores);
-                    }
-                    if (turnValid) {
-                        movementHeading = turnHeading;
-                        candidatePosition = turnCandidate;
-                    } else {
-                        enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
-                        candidatePosition = enemy.position;
-                        if (enemy.type == EnemyType::Drone) {
-                            EnterDroneWatchMode(state.world, enemy, random);
+                    if (blocked) {
+                        float turnHeading = movementHeading;
+                        Vec2f turnCandidate = candidatePosition;
+                        bool foundTurn = false;
+                        {
+                            profiling::ScopedProfile scope(
+                                profiling::Scope::EnemyMovementOverlapSeparationTurn, true);
+                            foundTurn = TrySeparationTurn(
+                                state.world, state.world.enemies, enemyIndex, speed, deltaSeconds,
+                                turnHeading, turnCandidate);
+                        }
+                        bool turnValid = false;
+                        if (foundTurn) {
+                            profiling::ScopedProfile scope(
+                                profiling::Scope::EnemyMovementOverlapTurnValid, true);
+                            turnValid = !IsMovementBlockedByEnemies(
+                                state.world.enemies, frameStartPositions, enemyIndex, previousPosition,
+                                turnCandidate, GameplayConstants::kEnemyPreferredSeparationUnits,
+                                &uncoupleEscapeScores);
+                        }
+                        if (turnValid) {
+                            movementHeading = turnHeading;
+                            candidatePosition = turnCandidate;
+                        } else {
+                            enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
+                            candidatePosition = enemy.position;
+                            if (enemy.type == EnemyType::Drone) {
+                                EnterDroneWatchMode(state.world, enemy, random);
+                            }
                         }
                     }
                 }
@@ -1110,10 +1185,15 @@ void UpdateEnemySystem(
             {
                 profiling::ScopedProfile wallScope(profiling::Scope::EnemyMovementWallCheck, true);
                 const bool moving = std::fabs(speed) > 0.001F;
+                // Wall avoidance pill radius from segment = `kWallHalfThicknessUnits + clearance`
+                // == `kEnemyWallAvoidanceUnits` when clearance is `kWallClearanceForAvoidance`.
                 const bool segmentWallHit =
                     moving && SegmentIntersectsWall(
                                   state.world, previousPosition, candidatePosition,
                                   GameplayConstants::kWallClearanceForAvoidance);
+                const float torpedoWallHardClearance =
+                    GameplayConstants::kEnemyWallHardCollisionUnits -
+                    GameplayConstants::kWallHalfThicknessUnits;
                 const bool torpedoHardWallHit =
                     moving &&
                     enemy.type == EnemyType::Torpedo &&
@@ -1121,7 +1201,7 @@ void UpdateEnemySystem(
                         state.world,
                         previousPosition,
                         candidatePosition,
-                        GameplayConstants::kWallClearanceForHard);
+                        torpedoWallHardClearance);
                 const bool edgeOnWallContact =
                     moving && !segmentWallHit &&
                     IsEdgeOnWallContact(state.world, candidatePosition, movementHeading);
@@ -1158,39 +1238,78 @@ void UpdateEnemySystem(
                             EnemyAiModeLabel(enemy.aiMode));
                     }
                 }
-                if (segmentWallHit || edgeOnWallContact) {
-                    if (torpedoHardWallHit) {
+                constexpr float kTorpedoWallCrashSpeedEpsilon = 0.001F;
+                if (enemy.type == EnemyType::Torpedo && enemy.simTier == EnemySimTier::Full) {
+                    const float torpedoBrakeSubtypeMul =
+                        EnemySubtypeSpeedMultiplier(EnemyType::Torpedo, enemy.subtype);
+                    const float torpedoBrakeAccel =
+                        GameplayConstants::kTorpedoFullTierAccelMaxUnitsPerSecondSq *
+                        torpedoBrakeSubtypeMul;
+                    const float torpedoBrakeDelta = torpedoBrakeAccel * deltaSeconds;
+                    if (torpedoHardWallHit &&
+                        std::fabs(speed) > kTorpedoWallCrashSpeedEpsilon) {
                         enemy.alive = false;
                         enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
                         enemy.torpedoCurrentSpeedUnitsPerSecond = 0.0F;
                         DecrementOriginBaseAliveCount(state.world, enemy);
                         continue;
                     }
-                    const float movedLastFrameUnits = Distance(candidatePosition, previousPosition);
-                    enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
-                    enemy.position = ResolveWallContactRecoveryPosition(
-                        state.world,
-                        enemy.position,
-                        movementHeading,
-                        movedLastFrameUnits + 0.75F);
-                    // Only zero timer when entering uncouple from non-uncouple; preserve it on
-                    // re-entry so the assassin can accumulate movement progress and eventually
-                    // escape.
-                    if (enemy.aiMode != EnemyAiMode::Uncouple) {
-                        enemy.aiStateTimerSeconds = 0.0F;
+                    if (segmentWallHit || edgeOnWallContact) {
+                        // Step reaches `kEnemyWallAvoidanceUnits` layer (segment) or parallel edge
+                        // contact, without hard collision death above: apply the step and brake signed
+                        // hull speed using the full per-step accel cap.
+                        float v = enemy.torpedoCurrentSpeedUnitsPerSecond;
+                        if (v > torpedoBrakeDelta) {
+                            v -= torpedoBrakeDelta;
+                        } else if (v < -torpedoBrakeDelta) {
+                            v += torpedoBrakeDelta;
+                        } else {
+                            v = 0.0F;
+                        }
+                        enemy.torpedoCurrentSpeedUnitsPerSecond = v;
+                        enemy.velocity = Vec2f{
+                            .x = snappedDirection.x * v,
+                            .y = snappedDirection.y * v,
+                        };
+                        enemy.position = candidatePosition;
+                        enemy.headingRadians = movementHeading;
+                    } else {
+                        enemy.velocity = Vec2f{
+                            .x = snappedDirection.x * speed,
+                            .y = snappedDirection.y * speed,
+                        };
+                        enemy.position = candidatePosition;
+                        enemy.headingRadians = movementHeading;
                     }
-                    // Wall contact enters uncouple so wall and neighbor repulsion can resolve local
-                    // jams.
-                    EnterUncoupleMode(
-                        state.world.enemies, enemyIndex, enemyIndex,
-                        UncoupleReason::SelfWallContact, movedLastFrameUnits);
                 } else {
-                    enemy.velocity = Vec2f{
-                        .x = snappedDirection.x * speed,
-                        .y = snappedDirection.y * speed,
-                    };
-                    enemy.position = candidatePosition;
-                    enemy.headingRadians = movementHeading;
+                    if (segmentWallHit || edgeOnWallContact) {
+                        const float movedLastFrameUnits =
+                            Distance(candidatePosition, previousPosition);
+                        enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
+                        enemy.position = ResolveWallContactRecoveryPosition(
+                            state.world,
+                            enemy.position,
+                            movementHeading,
+                            movedLastFrameUnits + 0.75F);
+                        // Only zero timer when entering uncouple from non-uncouple; preserve it on
+                        // re-entry so the assassin can accumulate movement progress and eventually
+                        // escape.
+                        if (enemy.aiMode != EnemyAiMode::Uncouple) {
+                            enemy.aiStateTimerSeconds = 0.0F;
+                        }
+                        // Wall contact enters uncouple so wall and neighbor repulsion can resolve local
+                        // jams.
+                        EnterUncoupleMode(
+                            state.world.enemies, enemyIndex, enemyIndex,
+                            UncoupleReason::SelfWallContact, movedLastFrameUnits);
+                    } else {
+                        enemy.velocity = Vec2f{
+                            .x = snappedDirection.x * speed,
+                            .y = snappedDirection.y * speed,
+                        };
+                        enemy.position = candidatePosition;
+                        enemy.headingRadians = movementHeading;
+                    }
                 }
                 if (enemy.type == EnemyType::Assassin) {
                     const bool nowInsideWallAvoid = game::geometry::IsPointInWall(
@@ -1237,8 +1356,6 @@ void UpdateEnemySystem(
                 const float movedDistance = Distance(enemy.position, previousPosition);
                 if (movedDistance > 0.0001F) {
                     enemy.torpedoStraightDistanceSinceTurnUnits += movedDistance;
-                    enemy.torpedoMoveDecisionHoldRemainingUnits =
-                        std::max(0.0F, enemy.torpedoMoveDecisionHoldRemainingUnits - movedDistance);
                 }
             } else if (enemy.type == EnemyType::Torpedo &&
                        enemy.aiMode == EnemyAiMode::Retreat) {

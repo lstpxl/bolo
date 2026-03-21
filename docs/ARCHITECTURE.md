@@ -111,6 +111,10 @@ while (!WindowShouldClose())
 }
 ```
 
+## Navigation helpers
+
+- **`AdjacentCellSegmentPlanner`** (`src/game/navigation/AdjacentCellSegmentPlanner.*`): builds 1–2 world-space waypoints for a move to one of 8 adjacent maze cells. Used by torpedo `Fly` (`EnsureTorpedoFlyPath`). Behavior is documented under **AdjacentCellSegmentPlanner** in `docs/GAME_DESIGN.md`.
+
 ## Renderer Boundary
 
 Game systems should target an engine-facing renderer interface, not raw raylib calls.

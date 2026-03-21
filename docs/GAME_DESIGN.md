@@ -155,6 +155,7 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
   - `Hunter Lord`: `125%` of hunter advanced speed
 - Assassin advanced speed has two modes: `1.5` world-units/second when player line-of-sight is blocked or out of aggro range, and `3.0` world-units/second when the assassin has line-of-sight to a player in aggro range.
 - Enemy projectile firing heading is quantized to the same 8-way (45-degree) directions.
+- Enemy projectile spawn range matches per-type player **detect** distance (same as debug gray LOS when unobstructed), not a single global “fire range” constant.
 - Player and enemy collision shape is treated as a disc with `9px` diameter.
 - **Enemy dual-radius model:** agents use two radii (universal for all enemy types):
   - **hardRadius** (`kEnemyCollisionRadiusUnits`): collision radius for overlap and hit checks.
@@ -213,6 +214,20 @@ Enemy movement/steering code uses **`kWallClearanceForAvoidance`** (passed into 
   - Other enemy types: random in `4..8` seconds.
   - Timer is initialized from the interval and restarts from the same interval when it reaches `0`.
 
+### AdjacentCellSegmentPlanner
+
+Local planner for a **single step** to one of the **8 adjacent** maze cells (cardinal or diagonal). Code: `src/game/navigation/AdjacentCellSegmentPlanner.h`, `AdjacentCellSegmentPlanner.cpp`; entry point `game::navigation::AdjacentCellSegmentPlanner::Build`. Torpedo `Fly` uses it from `EnsureTorpedoFlyPath` to produce 1 or 2 waypoint positions per plan. Extraction allows reuse by other movement code without duplicating topology rules.
+
+- **Input:** current cell `fromCell`, chosen neighbor `targetCell` (Chebyshev distance 1), current world position `startPosition`.
+- **Cardinal:** one segment to `targetCell` center if the segment from `startPosition` to that center does not intersect walls at avoidance clearance **and** `IsValidSegmentEndpoint` accepts the center.
+- **Diagonal:** no additional per-segment geometry validation beyond the rules below; routing uses **maze edge topology** only.
+  - Let `B = (fromX, fromY + dy)` and `C = (fromX + dx, fromY)` for diagonal step `(dx, dy)`.
+  - Evaluate the four cardinal edges: `from→B`, `B→target`, `from→C`, `C→target` via the same traversability rules as grid movement (walls + base-blocked cells).
+  - **Hard fail** if ≥3 of those edges are blocked, or both edges leaving `from` are blocked, or both edges entering `target` are blocked.
+  - If **both** `B`-route and `C`-route are usable (each pair of incident edges open): **one** segment to target cell center.
+  - If **exactly one** bend route is usable: **two** segments — first waypoint at the usable bend cell center, shifted by `kAdjacentCellDiagonalMidpointShiftUnits` (`GameplayConstants`, default `1` world unit) along the unit vector toward the **opposite** bend cell; second waypoint at target cell center.
+  - If **neither** route is usable: build fails.
+
 ### Enemy Type Behavior
 
 #### Drone
@@ -235,27 +250,27 @@ Enemy movement/steering code uses **`kWallClearanceForAvoidance`** (passed into 
 #### Torpedo
 
 - Modes: `Fly`, `Ram`, `Retreat`, `Targeting`, and `Rotate` (stored in `EnemyAiMode` alongside other type modes).
-- Fast local-steering movement (no A* path planning), with turns constrained to `45°` increments only.
+- Fast local-steering movement (no A* path planning). **Full-tier `Fly`** uses the same cell-based segment pipeline as cheap-tier (`EnsureTorpedoFlyPath` + **AdjacentCellSegmentPlanner**); hull heading slews toward the current segment waypoint bearing at `kTorpedoFullTierTurnSpeedRadiansPerSecond` (`45°/s`). Segment renewal is cell-based (not distance-threshold based): a new segment is planned when the torpedo enters the segment planner target cell while following the final segment leg of the active fly path. Diagonal segment rules are defined under **AdjacentCellSegmentPlanner** above. If building or following the path fails, full-tier falls back to the legacy three-way probe (`SelectTorpedoMoveHeading`: forward / ±45°, clearance to `15` units) with **no** random straight-hold distance.
 - Spawn heading lock: after spawn, torpedo keeps initial heading while inside base footprint plus `1.0` world-unit clearance; turning decisions are disabled until this clearance is exited.
 - Player detection for ram transition is throttled to every `0.25s` (cached between checks), using LOS and distance `<=12` units.
 - Torpedo enters `Ram` whenever an alive player is seen (LOS + `12` units), and returns to `Fly` when LOS/range is lost or the player dies.
-- In `Ram`, torpedo continuously slews heading toward player at finite angular speed `45°/s` (continuous turn, not instant heading snap).
+- **Full-tier** torpedo heading changes: `Ram` toward player; `Fly` along fly path toward waypoint bearing (or fallback probe toward an 8-way target); `Retreat`/uncouple toward 8-way targets; `Rotate` toward chosen heading — all capped at `kTorpedoFullTierTurnSpeedRadiansPerSecond` (`45°/s`).
 - In `Ram`, torpedo fires only when player is inside a tighter forward cone (`±20°`).
 - If a `Ram` torpedo collides with player, both die (player death + torpedo explosion).
-- Torpedo velocity is rate-limited in all modes by finite acceleration `2` world-units/s²; target speed changes (including retreat reverse) are not instantaneous.
-- If torpedo makes hard wall contact before it can decelerate enough, it explodes.
-- Segment-direction selection evaluates exactly three headings (`forward`, `-45°`, `+45°`) and measures clearance up to `15` units.
-- In full-tier torpedo move logic, clearance uses full obstacle checks (walls + undestroyed bases + alive enemies).
-- In cheap-tier torpedo segment build, clearance is wall-only.
-- Heading pick uses longest clearance; ties are resolved randomly.
-- Segment length uses `max = longestClearance - 4` and is sampled randomly in `[2, max]` (if `max < 2`, torpedo enters retreat fallback in full-tier move logic).
+- Torpedo **cheap-tier** movement uses constant speed `kEnemyTorpedoSpeed * EnemySubtypeSpeedMultiplier` (`Basic` = `×0.75`), no acceleration ramp.
+- Torpedo **full-tier** forward speed is not held to a fixed cruise each frame: per-step acceleration is capped by `kTorpedoFullTierAccelMaxUnitsPerSecondSq * EnemySubtypeSpeedMultiplier` (`Basic` = `×0.75`).
+  - In `Ram` with LOS to player: along-hull acceleration depends on bearing to player (minimum angle, radians): if `< π/4` (`45°`), `acc = maxAcc * (π/4 - |Δ|) / (π/4)`; else `acc = -maxAcc * |Δ| / (3π/4)` (`135°` scale). Speed is clamped forward to `[0, kEnemyTorpedoSpeedMax * EnemySubtypeSpeedMultiplier]` for that frame.
+  - In `Fly`: `torpedoCurrentSpeed` ramps toward `kEnemyTorpedoSpeed * EnemySubtypeSpeedMultiplier` with per-step delta capped by scaled `maxAcc` (same as cruise when `Ram` has no LOS to player).
+  - In `Ram` without LOS to player: same cruise ramp as `Fly`.
+  - Other full-tier modes (`Retreat`, `Uncouple`, `Targeting` stationary): `torpedoCurrentSpeed` tracks AI `targetSpeed` with the same `maxAcc` cap per step.
+- Full-tier torpedo wall handling (segment `previousPosition → candidatePosition`):
+  - **Hard** wall pill (`kEnemyWallHardCollisionUnits` from the segment; clearance passed to `SegmentIntersectsWall` is `kEnemyWallHardCollisionUnits - kWallHalfThicknessUnits`, i.e. `kWallClearanceForHard`) while hull speed magnitude is above a small epsilon: **explode** immediately. Enemy **separation / overlap stall and turn** are **skipped** when that intended step already has a hard hit, so high speed cannot be cancelled before the wall check.
+  - **Avoidance** violation (segment hits the wall pill matching `kEnemyWallAvoidanceUnits`, i.e. `kWallClearanceForAvoidance`; or parallel **edge-on-wall** contact) without taking the hard crash branch above: still advance to `candidatePosition`, and **brake** signed `torpedoCurrentSpeedUnitsPerSecond` toward zero using the full per-step cap `kTorpedoFullTierAccelMaxUnitsPerSecondSq * EnemySubtypeSpeedMultiplier` (same magnitude as forward acceleration). **No** recovery-position slide and **no** uncouple.
+- **Full-tier `Fly` fallback** (when fly path is unavailable): three headings (`forward`, `-45°`, `+45°`), clearance to `15` units with enemy-aware probes; pick max clearance (random tie-break). If max forward run after safety margin is `< 2` units, or all three clears `< 1`, enter `Retreat`.
 - In torpedo steering, "obstacle" checks include walls, undestroyed bases, and other alive enemies.
-- Turn cooldown: must move straight at least `3` units before another turn.
-- MOVE optimization: when a direction decision keeps straight heading, torpedo holds that decision for `1` world-unit of traveled distance (distance-based, not frame-based), and only performs near forward collision checks up to `3` units during that hold.
-- If obstacle is directly ahead and straight/left/right are all effectively blocked, enters `Retreat` mode.
 - Retreat mode: moves backward without turning at `10%` normal speed; it checks only retreat completion distance and near forward clearance to leave the mode.
 - After retreat completion, torpedo enters `Targeting` mode: picks and stores the heading with the longest straight clear path.
-- Rotate mode: rotates toward the stored chosen heading using the closer CW/CCW direction and returns to regular move mode when aligned.
+- Rotate mode: rotates toward the stored chosen heading at `kTorpedoFullTierTurnSpeedRadiansPerSecond` and returns to regular move mode when aligned.
 - Firing additionally requires player to be roughly ahead (`±30°`).
 
 #### Hunter
@@ -307,13 +322,12 @@ Enemy movement/steering code uses **`kWallClearanceForAvoidance`** (passed into 
   - `Cheap`: enemy is outside that radius and not in forced-full exceptions.
 - In `Cheap` tier, enemies use cached segment movement:
   - heading is quantized to 8-way direction
-  - drones/torpedoes choose next segment heading from `forward/-45/+45` by longest wall-only clearance (capped at `15`), with random tie-break
+  - drones choose next segment heading from `forward/-45/+45` by longest wall-only clearance (capped at `15`), with random tie-break
   - segment length is randomized in `[2, (bestClear-4)]` (clamped by per-type segment cap)
   - movement advances toward cached endpoint and endpoint is recomputed only when current endpoint is reached
   - no wall/enemy/base collision checks are executed while traversing the current cheap-tier segment
   - on cheap-tier segment-build failure (`bestClear - 4 < 2`):
     - drone picks a random 8-way heading, remains without an active segment for that frame, then retries segment build on the next cheap-tier update
-    - torpedo rotates heading by `45°` counterclockwise, remains without an active segment for that frame, then retries segment build on the next cheap-tier update
 - Hunter exception:
   - cheap-tier Hunter `Scout` uses the same two-level planner as full-tier `Scout` (8-direction cell scoring + persisted 1/2 segment path), so Scout steering behavior is tier-consistent.
   - cheap-tier Hunter scout segment traversal uses continuous heading toward current segment target point (no 8-way heading snap during traversal), preventing drift away from validated segment geometry.
@@ -322,7 +336,11 @@ Enemy movement/steering code uses **`kWallClearanceForAvoidance`** (passed into 
 - Cheap-tier enemies do not run enemy-enemy or enemy-base collision checks at all; wall clearance is evaluated only when selecting the next cheap-tier segment.
 - Torpedo exception:
   - `Ram`, `Retreat`, `Targeting`, and `Rotate` remain `Full` tier even when offscreen.
-  - only torpedo `Fly` (`EnemyAiMode::Fly`) can use cheap-tier segment movement.
+  - only torpedo `Fly` (`EnemyAiMode::Fly`) can use cheap-tier movement.
+  - cheap-tier `Fly` uses the same planner shape as hunter `Scout` (8-direction cell scoring + **AdjacentCellSegmentPlanner** to an adjacent cell), but with torpedo-owned state/functions.
+  - cheap-tier torpedo `Fly` direction scoring uses:
+      `score = (1 - core::math::ExpDecayA1K07(runCells)) * core::math::ExpDecayA1K07(enemiesInFirstCell) * core::math::ExpDecayA1K07(turnSteps)` (`turnSteps` 0 = straight, full weight; more turn steps decay the multiplier. Using `(1 - ExpDecayA1K09(turnSteps))` would invert that because `ExpDecayA1K09(0) = 0.9`.)
+  - cheap-tier torpedo fly traversal uses continuous heading toward current segment target point (no 8-way heading snap during traversal); for 2-segment diagonals, segment index advances when the midpoint is reached and path renewal happens when entering the target maze cell on the final segment leg.
   - offscreen torpedo player-detection checks run at a lower frequency than full simulation.
 - Assassin exception:
   - while cheap-tier, assassin segment selection is flow-field-driven and recomputed on cell transitions (or when no active segment exists).
@@ -373,6 +391,7 @@ World rendering is in `src/platform/Renderer2D.cpp`.
 - HUD lives indicators use the same sprite source and color as the in-world player tank sprite, rendered at `36x36` (4x of the `9x9` source cell).
 - HUD lives indicators are left-aligned in the lives row; as lives decrease, icons disappear from the right.
 - Gameplay view draws top-left debug text (axes/perf/profiling) only when menu `Debug info` is enabled.
+- With `Debug info`, visible enemies also draw overlay diagnostics: **LOS** to player only when unobstructed (`seesPlayer`) **and** within type detection range — **gray** line (`Drone`: `kDroneDetectRangeUnits`; `Torpedo` not in `Ram`: `kTorpedoDetectRangeUnits`; `Hunter`: `kHunterDetectRangeUnits`; `Assassin`: `kEnemyAggroRangeUnits`); **`Torpedo` in `Ram`** uses **red** when within `kTorpedoRamDetectRangeUnits`; green line to current hunter scout waypoint or (for non-torpedo cheap-tier movement) cached segment end; yellow line to current torpedo `Fly` path waypoint when `torpedoFlyPathActive` (cheap- and full-tier); plus hard/avoidance radius circles and nearest-wall distance label.
 - Flow-field guidance arrows are drawn at maze-cell centers for visible cells when a flow field build exists. On macOS debug builds this overlay is always shown; on other builds it is gated by `Debug info`.
 - HUD draws an icon counter strip above the radar blocks at font size `10`: base rectangle icon plus enemy type sprites (`Drone/Torpedo/Hunter/Assassin`) with per-type alive counts, tinted by corresponding minimap colors.
 - Debug-overlay text content is refreshed every `4` frames and cached between refreshes to reduce per-frame formatting/query overhead.
