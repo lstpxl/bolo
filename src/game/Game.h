@@ -6,7 +6,6 @@
 #include "game/GameplayView.h"
 #include "game/GameModeController.h"
 #include "game/RuntimeContext.h"
-#include "game/GameState.h"
 #include "game/navigation/FlowRebuildWorker.h"
 #include "platform/IRenderer.h"
 #include "platform/Input.h"
@@ -17,6 +16,7 @@ public:
 
     GameMode Mode() const;
     const GameState& State() const;
+    GameState& MutableState();
 
     MenuSettings CurrentMenuSettings() const;
     void SetMenuSettings(const MenuSettings& settings);

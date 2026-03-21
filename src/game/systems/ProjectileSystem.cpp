@@ -20,6 +20,11 @@ void SpawnProjectile(
         .remainingLifeSeconds = GameplayConstants::kProjectileLifetimeSeconds,
         .alive = true,
     });
+    state.world.gameplayEvents.Push(GameplayEvent{
+        .type = GameplayEventType::ProjectileFired,
+        .position = position,
+        .projectileOwner = owner,
+    });
 }
 
 void UpdateProjectileSystem(GameState& state, float deltaSeconds) {

@@ -1248,6 +1248,12 @@ void UpdateEnemySystem(
                     const float torpedoBrakeDelta = torpedoBrakeAccel * deltaSeconds;
                     if (torpedoHardWallHit &&
                         std::fabs(speed) > kTorpedoWallCrashSpeedEpsilon) {
+                        state.world.gameplayEvents.Push(GameplayEvent{
+                            .type = GameplayEventType::EnemyDestroyed,
+                            .position = enemy.position,
+                            .enemyType = enemy.type,
+                            .enemySubtype = enemy.subtype,
+                        });
                         enemy.alive = false;
                         enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
                         enemy.torpedoCurrentSpeedUnitsPerSecond = 0.0F;

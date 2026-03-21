@@ -269,6 +269,8 @@ const std::array<const char*, kScopeCount> kScopeNames = {
     "frame.render.overlay",
     "frame.present",
     "menu.music",
+    "audio.route_step",
+    "audio.route.removed_enemy_match",
 };
 
 }  // namespace

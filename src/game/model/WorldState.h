@@ -3,6 +3,7 @@
 #include <array>
 #include "core/Types.h"
 #include "game/model/EntityTypes.h"
+#include "game/model/GameplayEvents.h"
 #include "game/model/GameplayConstants.h"
 #include "game/navigation/BaseDistanceField.h"
 #include "game/navigation/CellCoordCache.h"
@@ -56,6 +57,7 @@ struct WorldState {
     CollisionRuntimeCache collisionCache{};
     bool panModeActive = false;
     Vec2f panTarget{.x = 0.0F, .y = 0.0F};
+    GameplayEventQueue gameplayEvents{};
 };
 
 struct GameState {

@@ -32,6 +32,10 @@ const GameState& Game::State() const {
     return state_;
 }
 
+GameState& Game::MutableState() {
+    return state_;
+}
+
 MenuSettings Game::CurrentMenuSettings() const {
     return state_.menuSettings;
 }
@@ -284,6 +288,11 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const GameplayVie
         bolt::log::Debug("[FLOW] Respawn: invisibility=%d hasFlowConsumers=%d shouldHaveFlowActive=%d",
             state_.menuSettings.invisibility ? 1 : 0, hasFlowConsumers ? 1 : 0, shouldHaveFlowActive ? 1 : 0);
         state_.world.navigationCache.playerFlowField.SetCacheActive(shouldHaveFlowActive);
+        state_.world.gameplayEvents.Push(GameplayEvent{
+            .type = GameplayEventType::StartModeStarted,
+            .position = state_.world.player.position,
+            .startModeReason = StartModeReason::Respawn,
+        });
     }
 
     // Level complete handling.
@@ -307,6 +316,11 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const GameplayVie
         state_.world.player.throttleNormalized = 0.0F;
         state_.world.levelCleared = true;
         state_.world.levelClearMessageSeconds = GameplayConstants::kLevelClearMessageSeconds;
+        state_.world.gameplayEvents.Push(GameplayEvent{
+            .type = GameplayEventType::StartModeStarted,
+            .position = state_.world.player.position,
+            .startModeReason = StartModeReason::LevelComplete,
+        });
     }
 
     if (state_.world.levelClearMessageSeconds > 0.0F) {

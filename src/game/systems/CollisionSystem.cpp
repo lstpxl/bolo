@@ -67,6 +67,12 @@ void UpdateCollisionSystem(GameState& state, float deltaSeconds) {
                             GameplayConstants::kWallClearanceForHard)) {
                         gEnemyCollisionDeathDebugWindowStats.projectileKillWallContact += 1;
                     }
+                    state.world.gameplayEvents.Push(GameplayEvent{
+                        .type = GameplayEventType::EnemyDestroyed,
+                        .position = enemy.position,
+                        .enemyType = enemy.type,
+                        .enemySubtype = enemy.subtype,
+                    });
                     enemy.alive = false;
                     DecrementOriginBaseAliveCount(world, enemy);
                     projectile.alive = false;
@@ -78,7 +84,8 @@ void UpdateCollisionSystem(GameState& state, float deltaSeconds) {
                 continue;
             }
 
-            for (EnemyBase& base : world.enemyBases) {
+            for (int baseIndex = 0; baseIndex < static_cast<int>(world.enemyBases.size()); ++baseIndex) {
+                EnemyBase& base = world.enemyBases[static_cast<std::size_t>(baseIndex)];
                 if (base.destroyed) {
                     continue;
                 }
@@ -91,6 +98,11 @@ void UpdateCollisionSystem(GameState& state, float deltaSeconds) {
                     projectile.alive = false;
                     world.score += state.menuSettings.levelNumber * GameplayConstants::kBaseScorePerLevelMultiplier;
                     world.player.fuel = GameplayConstants::kFuelMax;
+                    state.world.gameplayEvents.Push(GameplayEvent{
+                        .type = GameplayEventType::BaseDestroyed,
+                        .position = base.position,
+                        .baseIndex = baseIndex,
+                    });
                     break;
                 }
             }
@@ -146,6 +158,12 @@ void UpdateCollisionSystem(GameState& state, float deltaSeconds) {
             world.player.alive = false;
             world.playerTurnLostPending = true;
             if (enemy.type == EnemyType::Torpedo && enemy.aiMode == EnemyAiMode::Ram) {
+                state.world.gameplayEvents.Push(GameplayEvent{
+                    .type = GameplayEventType::EnemyDestroyed,
+                    .position = enemy.position,
+                    .enemyType = enemy.type,
+                    .enemySubtype = enemy.subtype,
+                });
                 enemy.alive = false;
                 DecrementOriginBaseAliveCount(world, enemy);
             }

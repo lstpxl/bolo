@@ -34,5 +34,10 @@ void GameModeController::StartGame(
     state.world.score = 0;
     state.world.gameOver = false;
     InitializeMazeWorld(state, view, random);
+    state.world.gameplayEvents.Push(GameplayEvent{
+        .type = GameplayEventType::StartModeStarted,
+        .position = state.world.player.position,
+        .startModeReason = StartModeReason::NewGame,
+    });
     mode_ = GameMode::Playing;
 }

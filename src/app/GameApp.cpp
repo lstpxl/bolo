@@ -134,29 +134,30 @@ int GameApp::Run() {
                             gameplayPauseDialog_.Open(ConfirmationDialog::Focus::Cancel);
                         }
                         if (!gameplayPauseDialogOpen_) {
-                            const GameState beforeUpdate = game_.State();
                             const float stepSeconds = fixedStepTimer_.StepSeconds();
                             game_.Update(input, stepSeconds, BuildGameplayView(config_));
-                            const GameState& afterUpdate = game_.State();
-                            audioEventRouter_.RouteStep(
-                                beforeUpdate,
-                                afterUpdate,
-                                stepSeconds,
-                                AudioEventRouterConfig{
-                                    .audioReady = audioReady_,
-                                    .powerUpLoaded = powerUpSoundLoaded_,
-                                    .playerShotLoaded = playerShotSoundLoaded_,
-                                    .enemyShotLoaded = enemyShotSoundLoaded_,
-                                    .enemySpawningLoaded = enemySpawningSoundLoaded_,
-                                    .enemyExplodingLoaded = enemyExplodingSoundLoaded_,
-                                    .baseExplodingLoaded = baseExplodingSoundLoaded_,
-                                    .powerUpSound = &powerUpSound_,
-                                    .playerShotSound = &playerShotSound_,
-                                    .enemyShotSound = &enemyShotSound_,
-                                    .enemySpawningSound = &enemySpawningSound_,
-                                    .enemyExplodingSound = &enemyExplodingSound_,
-                                    .baseExplodingSound = &baseExplodingSound_,
-                                });
+                            GameState& afterUpdate = game_.MutableState();
+                            {
+                                profiling::ScopedProfile audioRouteScope(profiling::Scope::AudioRouteStep);
+                                audioEventRouter_.RouteStep(
+                                    afterUpdate.world.player.position,
+                                    afterUpdate.world.gameplayEvents,
+                                    AudioEventRouterConfig{
+                                        .audioReady = audioReady_,
+                                        .powerUpLoaded = powerUpSoundLoaded_,
+                                        .playerShotLoaded = playerShotSoundLoaded_,
+                                        .enemyShotLoaded = enemyShotSoundLoaded_,
+                                        .enemySpawningLoaded = enemySpawningSoundLoaded_,
+                                        .enemyExplodingLoaded = enemyExplodingSoundLoaded_,
+                                        .baseExplodingLoaded = baseExplodingSoundLoaded_,
+                                        .powerUpSound = &powerUpSound_,
+                                        .playerShotSound = &playerShotSound_,
+                                        .enemyShotSound = &enemyShotSound_,
+                                        .enemySpawningSound = &enemySpawningSound_,
+                                        .enemyExplodingSound = &enemyExplodingSound_,
+                                        .baseExplodingSound = &baseExplodingSound_,
+                                    });
+                            }
                         }
                     }
                     fixedStepTimer_.ConsumeStep();
@@ -275,9 +276,6 @@ void GameApp::Render(const FrameInput& input) {
             if (result.startGameRequested) {
                 gameplayPauseDialogOpen_ = false;
                 game_.StartGame(config_, BuildGameplayView(config_));
-                if (audioReady_ && powerUpSoundLoaded_ && game_.State().world.startModeRemainingSeconds > 0.0F) {
-                    PlaySound(powerUpSound_);
-                }
             }
             if (result.quitRequested) {
                 exitRequested_ = true;

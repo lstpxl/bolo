@@ -1,6 +1,6 @@
 #pragma once
 
-#include "game/GameState.h"
+#include "game/model/GameplayEvents.h"
 #include "raylib.h"
 
 struct AudioEventRouterConfig {
@@ -22,8 +22,7 @@ struct AudioEventRouterConfig {
 class AudioEventRouter {
 public:
     void RouteStep(
-        const GameState& beforeUpdate,
-        const GameState& afterUpdate,
-        float stepSeconds,
+        const Vec2f& listener,
+        GameplayEventQueue& events,
         const AudioEventRouterConfig& config) const;
 };

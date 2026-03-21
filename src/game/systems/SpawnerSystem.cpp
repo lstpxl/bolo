@@ -212,6 +212,13 @@ void UpdateSpawnerSystem(GameState& state, float deltaSeconds, Random& random) {
             .pathWaypointIndex = 0,
             .alive = true,
         });
+        state.world.gameplayEvents.Push(GameplayEvent{
+            .type = GameplayEventType::EnemySpawned,
+            .position = spawnPosition,
+            .enemyType = spawnedEnemy.type,
+            .enemySubtype = spawnedEnemy.subtype,
+            .baseIndex = baseIndex,
+        });
         base.activeEnemies += 1;
         base.enemyGenerationTimerSeconds = base.enemyGenerationIntervalSeconds;
         ++aliveEnemies;
