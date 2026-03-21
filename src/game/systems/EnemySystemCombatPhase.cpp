@@ -11,6 +11,7 @@
 
 namespace {
 constexpr float kDroneBaseBearingThresholdRadians = 1.3962634F;  // 80 degrees
+constexpr float kTorpedoRearBlindHalfAngleRadians = 0.7853982F;  // 45 degrees
 
 /// Max distance at which an enemy may spawn a projectile toward the player — aligned with
 /// per-type detection / debug LOS radii (`GameplayConstants`).
@@ -102,6 +103,13 @@ EnemyPerception RunPerceptionPhase(
         playerInvisible ||
         game::geometry::IsSegmentObscuredByWall(state.world, enemy.position, state.world.player.position);
     enemy.seesPlayer = state.world.player.alive && !perception.playerObscured;
+    if (enemy.seesPlayer && enemy.type == EnemyType::Torpedo) {
+        const float headingToPlayer = std::atan2(perception.toPlayer.x, -perception.toPlayer.y);
+        const float relativeBearing = core::angle::AngleDistance(enemy.headingRadians, headingToPlayer);
+        if (relativeBearing > kTorpedoRearBlindHalfAngleRadians) {
+            enemy.seesPlayer = false;
+        }
+    }
     perception.assassinHasLineOfSight =
         enemy.type == EnemyType::Assassin && playerInAggroRange && !perception.playerObscured;
     return perception;
