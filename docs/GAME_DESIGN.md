@@ -242,11 +242,11 @@ Local planner for a **single step** to one of the **8 adjacent** maze cells (car
 - Wander: move straight; if obstacle is within `1` unit ahead, test `±45°` and pick longer free route.
 - If neither side offers `>=3` units of clear run, switch to Watch.
 - Watch: stop and rotate in a random direction (`clockwise` or `counter-clockwise`) chosen when entering Watch.
-- On entering Watch, drone computes distance to nearest base; if distance is `>=36` units, `return-to-base` is enabled.
-- After one full turn (`4s`), if `return-to-base` is enabled, evaluate candidate return headings toward nearest base and discard any heading with less than `6` units of obstacle-free route.
+- On entering Watch, drone uses `BaseDistanceField` maze graph distance (cells) to the nearest alive base; if that distance is at least `GameplayConstants::kDroneReturnToBaseMinBaseDistanceCells` (`36` world-units / `kMazeCellSizeUnits`), `return-to-base` is enabled. If the cache is not built yet, the game rebuilds `BaseDistanceField` and `BaseFlowField` first (same pipeline as maze init / base destruction).
+- After one full turn (`4s`), if `return-to-base` is enabled, evaluate candidate return headings aligned with `BaseFlowField` toward the nearest base and discard any heading with less than `6` units of obstacle-free route.
 - If candidates remain, choose return heading by weighted random: best base-aligned candidate has `60%` weight, remaining `40%` is evenly distributed across the other candidates; if no candidates remain, stay in Watch and keep rotating.
 - If `return-to-base` is not enabled, Watch exits only when clear run ahead `>3` and a heading can be selected that improves separation from nearby enemies.
-- On self-awareness timer restart, drone re-checks nearest-base distance; if distance is `>=36`, it first checks relative bearing to nearest base.
+- On self-awareness timer restart, drone re-checks the same distance rule as Watch (`BaseDistanceField`, rebuilding caches if needed); if far enough, it checks relative bearing to `BaseFlowField`’s next step toward the nearest base (rebuilding caches if needed).
 - If relative bearing is `<80°`, drone keeps moving (already generally pointed toward base) and does not enter Watch.
 - If relative bearing is `>=80°`, drone stops and enters Watch.
 

@@ -1,7 +1,10 @@
 #include "game/navigation/BaseDistanceField.h"
 
 #include <array>
+#include <chrono>
 #include <deque>
+#include <limits>
+#include "core/Log.h"
 
 namespace game::navigation {
 
@@ -45,6 +48,8 @@ void BaseDistanceField::Rebuild(const MazeState& maze, const CellCoordCache& cel
     if (widthCells_ <= 0 || heightCells_ <= 0) {
         return;
     }
+
+    const auto timeBuildStart = std::chrono::steady_clock::now();
 
     const int totalCells = widthCells_ * heightCells_;
     for (int i = 0; i < totalCells; ++i) {
@@ -96,6 +101,15 @@ void BaseDistanceField::Rebuild(const MazeState& maze, const CellCoordCache& cel
     }
 
     hasBuild_ = true;
+
+    const auto timeBuildEnd = std::chrono::steady_clock::now();
+    const double buildTimeMs =
+        std::chrono::duration<double, std::milli>(timeBuildEnd - timeBuildStart).count();
+    bolt::log::Debug(
+        "[NAV] BaseDistanceField rebuild %dx%d cells in %.3f ms",
+        widthCells_,
+        heightCells_,
+        buildTimeMs);
 }
 
 void BaseDistanceField::Invalidate() {

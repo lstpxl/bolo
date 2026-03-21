@@ -497,6 +497,11 @@ void InitializeMazeWorld(GameState& state, const GameplayView& view, Random& ran
         state.world.maze,
         state.world.navigationCache.cellCoords,
         state.world.enemyBases);
+    state.world.navigationCache.baseFlowField.Invalidate();
+    state.world.navigationCache.baseFlowField.Rebuild(
+        state.world.maze,
+        state.world.navigationCache.cellCoords,
+        state.world.navigationCache.baseDistanceField);
 
     if (!TryPlacePlayer(
             state,

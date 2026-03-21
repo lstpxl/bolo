@@ -13,32 +13,82 @@ constexpr float kEightDirectionStep = 3.14159265358979323846F / 4.0F;
 constexpr float kDroneReturnRequiredClearRunUnits = 6.0F;
 constexpr float kEnemyPlanningClearanceScale = 1.5F;
 
+void EnsureBaseDistanceAndFlowBuilt(WorldState& world) {
+    NavigationRuntimeCache& nav = world.navigationCache;
+    nav.cellCoords.ConfigureFromMaze(world.maze);
+    nav.baseDistanceField.EnsureCapacity(world.maze);
+    if (!nav.baseDistanceField.HasBuild()) {
+        nav.baseDistanceField.Rebuild(world.maze, nav.cellCoords, world.enemyBases);
+    }
+    nav.baseFlowField.EnsureCapacity(world.maze);
+    if (!nav.baseFlowField.HasBuild()) {
+        nav.baseFlowField.Rebuild(world.maze, nav.cellCoords, nav.baseDistanceField);
+    }
+}
+
 }  // namespace
+
+bool DroneIsFarEnoughForReturnToBase(WorldState& world, const Vec2f& position) {
+    EnsureBaseDistanceAndFlowBuilt(world);
+    const game::navigation::CellCoordCache& cellCache = world.navigationCache.cellCoords;
+    const game::navigation::BaseDistanceField& baseDistance = world.navigationCache.baseDistanceField;
+    if (!baseDistance.HasBuild()) {
+        return false;
+    }
+    const game::navigation::MazeCellCoord cell = cellCache.WorldToCell(position);
+    if (!cellCache.IsValidCell(cell.x, cell.y)) {
+        return false;
+    }
+    const int graphDist = baseDistance.DistanceAtCell(cell.x, cell.y);
+    if (graphDist == std::numeric_limits<int>::max()) {
+        return false;
+    }
+    return graphDist >= GameplayConstants::kDroneReturnToBaseMinBaseDistanceCells;
+}
+
+bool DroneTryHeadingTowardBaseAlongFlow(WorldState& world, const Vec2f& position, float& outHeading) {
+    EnsureBaseDistanceAndFlowBuilt(world);
+    const game::navigation::CellCoordCache& cellCache = world.navigationCache.cellCoords;
+    const game::navigation::BaseFlowField& baseFlow = world.navigationCache.baseFlowField;
+    if (!baseFlow.HasBuild()) {
+        return false;
+    }
+    const game::navigation::MazeCellCoord cell = cellCache.WorldToCell(position);
+    if (!cellCache.IsValidCell(cell.x, cell.y)) {
+        return false;
+    }
+    const int cellHash = cellCache.CellHash(cell.x, cell.y);
+    if (baseFlow.NextCellHash(cellHash) < 0) {
+        return false;
+    }
+    const Vec2f nextCenter = baseFlow.NextCellCenter(cellHash, cellCache);
+    const Vec2f toNext{
+        .x = nextCenter.x - position.x,
+        .y = nextCenter.y - position.y,
+    };
+    if (std::fabs(toNext.x) <= 0.001F && std::fabs(toNext.y) <= 0.001F) {
+        return false;
+    }
+    outHeading = core::angle::QuantizeToEightDirections(std::atan2(toNext.x, -toNext.y));
+    return true;
+}
 
 void EnterDroneWatchMode(WorldState& world, EnemyTank& enemy, Random& random) {
     enemy.aiMode = EnemyAiMode::Watch;
     enemy.aiModeElapsedSeconds = 0.0F;
     enemy.watchRotateDirection = RandomRotateDirection(random);
-    const float nearestBaseDist = NearestBaseDistance(world, enemy.position);
-    enemy.returnToBase = nearestBaseDist >= 36.0F;
+    enemy.returnToBase = DroneIsFarEnoughForReturnToBase(world, enemy.position);
 }
 
 bool SelectDroneReturnToBaseHeading(
-    const WorldState& world,
+    WorldState& world,
     const EnemyTank& enemy,
     Random& random,
     float& selectedHeading) {
-    const Vec2f nearestBase = NearestBasePosition(world, enemy.position);
-    const Vec2f toBase{
-        .x = nearestBase.x - enemy.position.x,
-        .y = nearestBase.y - enemy.position.y,
-    };
-    if (std::fabs(toBase.x) <= 0.001F && std::fabs(toBase.y) <= 0.001F) {
+    float desiredHeading = 0.0F;
+    if (!DroneTryHeadingTowardBaseAlongFlow(world, enemy.position, desiredHeading)) {
         return false;
     }
-
-    const float desiredHeading = core::angle::QuantizeToEightDirections(
-        std::atan2(toBase.x, -toBase.y));
     const std::array<float, 8> offsets{
         0.0F,
         kEightDirectionStep,

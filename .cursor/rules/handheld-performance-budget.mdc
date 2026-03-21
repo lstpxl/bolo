@@ -1,0 +1,21 @@
+---
+description: Handheld 60 FPS budget — render and fixed-step timing targets
+alwaysApply: true
+---
+
+# Handheld Performance Budget
+
+The game targets **60 FPS** on handheld hardware. Keep frame timing under control using these budgets:
+
+| Phase | Budget |
+|-------|--------|
+| Render | **≤ 6.5 ms** |
+| Fixed step (simulation / fixed timestep work) | **≤ 9.5 ms** |
+
+Together these leave headroom for vsync, OS, and variance while staying within a 16.67 ms frame.
+
+For optimization priorities, workflow, and tactics, follow **`docs/PERFORMANCE_OPTIMIZATION_STRATEGY.md`**.
+
+**When performance falls short** (spikes, sustained misses, profiling showing over-budget work): **investigate root cause and address it** — do not ignore regressions or treat slowness as acceptable without analysis and a fix or an explicit, documented tradeoff in `docs/GAME_DESIGN.md` if behavior must change.
+
+When touching hot paths (render loop, per-frame systems, navigation fields, collision, audio routing), prefer measuring (existing profiling logs, timers, frame stats) over guessing.

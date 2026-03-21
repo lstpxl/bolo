@@ -70,19 +70,16 @@ EnemyPerception RunPerceptionPhase(
     if (enemy.selfAwarenessTimerSeconds <= 0.0F) {
         enemy.selfAwarenessTimerSeconds = enemy.selfAwarenessIntervalSeconds;
         if (enemy.type == EnemyType::Drone) {
-            const float nearestBaseDist = NearestBaseDistance(state.world, enemy.position);
-            if (nearestBaseDist >= 36.0F) {
-                const Vec2f nearestBase = NearestBasePosition(state.world, enemy.position);
-                const Vec2f toBase{
-                    .x = nearestBase.x - enemy.position.x,
-                    .y = nearestBase.y - enemy.position.y,
-                };
-                const float headingToBase = std::atan2(toBase.x, -toBase.y);
-                const float relativeBearing = core::angle::AngleDistance(enemy.headingRadians, headingToBase);
-                if (relativeBearing >= kDroneBaseBearingThresholdRadians) {
-                    // means the drone is facing at least 80° away from the base
-                    enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
-                    EnterDroneWatchMode(state.world, enemy, random);
+            if (DroneIsFarEnoughForReturnToBase(state.world, enemy.position)) {
+                float headingToBase = 0.0F;
+                if (DroneTryHeadingTowardBaseAlongFlow(state.world, enemy.position, headingToBase)) {
+                    const float relativeBearing =
+                        core::angle::AngleDistance(enemy.headingRadians, headingToBase);
+                    if (relativeBearing >= kDroneBaseBearingThresholdRadians) {
+                        // Facing at least 80° off the maze flow step toward the nearest base.
+                        enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
+                        EnterDroneWatchMode(state.world, enemy, random);
+                    }
                 }
             }
         }

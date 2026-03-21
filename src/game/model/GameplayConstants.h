@@ -73,6 +73,9 @@ struct GameplayConstants {
     static constexpr float kDroneDetectRangeUnits = 18.0F;           // world-units
     static constexpr float kDronePursuitSpeedFactor = 0.5F;          // unitless
     static constexpr float kDronePlayerAvoidanceDistanceUnits = 4.0F; // world-units
+    /// Minimum maze graph distance (cells) from nearest alive base for drone "return to base" / Watch distance gate.
+    /// Matches `36` world-units along cardinal edges (`36 / kMazeCellSizeUnits`).
+    static constexpr int kDroneReturnToBaseMinBaseDistanceCells = 36 / kMazeCellSizeUnits;
     static constexpr float kHunterDetectRangeUnits = 15.0F;          // world-units
     static constexpr float kHunterMinDistanceUnits = 3.0F;           // world-units
     static constexpr float kHunterMaxDistanceUnits = 6.0F;           // world-units

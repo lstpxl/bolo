@@ -6,6 +6,7 @@
 #include "game/model/GameplayEvents.h"
 #include "game/model/GameplayConstants.h"
 #include "game/navigation/BaseDistanceField.h"
+#include "game/navigation/BaseFlowField.h"
 #include "game/navigation/CellCoordCache.h"
 #include "game/navigation/PlayerFlowField.h"
 #include "game/spatial/EnemyCellOccupancy.h"
@@ -14,6 +15,7 @@
 struct NavigationRuntimeCache {
     game::navigation::CellCoordCache cellCoords{};
     game::navigation::BaseDistanceField baseDistanceField{};
+    game::navigation::BaseFlowField baseFlowField{};
     game::navigation::PlayerFlowField playerFlowField{};
     game::spatial::EnemyCellOccupancy enemyCellOccupancy{};
     game::spatial::EnemyCellOccupancy enemyRayQueryOccupancy{};

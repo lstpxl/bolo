@@ -123,6 +123,11 @@ void UpdateCollisionSystem(GameState& state, float deltaSeconds) {
             world.maze,
             world.navigationCache.cellCoords,
             world.enemyBases);
+        world.navigationCache.baseFlowField.Invalidate();
+        world.navigationCache.baseFlowField.Rebuild(
+            world.maze,
+            world.navigationCache.cellCoords,
+            world.navigationCache.baseDistanceField);
     }
 
     const auto& profiler = profiling::Profiler::Instance();

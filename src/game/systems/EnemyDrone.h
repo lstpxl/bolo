@@ -8,8 +8,16 @@
 
 void EnterDroneWatchMode(WorldState& world, EnemyTank& enemy, Random& random);
 
+/// True when drone is far enough from the nearest alive base to consider return-to-base (uses `BaseDistanceField`
+/// graph distance in cells). Builds distance + flow caches if missing.
+bool DroneIsFarEnoughForReturnToBase(WorldState& world, const Vec2f& position);
+
+/// Sets `outHeading` to an 8-way heading along `BaseFlowField` toward the nearest base (next cell center).
+/// Builds distance + flow caches if missing. Returns false if there is no outbound flow step.
+bool DroneTryHeadingTowardBaseAlongFlow(WorldState& world, const Vec2f& position, float& outHeading);
+
 bool SelectDroneReturnToBaseHeading(
-    const WorldState& world,
+    WorldState& world,
     const EnemyTank& enemy,
     Random& random,
     float& selectedHeading);
