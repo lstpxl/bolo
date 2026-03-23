@@ -18,7 +18,7 @@ public:
 
 private:
     void RenderGameplayPauseDialog(const FrameInput& input);
-    void Render(const FrameInput& input);
+    bool Render(const FrameInput& input);
 
     AppConfig config_ = MakeDefaultAppConfig();
     FixedStepTimer fixedStepTimer_{config_.fixedDeltaSeconds};

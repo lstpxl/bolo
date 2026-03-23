@@ -48,6 +48,18 @@ void Init() {
     InitProfileLogger(basePath);
 }
 
+void Shutdown() {
+    if (gMainLogger != nullptr) {
+        gMainLogger->flush();
+    }
+    if (gProfileLogger != nullptr) {
+        gProfileLogger->flush();
+    }
+    gMainLogger.reset();
+    gProfileLogger.reset();
+    spdlog::shutdown();
+}
+
 void Debug(const char* fmt, ...) {
     if (gMainLogger == nullptr) {
         return;

@@ -209,6 +209,7 @@ ProfilerState& State() {
 
 const std::array<const char*, kScopeCount> kScopeNames = {
     "frame.total",
+    "frame.cpu_work",
     "frame.fixed_step",
     "game.update",
     "system.ai_update",

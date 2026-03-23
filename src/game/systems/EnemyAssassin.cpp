@@ -236,7 +236,7 @@ bool BuildAssassinCheapFlowSegment(
             world,
             target,
             GameplayConstants::kWallClearanceForAvoidance);
-        bolt::log::Profile(
+        bolt::log::Debug(
             "[ENEMY_ASSASSIN_SEGMENT_COMMIT_DIAG] id=%d stage=%d pos=(%.3f,%.3f) "
             "segEnd=(%.3f,%.3f) heading=%.3f dirFromHeading=(%.3f,%.3f) "
             "dirToTarget=(%.3f,%.3f) dot=%.3f segmentIntersectsWall=%d "

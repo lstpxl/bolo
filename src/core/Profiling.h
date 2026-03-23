@@ -9,6 +9,7 @@ constexpr std::size_t kProfilingWindowFrames = 120;
 
 enum class Scope : std::uint8_t {
     FrameTotal = 0,
+    FrameCpuWork,
     FixedStepUpdate,
     GameUpdate,
     AiUpdate,

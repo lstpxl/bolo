@@ -136,6 +136,25 @@ Convention:
 - first arg = baseline (usually old wiring)
 - second arg = candidate (usually new wiring)
 
+## Handheld log fetch/remove helpers
+
+To copy logs from device and delete remote copies in one step:
+
+```bash
+npm run fetch-logs:rg353v
+```
+
+This fetches:
+
+- `profile.log` -> `profiling-logs/handheld-profile-<N>.log`
+- `bolt.log` -> `profiling-logs/handheld-bolt-<N>.log` (if present)
+
+To delete both remote logs without copying:
+
+```bash
+npm run remove-logs:rg353v
+```
+
 ## Links
 
 [Fire Bullets](https://bdragon1727.itch.io/fire-pixel-bullet-16x16)

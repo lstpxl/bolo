@@ -45,11 +45,11 @@ inline std::vector<EnemySpawnChoice> EnemyTypesForLevel(int level)
             };
         case 7:
             return {
-                {EnemySpawnChoice{.type = EnemyType::Torpedo, .subtype = EnemySubtype::Advanced}},
-                {EnemySpawnChoice{.type = EnemyType::Hunter, .subtype = EnemySubtype::Lord}}};
+                {EnemySpawnChoice{.type = EnemyType::Hunter, .subtype = EnemySubtype::Advanced}}};
         case 8:
             return {
                 {EnemySpawnChoice{.type = EnemyType::Hunter, .subtype = EnemySubtype::Advanced}},
+                {EnemySpawnChoice{.type = EnemyType::Assassin, .subtype = EnemySubtype::Advanced}}
             };
         case 9:
             return {

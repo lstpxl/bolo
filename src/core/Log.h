@@ -8,6 +8,9 @@ namespace bolt::log {
 /// Logs go to {appDir}/bolt.log and {appDir}/profile.log.
 void Init();
 
+/// Flush and tear down loggers. Safe to call if Init was never called or already shut down.
+void Shutdown();
+
 /// Main logger: debug, info, warning, error. Writes to bolt.log.
 void Debug(const char* fmt, ...);
 void Info(const char* fmt, ...);

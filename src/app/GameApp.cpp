@@ -114,64 +114,72 @@ int GameApp::Run() {
         profiling::Profiler::Instance().BeginFrame();
         {
             profiling::ScopedProfile frameScope(profiling::Scope::FrameTotal, true);
+            bool frameHasBackbufferWork = false;
             FrameInput input{};
             {
-                profiling::ScopedProfile inputScope(profiling::Scope::FrameInputPoll);
-                input = PollFrameInput();
-            }
-            if (input.quitRequested) {
-                exitRequested_ = true;
-            } else {
-                fixedStepTimer_.Accumulate(GetFrameTime());
+                profiling::ScopedProfile cpuWorkScope(profiling::Scope::FrameCpuWork, true);
+                {
+                    profiling::ScopedProfile inputScope(profiling::Scope::FrameInputPoll);
+                    input = PollFrameInput();
+                }
+                if (input.quitRequested) {
+                    exitRequested_ = true;
+                } else {
+                    fixedStepTimer_.Accumulate(GetFrameTime());
 
-                int fixedStepsThisFrame = 0;
-                constexpr int kMaxFixedStepsPerFrame = 4;
-                while (fixedStepTimer_.ShouldStep() && fixedStepsThisFrame < kMaxFixedStepsPerFrame) {
-                    profiling::ScopedProfile fixedStepScope(profiling::Scope::FixedStepUpdate, true);
-                    if (game_.Mode() == GameMode::Playing) {
-                        if (input.gameplayPausePressed && !gameplayPauseDialogOpen_) {
-                            gameplayPauseDialogOpen_ = true;
-                            gameplayPauseDialog_.Open(ConfirmationDialog::Focus::Cancel);
-                        }
-                        if (!gameplayPauseDialogOpen_) {
-                            const float stepSeconds = fixedStepTimer_.StepSeconds();
-                            game_.Update(input, stepSeconds, BuildGameplayView(config_));
-                            GameState& afterUpdate = game_.MutableState();
-                            {
-                                profiling::ScopedProfile audioRouteScope(profiling::Scope::AudioRouteStep);
-                                audioEventRouter_.RouteStep(
-                                    afterUpdate.world.player.position,
-                                    afterUpdate.world.gameplayEvents,
-                                    AudioEventRouterConfig{
-                                        .audioReady = audioReady_,
-                                        .powerUpLoaded = powerUpSoundLoaded_,
-                                        .playerShotLoaded = playerShotSoundLoaded_,
-                                        .enemyShotLoaded = enemyShotSoundLoaded_,
-                                        .enemySpawningLoaded = enemySpawningSoundLoaded_,
-                                        .enemyExplodingLoaded = enemyExplodingSoundLoaded_,
-                                        .baseExplodingLoaded = baseExplodingSoundLoaded_,
-                                        .powerUpSound = &powerUpSound_,
-                                        .playerShotSound = &playerShotSound_,
-                                        .enemyShotSound = &enemyShotSound_,
-                                        .enemySpawningSound = &enemySpawningSound_,
-                                        .enemyExplodingSound = &enemyExplodingSound_,
-                                        .baseExplodingSound = &baseExplodingSound_,
-                                    });
+                    int fixedStepsThisFrame = 0;
+                    constexpr int kMaxFixedStepsPerFrame = 4;
+                    while (fixedStepTimer_.ShouldStep() && fixedStepsThisFrame < kMaxFixedStepsPerFrame) {
+                        profiling::ScopedProfile fixedStepScope(profiling::Scope::FixedStepUpdate, true);
+                        if (game_.Mode() == GameMode::Playing) {
+                            if (input.gameplayPausePressed && !gameplayPauseDialogOpen_) {
+                                gameplayPauseDialogOpen_ = true;
+                                gameplayPauseDialog_.Open(ConfirmationDialog::Focus::Cancel);
+                            }
+                            if (!gameplayPauseDialogOpen_) {
+                                const float stepSeconds = fixedStepTimer_.StepSeconds();
+                                game_.Update(input, stepSeconds, BuildGameplayView(config_));
+                                GameState& afterUpdate = game_.MutableState();
+                                {
+                                    profiling::ScopedProfile audioRouteScope(profiling::Scope::AudioRouteStep);
+                                    audioEventRouter_.RouteStep(
+                                        afterUpdate.world.player.position,
+                                        afterUpdate.world.gameplayEvents,
+                                        AudioEventRouterConfig{
+                                            .audioReady = audioReady_,
+                                            .powerUpLoaded = powerUpSoundLoaded_,
+                                            .playerShotLoaded = playerShotSoundLoaded_,
+                                            .enemyShotLoaded = enemyShotSoundLoaded_,
+                                            .enemySpawningLoaded = enemySpawningSoundLoaded_,
+                                            .enemyExplodingLoaded = enemyExplodingSoundLoaded_,
+                                            .baseExplodingLoaded = baseExplodingSoundLoaded_,
+                                            .powerUpSound = &powerUpSound_,
+                                            .playerShotSound = &playerShotSound_,
+                                            .enemyShotSound = &enemyShotSound_,
+                                            .enemySpawningSound = &enemySpawningSound_,
+                                            .enemyExplodingSound = &enemyExplodingSound_,
+                                            .baseExplodingSound = &baseExplodingSound_,
+                                        });
+                                }
                             }
                         }
+                        fixedStepTimer_.ConsumeStep();
+                        ++fixedStepsThisFrame;
                     }
-                    fixedStepTimer_.ConsumeStep();
-                    ++fixedStepsThisFrame;
-                }
 
-                {
-                    profiling::ScopedProfile renderScope(profiling::Scope::FrameRender);
-                    Render(input);
+                    {
+                        profiling::ScopedProfile renderScope(profiling::Scope::FrameRender);
+                        frameHasBackbufferWork = Render(input);
+                    }
+                    if (audioReady_ && menuMusicGeneratorReady_) {
+                        menuMusicGenerator_.SetEnabled(game_.Mode() == GameMode::Menu);
+                        menuMusicGenerator_.Update();
+                    }
                 }
-                if (audioReady_ && menuMusicGeneratorReady_) {
-                    menuMusicGenerator_.SetEnabled(game_.Mode() == GameMode::Menu);
-                    menuMusicGenerator_.Update();
-                }
+            }
+            if (frameHasBackbufferWork) {
+                profiling::ScopedProfile presentScope(profiling::Scope::FramePresent);
+                EndDrawing();
             }
         }
         profiling::Profiler::Instance().EndFrame();
@@ -216,6 +224,7 @@ int GameApp::Run() {
         CloseAudioDevice();
     }
     CloseWindow();
+    bolt::log::Shutdown();
     return 0;
 }
 
@@ -251,7 +260,7 @@ void GameApp::RenderGameplayPauseDialog(const FrameInput& input) {
     }
 }
 
-void GameApp::Render(const FrameInput& input) {
+bool GameApp::Render(const FrameInput& input) {
     if (game_.Mode() == GameMode::Playing) {
         renderer_.PrepareGameplayRender(game_.State(), config_, input);
     }
@@ -298,7 +307,6 @@ void GameApp::Render(const FrameInput& input) {
         drawLogicalFrame();
         EndTextureMode();
 
-        profiling::ScopedProfile presentScope(profiling::Scope::FramePresent);
         BeginDrawing();
         ClearBackground(BLACK);
         const Rectangle source{
@@ -314,12 +322,10 @@ void GameApp::Render(const FrameInput& input) {
             .height = static_cast<float>(config_.screenHeight * kPresentationScale),
         };
         DrawTexturePro(presentationTarget_.texture, source, dest, Vector2{0.0F, 0.0F}, 0.0F, WHITE);
-        EndDrawing();
-        return;
+        return true;
     }
 
-    profiling::ScopedProfile presentScope(profiling::Scope::FramePresent);
     BeginDrawing();
     drawLogicalFrame();
-    EndDrawing();
+    return true;
 }
