@@ -21,4 +21,8 @@ void Error(const char* fmt, ...);
 /// Preserves [PROFILE], [ENEMY_*] etc. format for compare-handheld-profiles.py.
 void Profile(const char* fmt, ...);
 
+/// Redirect raylib TraceLog output into bolt.log.
+/// This keeps profile.log focused on profiling telemetry only.
+void RedirectRaylibTraceLogsToBoltLog();
+
 }  // namespace bolt::log

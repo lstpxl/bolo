@@ -15,6 +15,40 @@ constexpr std::size_t kLogBufferSize = 1024;
 std::shared_ptr<spdlog::logger> gMainLogger;
 std::shared_ptr<spdlog::logger> gProfileLogger;
 
+bool IsDebugTelemetryLine(const std::string& line) {
+    return line.find("_DEBUG") != std::string::npos ||
+        line.find("_DIAG") != std::string::npos ||
+        line.find("_DROP") != std::string::npos ||
+        line.find("_EVENT") != std::string::npos;
+}
+
+void RaylibTraceToBoltLog(int logLevel, const char* text, va_list args) {
+    if (gMainLogger == nullptr || text == nullptr) {
+        return;
+    }
+    std::array<char, kLogBufferSize> buf{};
+    std::vsnprintf(buf.data(), buf.size(), text, args);
+    switch (logLevel) {
+    case LOG_TRACE:
+    case LOG_DEBUG:
+        gMainLogger->debug("RAYLIB: {}", buf.data());
+        break;
+    case LOG_INFO:
+        gMainLogger->info("RAYLIB: {}", buf.data());
+        break;
+    case LOG_WARNING:
+        gMainLogger->warn("RAYLIB: {}", buf.data());
+        break;
+    case LOG_ERROR:
+    case LOG_FATAL:
+        gMainLogger->error("RAYLIB: {}", buf.data());
+        break;
+    default:
+        gMainLogger->info("RAYLIB: {}", buf.data());
+        break;
+    }
+}
+
 std::string LogBasePath() {
     const char* appDir = GetApplicationDirectory();
     if (appDir != nullptr && appDir[0] != '\0') {
@@ -46,6 +80,7 @@ void Init() {
     const std::string basePath = LogBasePath();
     InitMainLogger(basePath);
     InitProfileLogger(basePath);
+    RedirectRaylibTraceLogsToBoltLog();
 }
 
 void Shutdown() {
@@ -109,7 +144,7 @@ void Error(const char* fmt, ...) {
 }
 
 void Profile(const char* fmt, ...) {
-    if (gProfileLogger == nullptr) {
+    if (gProfileLogger == nullptr && gMainLogger == nullptr) {
         return;
     }
     std::array<char, kLogBufferSize> buf{};
@@ -121,7 +156,22 @@ void Profile(const char* fmt, ...) {
     while (!line.empty() && (line.back() == '\n' || line.back() == '\r')) {
         line.pop_back();
     }
-    gProfileLogger->info("{}", line);
+    if (IsDebugTelemetryLine(line)) {
+        if (gMainLogger != nullptr) {
+            gMainLogger->debug("{}", line);
+        }
+        return;
+    }
+    if (gProfileLogger != nullptr) {
+        gProfileLogger->info("{}", line);
+    }
+}
+
+void RedirectRaylibTraceLogsToBoltLog() {
+    if (gMainLogger == nullptr) {
+        return;
+    }
+    SetTraceLogCallback(RaylibTraceToBoltLog);
 }
 
 }  // namespace bolt::log
