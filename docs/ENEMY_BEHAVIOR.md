@@ -35,9 +35,16 @@ For each frame:
   - `Cheap` otherwise.
 - On `Cheap -> Full`, reset cheap-tier cached movement state, especially assassin segment/fail caches.
 
-### Stage 2 - Perception
+### Per-enemy loop: cheap tier vs full tier
 
-`RunPerceptionPhase(...)` performs shared perception:
+Each enemy iteration starts with `enemy.seesPlayer = false`. Then:
+
+- **Cheap tier:** run `AdvanceCheapTierTimers(...)` (self-awareness, fire cooldown decay, torpedo offscreen detect timer), then `ApplyCheapTierMovement(...)`, update `cellCoord` / occupancy, and **`continue`** — no `RunPerceptionPhase`, no decision/movement block below, no `RunFiringPhase`.
+- **Full tier:** run Stages 2–6 for that enemy.
+
+### Stage 2 - Perception (full tier only)
+
+`RunPerceptionPhase(...)` runs only on the full-tier path:
 
 - Update self-awareness timer:
   - Drone interval random `5..8` seconds; re-rolled after each expiry; drone self-awareness action (`TryDroneSelfAwarenessReset` → optional `DroneReset`) runs on expiry in **both** full tier (here) and cheap tier (`AdvanceCheapTierTimers`).
@@ -46,8 +53,9 @@ For each frame:
 - Compute obscurity:
   - `playerInvisible || IsSegmentObscuredByWall(...)`
 - Set `enemy.seesPlayer = player.alive && !playerObscured`.
+- **Torpedo:** if the above would be true but the player lies outside a forward ±45° arc (rear blind cone), clear `seesPlayer`.
 - Set assassin LOS speed gate flag:
-  - `assassinHasLineOfSight = (assassin && in aggro range && !obscured)`
+  - `assassinHasLineOfSight = (assassin && in aggro range && !obscured)` where aggro uses `kEnemyAggroRangeUnits`
 
 ### Stage 3 - Decision / Mode Transitions
 
@@ -77,7 +85,7 @@ Per full-tier enemy:
 
 #### Cheap Tier
 
-- Shared timer updates run in `AdvanceCheapTierTimers(...)` (self-awareness timer matches perception; drones call `TryDroneSelfAwarenessReset` when the timer expires).
+- Handled before Stages 2–5: `AdvanceCheapTierTimers(...)` (self-awareness timer matches full-tier perception rolls; drones call `TryDroneSelfAwarenessReset` when the timer expires; torpedoes use a separate offscreen detect interval — see Torpedo).
 - Movement runs in `ApplyCheapTierMovement(...)`.
 - Cheap-tier behavior is type-specialized:
   - Drone/Torpedo: offscreen segment movement with sparse recompute.
@@ -85,16 +93,16 @@ Per full-tier enemy:
   - Assassin: flow-driven cheap segments with staged recovery and anti-stacking slow mode.
 - Cheap tier does not run the full enemy-enemy collision post-pass.
 
-### Stage 5 - Firing
+### Stage 5 - Firing (full tier only)
 
-`RunFiringPhase(...)` is shared and requires all gates:
+`RunFiringPhase(...)` runs only on the full-tier path (cheap tier only ticks `fireCooldownSeconds` in `AdvanceCheapTierTimers`). Gates:
 
 - Player alive
 - Cooldown <= 0
 - Enemy inside player viewport
 - Player not obscured (`!playerObscured`)
 - Type-specific cone gate passes (torpedo stricter in `Ram`)
-- Distance to player is within that type’s **detect range** (same radii as AI / debug LOS: Drone `kDroneDetectRangeUnits`, Hunter `kHunterDetectRangeUnits`, Assassin `kEnemyAggroRangeUnits`, Torpedo `kTorpedoDetectRangeUnits` or `kTorpedoRamDetectRangeUnits` in `Ram`)
+- Distance to player is within that type’s **max fire range** from `EnemyProjectileMaxRangeUnits` in `EnemySystemCombatPhase.cpp` (aligned with AI radii): Drone `kDroneDetectRangeUnits` (`18`), Hunter `kHunterDetectRangeUnits` (`15`), Assassin `kEnemyAggroRangeUnits` (`15`), Torpedo `kTorpedoDetectRangeUnits` (`9`) or `kTorpedoRamDetectRangeUnits` (`12`) in `Ram`
 
 When fired:
 
@@ -149,8 +157,8 @@ After per-enemy movement, full-tier enemies run one collision/separation post-pa
 
 ### Invisibility Interactions
 
-- Perception path marks player obscured while invisibility is enabled.
-- Shared firing phase blocks enemy shots when player is obscured.
+- Full-tier perception marks player obscured while invisibility is enabled.
+- Full-tier firing blocks enemy shots when player is obscured.
 - Flow cache is deactivated while invisibility is enabled.
 
 ## 3) Shared Behavior Across Enemy Types
@@ -174,8 +182,8 @@ After per-enemy movement, full-tier enemies run one collision/separation post-pa
 
 ### Shared Perception and Shooting
 
-- One shared perception phase (`RunPerceptionPhase(...)`) for all types.
-- One shared firing phase (`RunFiringPhase(...)`) for all types.
+- `RunPerceptionPhase(...)` runs for **full-tier** enemies only (cheap tier skips it; `seesPlayer` stays false for that frame).
+- `RunFiringPhase(...)` runs for **full-tier** enemies only (cheap-tier enemies do not shoot until full tier).
 - Torpedo only adds a type-specific cone gate during firing.
 
 ### Shared Speed Framework
@@ -194,7 +202,7 @@ After per-enemy movement, full-tier enemies run one collision/separation post-pa
 
 Modes: `Wander`, `Watch`
 
-- Pursuit trigger: sees player and distance `<= kDroneDetectRangeUnits` (`12`).
+- Pursuit trigger: sees player and distance `<= kDroneDetectRangeUnits` (`18`).
 - Pursuit speed: normal drone speed scaled by `kDronePursuitSpeedFactor` (`0.5`).
 - Pursuit heading:
   - choose nearest valid 8-way heading toward player
@@ -217,12 +225,13 @@ Modes: `Wander`, `Watch`
 
 Modes: `Fly`, `Ram`, `Retreat`, `Targeting`, `Rotate`
 
-- Detection cadence: throttled every `0.25` seconds.
+- **Full tier:** Ram / player-detect refresh throttled every `kTorpedoPlayerDetectIntervalSeconds` (`0.25` s) in `EnemySystem.cpp` (updates `torpedoPlayerDetected` from `seesPlayer` and ram range).
+- **Cheap tier:** `AdvanceCheapTierTimers` uses `kOffscreenTorpedoDetectIntervalSeconds` (`0.6` s) in `EnemySystemCheapTier.cpp` to tick the torpedo detect timer and clear `torpedoPlayerDetected`; Ram eligibility is only updated on the full-tier path (cheap torpedoes stay `Fly` until tiering promotes them).
 - Ram trigger:
   - sees player and distance `<= kTorpedoRamDetectRangeUnits` (`12`)
   - exits Ram when no longer detected
 - Full-tier steering turn cap:
-  - `Ram` turns toward the player; `Fly` with an active fly path turns toward the current segment waypoint bearing (same builder as cheap-tier); `Fly` fallback probe and `Retreat`/uncouple use an 8-way target; `Rotate` turns toward the chosen heading — all at most `kTorpedoFullTierTurnSpeedRadiansPerSecond` (`45 deg/s`)
+  - `Ram` turns toward the player; `Fly` with an active fly path turns toward the current segment waypoint bearing (same builder as cheap-tier); `Fly` fallback probe and `Retreat`/uncouple use an 8-way target; `Rotate` turns toward the chosen heading — all at most `kTorpedoFullTierTurnSpeedRadiansPerSecond` (`2.0` rad/s per `GameplayConstants.h`; integrate per frame with `deltaSeconds`)
 - Ram steering:
   - turn toward player at the full-tier turn rate above
   - forward speed integrated with heading-based acceleration; clamped to `kEnemyTorpedoSpeedMax * EnemySubtypeSpeedMultiplier` (`2×` baseline torpedo speed)
@@ -251,18 +260,16 @@ Modes: `Fly`, `Ram`, `Retreat`, `Targeting`, `Rotate`
 
 Modes: `Scout`, `Chase`, `Rotate`
 
-- Chase trigger: sees player and distance `<= kHunterDetectRangeUnits` (`12`).
+- Chase trigger: sees player and distance `<= kHunterDetectRangeUnits` (`15`).
 - Chase behavior:
   - if distance < `kHunterMinDistanceUnits` (`3`): back away
   - if distance > `kHunterMaxDistanceUnits` (`6`): move toward player
   - else hold (`speed = 0`)
 - Scout pathing:
-  - two-level planning in `SelectHunterScoutMotion(...)`
-  - direction scoring over 8 directions based on:
-    - directional run length
-    - first-cell enemy count
-    - turn cost from current heading
-  - uses exponential decay weighting (`core::math::ExpDecayA1K07`)
+  - two-level planning in `SelectHunterScoutMotion(...)` (path candidates built in `EnsureHunterScoutPath(...)`)
+  - direction scoring over 8 directions in `EnsureHunterScoutPath(...)`:
+    - run length and first-cell enemy count weighted with `core::math::ExpDecayA1K07`
+    - turn cost from current heading: linear penalty `1.0 - kHeadingPenaltyPerTurnStep * turnSteps` (`0.2` per cardinal turn step)
   - base-occupied cells are blocked
   - builds 1-2 segment path to target cell center (or adjusted endpoint)
 - Rotate fallback:
@@ -279,7 +286,7 @@ Modes: `Pursuit`, `Uncouple`
   - `kUseAssassinFlowFieldOnlyNavigation = true`
   - `kUseAssassinAStarBackupNavigation = false`
 - Full-tier pursuit:
-  - if player visible and too close (`distance < kAssassinMinDistanceUnits`), stop and clear path/flow caches
+  - if player visible and too close (`distance < kAssassinMinDistanceUnits`, `4` units), stop and clear path/flow caches
   - otherwise try flow step (`TrySelectAssassinFlowNextStep(...)`)
   - if flow step unavailable, fall back to quantized heading toward predicted player position
 - Flow-step caching:
@@ -312,7 +319,7 @@ The list below is intentionally explicit: each item states what `GAME_DESIGN.md`
 
 4. Aggro-range terminology
    - `GAME_DESIGN.md`: enemy detection/aggro wording is often centered around 12-unit per-type detect thresholds.
-   - Code: shared aggro constant `kEnemyAggroRangeUnits = 16` exists and is used for assassin LOS-speed gating, while per-type transitions still use dedicated detect ranges (for example drone/hunter/torpedo 12).
+   - Code: `kEnemyAggroRangeUnits = 15` is used for assassin LOS-speed gating and assassin max projectile range. Per-type AI/fire radii in `GameplayConstants.h` include drone `18`, hunter `15`, torpedo `9` (non-`Ram`) / `12` (Ram), not a single 12-unit rule for all types.
 
 5. Hunter relation to player flow-field
    - `GAME_DESIGN.md`: flow-field activation text groups hunters and assassins as flow consumers.
@@ -348,4 +355,5 @@ Use this short checklist whenever enemy behavior changes:
   - the relevant enemy-specific subsection (`Drone`/`Torpedo`/`Hunter`/`Assassin`)
   - the shared/systems section if the change affects perception, firing, tiering, uncouple, flow, or cheap-tier.
 - Re-check boundary operators and constants (`<` vs `<=`, detect/fire ranges, cone thresholds) against `GameplayConstants.h` and call sites.
+- Remember cheap-tier enemies skip `RunPerceptionPhase` and `RunFiringPhase` (see §1).
 - Keep Section 5 current: add/remove discrepancy items whenever `GAME_DESIGN.md` and runtime behavior diverge or are brought back into sync.

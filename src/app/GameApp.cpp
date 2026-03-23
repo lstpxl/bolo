@@ -60,11 +60,11 @@ GameplayView BuildGameplayView(const AppConfig& config) {
 int GameApp::Run() {
     core::math::InitializeLookupTables();
 
+    bolt::log::Init();
     InitWindow(
         config_.screenWidth * kPresentationScale,
         config_.screenHeight * kPresentationScale,
         config_.windowTitle.data());
-    bolt::log::Init();
     SetExitKey(KEY_NULL);
     SetTargetFPS(config_.targetFps);
     ConfigureRayguiDefaultStyle();
@@ -223,6 +223,7 @@ int GameApp::Run() {
         }
         CloseAudioDevice();
     }
+    bolt::log::PrepareRaylibShutdown();
     CloseWindow();
     bolt::log::Shutdown();
     return 0;

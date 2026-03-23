@@ -120,8 +120,10 @@ App exit combo: `START + SELECT`.
 
 The app writes logs next to the executable:
 
-- `bolt.log` – debug, info, warnings (resource loading, etc.)
-- `profile.log` – profiling telemetry (`[PROFILE]`, `[ENEMY_*]`, etc.)
+- `bolt.log` – debug, info, warnings (resource loading, etc.), raylib `TraceLog` (prefixed `RAYLIB:`), and detailed enemy telemetry that is not meant for diffing
+- `profile.log` – `[PROFILE]` scope summaries plus a small set of periodic `[ENEMY_*]` aggregates used by `scripts/compare-handheld-profiles.py` (other `[ENEMY_*]` lines go to `bolt.log` only)
+
+Logging initializes **before** `InitWindow` so raylib load messages are not lost to stderr, and raylib trace is silenced immediately before `CloseWindow` so unload `INFO:` lines cannot splice into `profile.log` if stdout/stderr are merged with that file by a launcher.
 
 ## Compare handheld profiling logs
 

@@ -22,6 +22,37 @@ bool IsDebugTelemetryLine(const std::string& line) {
         line.find("_EVENT") != std::string::npos;
 }
 
+/// Periodic enemy summaries used by scripts/compare-handheld-profiles.py and coarse perf reads.
+/// Any other `[ENEMY_*]` line is detailed telemetry -> bolt.log only.
+bool IsAllowedEnemyProfilePrefix(const std::string& line) {
+    static constexpr const char* kAllowed[] = {
+        "[ENEMY_STATS]",
+        "[ENEMY_WINDOW]",
+        "[ENEMY_SEGMENTS]",
+        "[ENEMY_GRID]",
+        "[ENEMY_COLLISION_WINDOW]",
+        "[ENEMY_NAV_CACHE]",
+        "[ENEMY_SAP]",
+        "[ENEMY_PAIR_TYPES]",
+    };
+    for (const char* prefix : kAllowed) {
+        if (line.starts_with(prefix)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool ShouldRouteProfileLineToBoltLogOnly(const std::string& line) {
+    if (IsDebugTelemetryLine(line)) {
+        return true;
+    }
+    if (!line.starts_with("[ENEMY_")) {
+        return false;
+    }
+    return !IsAllowedEnemyProfilePrefix(line);
+}
+
 void RaylibTraceToBoltLog(int logLevel, const char* text, va_list args) {
     if (gMainLogger == nullptr || text == nullptr) {
         return;
@@ -81,6 +112,17 @@ void Init() {
     InitMainLogger(basePath);
     InitProfileLogger(basePath);
     RedirectRaylibTraceLogsToBoltLog();
+    SetTraceLogLevel(LOG_INFO);
+}
+
+void PrepareRaylibShutdown() {
+    if (gMainLogger != nullptr) {
+        gMainLogger->flush();
+    }
+    if (gProfileLogger != nullptr) {
+        gProfileLogger->flush();
+    }
+    SetTraceLogLevel(LOG_NONE);
 }
 
 void Shutdown() {
@@ -156,7 +198,7 @@ void Profile(const char* fmt, ...) {
     while (!line.empty() && (line.back() == '\n' || line.back() == '\r')) {
         line.pop_back();
     }
-    if (IsDebugTelemetryLine(line)) {
+    if (ShouldRouteProfileLineToBoltLogOnly(line)) {
         if (gMainLogger != nullptr) {
             gMainLogger->debug("{}", line);
         }

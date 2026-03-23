@@ -11,6 +11,7 @@ The game targets **60 FPS** on handheld hardware. Keep frame timing under contro
 |-------|--------|
 | Render | **≤ 6.5 ms** |
 | Fixed step (simulation / fixed timestep work) | **≤ 9.5 ms** |
+| frame.cpu_work | **≤ 15.0 ms** |
 
 Together these leave headroom for vsync, OS, and variance while staying within a 16.67 ms frame.
 
