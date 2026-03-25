@@ -12,7 +12,8 @@ struct EnemyPerception {
     float distanceToPlayerSq = 0.0F;
     float distanceToPlayer = 0.0F;
     bool playerObscured = false;
-    bool assassinHasLineOfSight = false;
+    /// Assassin-only: fast-movement band when player is seen and within `kEnemyAggroRangeUnits`.
+    bool assassinInAggroMode = false;
 };
 
 float EnemyFireInterval(EnemyType type);

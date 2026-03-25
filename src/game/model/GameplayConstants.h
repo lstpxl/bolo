@@ -48,6 +48,13 @@ struct GameplayConstants {
     static constexpr float kEnemyAssassinFireInterval = 1.0F;        // seconds
     static constexpr float kEnemyProjectileSpeed = 7.0F;             // world-units / second
     static constexpr float kEnemyAggroRangeUnits = 15.0F;           // world-units
+    /// Half-angle (radians) from hull forward for `seesPlayer`: visible if bearing to player
+    /// is within this arc (default ±90° → forward hemisphere).
+    static constexpr float kEnemyForwardVisionHalfAngleRadiansDefault =
+        1.57079632679489661923F;  // π/2, 90°
+    /// Torpedo: tighter forward arc (±45°); outside this arc `seesPlayer` is false.
+    static constexpr float kTorpedoForwardVisionHalfAngleRadians =
+        0.78539816339744830962F;  // π/4, 45°
     // Enemy projectile max distance uses per-type detect ranges (see RunFiringPhase).
     static constexpr float kEnemyAssassinPredictionSeconds = 0.8F;   // seconds
     static constexpr float kEnemyAiRetargetMinSeconds = 0.7F;        // seconds

@@ -10,7 +10,13 @@
 #include "game/systems/ProjectileSystem.h"
 
 namespace {
-constexpr float kTorpedoRearBlindHalfAngleRadians = 0.7853982F;  // 45 degrees
+
+float ForwardVisionHalfAngleRadians(EnemyType type) {
+    if (type == EnemyType::Torpedo) {
+        return GameplayConstants::kTorpedoForwardVisionHalfAngleRadians;
+    }
+    return GameplayConstants::kEnemyForwardVisionHalfAngleRadiansDefault;
+}
 
 /// Max distance at which an enemy may spawn a projectile toward the player — aligned with
 /// per-type detection / debug LOS radii (`GameplayConstants`).
@@ -85,23 +91,23 @@ EnemyPerception RunPerceptionPhase(
     perception.toPlayerNormalized = NormalizeOrZero(perception.toPlayer);
     perception.distanceToPlayerSq = DistanceSq(enemy.position, state.world.player.position);
     perception.distanceToPlayer = std::sqrt(perception.distanceToPlayerSq);
-    const bool playerInAggroRange =
-        !playerInvisible &&
-        perception.distanceToPlayerSq <=
-            (GameplayConstants::kEnemyAggroRangeUnits * GameplayConstants::kEnemyAggroRangeUnits);
     perception.playerObscured =
         playerInvisible ||
         game::geometry::IsSegmentObscuredByWall(state.world, enemy.position, state.world.player.position);
     enemy.seesPlayer = state.world.player.alive && !perception.playerObscured;
-    if (enemy.seesPlayer && enemy.type == EnemyType::Torpedo) {
+    if (enemy.seesPlayer && perception.distanceToPlayerSq > 1.0e-8F) {
         const float headingToPlayer = std::atan2(perception.toPlayer.x, -perception.toPlayer.y);
         const float relativeBearing = core::angle::AngleDistance(enemy.headingRadians, headingToPlayer);
-        if (relativeBearing > kTorpedoRearBlindHalfAngleRadians) {
+        if (relativeBearing > ForwardVisionHalfAngleRadians(enemy.type)) {
             enemy.seesPlayer = false;
         }
     }
-    perception.assassinHasLineOfSight =
-        enemy.type == EnemyType::Assassin && playerInAggroRange && !perception.playerObscured;
+    {
+        const float aggroRangeSq =
+            GameplayConstants::kEnemyAggroRangeUnits * GameplayConstants::kEnemyAggroRangeUnits;
+        perception.assassinInAggroMode = enemy.type == EnemyType::Assassin && enemy.seesPlayer &&
+            perception.distanceToPlayerSq <= aggroRangeSq;
+    }
     return perception;
 }
 

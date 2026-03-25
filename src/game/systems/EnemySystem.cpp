@@ -191,7 +191,7 @@ const char* EnemySimTierLabel(EnemySimTier tier)
     return "Unknown";
 }
 
-float EnemySpeed(EnemyType type, EnemySubtype subtype, bool assassinHasLineOfSight, int levelNumber)
+float EnemySpeed(EnemyType type, EnemySubtype subtype, bool assassinInAggroMode, int levelNumber)
 {
     float baseSpeed = GameplayConstants::kEnemyDroneSpeed;
     if (type == EnemyType::Drone) {
@@ -201,7 +201,7 @@ float EnemySpeed(EnemyType type, EnemySubtype subtype, bool assassinHasLineOfSig
     } else if (type == EnemyType::Hunter) {
         baseSpeed = GameplayConstants::kEnemyHunterSpeed;
     } else {
-        baseSpeed = assassinHasLineOfSight ? 3.0F : 1.5F;
+        baseSpeed = assassinInAggroMode ? 3.0F : 1.5F;
     }
     float speed = baseSpeed * EnemySubtypeSpeedMultiplier(type, subtype);
     // Level 9: assassin-only debug level with 4× assassin speed for flow-field testing.
@@ -233,9 +233,7 @@ EnemySimTier DetermineEnemySimTier(
     const int dx = std::abs(enemy.cellCoord.x - playerCell.x);
     const int dy = std::abs(enemy.cellCoord.y - playerCell.y);
     const bool nearPlayer = std::max(dx, dy) <= fullTierRadiusCells;
-    const bool forceFullForTorpedoState =
-        enemy.type == EnemyType::Torpedo && enemy.aiMode != EnemyAiMode::Fly;
-    return (nearPlayer || forceFullForTorpedoState) ? EnemySimTier::Full : EnemySimTier::Cheap;
+    return nearPlayer ? EnemySimTier::Full : EnemySimTier::Cheap;
 }
 
 bool SegmentIntersectsWall(
@@ -560,6 +558,14 @@ void UpdateEnemySystem(
         }
 
         if (enemy.simTier == EnemySimTier::Cheap) {
+            if (enemy.type == EnemyType::Torpedo && enemy.aiMode != EnemyAiMode::Fly) {
+                // Cheap-tier torpedo logic is fly-only; drop non-fly state immediately.
+                enemy.aiMode = EnemyAiMode::Fly;
+                enemy.aiModeElapsedSeconds = 0.0F;
+                enemy.torpedoPlayerDetected = false;
+                enemy.torpedoRetreatMovedUnits = 0.0F;
+                InvalidateTorpedoFlyPath(enemy);
+            }
             if (enemy.type == EnemyType::Drone && enemy.droneWatchAlignToHeading) {
                 enemy.droneWatchAlignToHeading = false;
                 if (enemy.aiMode == EnemyAiMode::Watch) {
@@ -608,7 +614,7 @@ void UpdateEnemySystem(
 
         float movementHeading = QuantizeToEightDirections(enemy.headingRadians);
         float speed = EnemySpeed(
-            enemy.type, enemy.subtype, perception.assassinHasLineOfSight,
+            enemy.type, enemy.subtype, perception.assassinInAggroMode,
             state.menuSettings.levelNumber);
         float targetSpeed = speed;
         bool preserveContinuousHeading = false;

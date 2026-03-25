@@ -31,8 +31,7 @@ For each frame:
 - Precompute uncouple priority scores via `ComputeUncoupleEscapeScore(...)`.
 - Determine simulation tier per enemy with `DetermineEnemySimTier(...)`:
   - `Full` if enemy is within 3 cells of player (`Chebyshev` cell distance).
-  - `Full` for torpedoes in any non-`Fly` mode.
-  - `Cheap` otherwise.
+  - `Cheap` otherwise (no mode/type exceptions).
 - On `Cheap -> Full`, reset cheap-tier cached movement state, especially assassin segment/fail caches.
 
 ### Per-enemy loop: cheap tier vs full tier
@@ -53,9 +52,9 @@ Each enemy iteration starts with `enemy.seesPlayer = false`. Then:
 - Compute obscurity:
   - `playerInvisible || IsSegmentObscuredByWall(...)`
 - Set `enemy.seesPlayer = player.alive && !playerObscured`.
-- **Torpedo:** if the above would be true but the player lies outside a forward ±45° arc (rear blind cone), clear `seesPlayer`.
-- Set assassin LOS speed gate flag:
-  - `assassinHasLineOfSight = (assassin && in aggro range && !obscured)` where aggro uses `kEnemyAggroRangeUnits`
+- **Forward vision arc (all types):** if the above would be true, require the player to lie within a forward half-angle from hull heading (`AngleDistance` vs `headingToPlayer`). Default half-angle `kEnemyForwardVisionHalfAngleRadiansDefault` (±90°). Torpedo uses `kTorpedoForwardVisionHalfAngleRadians` (±45°). If the enemy is essentially co-located with the player, the arc check is skipped.
+- Set assassin aggro speed flag (full-tier speed uses this):
+  - `assassinInAggroMode = (assassin && seesPlayer && distance <= kEnemyAggroRangeUnits)` (distance check uses squared compare in code)
 
 ### Stage 3 - Decision / Mode Transitions
 
@@ -193,7 +192,7 @@ After per-enemy movement, full-tier enemies run one collision/separation post-pa
   - `Basic`: `0.75x`
   - `Advanced`: `1.0x`
   - `Lord`: `1.25x` (Hunter only)
-- Assassin base speed in runtime path is LOS-conditioned (`1.5` or `3.0`), then subtype multiplier.
+- Assassin base speed in runtime path uses `assassinInAggroMode` (`1.5` or `3.0`), then subtype multiplier.
 - Level 9 applies additional `4x` multiplier for assassin speed (debug behavior).
 
 ## 4) Enemy-Specific Behavior
@@ -227,6 +226,7 @@ Modes: `Fly`, `Ram`, `Retreat`, `Targeting`, `Rotate`
 
 - **Full tier:** Ram / player-detect refresh throttled every `kTorpedoPlayerDetectIntervalSeconds` (`0.25` s) in `EnemySystem.cpp` (updates `torpedoPlayerDetected` from `seesPlayer` and ram range).
 - **Cheap tier:** `AdvanceCheapTierTimers` uses `kOffscreenTorpedoDetectIntervalSeconds` (`0.6` s) in `EnemySystemCheapTier.cpp` to tick the torpedo detect timer and clear `torpedoPlayerDetected`; Ram eligibility is only updated on the full-tier path (cheap torpedoes stay `Fly` until tiering promotes them).
+- **Cheap-tier mode normalization:** when a torpedo enters/remains cheap tier with a non-`Fly` mode, `EnemySystem.cpp` immediately switches it to `Fly`, clears `torpedoPlayerDetected`, resets retreat progress, and invalidates cached fly path.
 - Ram trigger:
   - sees player and distance `<= kTorpedoRamDetectRangeUnits` (`12`)
   - exits Ram when no longer detected
@@ -303,29 +303,25 @@ Modes: `Pursuit`, `Uncouple`
 
 The list below is intentionally explicit: each item states what `GAME_DESIGN.md` says and what the current code does.
 
-1. Full/Cheap sim-tier boundary
-   - `GAME_DESIGN.md`: full-tier radius is described with a viewport-based distance formula.
-   - Code: `DetermineEnemySimTier(...)` uses a fixed 3-cell Chebyshev distance from player cell; torpedoes are forced full-tier in non-`Fly` modes.
-
-2. Assassin behavior while invisibility is enabled
+1. Assassin behavior while invisibility is enabled
    - `GAME_DESIGN.md`: assassin target becomes a random maze point (repicked on reach).
    - Code: runtime is configured to flow-field-only assassin navigation (`kUseAssassinFlowFieldOnlyNavigation = true`, A* backup disabled). With invisibility on, flow cache is deactivated/invalidated; assassin falls back to non-flow heading logic in full tier and idles on no-flow in cheap tier.
 
-3. Torpedo firing cone wording
+2. Torpedo firing cone wording
    - `GAME_DESIGN.md`: prose presents `+/-20 deg` and `+/-30 deg` constraints in a way that reads as overlapping.
    - Code: exactly one cone gate is used by mode:
      - `Ram`: `PlayerAheadForTorpedoRam(...)` (`~+/-20 deg`)
      - non-`Ram`: `PlayerAheadForTorpedo(...)` (`~+/-30 deg`)
 
-4. Aggro-range terminology
+3. Aggro-range terminology
    - `GAME_DESIGN.md`: enemy detection/aggro wording is often centered around 12-unit per-type detect thresholds.
-   - Code: `kEnemyAggroRangeUnits = 15` is used for assassin LOS-speed gating and assassin max projectile range. Per-type AI/fire radii in `GameplayConstants.h` include drone `18`, hunter `15`, torpedo `9` (non-`Ram`) / `12` (Ram), not a single 12-unit rule for all types.
+   - Code: `kEnemyAggroRangeUnits = 15` is used for assassin `assassinInAggroMode` (with `seesPlayer`) and assassin max projectile range. Per-type AI/fire radii in `GameplayConstants.h` include drone `18`, hunter `15`, torpedo `9` (non-`Ram`) / `12` (Ram), not a single 12-unit rule for all types.
 
-5. Hunter relation to player flow-field
+4. Hunter relation to player flow-field
    - `GAME_DESIGN.md`: flow-field activation text groups hunters and assassins as flow consumers.
    - Code: hunter decision/movement logic is scout/chase/rotate based and does not read flow-field headings for steering; flow-field remains primarily an assassin steering dependency.
 
-6. Cheap-tier collision wording
+5. Cheap-tier collision wording
    - `GAME_DESIGN.md`: cheap-tier text can be read as broadly skipping collision behavior.
    - Code: cheap-tier still does obstacle/validity checks during segment selection and type-specific safeguards, but it skips the full-tier enemy pair post-pass and full per-step overlap/wall handling used in full-tier movement.
 

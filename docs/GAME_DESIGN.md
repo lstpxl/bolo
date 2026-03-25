@@ -154,7 +154,7 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
   - `Basic`: `75%` of advanced speed
   - `Advanced`: `100%` baseline speed
   - `Hunter Lord`: `125%` of hunter advanced speed
-- Assassin advanced speed has two modes: `1.5` world-units/second when player line-of-sight is blocked or out of aggro range, and `3.0` world-units/second when the assassin has line-of-sight to a player in aggro range.
+- Assassin advanced speed has two modes: `1.5` world-units/second when not in aggro mode, and `3.0` world-units/second when `assassinInAggroMode` is true (assassin, `seesPlayer`, and distance `<= kEnemyAggroRangeUnits`).
 - Enemy projectile firing heading is quantized to the same 8-way (45-degree) directions.
 - Enemy projectile spawn range matches per-type player **detect** distance (same as debug gray LOS when unobstructed), not a single global “fire range” constant.
 - Player and enemy collision shape is treated as a disc with `9px` diameter.
@@ -257,8 +257,8 @@ Local planner for a **single step** to one of the **8 adjacent** maze cells (car
 - Fast local-steering movement (no A* path planning). **Full-tier `Fly`** uses the same cell-based segment pipeline as cheap-tier (`EnsureTorpedoFlyPath` + **AdjacentCellSegmentPlanner**); hull heading slews toward the current segment waypoint bearing at `kTorpedoFullTierTurnSpeedRadiansPerSecond` (`45°/s`). Segment renewal is cell-based (not distance-threshold based): a new segment is planned when the torpedo enters the segment planner target cell while following the final segment leg of the active fly path. Diagonal segment rules are defined under **AdjacentCellSegmentPlanner** above. If building or following the path fails, full-tier falls back to the legacy three-way probe (`SelectTorpedoMoveHeading`: forward / ±45°, clearance to `15` units) with **no** random straight-hold distance.
 - Spawn heading lock: after spawn, torpedo keeps initial heading while inside base footprint plus `1.0` world-unit clearance; turning decisions are disabled until this clearance is exited.
 - Player detection for ram transition is throttled to every `0.25s` (cached between checks), using LOS and distance `<=12` units.
-- Torpedo perception has a rear blind sector: player is considered visible only when within `±45°` of torpedo forward heading (in addition to LOS and distance rules). Player behind a torpedo (`abs(relative bearing) > 45°`) does not count as seen.
-- Torpedo enters `Ram` whenever an alive player is seen (LOS + `12` units + rear blind-sector rule), and returns to `Fly` when LOS/range is lost or the player dies.
+- **Enemy forward vision (`seesPlayer`):** after unobstructed geometric LOS to an alive player (no invisibility, no wall obscurity on the segment), every enemy type also requires the player to be inside a forward arc from hull heading: default half-angle ±90° (`GameplayConstants::kEnemyForwardVisionHalfAngleRadiansDefault`); torpedo uses ±45° (`kTorpedoForwardVisionHalfAngleRadians`). Outside that arc, `seesPlayer` is false (rear blind / side blind per half-angle).
+- Torpedo enters `Ram` whenever an alive player is seen (LOS + `12` units + torpedo forward-arc rule), and returns to `Fly` when LOS/range is lost or the player dies.
 - **Full-tier** torpedo heading changes: `Ram` toward player; `Fly` along fly path toward waypoint bearing (or fallback probe toward an 8-way target); `Retreat`/uncouple toward 8-way targets; `Rotate` toward chosen heading — all capped at `kTorpedoFullTierTurnSpeedRadiansPerSecond` (`45°/s`).
 - In `Ram`, torpedo fires only when player is inside a tighter forward cone (`±20°`).
 - If a `Ram` torpedo collides with player, both die (player death + torpedo explosion).
@@ -323,8 +323,9 @@ Local planner for a **single step** to one of the **8 adjacent** maze cells (car
 ### Offscreen Enemy Simulation LOD
 
 - Enemy simulation uses two runtime tiers:
-  - `Full`: enemy is within dynamic player-centered radius `d = (viewportWidth/2 + cellWidth) * 1.5`, or (for torpedo) in non-fly states.
-  - `Cheap`: enemy is outside that radius and not in forced-full exceptions.
+  - `Full`: enemy cell is within Chebyshev distance `<= 3` from the player cell.
+  - `Cheap`: enemy is farther than that (`> 3` cells).
+  - Tier selection uses this unified distance rule for all enemy types; AI mode does not override tier.
 - In `Cheap` tier, enemies use cached segment movement:
   - heading is quantized to 8-way direction
   - drones choose next segment heading from `forward/-45/+45` by longest wall-only clearance (capped at `15`), with random tie-break
@@ -339,9 +340,8 @@ Local planner for a **single step** to one of the **8 adjacent** maze cells (car
   - tier difference remains collision handling: cheap-tier hunters skip full-tier enemy-collision post-passes.
 - Cheap-tier enemies do not participate in enemy-enemy frontal-collision and separation post-passes.
 - Cheap-tier enemies do not run enemy-enemy or enemy-base collision checks at all; wall clearance is evaluated only when selecting the next cheap-tier segment.
-- Torpedo exception:
-  - `Ram`, `Retreat`, `Targeting`, and `Rotate` remain `Full` tier even when offscreen.
-  - only torpedo `Fly` (`EnemyAiMode::Fly`) can use cheap-tier movement.
+- Torpedo cheap-tier behavior:
+  - cheap-tier torpedoes are normalized to `Fly` mode (non-`Fly` modes are dropped on the cheap-tier path).
   - cheap-tier `Fly` uses the same planner shape as hunter `Scout` (8-direction cell scoring + **AdjacentCellSegmentPlanner** to an adjacent cell), but with torpedo-owned state/functions.
   - cheap-tier torpedo `Fly` direction scoring uses:
       `score = (1 - core::math::ExpDecayA1K07(runCells)) * core::math::ExpDecayA1K07(enemiesInFirstCell) * core::math::ExpDecayA1K07(turnSteps)` (`turnSteps` 0 = straight, full weight; more turn steps decay the multiplier. Using `(1 - ExpDecayA1K09(turnSteps))` would invert that because `ExpDecayA1K09(0) = 0.9`.)
