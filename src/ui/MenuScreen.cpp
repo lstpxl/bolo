@@ -23,6 +23,7 @@ constexpr int kMinMazeDensity = 1;
 constexpr int kMaxMazeDensity = 5;
 // Height of Start / Quit `GuiButton` rows and unified Debug / Start / Quit focus frame.
 constexpr float kMenuQuitButtonHeight = 30.0F;
+constexpr double kDensitySpritesRevealDurationSeconds = 1.0;
 
 MenuScreen::FocusedControl NextFocusedControl(MenuScreen::FocusedControl current) {
     if (current == MenuScreen::FocusedControl::Quit) {
@@ -330,7 +331,6 @@ constexpr int kDensityHatchSpriteCount = 5;
 constexpr int kDensityHatchGapPx = 16;
 constexpr int kDensityHatchRenderScale = 2;
 constexpr int kDensityHatchDrawPx = kDensityHatchCellPx * kDensityHatchRenderScale;
-constexpr int kDensityHatchLabelGapPx = 16;
 // #E6D628 — menu hatch sprites (was black on transparent in source art).
 constexpr Color kDensityHatchTint = Color{230, 214, 40, 255};
 
@@ -512,11 +512,21 @@ MenuScreenResult MenuScreen::Render(
         }
     }
 
+    if (quitConfirmationOpen_) {
+        densitySpritesRevealUntilTime_ = 0.0;
+    }
+
     const float panelCenterX = static_cast<float>(config.screenWidth) * 0.5F;
     const float controlsWidth = std::min(440.0F, static_cast<float>(config.screenWidth) - 24.0F);
     const float gaugeWidth = std::min(320.0F, controlsWidth);
     const float gaugeX = panelCenterX - gaugeWidth * 0.5F;
     const float buttonsX = panelCenterX - controlsWidth * 0.5F;
+
+    constexpr int kDebugInfoMenuFontPx = 20;
+    constexpr int kUnifiedMenuFocusExtraWidthPx = 40;
+    const float unifiedMenuFocusW = static_cast<float>(
+        MeasureText("Debug info: Off", kDebugInfoMenuFontPx) + kUnifiedMenuFocusExtraWidthPx);
+    const float unifiedMenuFocusX = panelCenterX - unifiedMenuFocusW * 0.5F;
 
     constexpr const char* kBoltWordmarkText = "Bolt";
     constexpr const char* kBetaVersionText = "Beta Version";
@@ -588,8 +598,9 @@ MenuScreenResult MenuScreen::Render(
         betaLabelY + kLevelBlockOffsetFromBeta + 28.0F + 36.0F;
     constexpr int kDensityLabelFontPx = 20;
     const float densitySpritesY =
-        densityLabelY + static_cast<float>(kDensityLabelFontPx) + static_cast<float>(kDensityHatchLabelGapPx);
-    const float debugInfoY = densitySpritesY + static_cast<float>(kDensityHatchDrawPx) + 28.0F;
+        densityLabelY +
+        (kMenuQuitButtonHeight - static_cast<float>(kDensityHatchDrawPx)) * 0.5F;
+    const float debugInfoY = densityLabelY + kMenuQuitButtonHeight + 28.0F;
     const float quitButtonY = static_cast<float>(config.screenHeight) - 38.0F - 20.0F;
     const float startButtonY = quitButtonY - 60.0F;
 
@@ -611,8 +622,21 @@ MenuScreenResult MenuScreen::Render(
         };
     }
 
+    if (!quitConfirmationOpen_ && focusedControl_ == FocusedControl::Density) {
+        if (input.menuNavigateLeftPressed || input.menuNavigateRightPressed) {
+            if (input.menuNavigateLeftPressed) {
+                mazeDensity_ = std::max(kMinMazeDensity, mazeDensity_ - 1);
+            }
+            if (input.menuNavigateRightPressed) {
+                mazeDensity_ = std::min(kMaxMazeDensity, mazeDensity_ + 1);
+            }
+            densitySpritesRevealUntilTime_ = GetTime() + kDensitySpritesRevealDurationSeconds;
+            interactionOccurred = true;
+        }
+    }
+
     int hoveredDensitySprite = -1;
-    if (!quitConfirmationOpen_) {
+    if (!quitConfirmationOpen_ && GetTime() < densitySpritesRevealUntilTime_) {
         const Vector2 mouse = GetMousePosition();
         for (int i = 0; i < kDensityHatchSpriteCount; ++i) {
             if (CheckCollisionPointRec(mouse, densitySpriteDests[i]) != 0) {
@@ -624,25 +648,9 @@ MenuScreenResult MenuScreen::Render(
                         interactionOccurred = true;
                     }
                     focusedControl_ = FocusedControl::Density;
+                    densitySpritesRevealUntilTime_ = GetTime() + kDensitySpritesRevealDurationSeconds;
                 }
                 break;
-            }
-        }
-    }
-
-    if (!quitConfirmationOpen_ && focusedControl_ == FocusedControl::Density) {
-        if (input.menuNavigateLeftPressed) {
-            const int next = std::max(kMinMazeDensity, mazeDensity_ - 1);
-            if (next != mazeDensity_) {
-                mazeDensity_ = next;
-                interactionOccurred = true;
-            }
-        }
-        if (input.menuNavigateRightPressed) {
-            const int next = std::min(kMaxMazeDensity, mazeDensity_ + 1);
-            if (next != mazeDensity_) {
-                mazeDensity_ = next;
-                interactionOccurred = true;
             }
         }
     }
@@ -700,74 +708,6 @@ MenuScreenResult MenuScreen::Render(
         kLevelLabelFontPx,
         YELLOW);
 
-    constexpr const char* kDensityUiLabel = "Density";
-    const int densityLabelW = MeasureText(kDensityUiLabel, kDensityLabelFontPx);
-    const int densityNumberSlotW = MeasureText("8", kDensityLabelFontPx);
-    const int densityHeaderBlockW = densityLabelW + kLevelLabelNumberGapPx + densityNumberSlotW;
-    const int densityHeaderBlockLeftX = static_cast<int>(panelCenterX) - densityHeaderBlockW / 2;
-    DrawText(
-        kDensityUiLabel,
-        densityHeaderBlockLeftX,
-        static_cast<int>(densityLabelY),
-        kDensityLabelFontPx,
-        YELLOW);
-    const char* densityNumberText = TextFormat("%d", mazeDensity_);
-    const int densityNumberDrawW = MeasureText(densityNumberText, kDensityLabelFontPx);
-    const int densityNumberDrawX =
-        densityHeaderBlockLeftX + densityLabelW + kLevelLabelNumberGapPx +
-        (densityNumberSlotW - densityNumberDrawW) / 2;
-    DrawText(
-        densityNumberText,
-        densityNumberDrawX,
-        static_cast<int>(densityLabelY),
-        kDensityLabelFontPx,
-        YELLOW);
-
-    if (densityHatchLoaded_) {
-        const bool horizontalStrip = densityHatchTexture_.width > densityHatchTexture_.height;
-        for (int i = 0; i < kDensityHatchSpriteCount; ++i) {
-            const Rectangle source =
-                horizontalStrip
-                    ? Rectangle{
-                          .x = static_cast<float>(i * kDensityHatchCellPx),
-                          .y = 0.0F,
-                          .width = static_cast<float>(kDensityHatchCellPx),
-                          .height = static_cast<float>(kDensityHatchCellPx),
-                      }
-                    : Rectangle{
-                          .x = 0.0F,
-                          .y = static_cast<float>(i * kDensityHatchCellPx),
-                          .width = static_cast<float>(kDensityHatchCellPx),
-                          .height = static_cast<float>(kDensityHatchCellPx),
-                      };
-            DrawTexturePro(
-                densityHatchTexture_,
-                source,
-                densitySpriteDests[i],
-                Vector2{0.0F, 0.0F},
-                0.0F,
-                WHITE);
-        }
-    } else {
-        static constexpr const char* kFallbackDigits[kDensityHatchSpriteCount] = {"1", "2", "3", "4", "5"};
-        for (int i = 0; i < kDensityHatchSpriteCount; ++i) {
-            DrawRectangleRec(densitySpriteDests[i], Color{60, 65, 78, 200});
-            const char* digit = kFallbackDigits[i];
-            const int dw = MeasureText(digit, 20);
-            DrawText(
-                digit,
-                static_cast<int>(densitySpriteDests[i].x + densitySpriteDests[i].width * 0.5F - dw * 0.5F),
-                static_cast<int>(densitySpriteDests[i].y + densitySpriteDests[i].height * 0.5F - 10),
-                20,
-                LIGHTGRAY);
-        }
-    }
-
-    constexpr int kDebugInfoMenuFontPx = 20;
-    constexpr int kUnifiedMenuFocusExtraWidthPx = 40;
-    const float unifiedMenuFocusW = static_cast<float>(
-        MeasureText("Debug info: Off", kDebugInfoMenuFontPx) + kUnifiedMenuFocusExtraWidthPx);
-    const float unifiedMenuFocusX = panelCenterX - unifiedMenuFocusW * 0.5F;
     const Rectangle debugInfoControl = {
         unifiedMenuFocusX,
         debugInfoY,
@@ -778,8 +718,8 @@ MenuScreenResult MenuScreen::Render(
     bool debugInfoValue = debugInfo_;
     bool debugInfoHovered = false;
     if (!quitConfirmationOpen_) {
-        const Vector2 mouse = GetMousePosition();
-        debugInfoHovered = CheckCollisionPointRec(mouse, debugInfoControl) != 0;
+        const Vector2 mouseDbg = GetMousePosition();
+        debugInfoHovered = CheckCollisionPointRec(mouseDbg, debugInfoControl) != 0;
         if (debugInfoHovered && IsMouseButtonPressed(MOUSE_BUTTON_LEFT) != 0) {
             debugInfoValue = !debugInfoValue;
             interactionOccurred = true;
@@ -792,6 +732,86 @@ MenuScreenResult MenuScreen::Render(
             interactionOccurred = true;
         }
     }
+
+    const bool densityShowSprites =
+        !quitConfirmationOpen_ && GetTime() < densitySpritesRevealUntilTime_;
+
+    constexpr const char* kDensityUiLabel = "Density";
+    const int densityLabelW = MeasureText(kDensityUiLabel, kDensityLabelFontPx);
+    const int densityNumberSlotW = MeasureText("8", kDensityLabelFontPx);
+    const int densityHeaderBlockW = densityLabelW + kLevelLabelNumberGapPx + densityNumberSlotW;
+    const int densityHeaderBlockLeftX = static_cast<int>(panelCenterX) - densityHeaderBlockW / 2;
+    const float densityTextDrawY =
+        densityLabelY + (kMenuQuitButtonHeight - static_cast<float>(kDensityLabelFontPx)) * 0.5F;
+    const Rectangle densityFocusFrame = {
+        unifiedMenuFocusX,
+        densityLabelY,
+        unifiedMenuFocusW,
+        kMenuQuitButtonHeight,
+    };
+
+    if (!densityShowSprites) {
+        DrawText(
+            kDensityUiLabel,
+            densityHeaderBlockLeftX,
+            static_cast<int>(densityTextDrawY),
+            kDensityLabelFontPx,
+            YELLOW);
+        const char* densityNumberText = TextFormat("%d", mazeDensity_);
+        const int densityNumberDrawW = MeasureText(densityNumberText, kDensityLabelFontPx);
+        const int densityNumberDrawX =
+            densityHeaderBlockLeftX + densityLabelW + kLevelLabelNumberGapPx +
+            (densityNumberSlotW - densityNumberDrawW) / 2;
+        DrawText(
+            densityNumberText,
+            densityNumberDrawX,
+            static_cast<int>(densityTextDrawY),
+            kDensityLabelFontPx,
+            YELLOW);
+    }
+
+    if (densityShowSprites) {
+        if (densityHatchLoaded_) {
+            const bool horizontalStrip = densityHatchTexture_.width > densityHatchTexture_.height;
+            for (int i = 0; i < kDensityHatchSpriteCount; ++i) {
+                const Rectangle source =
+                    horizontalStrip
+                        ? Rectangle{
+                              .x = static_cast<float>(i * kDensityHatchCellPx),
+                              .y = 0.0F,
+                              .width = static_cast<float>(kDensityHatchCellPx),
+                              .height = static_cast<float>(kDensityHatchCellPx),
+                          }
+                        : Rectangle{
+                              .x = 0.0F,
+                              .y = static_cast<float>(i * kDensityHatchCellPx),
+                              .width = static_cast<float>(kDensityHatchCellPx),
+                              .height = static_cast<float>(kDensityHatchCellPx),
+                          };
+                DrawTexturePro(
+                    densityHatchTexture_,
+                    source,
+                    densitySpriteDests[i],
+                    Vector2{0.0F, 0.0F},
+                    0.0F,
+                    WHITE);
+            }
+        } else {
+            static constexpr const char* kFallbackDigits[kDensityHatchSpriteCount] = {"1", "2", "3", "4", "5"};
+            for (int i = 0; i < kDensityHatchSpriteCount; ++i) {
+                DrawRectangleRec(densitySpriteDests[i], Color{60, 65, 78, 200});
+                const char* digit = kFallbackDigits[i];
+                const int dw = MeasureText(digit, 20);
+                DrawText(
+                    digit,
+                    static_cast<int>(densitySpriteDests[i].x + densitySpriteDests[i].width * 0.5F - dw * 0.5F),
+                    static_cast<int>(densitySpriteDests[i].y + densitySpriteDests[i].height * 0.5F - 10),
+                    20,
+                    LIGHTGRAY);
+            }
+        }
+    }
+
     const char* const debugMenuLine = TextFormat("Debug info: %s", debugInfoValue ? "On" : "Off");
     const int debugDrawW = MeasureText(debugMenuLine, kDebugInfoMenuFontPx);
     const float debugTextY =
@@ -826,8 +846,11 @@ MenuScreenResult MenuScreen::Render(
     }
 
     ui::primitives::DrawFocusRing(levelGauge, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Level);
+    ui::primitives::DrawFocusRing(
+        densityFocusFrame,
+        !quitConfirmationOpen_ && !densityShowSprites && focusedControl_ == FocusedControl::Density);
     for (int i = 0; i < kDensityHatchSpriteCount; ++i) {
-        const bool densityRing = !quitConfirmationOpen_ &&
+        const bool densityRing = !quitConfirmationOpen_ && densityShowSprites &&
             (hoveredDensitySprite == i ||
              (hoveredDensitySprite < 0 && focusedControl_ == FocusedControl::Density && mazeDensity_ == i + 1));
         const Rectangle densityFocusBounds = {

@@ -43,4 +43,6 @@ private:
     FocusedControl focusedControl_ = FocusedControl::Start;
     bool quitConfirmationOpen_ = false;
     ConfirmationDialog quitConfirmationDialog_{};
+    /// Wall-clock time (`GetTime()`) until which density hatch sprites stay visible; `0` = hidden.
+    double densitySpritesRevealUntilTime_ = 0.0;
 };
