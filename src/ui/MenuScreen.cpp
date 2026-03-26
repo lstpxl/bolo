@@ -21,6 +21,8 @@ constexpr int kMinLevelNumber = 1;
 constexpr int kMaxLevelNumber = 9;
 constexpr int kMinMazeDensity = 1;
 constexpr int kMaxMazeDensity = 5;
+// Height of Start / Quit `GuiButton` rows and unified Debug / Start / Quit focus frame.
+constexpr float kMenuQuitButtonHeight = 30.0F;
 
 MenuScreen::FocusedControl NextFocusedControl(MenuScreen::FocusedControl current) {
     if (current == MenuScreen::FocusedControl::Quit) {
@@ -646,8 +648,8 @@ MenuScreenResult MenuScreen::Render(
     }
 
     const Rectangle levelGauge = Rectangle{gaugeX, levelGaugeY, gaugeWidth, 28.0F};
-    const Rectangle startButton = Rectangle{buttonsX, startButtonY, controlsWidth, 30.0F};
-    const Rectangle quitButton = Rectangle{buttonsX, quitButtonY, controlsWidth, 30.0F};
+    const Rectangle startButton = Rectangle{buttonsX, startButtonY, controlsWidth, kMenuQuitButtonHeight};
+    const Rectangle quitButton = Rectangle{buttonsX, quitButtonY, controlsWidth, kMenuQuitButtonHeight};
 
     float levelValue = static_cast<float>(levelNumber_);
     if (!quitConfirmationOpen_ && focusedControl_ == FocusedControl::Level) {
@@ -699,9 +701,24 @@ MenuScreenResult MenuScreen::Render(
         YELLOW);
 
     constexpr const char* kDensityUiLabel = "Density";
+    const int densityLabelW = MeasureText(kDensityUiLabel, kDensityLabelFontPx);
+    const int densityNumberSlotW = MeasureText("8", kDensityLabelFontPx);
+    const int densityHeaderBlockW = densityLabelW + kLevelLabelNumberGapPx + densityNumberSlotW;
+    const int densityHeaderBlockLeftX = static_cast<int>(panelCenterX) - densityHeaderBlockW / 2;
     DrawText(
         kDensityUiLabel,
-        static_cast<int>(panelCenterX) - MeasureText(kDensityUiLabel, kDensityLabelFontPx) / 2,
+        densityHeaderBlockLeftX,
+        static_cast<int>(densityLabelY),
+        kDensityLabelFontPx,
+        YELLOW);
+    const char* densityNumberText = TextFormat("%d", mazeDensity_);
+    const int densityNumberDrawW = MeasureText(densityNumberText, kDensityLabelFontPx);
+    const int densityNumberDrawX =
+        densityHeaderBlockLeftX + densityLabelW + kLevelLabelNumberGapPx +
+        (densityNumberSlotW - densityNumberDrawW) / 2;
+    DrawText(
+        densityNumberText,
+        densityNumberDrawX,
         static_cast<int>(densityLabelY),
         kDensityLabelFontPx,
         YELLOW);
@@ -747,15 +764,15 @@ MenuScreenResult MenuScreen::Render(
     }
 
     constexpr int kDebugInfoMenuFontPx = 20;
-    const int debugLineWOff = MeasureText("Debug info: Off", kDebugInfoMenuFontPx);
-    const int debugLineWOn = MeasureText("Debug info: On", kDebugInfoMenuFontPx);
-    const int debugHitW = std::max(debugLineWOff, debugLineWOn);
-    const float debugHitX = panelCenterX - static_cast<float>(debugHitW) * 0.5F;
+    constexpr int kUnifiedMenuFocusExtraWidthPx = 40;
+    const float unifiedMenuFocusW = static_cast<float>(
+        MeasureText("Debug info: Off", kDebugInfoMenuFontPx) + kUnifiedMenuFocusExtraWidthPx);
+    const float unifiedMenuFocusX = panelCenterX - unifiedMenuFocusW * 0.5F;
     const Rectangle debugInfoControl = {
-        debugHitX,
+        unifiedMenuFocusX,
         debugInfoY,
-        static_cast<float>(debugHitW),
-        static_cast<float>(kDebugInfoMenuFontPx),
+        unifiedMenuFocusW,
+        kMenuQuitButtonHeight,
     };
 
     bool debugInfoValue = debugInfo_;
@@ -777,10 +794,12 @@ MenuScreenResult MenuScreen::Render(
     }
     const char* const debugMenuLine = TextFormat("Debug info: %s", debugInfoValue ? "On" : "Off");
     const int debugDrawW = MeasureText(debugMenuLine, kDebugInfoMenuFontPx);
+    const float debugTextY =
+        debugInfoY + (kMenuQuitButtonHeight - static_cast<float>(kDebugInfoMenuFontPx)) * 0.5F;
     DrawText(
         debugMenuLine,
         static_cast<int>(panelCenterX) - debugDrawW / 2,
-        static_cast<int>(debugInfoY),
+        static_cast<int>(debugTextY),
         kDebugInfoMenuFontPx,
         YELLOW);
     if (debugInfoValue != debugInfo_) {
@@ -811,14 +830,34 @@ MenuScreenResult MenuScreen::Render(
         const bool densityRing = !quitConfirmationOpen_ &&
             (hoveredDensitySprite == i ||
              (hoveredDensitySprite < 0 && focusedControl_ == FocusedControl::Density && mazeDensity_ == i + 1));
-        ui::primitives::DrawFocusRing(densitySpriteDests[i], densityRing);
+        const Rectangle densityFocusBounds = {
+            densitySpriteDests[i].x - 2.0F,
+            densitySpriteDests[i].y - 2.0F,
+            densitySpriteDests[i].width + 2.0F,
+            densitySpriteDests[i].height + 2.0F,
+        };
+        ui::primitives::DrawFocusRing(densityFocusBounds, densityRing);
     }
+    const Rectangle startFocusFrame = {
+        unifiedMenuFocusX,
+        startButtonY,
+        unifiedMenuFocusW,
+        kMenuQuitButtonHeight,
+    };
+    const Rectangle quitFocusFrame = {
+        unifiedMenuFocusX,
+        quitButtonY,
+        unifiedMenuFocusW,
+        kMenuQuitButtonHeight,
+    };
     ui::primitives::DrawFocusRing(
         debugInfoControl,
         !quitConfirmationOpen_ &&
             (focusedControl_ == FocusedControl::DebugInfo || debugInfoHovered));
-    ui::primitives::DrawFocusRing(startButton, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Start);
-    ui::primitives::DrawFocusRing(quitButton, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Quit);
+    ui::primitives::DrawFocusRing(
+        startFocusFrame, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Start);
+    ui::primitives::DrawFocusRing(
+        quitFocusFrame, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Quit);
 
     if (quitPressed) {
         quitConfirmationOpen_ = true;

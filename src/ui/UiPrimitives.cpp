@@ -13,7 +13,7 @@ void DrawFocusRing(const Rectangle& bounds, bool isFocused) {
             .height = bounds.height + 6.0F,
         },
         3.0F,
-        Color{255, 209, 102, 255});
+        Color{243, 0, 75, 255});
 }
 
 void DrawModalBackdrop(int width, int height) {

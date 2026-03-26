@@ -441,14 +441,15 @@ Menu rendering is in `src/ui/MenuScreen.cpp`.
 - Includes:
   - `Bolt` wordmark with `Beta Version` (left) and `Build #<n>` (right) on the line below the wordmark
   - level slider (1..9) with `Level` plus the current digit as one centered block; the number column keeps the width of the `8` glyph so the block does not shift when changing level (same yellow default font at `20` px)
-  - density row: yellow `Density` label plus five hatch sprites for `1..5`
+  - density row: centered yellow `Density` + current digit (same layout as `Level`: fixed `8`-width digit slot), then five hatch sprites for `1..5`
   - debug info line (`Debug info: On` / `Off`), centered
   - Start and Quit buttons
 - The `Bolt` wordmark is centered horizontally with its top edge `30` px below the top of the viewport, in `rgb(224, 206, 4)`, using the bitmap atlas `resources/fonts/absolute_10.png` plus metadata `resources/fonts/absolute_10.txt`; glyphs use point filtering (anti-aliasing disabled) at 128px screen size (8x). If that font fails to load, fallback uses the default font at `20` px.
 - `Beta Version` is aligned to the left edge of `Bolt`, directly below it, in gray using `resources/fonts/pixuf.ttf` at 16px (Pixuf native size) with point filtering; if that font fails, fallback default font at `20` px. On the same horizontal line, `Build #<n>` uses the same font and color; its right edge aligns with the right edge of `Bolt`.
-- Five `16x16` hatch sprites are loaded from `resources/textures/density-hatch.png` as a single row (`80x16`) or column (`16x80`) strip; every pixel with non-zero alpha is recolored to `#E6D628` (transparency preserved). They are drawn in one row below the level slider, centered, at `2x` scale (`32x32` on screen) with `16` px gaps. The word `Density` is centered above that row in yellow (`20` px default font). If the texture is missing, five placeholder tiles with digits `1`–`5` are used instead. Hover and keyboard focus use the same focus ring as other menu controls.
+- Five `16x16` hatch sprites are loaded from `resources/textures/density-hatch.png` as a single row (`80x16`) or column (`16x80`) strip; every pixel with non-zero alpha is recolored to `#E6D628` (transparency preserved). They are drawn in one row below the level slider, centered, at `2x` scale (`32x32` on screen) with `16` px gaps. Above that row, `Density` and the current value (`1`–`5`) form one centered header block (same rules as the `Level` header: `20` px yellow default font, digit column width from the `8` glyph). If the texture is missing, five placeholder tiles with digits `1`–`5` are used instead. Hover and keyboard focus use the same focus ring as other menu controls.
 - While the menu is visible, a low-volume generated 8-bit/chiptune loop plays in the background.
 - Quit opens confirmation dialog.
+- Keyboard/mouse focus outlines for menu controls use `#F3004B` (`DrawFocusRing` in `src/ui/UiPrimitives.cpp`). For `Debug info`, `Start`, and `Quit`, the focus rectangle shares one size: width = `MeasureText("Debug info: Off", 20) + 40` px, height = `kMenuQuitButtonHeight` (same as the Start/Quit `GuiButton` row height in `MenuScreen.cpp`), centered in the viewport on each row (button hit areas stay full-width for raygui). The debug line text is drawn with the same vertical centering as raygui uses for button labels: `debugInfoY + (kMenuQuitButtonHeight - 20) / 2`.
 
 ## Build Number
 
