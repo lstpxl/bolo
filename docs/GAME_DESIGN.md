@@ -446,6 +446,7 @@ Menu rendering is in `src/ui/MenuScreen.cpp`.
   - bottom-aligned build number text
 - A decorative `Bolt` wordmark is drawn at the top-left corner (`10,10`) in `rgb(224, 206, 4)` using the bitmap atlas `resources/fonts/absolute_10.png` plus metadata `resources/fonts/absolute_10.txt`; glyphs are rendered with point filtering (anti-aliasing disabled) at 128px screen size (8x).
 - A `Beta Version` subtitle is drawn below that wordmark in gray using `resources/fonts/pixuf.ttf` loaded and rendered at 16px (Pixuf native size), with point filtering (anti-aliasing disabled).
+- Five `16x16` hatch sprites are loaded from `resources/textures/density-hatch.png` as a single row (`80x16`) or column (`16x80`) strip; every pixel with non-zero alpha is recolored to `#E6D628` (transparency preserved). They are drawn left-to-right along the bottom-right of the screen at `2x` scale (`32x32` on screen) with `16` px gaps between sprites and `16` px margin from the bottom and right edges. The word `Density` is centered above that row in `#E6D628` using the same bitmap font as the top-left `Bolt` wordmark (`absolute_10`) at one-quarter its render size (`32` px vs `128` px), with `16` px between label bottom and sprite tops (default font fallback uses `10` px if the wordmark font failed to load).
 - While the menu is visible, a low-volume generated 8-bit/chiptune loop plays in the background.
 - Quit opens confirmation dialog.
 

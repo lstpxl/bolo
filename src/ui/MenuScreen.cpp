@@ -315,12 +315,80 @@ bool LoadAbsolute10BitmapFont(Font& outFont) {
 }
 
 constexpr float kMenuTitleRenderSize = 128.0F;
+constexpr float kMenuDensityWordmarkRenderSize = kMenuTitleRenderSize * 0.25F;
 constexpr int kMenuTitleX = 10;
 constexpr int kMenuTitleY = 10;
 constexpr Color kBoltWordmarkColor = Color{224, 206, 4, 255};
 constexpr int kBetaLabelFontBaseSize = 16;
 constexpr float kBetaLabelRenderSize = 16.0F;
 constexpr float kBetaLabelYOffset = 10.0F;
+
+constexpr int kDensityHatchCellPx = 16;
+constexpr int kDensityHatchSpriteCount = 5;
+constexpr int kDensityHatchGapPx = 16;
+constexpr int kDensityHatchScreenMarginPx = 16;
+constexpr int kDensityHatchRenderScale = 2;
+constexpr int kDensityHatchDrawPx = kDensityHatchCellPx * kDensityHatchRenderScale;
+constexpr int kDensityHatchLabelGapPx = 16;
+// #E6D628 — menu hatch sprites (was black on transparent in source art).
+constexpr Color kDensityHatchTint = Color{230, 214, 40, 255};
+
+void ReplaceOpaquePixelsRgb(Image& image, Color rgb) {
+    if (image.data == nullptr) {
+        return;
+    }
+    ImageFormat(&image, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8);
+    auto* pixels = static_cast<Color*>(image.data);
+    const int count = image.width * image.height;
+    for (int i = 0; i < count; ++i) {
+        if (pixels[i].a == 0) {
+            continue;
+        }
+        pixels[i].r = rgb.r;
+        pixels[i].g = rgb.g;
+        pixels[i].b = rgb.b;
+    }
+}
+
+bool TryLoadDensityHatchSheet(Texture2D& outTexture) {
+    const std::string path = core::resources::ResolveResourcePath("textures", "density-hatch.png");
+    if (path.empty() || !FileExists(path.c_str())) {
+        bolt::log::Warning("MENU: density-hatch.png not found under resources/textures");
+        return false;
+    }
+    Image image = LoadImage(path.c_str());
+    if (image.data == nullptr) {
+        bolt::log::Warning("MENU: failed to decode density-hatch.png");
+        return false;
+    }
+
+    const bool horizontalStrip =
+        image.width == kDensityHatchCellPx * kDensityHatchSpriteCount && image.height == kDensityHatchCellPx;
+    const bool verticalStrip =
+        image.width == kDensityHatchCellPx && image.height == kDensityHatchCellPx * kDensityHatchSpriteCount;
+    if (!horizontalStrip && !verticalStrip) {
+        bolt::log::Warning(
+            "MENU: density-hatch.png expected strip %dx%d or %dx%d, got %dx%d",
+            kDensityHatchCellPx * kDensityHatchSpriteCount,
+            kDensityHatchCellPx,
+            kDensityHatchCellPx,
+            kDensityHatchCellPx * kDensityHatchSpriteCount,
+            image.width,
+            image.height);
+        UnloadImage(image);
+        return false;
+    }
+
+    ReplaceOpaquePixelsRgb(image, kDensityHatchTint);
+    outTexture = LoadTextureFromImage(image);
+    UnloadImage(image);
+    if (outTexture.id == 0) {
+        bolt::log::Warning("MENU: failed to upload density-hatch texture");
+        return false;
+    }
+    SetTextureFilter(outTexture, TEXTURE_FILTER_POINT);
+    return true;
+}
 }  // namespace
 
 bool MenuScreen::LoadResources() {
@@ -344,22 +412,26 @@ bool MenuScreen::LoadResources() {
             SetTextureFilter(betaFont_.texture, TEXTURE_FILTER_POINT);
         }
     }
+    densityHatchLoaded_ = TryLoadDensityHatchSheet(densityHatchTexture_);
     return titleFontLoaded_ || betaFontLoaded_;
 }
 
 void MenuScreen::UnloadResources() {
-    if (!titleFontLoaded_) {
-    } else {
+    if (densityHatchLoaded_) {
+        UnloadTexture(densityHatchTexture_);
+        densityHatchTexture_ = Texture2D{};
+        densityHatchLoaded_ = false;
+    }
+    if (titleFontLoaded_) {
         UnloadFont(titleFont_);
         titleFont_ = Font{};
         titleFontLoaded_ = false;
     }
-    if (!betaFontLoaded_) {
-        return;
+    if (betaFontLoaded_) {
+        UnloadFont(betaFont_);
+        betaFont_ = Font{};
+        betaFontLoaded_ = false;
     }
-    UnloadFont(betaFont_);
-    betaFont_ = Font{};
-    betaFontLoaded_ = false;
 }
 
 MenuScreenResult MenuScreen::Render(
@@ -560,6 +632,71 @@ MenuScreenResult MenuScreen::Render(
     ui::primitives::DrawFocusRing(debugInfoControl, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::DebugInfo);
     ui::primitives::DrawFocusRing(startButton, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Start);
     ui::primitives::DrawFocusRing(quitButton, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Quit);
+
+    if (densityHatchLoaded_) {
+        const bool horizontalStrip = densityHatchTexture_.width > densityHatchTexture_.height;
+        const int right = config.screenWidth - kDensityHatchScreenMarginPx;
+        const int y = config.screenHeight - kDensityHatchScreenMarginPx - kDensityHatchDrawPx;
+        const int blockWidth =
+            kDensityHatchSpriteCount * kDensityHatchDrawPx +
+            (kDensityHatchSpriteCount - 1) * kDensityHatchGapPx;
+        const int xOrigin = right - blockWidth;
+        constexpr const char* kDensityWordmarkText = "Density";
+        if (titleFontLoaded_) {
+            const Vector2 labelSize =
+                MeasureTextEx(titleFont_, kDensityWordmarkText, kMenuDensityWordmarkRenderSize, 0.0F);
+            const float labelX =
+                static_cast<float>(xOrigin) + (static_cast<float>(blockWidth) - labelSize.x) * 0.5F;
+            const float labelY =
+                static_cast<float>(y - kDensityHatchLabelGapPx) - labelSize.y;
+            DrawTextEx(
+                titleFont_,
+                kDensityWordmarkText,
+                Vector2{labelX, labelY},
+                kMenuDensityWordmarkRenderSize,
+                0.0F,
+                kDensityHatchTint);
+        } else {
+            constexpr int kFallbackDensityLabelPx = 10;
+            const int fallbackW = MeasureText(kDensityWordmarkText, kFallbackDensityLabelPx);
+            DrawText(
+                kDensityWordmarkText,
+                xOrigin + (blockWidth - fallbackW) / 2,
+                y - kDensityHatchLabelGapPx - kFallbackDensityLabelPx,
+                kFallbackDensityLabelPx,
+                kDensityHatchTint);
+        }
+        for (int i = 0; i < kDensityHatchSpriteCount; ++i) {
+            const Rectangle source =
+                horizontalStrip
+                    ? Rectangle{
+                          .x = static_cast<float>(i * kDensityHatchCellPx),
+                          .y = 0.0F,
+                          .width = static_cast<float>(kDensityHatchCellPx),
+                          .height = static_cast<float>(kDensityHatchCellPx),
+                      }
+                    : Rectangle{
+                          .x = 0.0F,
+                          .y = static_cast<float>(i * kDensityHatchCellPx),
+                          .width = static_cast<float>(kDensityHatchCellPx),
+                          .height = static_cast<float>(kDensityHatchCellPx),
+                      };
+            const float x = static_cast<float>(xOrigin + i * (kDensityHatchDrawPx + kDensityHatchGapPx));
+            const Rectangle dest{
+                .x = x,
+                .y = static_cast<float>(y),
+                .width = static_cast<float>(kDensityHatchDrawPx),
+                .height = static_cast<float>(kDensityHatchDrawPx),
+            };
+            DrawTexturePro(
+                densityHatchTexture_,
+                source,
+                dest,
+                Vector2{0.0F, 0.0F},
+                0.0F,
+                WHITE);
+        }
+    }
 
     if (quitPressed) {
         quitConfirmationOpen_ = true;

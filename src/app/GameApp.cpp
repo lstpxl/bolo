@@ -18,6 +18,9 @@ constexpr int kPresentationScale =
     1;
 #endif
 
+// Temporary: set true to re-enable procedural menu music.
+constexpr bool kMenuMusicEnabled = false;
+
 bool TryLoadSoundAtPath(Sound& sound, const std::string& path) {
     if (!FileExists(path.c_str())) {
         return false;
@@ -102,9 +105,11 @@ int GameApp::Run() {
             TryLoadSoundFromKnownPaths(enemyExplodingSound_, "enemy-exploding.wav", "enemy-exploding sound");
         baseExplodingSoundLoaded_ =
             TryLoadSoundFromKnownPaths(baseExplodingSound_, "base-exploding.wav", "base-exploding sound");
-        menuMusicGeneratorReady_ = menuMusicGenerator_.Initialize();
-        if (!menuMusicGeneratorReady_) {
-            bolt::log::Warning("AUDIO: menu music generator failed to initialize");
+        if (kMenuMusicEnabled) {
+            menuMusicGeneratorReady_ = menuMusicGenerator_.Initialize();
+            if (!menuMusicGeneratorReady_) {
+                bolt::log::Warning("AUDIO: menu music generator failed to initialize");
+            }
         }
     }
 

@@ -35,6 +35,8 @@ private:
     bool titleFontLoaded_ = false;
     Font betaFont_{};
     bool betaFontLoaded_ = false;
+    Texture2D densityHatchTexture_{};
+    bool densityHatchLoaded_ = false;
     int levelNumber_ = kDefaultGameLevelNumber;
     int mazeDensity_ = 1;
     bool debugInfo_ = false;
