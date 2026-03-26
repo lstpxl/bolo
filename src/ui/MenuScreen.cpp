@@ -340,7 +340,6 @@ void ApplyBoltMainMenuRayGuiStyle() {
 
     const int transparent = static_cast<int>(ColorToInt(BLANK));
     const int borderGold = static_cast<int>(ColorToInt(Color{180, 160, 70, 255}));
-    const int borderGoldHi = static_cast<int>(ColorToInt(Color{255, 209, 102, 255}));
     const int trackBg = static_cast<int>(ColorToInt(Color{40, 46, 58, 180}));
     const int thumbFill = static_cast<int>(ColorToInt(Color{255, 209, 102, 255}));
 
@@ -366,14 +365,6 @@ void ApplyBoltMainMenuRayGuiStyle() {
     GuiSetStyle(LABEL, TEXT_COLOR_NORMAL, kMenuYellowTextPacked);
     GuiSetStyle(LABEL, TEXT_COLOR_FOCUSED, kMenuYellowTextPacked);
     GuiSetStyle(LABEL, TEXT_COLOR_PRESSED, kMenuYellowTextPacked);
-
-    GuiSetStyle(CHECKBOX, BORDER_WIDTH, 1);
-    GuiSetStyle(CHECKBOX, BORDER_COLOR_NORMAL, borderGold);
-    GuiSetStyle(CHECKBOX, BORDER_COLOR_FOCUSED, borderGoldHi);
-    GuiSetStyle(CHECKBOX, BORDER_COLOR_PRESSED, borderGoldHi);
-    GuiSetStyle(CHECKBOX, TEXT_COLOR_NORMAL, kMenuYellowTextPacked);
-    GuiSetStyle(CHECKBOX, TEXT_COLOR_FOCUSED, kMenuYellowTextPacked);
-    GuiSetStyle(CHECKBOX, TEXT_COLOR_PRESSED, kMenuYellowTextPacked);
 }
 
 // Quit confirmation uses raygui buttons after the main menu already drew; restore visible outlines.
@@ -655,7 +646,6 @@ MenuScreenResult MenuScreen::Render(
     }
 
     const Rectangle levelGauge = Rectangle{gaugeX, levelGaugeY, gaugeWidth, 28.0F};
-    const Rectangle debugInfoControl = Rectangle{gaugeX + 8.0F, debugInfoY, 28.0F, 28.0F};
     const Rectangle startButton = Rectangle{buttonsX, startButtonY, controlsWidth, 30.0F};
     const Rectangle quitButton = Rectangle{buttonsX, quitButtonY, controlsWidth, 30.0F};
 
@@ -756,14 +746,43 @@ MenuScreenResult MenuScreen::Render(
         }
     }
 
+    constexpr int kDebugInfoMenuFontPx = 20;
+    const int debugLineWOff = MeasureText("Debug info: Off", kDebugInfoMenuFontPx);
+    const int debugLineWOn = MeasureText("Debug info: On", kDebugInfoMenuFontPx);
+    const int debugHitW = std::max(debugLineWOff, debugLineWOn);
+    const float debugHitX = panelCenterX - static_cast<float>(debugHitW) * 0.5F;
+    const Rectangle debugInfoControl = {
+        debugHitX,
+        debugInfoY,
+        static_cast<float>(debugHitW),
+        static_cast<float>(kDebugInfoMenuFontPx),
+    };
+
     bool debugInfoValue = debugInfo_;
+    bool debugInfoHovered = false;
+    if (!quitConfirmationOpen_) {
+        const Vector2 mouse = GetMousePosition();
+        debugInfoHovered = CheckCollisionPointRec(mouse, debugInfoControl) != 0;
+        if (debugInfoHovered && IsMouseButtonPressed(MOUSE_BUTTON_LEFT) != 0) {
+            debugInfoValue = !debugInfoValue;
+            interactionOccurred = true;
+            focusedControl_ = FocusedControl::DebugInfo;
+        }
+    }
     if (!quitConfirmationOpen_ && focusedControl_ == FocusedControl::DebugInfo) {
         if (input.menuNavigateLeftPressed || input.menuNavigateRightPressed || input.menuSelectPressed) {
             debugInfoValue = !debugInfoValue;
             interactionOccurred = true;
         }
     }
-    GuiCheckBox(debugInfoControl, "Debug info", &debugInfoValue);
+    const char* const debugMenuLine = TextFormat("Debug info: %s", debugInfoValue ? "On" : "Off");
+    const int debugDrawW = MeasureText(debugMenuLine, kDebugInfoMenuFontPx);
+    DrawText(
+        debugMenuLine,
+        static_cast<int>(panelCenterX) - debugDrawW / 2,
+        static_cast<int>(debugInfoY),
+        kDebugInfoMenuFontPx,
+        YELLOW);
     if (debugInfoValue != debugInfo_) {
         interactionOccurred = true;
     }
@@ -794,7 +813,10 @@ MenuScreenResult MenuScreen::Render(
              (hoveredDensitySprite < 0 && focusedControl_ == FocusedControl::Density && mazeDensity_ == i + 1));
         ui::primitives::DrawFocusRing(densitySpriteDests[i], densityRing);
     }
-    ui::primitives::DrawFocusRing(debugInfoControl, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::DebugInfo);
+    ui::primitives::DrawFocusRing(
+        debugInfoControl,
+        !quitConfirmationOpen_ &&
+            (focusedControl_ == FocusedControl::DebugInfo || debugInfoHovered));
     ui::primitives::DrawFocusRing(startButton, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Start);
     ui::primitives::DrawFocusRing(quitButton, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Quit);
 

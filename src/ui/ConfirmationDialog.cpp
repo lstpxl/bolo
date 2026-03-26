@@ -25,13 +25,13 @@ ConfirmationDialogResult ConfirmationDialog::Render(
         .height = 30.0F,
     };
 
-    DrawRectangleRounded(spec.bounds, 0.12F, 8, Color{26, 31, 40, 248});
-    DrawText(
-        spec.message,
-        static_cast<int>(spec.bounds.x) + 20,
-        static_cast<int>(spec.bounds.y) + 24,
-        20,
-        RAYWHITE);
+    DrawRectangleRounded(spec.bounds, 0.12F, 8, Color{32, 32, 32, 248});
+    constexpr int kDialogMessageFontPx = 20;
+    const int messageWidth = MeasureText(spec.message, kDialogMessageFontPx);
+    const int messageX = static_cast<int>(
+        spec.bounds.x + (spec.bounds.width - static_cast<float>(messageWidth)) * 0.5F);
+    const int messageY = static_cast<int>(spec.bounds.y) + 24 + kDialogMessageFontPx;
+    DrawText(spec.message, messageX, messageY, kDialogMessageFontPx, RAYWHITE);
 
     bool confirmPressed = GuiButton(confirmButton, spec.confirmButtonLabel);
     bool cancelPressed = GuiButton(cancelButton, spec.cancelButtonLabel);

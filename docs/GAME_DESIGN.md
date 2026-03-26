@@ -123,7 +123,7 @@ Input is collected in `src/platform/Input.cpp`.
 - Level slider: Left/Right when the Level control is focused
 - Density: five hatch sprites map to values `1..5`; Left/Right when Density is focused; mouse hover shows the same focus ring as keyboard selection, and click picks a value
 - Select: Enter/Space or gamepad south/east face button
-- `Debug info` checkbox can be toggled via Left/Right or Select when focused.
+- `Debug info: On` / `Debug info: Off` centered text toggles via Left/Right or Select when focused, or click when the mouse is over the line.
 - Default menu values at app start are `Level = 9`, `Density = 1`, `Debug info = Off`. Invisibility defaults to off and is toggled during gameplay by I key.
 
 ## Movement Model
@@ -437,12 +437,12 @@ World rendering is in `src/platform/Renderer2D.cpp`.
 
 Menu rendering is in `src/ui/MenuScreen.cpp`.
 
-- No full-screen menu panel or dimmed dialog plate: controls sit directly on the menu background. Quit confirmation has no rounded panel behind the text (buttons and message only). RayGUI uses a flat gold-outline slider and checkbox frame; `Level`, `Density`, `Debug info`, `Start`, and `Quit` use the same yellow as the `Density` label (raylib `YELLOW` / matching packed GUI text color). `Start` and `Quit` have no button border or fill until keyboard focus (focus ring only); the quit confirmation dialog switches to bordered buttons for readability.
+- No full-screen menu panel or dimmed dialog plate: controls sit directly on the menu background. Quit confirmation has no rounded panel behind the text (buttons and message only). RayGUI uses a flat gold-outline level slider only; `Level`, `Density`, `Debug info`, `Start`, and `Quit` use the same yellow as the `Density` label (raylib `YELLOW` / matching packed GUI text color). `Start` and `Quit` have no button border or fill until keyboard focus (focus ring only); the quit confirmation dialog switches to bordered buttons for readability.
 - Includes:
   - `Bolt` wordmark with `Beta Version` (left) and `Build #<n>` (right) on the line below the wordmark
   - level slider (1..9) with `Level` plus the current digit as one centered block; the number column keeps the width of the `8` glyph so the block does not shift when changing level (same yellow default font at `20` px)
   - density row: yellow `Density` label plus five hatch sprites for `1..5`
-  - debug info checkbox
+  - debug info line (`Debug info: On` / `Off`), centered
   - Start and Quit buttons
 - The `Bolt` wordmark is centered horizontally with its top edge `30` px below the top of the viewport, in `rgb(224, 206, 4)`, using the bitmap atlas `resources/fonts/absolute_10.png` plus metadata `resources/fonts/absolute_10.txt`; glyphs use point filtering (anti-aliasing disabled) at 128px screen size (8x). If that font fails to load, fallback uses the default font at `20` px.
 - `Beta Version` is aligned to the left edge of `Bolt`, directly below it, in gray using `resources/fonts/pixuf.ttf` at 16px (Pixuf native size) with point filtering; if that font fails, fallback default font at `20` px. On the same horizontal line, `Build #<n>` uses the same font and color; its right edge aligns with the right edge of `Bolt`.
