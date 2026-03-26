@@ -2,17 +2,21 @@
 
 namespace ui::primitives {
 void DrawFocusRing(const Rectangle& bounds, bool isFocused) {
+    DrawFocusRing(bounds, isFocused, 3.0F, 3.0F);
+}
+
+void DrawFocusRing(const Rectangle& bounds, bool isFocused, float expandPx, float lineThickness) {
     if (!isFocused) {
         return;
     }
     DrawRectangleLinesEx(
         Rectangle{
-            .x = bounds.x - 3.0F,
-            .y = bounds.y - 3.0F,
-            .width = bounds.width + 6.0F,
-            .height = bounds.height + 6.0F,
+            .x = bounds.x - expandPx,
+            .y = bounds.y - expandPx,
+            .width = bounds.width + 2.0F * expandPx,
+            .height = bounds.height + 2.0F * expandPx,
         },
-        3.0F,
+        lineThickness,
         Color{243, 0, 75, 255});
 }
 

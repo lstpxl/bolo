@@ -45,4 +45,6 @@ private:
     ConfirmationDialog quitConfirmationDialog_{};
     /// Wall-clock time (`GetTime()`) until which density hatch sprites stay visible; `0` = hidden.
     double densitySpritesRevealUntilTime_ = 0.0;
+    /// Wall-clock time until the level slider stays visible instead of the text row; `0` = text row.
+    double levelSliderRevealUntilTime_ = 0.0;
 };

@@ -23,7 +23,7 @@ constexpr int kMinMazeDensity = 1;
 constexpr int kMaxMazeDensity = 5;
 // Height of Start / Quit `GuiButton` rows and unified Debug / Start / Quit focus frame.
 constexpr float kMenuQuitButtonHeight = 30.0F;
-constexpr double kDensitySpritesRevealDurationSeconds = 1.0;
+constexpr double kMenuRevealRowDurationSeconds = 1.0;
 
 MenuScreen::FocusedControl NextFocusedControl(MenuScreen::FocusedControl current) {
     if (current == MenuScreen::FocusedControl::Quit) {
@@ -341,9 +341,7 @@ void ApplyBoltMainMenuRayGuiStyle() {
     GuiLoadStyleDefault();
 
     const int transparent = static_cast<int>(ColorToInt(BLANK));
-    const int borderGold = static_cast<int>(ColorToInt(Color{180, 160, 70, 255}));
     const int trackBg = static_cast<int>(ColorToInt(Color{40, 46, 58, 180}));
-    const int thumbFill = static_cast<int>(ColorToInt(Color{255, 209, 102, 255}));
 
     // Start / Quit: text only unless keyboard focus ring is drawn separately; no button chrome.
     GuiSetStyle(BUTTON, BORDER_WIDTH, 0);
@@ -357,12 +355,15 @@ void ApplyBoltMainMenuRayGuiStyle() {
     GuiSetStyle(BUTTON, BASE_COLOR_PRESSED, transparent);
     GuiSetStyle(BUTTON, TEXT_COLOR_PRESSED, kMenuYellowTextPacked);
 
-    GuiSetStyle(SLIDER, BORDER_WIDTH, 1);
-    GuiSetStyle(SLIDER, BORDER_COLOR_NORMAL, borderGold);
+    GuiSetStyle(SLIDER, BORDER_WIDTH, 2);
+    GuiSetStyle(SLIDER, SLIDER_PADDING, 2);
+    GuiSetStyle(SLIDER, BORDER_COLOR_NORMAL, kMenuYellowTextPacked);
+    GuiSetStyle(SLIDER, BORDER_COLOR_FOCUSED, kMenuYellowTextPacked);
+    GuiSetStyle(SLIDER, BORDER_COLOR_PRESSED, kMenuYellowTextPacked);
     GuiSetStyle(SLIDER, BASE_COLOR_NORMAL, trackBg);
-    GuiSetStyle(SLIDER, BASE_COLOR_PRESSED, thumbFill);
-    GuiSetStyle(SLIDER, TEXT_COLOR_FOCUSED, thumbFill);
-    GuiSetStyle(SLIDER, TEXT_COLOR_PRESSED, thumbFill);
+    GuiSetStyle(SLIDER, BASE_COLOR_PRESSED, kMenuYellowTextPacked);
+    GuiSetStyle(SLIDER, TEXT_COLOR_FOCUSED, kMenuYellowTextPacked);
+    GuiSetStyle(SLIDER, TEXT_COLOR_PRESSED, kMenuYellowTextPacked);
 
     GuiSetStyle(LABEL, TEXT_COLOR_NORMAL, kMenuYellowTextPacked);
     GuiSetStyle(LABEL, TEXT_COLOR_FOCUSED, kMenuYellowTextPacked);
@@ -514,12 +515,12 @@ MenuScreenResult MenuScreen::Render(
 
     if (quitConfirmationOpen_) {
         densitySpritesRevealUntilTime_ = 0.0;
+        levelSliderRevealUntilTime_ = 0.0;
     }
 
     const float panelCenterX = static_cast<float>(config.screenWidth) * 0.5F;
     const float controlsWidth = std::min(440.0F, static_cast<float>(config.screenWidth) - 24.0F);
     const float gaugeWidth = std::min(320.0F, controlsWidth);
-    const float gaugeX = panelCenterX - gaugeWidth * 0.5F;
     const float buttonsX = panelCenterX - controlsWidth * 0.5F;
 
     constexpr int kDebugInfoMenuFontPx = 20;
@@ -591,11 +592,8 @@ MenuScreenResult MenuScreen::Render(
     constexpr float kLevelBlockOffsetFromBeta = 20.0F;
     // constexpr float kLevelSectionRisePx = 50.0F;
     const float levelLabelY = betaLabelY + kLevelBlockOffsetFromBeta;
-    // - kLevelSectionRisePx;
-    const float levelGaugeY = levelLabelY + 28.0F;
-    // Keep density row where it was before raising only the level control.
-    const float densityLabelY =
-        betaLabelY + kLevelBlockOffsetFromBeta + 28.0F + 36.0F;
+    const float levelGaugeY = levelLabelY + (kMenuQuitButtonHeight - 28.0F) * 0.5F;
+    const float densityLabelY = levelLabelY + kMenuQuitButtonHeight + 28.0F;
     constexpr int kDensityLabelFontPx = 20;
     const float densitySpritesY =
         densityLabelY +
@@ -606,6 +604,11 @@ MenuScreenResult MenuScreen::Render(
 
     ApplyBoltMainMenuRayGuiStyle();
     GuiSetStyle(DEFAULT, TEXT_SIZE, 20);
+
+    constexpr float kLevelSliderWidthFactor = 0.75F;
+    const float levelSliderWidth = gaugeWidth * kLevelSliderWidthFactor;
+    const float levelSliderX = panelCenterX - levelSliderWidth * 0.5F;
+    const Rectangle levelGauge = Rectangle{levelSliderX, levelGaugeY, levelSliderWidth, 28.0F};
 
     const float densityBlockWidth =
         static_cast<float>(
@@ -630,7 +633,20 @@ MenuScreenResult MenuScreen::Render(
             if (input.menuNavigateRightPressed) {
                 mazeDensity_ = std::min(kMaxMazeDensity, mazeDensity_ + 1);
             }
-            densitySpritesRevealUntilTime_ = GetTime() + kDensitySpritesRevealDurationSeconds;
+            densitySpritesRevealUntilTime_ = GetTime() + kMenuRevealRowDurationSeconds;
+            interactionOccurred = true;
+        }
+    }
+
+    if (!quitConfirmationOpen_ && focusedControl_ == FocusedControl::Level) {
+        if (input.menuNavigateLeftPressed || input.menuNavigateRightPressed) {
+            if (input.menuNavigateLeftPressed) {
+                levelNumber_ = std::max(kMinLevelNumber, levelNumber_ - 1);
+            }
+            if (input.menuNavigateRightPressed) {
+                levelNumber_ = std::min(kMaxLevelNumber, levelNumber_ + 1);
+            }
+            levelSliderRevealUntilTime_ = GetTime() + kMenuRevealRowDurationSeconds;
             interactionOccurred = true;
         }
     }
@@ -648,65 +664,15 @@ MenuScreenResult MenuScreen::Render(
                         interactionOccurred = true;
                     }
                     focusedControl_ = FocusedControl::Density;
-                    densitySpritesRevealUntilTime_ = GetTime() + kDensitySpritesRevealDurationSeconds;
+                    densitySpritesRevealUntilTime_ = GetTime() + kMenuRevealRowDurationSeconds;
                 }
                 break;
             }
         }
     }
 
-    const Rectangle levelGauge = Rectangle{gaugeX, levelGaugeY, gaugeWidth, 28.0F};
     const Rectangle startButton = Rectangle{buttonsX, startButtonY, controlsWidth, kMenuQuitButtonHeight};
     const Rectangle quitButton = Rectangle{buttonsX, quitButtonY, controlsWidth, kMenuQuitButtonHeight};
-
-    float levelValue = static_cast<float>(levelNumber_);
-    if (!quitConfirmationOpen_ && focusedControl_ == FocusedControl::Level) {
-        if (input.menuNavigateLeftPressed) {
-            levelValue = std::max(static_cast<float>(kMinLevelNumber), levelValue - 1.0F);
-            interactionOccurred = true;
-        }
-        if (input.menuNavigateRightPressed) {
-            levelValue = std::min(static_cast<float>(kMaxLevelNumber), levelValue + 1.0F);
-            interactionOccurred = true;
-        }
-    }
-    const int previousLevelNumber = levelNumber_;
-    GuiSliderBar(
-        levelGauge,
-        "",
-        "",
-        &levelValue,
-        static_cast<float>(kMinLevelNumber),
-        static_cast<float>(kMaxLevelNumber));
-    levelNumber_ = RoundToNearestInt(levelValue);
-    if (levelNumber_ != previousLevelNumber) {
-        interactionOccurred = true;
-    }
-
-    constexpr int kLevelLabelFontPx = 20;
-    constexpr const char* kLevelUiLabel = "Level";
-    constexpr int kLevelLabelNumberGapPx = 10;
-    const int levelLabelW = MeasureText(kLevelUiLabel, kLevelLabelFontPx);
-    const int levelNumberSlotW = MeasureText("8", kLevelLabelFontPx);
-    const int levelHeaderBlockW = levelLabelW + kLevelLabelNumberGapPx + levelNumberSlotW;
-    const int levelHeaderBlockLeftX = static_cast<int>(panelCenterX) - levelHeaderBlockW / 2;
-    DrawText(
-        kLevelUiLabel,
-        levelHeaderBlockLeftX,
-        static_cast<int>(levelLabelY),
-        kLevelLabelFontPx,
-        YELLOW);
-    const char* levelNumberText = TextFormat("%d", levelNumber_);
-    const int levelNumberDrawW = MeasureText(levelNumberText, kLevelLabelFontPx);
-    const int levelNumberDrawX =
-        levelHeaderBlockLeftX + levelLabelW + kLevelLabelNumberGapPx +
-        (levelNumberSlotW - levelNumberDrawW) / 2;
-    DrawText(
-        levelNumberText,
-        levelNumberDrawX,
-        static_cast<int>(levelLabelY),
-        kLevelLabelFontPx,
-        YELLOW);
 
     const Rectangle debugInfoControl = {
         unifiedMenuFocusX,
@@ -735,6 +701,44 @@ MenuScreenResult MenuScreen::Render(
 
     const bool densityShowSprites =
         !quitConfirmationOpen_ && GetTime() < densitySpritesRevealUntilTime_;
+    const bool levelShowSlider =
+        !quitConfirmationOpen_ && GetTime() < levelSliderRevealUntilTime_;
+
+    constexpr int kLevelLabelFontPx = 20;
+    constexpr const char* kLevelUiLabel = "Level";
+    constexpr int kLevelLabelNumberGapPx = 10;
+    const int levelLabelW = MeasureText(kLevelUiLabel, kLevelLabelFontPx);
+    const int levelNumberSlotW = MeasureText("8", kLevelLabelFontPx);
+    const int levelHeaderBlockW = levelLabelW + kLevelLabelNumberGapPx + levelNumberSlotW;
+    const int levelHeaderBlockLeftX = static_cast<int>(panelCenterX) - levelHeaderBlockW / 2;
+    const float levelTextDrawY =
+        levelLabelY + (kMenuQuitButtonHeight - static_cast<float>(kLevelLabelFontPx)) * 0.5F;
+    const Rectangle levelFocusFrame = {
+        unifiedMenuFocusX,
+        levelLabelY,
+        unifiedMenuFocusW,
+        kMenuQuitButtonHeight,
+    };
+
+    if (!levelShowSlider) {
+        DrawText(
+            kLevelUiLabel,
+            levelHeaderBlockLeftX,
+            static_cast<int>(levelTextDrawY),
+            kLevelLabelFontPx,
+            YELLOW);
+        const char* levelNumberText = TextFormat("%d", levelNumber_);
+        const int levelNumberDrawW = MeasureText(levelNumberText, kLevelLabelFontPx);
+        const int levelNumberDrawX =
+            levelHeaderBlockLeftX + levelLabelW + kLevelLabelNumberGapPx +
+            (levelNumberSlotW - levelNumberDrawW) / 2;
+        DrawText(
+            levelNumberText,
+            levelNumberDrawX,
+            static_cast<int>(levelTextDrawY),
+            kLevelLabelFontPx,
+            YELLOW);
+    }
 
     constexpr const char* kDensityUiLabel = "Density";
     const int densityLabelW = MeasureText(kDensityUiLabel, kDensityLabelFontPx);
@@ -812,6 +816,27 @@ MenuScreenResult MenuScreen::Render(
         }
     }
 
+    if (levelShowSlider) {
+        float levelValue = static_cast<float>(levelNumber_);
+        const float levelValueBefore = levelValue;
+        const int sliderResult = GuiSliderBar(
+            levelGauge,
+            "",
+            "",
+            &levelValue,
+            static_cast<float>(kMinLevelNumber),
+            static_cast<float>(kMaxLevelNumber));
+        const int previousLevelNumber = levelNumber_;
+        levelNumber_ = RoundToNearestInt(levelValue);
+        if (levelValueBefore != levelValue || sliderResult != 0) {
+            levelSliderRevealUntilTime_ = GetTime() + kMenuRevealRowDurationSeconds;
+            interactionOccurred = true;
+        }
+        if (levelNumber_ != previousLevelNumber) {
+            interactionOccurred = true;
+        }
+    }
+
     const char* const debugMenuLine = TextFormat("Debug info: %s", debugInfoValue ? "On" : "Off");
     const int debugDrawW = MeasureText(debugMenuLine, kDebugInfoMenuFontPx);
     const float debugTextY =
@@ -845,7 +870,19 @@ MenuScreenResult MenuScreen::Render(
         }
     }
 
-    ui::primitives::DrawFocusRing(levelGauge, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Level);
+    ui::primitives::DrawFocusRing(
+        levelFocusFrame,
+        !quitConfirmationOpen_ && !levelShowSlider && focusedControl_ == FocusedControl::Level);
+    // Raylib draws rectangle lines *inward* from the expanded rect; gap from slider edge to stroke
+    // is expandPx - lineThickness (see `DrawRectangleLinesEx` in raylib).
+    constexpr float kLevelSliderFocusClearGapPx = 2.0F;
+    constexpr float kLevelSliderFocusLinePx = 3.0F;
+    constexpr float kLevelSliderFocusExpandPx = kLevelSliderFocusClearGapPx + kLevelSliderFocusLinePx;
+    ui::primitives::DrawFocusRing(
+        levelGauge,
+        !quitConfirmationOpen_ && levelShowSlider && focusedControl_ == FocusedControl::Level,
+        kLevelSliderFocusExpandPx,
+        kLevelSliderFocusLinePx);
     ui::primitives::DrawFocusRing(
         densityFocusFrame,
         !quitConfirmationOpen_ && !densityShowSprites && focusedControl_ == FocusedControl::Density);
