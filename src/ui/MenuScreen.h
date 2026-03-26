@@ -16,10 +16,10 @@ struct MenuScreenResult {
 class MenuScreen {
 public:
     enum class FocusedControl {
-        Level = 0,
-        Density = 1,
-        DebugInfo = 2,
-        Start = 3,
+        Start = 0,
+        Level = 1,
+        Density = 2,
+        DebugInfo = 3,
         Quit = 4,
     };
 

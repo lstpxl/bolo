@@ -27,13 +27,13 @@ constexpr double kMenuRevealRowDurationSeconds = 1.0;
 
 MenuScreen::FocusedControl NextFocusedControl(MenuScreen::FocusedControl current) {
     if (current == MenuScreen::FocusedControl::Quit) {
-        return MenuScreen::FocusedControl::Level;
+        return MenuScreen::FocusedControl::Start;
     }
     return static_cast<MenuScreen::FocusedControl>(static_cast<int>(current) + 1);
 }
 
 MenuScreen::FocusedControl PreviousFocusedControl(MenuScreen::FocusedControl current) {
-    if (current == MenuScreen::FocusedControl::Level) {
+    if (current == MenuScreen::FocusedControl::Start) {
         return MenuScreen::FocusedControl::Quit;
     }
     return static_cast<MenuScreen::FocusedControl>(static_cast<int>(current) - 1);
@@ -334,6 +334,17 @@ constexpr int kDensityHatchDrawPx = kDensityHatchCellPx * kDensityHatchRenderSca
 // #E6D628 — menu hatch sprites (was black on transparent in source art).
 constexpr Color kDensityHatchTint = Color{230, 214, 40, 255};
 
+// Level slider: focus ring uses the outer band; `GuiSliderBar` is inset 2 px top/bottom so the
+// track/fill sits below the band edge like the horizontal `SLIDER_PADDING` gutter (raygui unchanged).
+constexpr float kLevelSliderFocusBandHeightPx = 32.0F;
+constexpr float kLevelSliderBarVertInsetPx = 2.0F;
+constexpr float kLevelSliderBarBoundsHeightPx =
+    kLevelSliderFocusBandHeightPx - 2.0F * kLevelSliderBarVertInsetPx;
+constexpr float kLevelSliderInnerSideGapPx = 2.0F;
+constexpr int kLevelSliderBorderPx = 2;
+constexpr int kLevelSliderPaddingPx = 2;
+constexpr Color kMenuSliderTrackBg = Color{40, 46, 58, 180};
+
 // Matches `DrawText(..., YELLOW)` used for the Density label (raylib `YELLOW`).
 const int kMenuYellowTextPacked = static_cast<int>(ColorToInt(YELLOW));
 
@@ -341,7 +352,7 @@ void ApplyBoltMainMenuRayGuiStyle() {
     GuiLoadStyleDefault();
 
     const int transparent = static_cast<int>(ColorToInt(BLANK));
-    const int trackBg = static_cast<int>(ColorToInt(Color{40, 46, 58, 180}));
+    const int trackBg = static_cast<int>(ColorToInt(kMenuSliderTrackBg));
 
     // Start / Quit: text only unless keyboard focus ring is drawn separately; no button chrome.
     GuiSetStyle(BUTTON, BORDER_WIDTH, 0);
@@ -355,8 +366,8 @@ void ApplyBoltMainMenuRayGuiStyle() {
     GuiSetStyle(BUTTON, BASE_COLOR_PRESSED, transparent);
     GuiSetStyle(BUTTON, TEXT_COLOR_PRESSED, kMenuYellowTextPacked);
 
-    GuiSetStyle(SLIDER, BORDER_WIDTH, 2);
-    GuiSetStyle(SLIDER, SLIDER_PADDING, 2);
+    GuiSetStyle(SLIDER, BORDER_WIDTH, kLevelSliderBorderPx);
+    GuiSetStyle(SLIDER, SLIDER_PADDING, kLevelSliderPaddingPx);
     GuiSetStyle(SLIDER, BORDER_COLOR_NORMAL, kMenuYellowTextPacked);
     GuiSetStyle(SLIDER, BORDER_COLOR_FOCUSED, kMenuYellowTextPacked);
     GuiSetStyle(SLIDER, BORDER_COLOR_PRESSED, kMenuYellowTextPacked);
@@ -590,17 +601,35 @@ MenuScreenResult MenuScreen::Render(
     }
 
     constexpr float kLevelBlockOffsetFromBeta = 20.0F;
-    // constexpr float kLevelSectionRisePx = 50.0F;
-    const float levelLabelY = betaLabelY + kLevelBlockOffsetFromBeta;
-    const float levelGaugeY = levelLabelY + (kMenuQuitButtonHeight - 28.0F) * 0.5F;
-    const float densityLabelY = levelLabelY + kMenuQuitButtonHeight + 28.0F;
+    // Single gap between Level / Density / Debug rows; double gap after Start and before Quit.
+    constexpr float kMenuItemSingleGapPx = 28.0F;
+    constexpr float kMenuItemDoubleGapPx = 56.0F;
+    // Top of Start through top of Quit (exclusive of Quit row): 4 rows + 2 double gaps + 2 single gaps.
+    constexpr float kMenuStackStartToQuitTopPx =
+        4.0F * kMenuQuitButtonHeight + 2.0F * kMenuItemDoubleGapPx + 2.0F * kMenuItemSingleGapPx;
+
+    const float quitButtonY = static_cast<float>(config.screenHeight) - 38.0F - 20.0F;
+    const float menuSectionAnchorY = betaLabelY + kLevelBlockOffsetFromBeta;
+    // Start sits at least 30 px below the old Level anchor; if that would crowd Quit, pin from Quit upward.
+    const float minStartButtonY = menuSectionAnchorY + 30.0F;
+    const float startButtonY =
+        std::max(minStartButtonY, quitButtonY - kMenuStackStartToQuitTopPx);
+
+    constexpr float kLevelRowUpPx = 20.0F;
+    constexpr float kDensityRowUpPx = 40.0F;
+    constexpr float kDebugRowUpPx = 60.0F;
+
+    const float levelLabelY = startButtonY + kMenuQuitButtonHeight + kMenuItemDoubleGapPx - kLevelRowUpPx;
+    const float levelGaugeY =
+        levelLabelY + (kMenuQuitButtonHeight - kLevelSliderFocusBandHeightPx) * 0.5F;
+    const float densityLabelY =
+        levelLabelY + kMenuQuitButtonHeight + kMenuItemSingleGapPx - (kDensityRowUpPx - kLevelRowUpPx);
     constexpr int kDensityLabelFontPx = 20;
     const float densitySpritesY =
         densityLabelY +
         (kMenuQuitButtonHeight - static_cast<float>(kDensityHatchDrawPx)) * 0.5F;
-    const float debugInfoY = densityLabelY + kMenuQuitButtonHeight + 28.0F;
-    const float quitButtonY = static_cast<float>(config.screenHeight) - 38.0F - 20.0F;
-    const float startButtonY = quitButtonY - 60.0F;
+    const float debugInfoY =
+        densityLabelY + kMenuQuitButtonHeight + kMenuItemSingleGapPx - (kDebugRowUpPx - kDensityRowUpPx);
 
     ApplyBoltMainMenuRayGuiStyle();
     GuiSetStyle(DEFAULT, TEXT_SIZE, 20);
@@ -608,7 +637,14 @@ MenuScreenResult MenuScreen::Render(
     constexpr float kLevelSliderWidthFactor = 0.75F;
     const float levelSliderWidth = gaugeWidth * kLevelSliderWidthFactor;
     const float levelSliderX = panelCenterX - levelSliderWidth * 0.5F;
-    const Rectangle levelGauge = Rectangle{levelSliderX, levelGaugeY, levelSliderWidth, 28.0F};
+    const Rectangle levelGauge =
+        Rectangle{levelSliderX, levelGaugeY, levelSliderWidth, kLevelSliderFocusBandHeightPx};
+    const Rectangle levelSliderBarBounds = Rectangle{
+        levelGauge.x,
+        levelGauge.y + kLevelSliderBarVertInsetPx,
+        levelGauge.width,
+        kLevelSliderBarBoundsHeightPx,
+    };
 
     const float densityBlockWidth =
         static_cast<float>(
@@ -698,6 +734,8 @@ MenuScreenResult MenuScreen::Render(
             interactionOccurred = true;
         }
     }
+
+    bool startPressed = GuiButton(startButton, "Start");
 
     const bool densityShowSprites =
         !quitConfirmationOpen_ && GetTime() < densitySpritesRevealUntilTime_;
@@ -820,7 +858,7 @@ MenuScreenResult MenuScreen::Render(
         float levelValue = static_cast<float>(levelNumber_);
         const float levelValueBefore = levelValue;
         const int sliderResult = GuiSliderBar(
-            levelGauge,
+            levelSliderBarBounds,
             "",
             "",
             &levelValue,
@@ -834,6 +872,36 @@ MenuScreenResult MenuScreen::Render(
         }
         if (levelNumber_ != previousLevelNumber) {
             interactionOccurred = true;
+        }
+
+        // raygui's SliderBar applies SLIDER_PADDING vertically but not horizontally.
+        // Mask 2 px at left/right so border-to-fill gaps match on both axes.
+        const float levelSliderFillY =
+            levelSliderBarBounds.y + static_cast<float>(kLevelSliderBorderPx + kLevelSliderPaddingPx);
+        const float levelSliderFillH = levelSliderBarBounds.height -
+            2.0F * static_cast<float>(kLevelSliderBorderPx + kLevelSliderPaddingPx);
+        if (levelSliderFillH > 0.0F && kLevelSliderInnerSideGapPx > 0.0F) {
+            const float levelSliderLeftGapX =
+                levelSliderBarBounds.x + static_cast<float>(kLevelSliderBorderPx);
+            const float levelSliderRightGapX =
+                levelSliderBarBounds.x + levelSliderBarBounds.width -
+                static_cast<float>(kLevelSliderBorderPx) - kLevelSliderInnerSideGapPx;
+            DrawRectangleRec(
+                Rectangle{
+                    levelSliderLeftGapX,
+                    levelSliderFillY,
+                    kLevelSliderInnerSideGapPx,
+                    levelSliderFillH,
+                },
+                kMenuSliderTrackBg);
+            DrawRectangleRec(
+                Rectangle{
+                    levelSliderRightGapX,
+                    levelSliderFillY,
+                    kLevelSliderInnerSideGapPx,
+                    levelSliderFillH,
+                },
+                kMenuSliderTrackBg);
         }
     }
 
@@ -852,7 +920,6 @@ MenuScreenResult MenuScreen::Render(
     }
     debugInfo_ = debugInfoValue;
 
-    bool startPressed = GuiButton(startButton, "Start");
     bool quitPressed = GuiButton(quitButton, "Quit");
     if (quitConfirmationOpen_) {
         startPressed = false;
