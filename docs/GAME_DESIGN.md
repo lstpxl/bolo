@@ -120,7 +120,8 @@ Input is collected in `src/platform/Input.cpp`.
 ### Menu
 
 - Navigate: Up/Down
-- Change slider: Left/Right
+- Level slider: Left/Right when the Level control is focused
+- Density: five hatch sprites map to values `1..5`; Left/Right when Density is focused; mouse hover shows the same focus ring as keyboard selection, and click picks a value
 - Select: Enter/Space or gamepad south/east face button
 - `Debug info` checkbox can be toggled via Left/Right or Select when focused.
 - Default menu values at app start are `Level = 9`, `Density = 1`, `Debug info = Off`. Invisibility defaults to off and is toggled during gameplay by I key.
@@ -436,23 +437,22 @@ World rendering is in `src/platform/Renderer2D.cpp`.
 
 Menu rendering is in `src/ui/MenuScreen.cpp`.
 
-- Menu panel occupies nearly full viewport height (with small margins).
+- No full-screen menu panel or dimmed dialog plate: controls sit directly on the menu background. Quit confirmation has no rounded panel behind the text (buttons and message only). RayGUI uses a flat gold-outline slider and checkbox frame; `Level`, `Density`, `Debug info`, `Start`, and `Quit` use the same yellow as the `Density` label (raylib `YELLOW` / matching packed GUI text color). `Start` and `Quit` have no button border or fill until keyboard focus (focus ring only); the quit confirmation dialog switches to bordered buttons for readability.
 - Includes:
-  - title
-  - level slider (1..9)
-  - density slider (1..5)
+  - `Bolt` wordmark with `Beta Version` (left) and `Build #<n>` (right) on the line below the wordmark
+  - level slider (1..9) with `Level` plus the current digit as one centered block; the number column keeps the width of the `8` glyph so the block does not shift when changing level (same yellow default font at `20` px)
+  - density row: yellow `Density` label plus five hatch sprites for `1..5`
   - debug info checkbox
   - Start and Quit buttons
-  - bottom-aligned build number text
-- A decorative `Bolt` wordmark is drawn at the top-left corner (`10,10`) in `rgb(224, 206, 4)` using the bitmap atlas `resources/fonts/absolute_10.png` plus metadata `resources/fonts/absolute_10.txt`; glyphs are rendered with point filtering (anti-aliasing disabled) at 128px screen size (8x).
-- A `Beta Version` subtitle is drawn below that wordmark in gray using `resources/fonts/pixuf.ttf` loaded and rendered at 16px (Pixuf native size), with point filtering (anti-aliasing disabled).
-- Five `16x16` hatch sprites are loaded from `resources/textures/density-hatch.png` as a single row (`80x16`) or column (`16x80`) strip; every pixel with non-zero alpha is recolored to `#E6D628` (transparency preserved). They are drawn left-to-right along the bottom-right of the screen at `2x` scale (`32x32` on screen) with `16` px gaps between sprites and `16` px margin from the bottom and right edges. The word `Density` is centered above that row in `#E6D628` using the same bitmap font as the top-left `Bolt` wordmark (`absolute_10`) at one-quarter its render size (`32` px vs `128` px), with `16` px between label bottom and sprite tops (default font fallback uses `10` px if the wordmark font failed to load).
+- The `Bolt` wordmark is centered horizontally with its top edge `30` px below the top of the viewport, in `rgb(224, 206, 4)`, using the bitmap atlas `resources/fonts/absolute_10.png` plus metadata `resources/fonts/absolute_10.txt`; glyphs use point filtering (anti-aliasing disabled) at 128px screen size (8x). If that font fails to load, fallback uses the default font at `20` px.
+- `Beta Version` is aligned to the left edge of `Bolt`, directly below it, in gray using `resources/fonts/pixuf.ttf` at 16px (Pixuf native size) with point filtering; if that font fails, fallback default font at `20` px. On the same horizontal line, `Build #<n>` uses the same font and color; its right edge aligns with the right edge of `Bolt`.
+- Five `16x16` hatch sprites are loaded from `resources/textures/density-hatch.png` as a single row (`80x16`) or column (`16x80`) strip; every pixel with non-zero alpha is recolored to `#E6D628` (transparency preserved). They are drawn in one row below the level slider, centered, at `2x` scale (`32x32` on screen) with `16` px gaps. The word `Density` is centered above that row in yellow (`20` px default font). If the texture is missing, five placeholder tiles with digits `1`–`5` are used instead. Hover and keyboard focus use the same focus ring as other menu controls.
 - While the menu is visible, a low-volume generated 8-bit/chiptune loop plays in the background.
 - Quit opens confirmation dialog.
 
 ## Build Number
 
-Build number is shown on menu as `Build #<n>`.
+Build number is shown on the main menu subtitle row as `Build #<n>` (right-aligned under the `Bolt` wordmark), same styling as `Beta Version`.
 
 - Current source API: `src/app/BuildInfo.h`
 - Generated define: `BuildNumber.h`

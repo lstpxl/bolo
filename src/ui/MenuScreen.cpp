@@ -315,23 +315,88 @@ bool LoadAbsolute10BitmapFont(Font& outFont) {
 }
 
 constexpr float kMenuTitleRenderSize = 128.0F;
-constexpr float kMenuDensityWordmarkRenderSize = kMenuTitleRenderSize * 0.25F;
-constexpr int kMenuTitleX = 10;
-constexpr int kMenuTitleY = 10;
+constexpr int kMenuTitleTopMarginPx = 4;
 constexpr Color kBoltWordmarkColor = Color{224, 206, 4, 255};
 constexpr int kBetaLabelFontBaseSize = 16;
 constexpr float kBetaLabelRenderSize = 16.0F;
-constexpr float kBetaLabelYOffset = 10.0F;
+constexpr float kBetaLabelYOffset = -2.0F;
+// Inset build # text left from Bolt’s right edge (both Pixuf and default-font paths).
+constexpr float kBuildLabelInsetFromBoltRightPx = 6.0F;
 
 constexpr int kDensityHatchCellPx = 16;
 constexpr int kDensityHatchSpriteCount = 5;
 constexpr int kDensityHatchGapPx = 16;
-constexpr int kDensityHatchScreenMarginPx = 16;
 constexpr int kDensityHatchRenderScale = 2;
 constexpr int kDensityHatchDrawPx = kDensityHatchCellPx * kDensityHatchRenderScale;
 constexpr int kDensityHatchLabelGapPx = 16;
 // #E6D628 — menu hatch sprites (was black on transparent in source art).
 constexpr Color kDensityHatchTint = Color{230, 214, 40, 255};
+
+// Matches `DrawText(..., YELLOW)` used for the Density label (raylib `YELLOW`).
+const int kMenuYellowTextPacked = static_cast<int>(ColorToInt(YELLOW));
+
+void ApplyBoltMainMenuRayGuiStyle() {
+    GuiLoadStyleDefault();
+
+    const int transparent = static_cast<int>(ColorToInt(BLANK));
+    const int borderGold = static_cast<int>(ColorToInt(Color{180, 160, 70, 255}));
+    const int borderGoldHi = static_cast<int>(ColorToInt(Color{255, 209, 102, 255}));
+    const int trackBg = static_cast<int>(ColorToInt(Color{40, 46, 58, 180}));
+    const int thumbFill = static_cast<int>(ColorToInt(Color{255, 209, 102, 255}));
+
+    // Start / Quit: text only unless keyboard focus ring is drawn separately; no button chrome.
+    GuiSetStyle(BUTTON, BORDER_WIDTH, 0);
+    GuiSetStyle(BUTTON, BORDER_COLOR_NORMAL, transparent);
+    GuiSetStyle(BUTTON, BASE_COLOR_NORMAL, transparent);
+    GuiSetStyle(BUTTON, TEXT_COLOR_NORMAL, kMenuYellowTextPacked);
+    GuiSetStyle(BUTTON, BORDER_COLOR_FOCUSED, transparent);
+    GuiSetStyle(BUTTON, BASE_COLOR_FOCUSED, transparent);
+    GuiSetStyle(BUTTON, TEXT_COLOR_FOCUSED, kMenuYellowTextPacked);
+    GuiSetStyle(BUTTON, BORDER_COLOR_PRESSED, transparent);
+    GuiSetStyle(BUTTON, BASE_COLOR_PRESSED, transparent);
+    GuiSetStyle(BUTTON, TEXT_COLOR_PRESSED, kMenuYellowTextPacked);
+
+    GuiSetStyle(SLIDER, BORDER_WIDTH, 1);
+    GuiSetStyle(SLIDER, BORDER_COLOR_NORMAL, borderGold);
+    GuiSetStyle(SLIDER, BASE_COLOR_NORMAL, trackBg);
+    GuiSetStyle(SLIDER, BASE_COLOR_PRESSED, thumbFill);
+    GuiSetStyle(SLIDER, TEXT_COLOR_FOCUSED, thumbFill);
+    GuiSetStyle(SLIDER, TEXT_COLOR_PRESSED, thumbFill);
+
+    GuiSetStyle(LABEL, TEXT_COLOR_NORMAL, kMenuYellowTextPacked);
+    GuiSetStyle(LABEL, TEXT_COLOR_FOCUSED, kMenuYellowTextPacked);
+    GuiSetStyle(LABEL, TEXT_COLOR_PRESSED, kMenuYellowTextPacked);
+
+    GuiSetStyle(CHECKBOX, BORDER_WIDTH, 1);
+    GuiSetStyle(CHECKBOX, BORDER_COLOR_NORMAL, borderGold);
+    GuiSetStyle(CHECKBOX, BORDER_COLOR_FOCUSED, borderGoldHi);
+    GuiSetStyle(CHECKBOX, BORDER_COLOR_PRESSED, borderGoldHi);
+    GuiSetStyle(CHECKBOX, TEXT_COLOR_NORMAL, kMenuYellowTextPacked);
+    GuiSetStyle(CHECKBOX, TEXT_COLOR_FOCUSED, kMenuYellowTextPacked);
+    GuiSetStyle(CHECKBOX, TEXT_COLOR_PRESSED, kMenuYellowTextPacked);
+}
+
+// Quit confirmation uses raygui buttons after the main menu already drew; restore visible outlines.
+void ApplyConfirmationDialogRayGuiStyle() {
+    GuiLoadStyleDefault();
+    const int transparent = static_cast<int>(ColorToInt(BLANK));
+    const int borderGold = static_cast<int>(ColorToInt(Color{180, 160, 70, 255}));
+    const int borderGoldHi = static_cast<int>(ColorToInt(Color{255, 209, 102, 255}));
+    const int textLight = static_cast<int>(ColorToInt(Color{210, 215, 225, 255}));
+    const int pressedTint = static_cast<int>(ColorToInt(Fade(WHITE, 0.15F)));
+
+    GuiSetStyle(DEFAULT, TEXT_SIZE, 20);
+    GuiSetStyle(BUTTON, BORDER_WIDTH, 1);
+    GuiSetStyle(BUTTON, BORDER_COLOR_NORMAL, borderGold);
+    GuiSetStyle(BUTTON, BASE_COLOR_NORMAL, transparent);
+    GuiSetStyle(BUTTON, TEXT_COLOR_NORMAL, textLight);
+    GuiSetStyle(BUTTON, BORDER_COLOR_FOCUSED, borderGoldHi);
+    GuiSetStyle(BUTTON, BASE_COLOR_FOCUSED, transparent);
+    GuiSetStyle(BUTTON, TEXT_COLOR_FOCUSED, textLight);
+    GuiSetStyle(BUTTON, BORDER_COLOR_PRESSED, borderGoldHi);
+    GuiSetStyle(BUTTON, BASE_COLOR_PRESSED, pressedTint);
+    GuiSetStyle(BUTTON, TEXT_COLOR_PRESSED, textLight);
+}
 
 void ReplaceOpaquePixelsRgb(Image& image, Color rgb) {
     if (image.data == nullptr) {
@@ -454,95 +519,147 @@ MenuScreenResult MenuScreen::Render(
         }
     }
 
-    const float panelWidth = std::min(440.0F, static_cast<float>(config.screenWidth) - 24.0F);
-    const float panelHeight = static_cast<float>(config.screenHeight) - 24.0F;
-    const Rectangle panel = {
-        .x = (static_cast<float>(config.screenWidth) - panelWidth) * 0.5F,
-        .y = (static_cast<float>(config.screenHeight) - panelHeight) * 0.5F,
-        .width = panelWidth,
-        .height = panelHeight,
-    };
-    const float panelCenterX = panel.x + panel.width * 0.5F;
-    const float panelInnerPaddingX = 24.0F;
-    const float controlsPaddingX = panelInnerPaddingX;
-    const float controlsWidth = panel.width - controlsPaddingX * 2.0F;
+    const float panelCenterX = static_cast<float>(config.screenWidth) * 0.5F;
+    const float controlsWidth = std::min(440.0F, static_cast<float>(config.screenWidth) - 24.0F);
     const float gaugeWidth = std::min(320.0F, controlsWidth);
     const float gaugeX = panelCenterX - gaugeWidth * 0.5F;
     const float buttonsX = panelCenterX - controlsWidth * 0.5F;
 
-    const float titleY = panel.y + 20.0F;
-    const float subtitleY = titleY + 46.0F;
-    const float levelLabelY = subtitleY + 44.0F;
-    const float levelGaugeY = levelLabelY + 28.0F;
-    const float densityLabelY = levelGaugeY + 32.0F;
-    const float densityGaugeY = densityLabelY + 28.0F;
-    const float debugInfoY = densityGaugeY + 38.0F;
-    const float buildTextY = panel.y + panel.height - 20.0F;
-    const float quitButtonY = buildTextY - 38.0F - 60.0F;
-    const float startButtonY = quitButtonY - 60.0F;
-
-    DrawRectangleRounded(panel, 0.05F, 8, Color{38, 45, 58, 240});
+    constexpr const char* kBoltWordmarkText = "Bolt";
+    constexpr const char* kBetaVersionText = "Beta Version";
+    Vector2 boltSize{};
+    if (titleFontLoaded_) {
+        boltSize = MeasureTextEx(titleFont_, kBoltWordmarkText, kMenuTitleRenderSize, 0.0F);
+    } else {
+        boltSize = Vector2{
+            static_cast<float>(MeasureText(kBoltWordmarkText, 20)),
+            20.0F,
+        };
+    }
+    const float boltX = panelCenterX - boltSize.x * 0.5F;
+    const float boltY = static_cast<float>(kMenuTitleTopMarginPx);
     if (titleFontLoaded_) {
         DrawTextEx(
             titleFont_,
-            "Bolt",
-            Vector2{static_cast<float>(kMenuTitleX), static_cast<float>(kMenuTitleY)},
+            kBoltWordmarkText,
+            Vector2{boltX, boltY},
             kMenuTitleRenderSize,
             0.0F,
             kBoltWordmarkColor);
     } else {
-        DrawText("Bolt", kMenuTitleX, kMenuTitleY, 20, kBoltWordmarkColor);
+        DrawText(kBoltWordmarkText, static_cast<int>(boltX), static_cast<int>(boltY), 20, kBoltWordmarkColor);
     }
-    const float betaLabelY = static_cast<float>(kMenuTitleY) + kMenuTitleRenderSize + kBetaLabelYOffset;
+    const float subtitleRowY = boltY + boltSize.y + kBetaLabelYOffset;
+    const char* const buildLabel = TextFormat("Build #%d", CurrentBuildNumber());
+    float betaLabelY = subtitleRowY;
     if (betaFontLoaded_) {
         DrawTextEx(
             betaFont_,
-            "Beta Version",
-            Vector2{static_cast<float>(kMenuTitleX), betaLabelY},
+            kBetaVersionText,
+            Vector2{boltX, subtitleRowY},
             kBetaLabelRenderSize,
             0.0F,
             GRAY);
+        const Vector2 betaSize = MeasureTextEx(betaFont_, kBetaVersionText, kBetaLabelRenderSize, 0.0F);
+        const Vector2 buildSize = MeasureTextEx(betaFont_, buildLabel, kBetaLabelRenderSize, 0.0F);
+        const float buildX =
+            boltX + boltSize.x - buildSize.x - kBuildLabelInsetFromBoltRightPx;
+        DrawTextEx(
+            betaFont_,
+            buildLabel,
+            Vector2{buildX, subtitleRowY},
+            kBetaLabelRenderSize,
+            0.0F,
+            GRAY);
+        betaLabelY = subtitleRowY + std::max(betaSize.y, buildSize.y);
     } else {
-        DrawText("Beta Version", kMenuTitleX, static_cast<int>(betaLabelY), 20, GRAY);
+        DrawText(kBetaVersionText, static_cast<int>(boltX), static_cast<int>(subtitleRowY), 20, GRAY);
+        const int buildW = MeasureText(buildLabel, 20);
+        DrawText(
+            buildLabel,
+            static_cast<int>(
+                boltX + boltSize.x - static_cast<float>(buildW) - kBuildLabelInsetFromBoltRightPx),
+            static_cast<int>(subtitleRowY),
+            20,
+            GRAY);
+        betaLabelY = subtitleRowY + 20.0F;
     }
-    const int titleFontSize = 40;
-    DrawText(
-        "BOLT",
-        static_cast<int>(panelCenterX) - MeasureText("BOLT", titleFontSize) / 2,
-        static_cast<int>(titleY),
-        titleFontSize,
-        RAYWHITE);
-    DrawText(
-        TextFormat("Build #%d", CurrentBuildNumber()),
-        static_cast<int>(panel.x + controlsPaddingX),
-        static_cast<int>(buildTextY),
-        10,
-        GRAY);
 
-    const int previousTextSize = GuiGetStyle(DEFAULT, TEXT_SIZE);
+    constexpr float kLevelBlockOffsetFromBeta = 20.0F;
+    // constexpr float kLevelSectionRisePx = 50.0F;
+    const float levelLabelY = betaLabelY + kLevelBlockOffsetFromBeta;
+    // - kLevelSectionRisePx;
+    const float levelGaugeY = levelLabelY + 28.0F;
+    // Keep density row where it was before raising only the level control.
+    const float densityLabelY =
+        betaLabelY + kLevelBlockOffsetFromBeta + 28.0F + 36.0F;
+    constexpr int kDensityLabelFontPx = 20;
+    const float densitySpritesY =
+        densityLabelY + static_cast<float>(kDensityLabelFontPx) + static_cast<float>(kDensityHatchLabelGapPx);
+    const float debugInfoY = densitySpritesY + static_cast<float>(kDensityHatchDrawPx) + 28.0F;
+    const float quitButtonY = static_cast<float>(config.screenHeight) - 38.0F - 20.0F;
+    const float startButtonY = quitButtonY - 60.0F;
+
+    ApplyBoltMainMenuRayGuiStyle();
     GuiSetStyle(DEFAULT, TEXT_SIZE, 20);
 
-    const char* subtitle = "Select level (1-9) and density (1-5)";
-    DrawText(
-        subtitle,
-        static_cast<int>(panelCenterX) - MeasureText(subtitle, 20) / 2,
-        static_cast<int>(subtitleY),
-        20,
-        LIGHTGRAY);
+    const float densityBlockWidth =
+        static_cast<float>(
+            kDensityHatchSpriteCount * kDensityHatchDrawPx +
+            (kDensityHatchSpriteCount - 1) * kDensityHatchGapPx);
+    const float densityRowX = panelCenterX - densityBlockWidth * 0.5F;
+    Rectangle densitySpriteDests[kDensityHatchSpriteCount]{};
+    for (int i = 0; i < kDensityHatchSpriteCount; ++i) {
+        densitySpriteDests[i] = Rectangle{
+            densityRowX + static_cast<float>(i * (kDensityHatchDrawPx + kDensityHatchGapPx)),
+            densitySpritesY,
+            static_cast<float>(kDensityHatchDrawPx),
+            static_cast<float>(kDensityHatchDrawPx),
+        };
+    }
+
+    int hoveredDensitySprite = -1;
+    if (!quitConfirmationOpen_) {
+        const Vector2 mouse = GetMousePosition();
+        for (int i = 0; i < kDensityHatchSpriteCount; ++i) {
+            if (CheckCollisionPointRec(mouse, densitySpriteDests[i]) != 0) {
+                hoveredDensitySprite = i;
+                if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) != 0) {
+                    const int picked = i + 1;
+                    if (mazeDensity_ != picked) {
+                        mazeDensity_ = picked;
+                        interactionOccurred = true;
+                    }
+                    focusedControl_ = FocusedControl::Density;
+                }
+                break;
+            }
+        }
+    }
+
+    if (!quitConfirmationOpen_ && focusedControl_ == FocusedControl::Density) {
+        if (input.menuNavigateLeftPressed) {
+            const int next = std::max(kMinMazeDensity, mazeDensity_ - 1);
+            if (next != mazeDensity_) {
+                mazeDensity_ = next;
+                interactionOccurred = true;
+            }
+        }
+        if (input.menuNavigateRightPressed) {
+            const int next = std::min(kMaxMazeDensity, mazeDensity_ + 1);
+            if (next != mazeDensity_) {
+                mazeDensity_ = next;
+                interactionOccurred = true;
+            }
+        }
+    }
 
     const Rectangle levelGauge = Rectangle{gaugeX, levelGaugeY, gaugeWidth, 28.0F};
-    const Rectangle densityGauge = Rectangle{gaugeX, densityGaugeY, gaugeWidth, 28.0F};
     const Rectangle debugInfoControl = Rectangle{gaugeX + 8.0F, debugInfoY, 28.0F, 28.0F};
     const Rectangle startButton = Rectangle{buttonsX, startButtonY, controlsWidth, 30.0F};
     const Rectangle quitButton = Rectangle{buttonsX, quitButtonY, controlsWidth, 30.0F};
 
     float levelValue = static_cast<float>(levelNumber_);
-    DrawText(
-        "Level",
-        static_cast<int>(panelCenterX) - MeasureText("Level", 20) / 2,
-        static_cast<int>(levelLabelY),
-        20,
-        LIGHTGRAY);
     if (!quitConfirmationOpen_ && focusedControl_ == FocusedControl::Level) {
         if (input.menuNavigateLeftPressed) {
             levelValue = std::max(static_cast<float>(kMinLevelNumber), levelValue - 1.0F);
@@ -557,7 +674,7 @@ MenuScreenResult MenuScreen::Render(
     GuiSliderBar(
         levelGauge,
         "",
-        TextFormat("%d", levelNumber_),
+        "",
         &levelValue,
         static_cast<float>(kMinLevelNumber),
         static_cast<float>(kMaxLevelNumber));
@@ -566,34 +683,77 @@ MenuScreenResult MenuScreen::Render(
         interactionOccurred = true;
     }
 
-    float densityValue = static_cast<float>(mazeDensity_);
+    constexpr int kLevelLabelFontPx = 20;
+    constexpr const char* kLevelUiLabel = "Level";
+    constexpr int kLevelLabelNumberGapPx = 10;
+    const int levelLabelW = MeasureText(kLevelUiLabel, kLevelLabelFontPx);
+    const int levelNumberSlotW = MeasureText("8", kLevelLabelFontPx);
+    const int levelHeaderBlockW = levelLabelW + kLevelLabelNumberGapPx + levelNumberSlotW;
+    const int levelHeaderBlockLeftX = static_cast<int>(panelCenterX) - levelHeaderBlockW / 2;
     DrawText(
-        "Density",
-        static_cast<int>(panelCenterX) - MeasureText("Density", 20) / 2,
+        kLevelUiLabel,
+        levelHeaderBlockLeftX,
+        static_cast<int>(levelLabelY),
+        kLevelLabelFontPx,
+        YELLOW);
+    const char* levelNumberText = TextFormat("%d", levelNumber_);
+    const int levelNumberDrawW = MeasureText(levelNumberText, kLevelLabelFontPx);
+    const int levelNumberDrawX =
+        levelHeaderBlockLeftX + levelLabelW + kLevelLabelNumberGapPx +
+        (levelNumberSlotW - levelNumberDrawW) / 2;
+    DrawText(
+        levelNumberText,
+        levelNumberDrawX,
+        static_cast<int>(levelLabelY),
+        kLevelLabelFontPx,
+        YELLOW);
+
+    constexpr const char* kDensityUiLabel = "Density";
+    DrawText(
+        kDensityUiLabel,
+        static_cast<int>(panelCenterX) - MeasureText(kDensityUiLabel, kDensityLabelFontPx) / 2,
         static_cast<int>(densityLabelY),
-        20,
-        LIGHTGRAY);
-    if (!quitConfirmationOpen_ && focusedControl_ == FocusedControl::Density) {
-        if (input.menuNavigateLeftPressed) {
-            densityValue = std::max(static_cast<float>(kMinMazeDensity), densityValue - 1.0F);
-            interactionOccurred = true;
+        kDensityLabelFontPx,
+        YELLOW);
+
+    if (densityHatchLoaded_) {
+        const bool horizontalStrip = densityHatchTexture_.width > densityHatchTexture_.height;
+        for (int i = 0; i < kDensityHatchSpriteCount; ++i) {
+            const Rectangle source =
+                horizontalStrip
+                    ? Rectangle{
+                          .x = static_cast<float>(i * kDensityHatchCellPx),
+                          .y = 0.0F,
+                          .width = static_cast<float>(kDensityHatchCellPx),
+                          .height = static_cast<float>(kDensityHatchCellPx),
+                      }
+                    : Rectangle{
+                          .x = 0.0F,
+                          .y = static_cast<float>(i * kDensityHatchCellPx),
+                          .width = static_cast<float>(kDensityHatchCellPx),
+                          .height = static_cast<float>(kDensityHatchCellPx),
+                      };
+            DrawTexturePro(
+                densityHatchTexture_,
+                source,
+                densitySpriteDests[i],
+                Vector2{0.0F, 0.0F},
+                0.0F,
+                WHITE);
         }
-        if (input.menuNavigateRightPressed) {
-            densityValue = std::min(static_cast<float>(kMaxMazeDensity), densityValue + 1.0F);
-            interactionOccurred = true;
+    } else {
+        static constexpr const char* kFallbackDigits[kDensityHatchSpriteCount] = {"1", "2", "3", "4", "5"};
+        for (int i = 0; i < kDensityHatchSpriteCount; ++i) {
+            DrawRectangleRec(densitySpriteDests[i], Color{60, 65, 78, 200});
+            const char* digit = kFallbackDigits[i];
+            const int dw = MeasureText(digit, 20);
+            DrawText(
+                digit,
+                static_cast<int>(densitySpriteDests[i].x + densitySpriteDests[i].width * 0.5F - dw * 0.5F),
+                static_cast<int>(densitySpriteDests[i].y + densitySpriteDests[i].height * 0.5F - 10),
+                20,
+                LIGHTGRAY);
         }
-    }
-    const int previousDensity = mazeDensity_;
-    GuiSliderBar(
-        densityGauge,
-        "",
-        TextFormat("%d", mazeDensity_),
-        &densityValue,
-        static_cast<float>(kMinMazeDensity),
-        static_cast<float>(kMaxMazeDensity));
-    mazeDensity_ = RoundToNearestInt(densityValue);
-    if (mazeDensity_ != previousDensity) {
-        interactionOccurred = true;
     }
 
     bool debugInfoValue = debugInfo_;
@@ -628,75 +788,15 @@ MenuScreenResult MenuScreen::Render(
     }
 
     ui::primitives::DrawFocusRing(levelGauge, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Level);
-    ui::primitives::DrawFocusRing(densityGauge, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Density);
+    for (int i = 0; i < kDensityHatchSpriteCount; ++i) {
+        const bool densityRing = !quitConfirmationOpen_ &&
+            (hoveredDensitySprite == i ||
+             (hoveredDensitySprite < 0 && focusedControl_ == FocusedControl::Density && mazeDensity_ == i + 1));
+        ui::primitives::DrawFocusRing(densitySpriteDests[i], densityRing);
+    }
     ui::primitives::DrawFocusRing(debugInfoControl, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::DebugInfo);
     ui::primitives::DrawFocusRing(startButton, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Start);
     ui::primitives::DrawFocusRing(quitButton, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Quit);
-
-    if (densityHatchLoaded_) {
-        const bool horizontalStrip = densityHatchTexture_.width > densityHatchTexture_.height;
-        const int right = config.screenWidth - kDensityHatchScreenMarginPx;
-        const int y = config.screenHeight - kDensityHatchScreenMarginPx - kDensityHatchDrawPx;
-        const int blockWidth =
-            kDensityHatchSpriteCount * kDensityHatchDrawPx +
-            (kDensityHatchSpriteCount - 1) * kDensityHatchGapPx;
-        const int xOrigin = right - blockWidth;
-        constexpr const char* kDensityWordmarkText = "Density";
-        if (titleFontLoaded_) {
-            const Vector2 labelSize =
-                MeasureTextEx(titleFont_, kDensityWordmarkText, kMenuDensityWordmarkRenderSize, 0.0F);
-            const float labelX =
-                static_cast<float>(xOrigin) + (static_cast<float>(blockWidth) - labelSize.x) * 0.5F;
-            const float labelY =
-                static_cast<float>(y - kDensityHatchLabelGapPx) - labelSize.y;
-            DrawTextEx(
-                titleFont_,
-                kDensityWordmarkText,
-                Vector2{labelX, labelY},
-                kMenuDensityWordmarkRenderSize,
-                0.0F,
-                kDensityHatchTint);
-        } else {
-            constexpr int kFallbackDensityLabelPx = 10;
-            const int fallbackW = MeasureText(kDensityWordmarkText, kFallbackDensityLabelPx);
-            DrawText(
-                kDensityWordmarkText,
-                xOrigin + (blockWidth - fallbackW) / 2,
-                y - kDensityHatchLabelGapPx - kFallbackDensityLabelPx,
-                kFallbackDensityLabelPx,
-                kDensityHatchTint);
-        }
-        for (int i = 0; i < kDensityHatchSpriteCount; ++i) {
-            const Rectangle source =
-                horizontalStrip
-                    ? Rectangle{
-                          .x = static_cast<float>(i * kDensityHatchCellPx),
-                          .y = 0.0F,
-                          .width = static_cast<float>(kDensityHatchCellPx),
-                          .height = static_cast<float>(kDensityHatchCellPx),
-                      }
-                    : Rectangle{
-                          .x = 0.0F,
-                          .y = static_cast<float>(i * kDensityHatchCellPx),
-                          .width = static_cast<float>(kDensityHatchCellPx),
-                          .height = static_cast<float>(kDensityHatchCellPx),
-                      };
-            const float x = static_cast<float>(xOrigin + i * (kDensityHatchDrawPx + kDensityHatchGapPx));
-            const Rectangle dest{
-                .x = x,
-                .y = static_cast<float>(y),
-                .width = static_cast<float>(kDensityHatchDrawPx),
-                .height = static_cast<float>(kDensityHatchDrawPx),
-            };
-            DrawTexturePro(
-                densityHatchTexture_,
-                source,
-                dest,
-                Vector2{0.0F, 0.0F},
-                0.0F,
-                WHITE);
-        }
-    }
 
     if (quitPressed) {
         quitConfirmationOpen_ = true;
@@ -706,13 +806,14 @@ MenuScreenResult MenuScreen::Render(
 
     bool confirmQuitPressed = false;
     if (quitConfirmationOpen_) {
-        ui::primitives::DrawModalBackdrop(config.screenWidth, config.screenHeight);
-
+        ApplyConfirmationDialogRayGuiStyle();
+        const float dialogWidth = std::min(400.0F, static_cast<float>(config.screenWidth) - 48.0F);
+        const float dialogHeight = 150.0F;
         const Rectangle dialog = {
-            .x = panel.x + 40.0F,
-            .y = panel.y + 116.0F,
-            .width = panel.width - 80.0F,
-            .height = 150.0F,
+            .x = (static_cast<float>(config.screenWidth) - dialogWidth) * 0.5F,
+            .y = (static_cast<float>(config.screenHeight) - dialogHeight) * 0.5F,
+            .width = dialogWidth,
+            .height = dialogHeight,
         };
         const ConfirmationDialogResult modalResult = quitConfirmationDialog_.Render(
             ConfirmationDialog::Spec{
@@ -734,7 +835,7 @@ MenuScreenResult MenuScreen::Render(
         }
     }
 
-    GuiSetStyle(DEFAULT, TEXT_SIZE, previousTextSize);
+    GuiLoadStyleDefault();
 
     return MenuScreenResult{
         .startGameRequested = startPressed,
