@@ -86,6 +86,7 @@ add_executable(
     src/app/FuncbeatMelody.cpp
     src/app/MenuMusicGenerator.cpp
     src/app/MenuMusicPlayer.cpp
+    src/app/ResonantBeatMelody.cpp
     src/core/Log.cpp
     src/core/ResourceLocator.cpp
     src/core/Profiling.cpp

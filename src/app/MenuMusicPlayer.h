@@ -14,8 +14,6 @@ public:
     void Update();
     void Shutdown();
 
-    static constexpr std::uint32_t kSampleRate = 16000;
-
 private:
     void FillBuffer();
 
@@ -26,5 +24,7 @@ private:
     bool initialized_ = false;
     bool enabled_ = false;
     std::uint32_t sampleCursor_ = 0;
+    std::uint32_t sampleRate_ = 16000;
+    float invSampleRate_ = 1.0F / 16000.0F;
     std::array<short, kSampleBufferSamples> sampleBuffer_{};
 };

@@ -1,7 +1,7 @@
 #pragma once
 
+#include "app/SoundPool.h"
 #include "game/model/GameplayEvents.h"
-#include "raylib.h"
 
 struct AudioEventRouterConfig {
     bool audioReady = false;
@@ -11,12 +11,12 @@ struct AudioEventRouterConfig {
     bool enemySpawningLoaded = false;
     bool enemyExplodingLoaded = false;
     bool baseExplodingLoaded = false;
-    Sound* powerUpSound = nullptr;
-    Sound* playerShotSound = nullptr;
-    Sound* enemyShotSound = nullptr;
-    Sound* enemySpawningSound = nullptr;
-    Sound* enemyExplodingSound = nullptr;
-    Sound* baseExplodingSound = nullptr;
+    SoundPool<4>* powerUpSound = nullptr;
+    SoundPool<4>* playerShotSound = nullptr;
+    SoundPool<4>* enemyShotSound = nullptr;
+    SoundPool<4>* enemySpawningSound = nullptr;
+    SoundPool<4>* enemyExplodingSound = nullptr;
+    SoundPool<4>* baseExplodingSound = nullptr;
 };
 
 class AudioEventRouter {

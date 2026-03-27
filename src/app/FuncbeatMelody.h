@@ -6,8 +6,9 @@
 // "Funcbeat" procedural melody for the main menu.
 // Combines a sweeping resonant filter, detuned square oscillators,
 // LFO pulse-width modulation, and a sparse impulse trigger.
-// Perceptual macro-cycle: ~31.4 s (10π), driven by the 7:5 ratio
-// between the filter sweep (2π/1.4 s) and the LFO (2π s).
+// Grand cycle: exactly 30 s — all components realign simultaneously:
+//   5 × LFO (6 s, ω = π/3) = 7 × filter sweep (30/7 s, ω = 7π/15) = 6 × beat (5 s).
+// The 7:5 ratio between sweep and LFO is preserved from the original.
 class FuncbeatMelody : public MelodyBase {
 public:
     void Reset() override;

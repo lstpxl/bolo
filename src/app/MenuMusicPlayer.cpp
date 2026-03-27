@@ -12,9 +12,11 @@ bool MenuMusicPlayer::Initialize(MelodyBase& melody) {
 
     melody_ = &melody;
     melody_->Reset();
+    sampleRate_ = melody.SampleRate();
+    invSampleRate_ = 1.0F / static_cast<float>(sampleRate_);
 
     SetAudioStreamBufferSizeDefault(static_cast<int>(kSampleBufferSamples));
-    stream_ = LoadAudioStream(kSampleRate, 16, 1);
+    stream_ = LoadAudioStream(sampleRate_, 16, 1);
     if (stream_.buffer == nullptr) {
         return false;
     }
@@ -78,9 +80,8 @@ void MenuMusicPlayer::Shutdown() {
 }
 
 void MenuMusicPlayer::FillBuffer() {
-    constexpr float kInvSampleRate = 1.0F / static_cast<float>(kSampleRate);
     for (std::uint32_t i = 0; i < kSampleBufferSamples; ++i) {
-        const float t = static_cast<float>(sampleCursor_) * kInvSampleRate;
+        const float t = static_cast<float>(sampleCursor_) * invSampleRate_;
         const float sample = std::clamp(melody_->Synthesize(t), -1.0F, 1.0F);
         sampleBuffer_[i] = static_cast<short>(sample * 32767.0F);
         ++sampleCursor_;

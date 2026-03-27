@@ -33,9 +33,24 @@ bool TryLoadSoundAtPath(Sound& sound, const std::string& path) {
     return true;
 }
 
+bool TryLoadSoundPoolAtPath(SoundPool<4>& soundPool, const std::string& path) {
+    return soundPool.Load(path);
+}
+
 bool TryLoadSoundFromKnownPaths(Sound& sound, const char* fileName, const char* logName) {
     const std::string path = core::resources::ResolveResourcePath("audio", fileName);
     if (!path.empty() && TryLoadSoundAtPath(sound, path)) {
+        bolt::log::Info("AUDIO: %s loaded from: %s", logName, path.c_str());
+        return true;
+    }
+
+    bolt::log::Warning("AUDIO: %s failed to load from known paths", logName);
+    return false;
+}
+
+bool TryLoadSoundPoolFromKnownPaths(SoundPool<4>& soundPool, const char* fileName, const char* logName) {
+    const std::string path = core::resources::ResolveResourcePath("audio", fileName);
+    if (!path.empty() && TryLoadSoundPoolAtPath(soundPool, path)) {
         bolt::log::Info("AUDIO: %s loaded from: %s", logName, path.c_str());
         return true;
     }
@@ -95,19 +110,23 @@ int GameApp::Run() {
     audioReady_ = IsAudioDeviceReady();
     if (audioReady_) {
         menuClickSoundLoaded_ = TryLoadSoundFromKnownPaths(menuClickSound_, "keyboard-click.wav", "menu click sound");
-        powerUpSoundLoaded_ = TryLoadSoundFromKnownPaths(powerUpSound_, "power-up.wav", "power-up sound");
-        playerShotSoundLoaded_ = TryLoadSoundFromKnownPaths(playerShotSound_, "player-shot.wav", "player-shot sound");
-        enemyShotSoundLoaded_ = TryLoadSoundFromKnownPaths(enemyShotSound_, "enemy-shot.wav", "enemy-shot sound");
+        powerUpSoundLoaded_ = TryLoadSoundPoolFromKnownPaths(powerUpSound_, "power-up.wav", "power-up sound");
+        playerShotSoundLoaded_ = TryLoadSoundPoolFromKnownPaths(playerShotSound_, "player-shot.wav", "player-shot sound");
+        enemyShotSoundLoaded_ = TryLoadSoundPoolFromKnownPaths(enemyShotSound_, "enemy-shot.wav", "enemy-shot sound");
         enemySpawningSoundLoaded_ =
-            TryLoadSoundFromKnownPaths(enemySpawningSound_, "enemy-spawning.wav", "enemy-spawning sound");
+            TryLoadSoundPoolFromKnownPaths(enemySpawningSound_, "enemy-spawning.wav", "enemy-spawning sound");
         enemyExplodingSoundLoaded_ =
-            TryLoadSoundFromKnownPaths(enemyExplodingSound_, "enemy-exploding.wav", "enemy-exploding sound");
+            TryLoadSoundPoolFromKnownPaths(enemyExplodingSound_, "enemy-exploding.wav", "enemy-exploding sound");
         baseExplodingSoundLoaded_ =
-            TryLoadSoundFromKnownPaths(baseExplodingSound_, "base-exploding.wav", "base-exploding sound");
+            TryLoadSoundPoolFromKnownPaths(baseExplodingSound_, "base-exploding.wav", "base-exploding sound");
         if (kMenuMusicEnabled) {
             menuMusicPlayerReady_ = menuMusicPlayer_.Initialize(menuMelody_);
             if (!menuMusicPlayerReady_) {
                 bolt::log::Warning("AUDIO: menu music player failed to initialize");
+            }
+            gameplayMusicPlayerReady_ = gameplayMusicPlayer_.Initialize(gameplayMelody_);
+            if (!gameplayMusicPlayerReady_) {
+                bolt::log::Warning("AUDIO: gameplay music player failed to initialize");
             }
         }
     }
@@ -173,9 +192,16 @@ int GameApp::Run() {
                         profiling::ScopedProfile renderScope(profiling::Scope::FrameRender);
                         frameHasBackbufferWork = Render(input);
                     }
-                    if (audioReady_ && menuMusicPlayerReady_) {
-                        menuMusicPlayer_.SetEnabled(game_.Mode() == GameMode::Menu);
-                        menuMusicPlayer_.Update();
+                    if (audioReady_) {
+                        if (menuMusicPlayerReady_) {
+                            menuMusicPlayer_.SetEnabled(game_.Mode() == GameMode::Menu);
+                            menuMusicPlayer_.Update();
+                        }
+                        if (gameplayMusicPlayerReady_) {
+                            gameplayMusicPlayer_.SetEnabled(game_.Mode() == GameMode::Playing);
+                            profiling::ScopedProfile gameplayMusicScope(profiling::Scope::GameplayMusicUpdate);
+                            gameplayMusicPlayer_.Update();
+                        }
                     }
                 }
             }
@@ -194,22 +220,22 @@ int GameApp::Run() {
         UnloadSound(menuClickSound_);
     }
     if (powerUpSoundLoaded_) {
-        UnloadSound(powerUpSound_);
+        powerUpSound_.Unload();
     }
     if (playerShotSoundLoaded_) {
-        UnloadSound(playerShotSound_);
+        playerShotSound_.Unload();
     }
     if (enemyShotSoundLoaded_) {
-        UnloadSound(enemyShotSound_);
+        enemyShotSound_.Unload();
     }
     if (enemySpawningSoundLoaded_) {
-        UnloadSound(enemySpawningSound_);
+        enemySpawningSound_.Unload();
     }
     if (enemyExplodingSoundLoaded_) {
-        UnloadSound(enemyExplodingSound_);
+        enemyExplodingSound_.Unload();
     }
     if (baseExplodingSoundLoaded_) {
-        UnloadSound(baseExplodingSound_);
+        baseExplodingSound_.Unload();
     }
     if (presentationTargetLoaded_) {
         UnloadRenderTexture(presentationTarget_);
@@ -222,6 +248,10 @@ int GameApp::Run() {
         if (menuMusicPlayerReady_) {
             menuMusicPlayer_.Shutdown();
             menuMusicPlayerReady_ = false;
+        }
+        if (gameplayMusicPlayerReady_) {
+            gameplayMusicPlayer_.Shutdown();
+            gameplayMusicPlayerReady_ = false;
         }
         CloseAudioDevice();
     }

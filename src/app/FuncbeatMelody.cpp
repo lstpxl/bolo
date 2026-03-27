@@ -50,7 +50,8 @@ float FuncbeatMelody::Synthesize(float t) {
 
     // Sweeping resonant filter coefficients.
     // Note: "TAU" in the source equals Math.PI (not 2π) — preserved faithfully.
-    const float freq = 1700.0F + std::sin(t * 1.4F) * 1500.0F;
+    // ω_filter = 7π/15: T_filter = 30/7 s (7 sweeps per grand cycle).
+    const float freq = 1700.0F + std::sin(t * (7.0F * kPi / 15.0F)) * 1500.0F;
     const float theta = kPi * freq * kInvSampleRate;
     const float s = (-2.0F * std::cos(theta) * kSqrtM + kM + 1.0F) * kInvM;
 
@@ -61,8 +62,9 @@ float FuncbeatMelody::Synthesize(float t) {
     o += (static_cast<float>(rngState_ >> 8) * (1.0F / 16777216.0F) - 0.5F) * 0.2F;
 
     // Detuned square oscillators with LFO-modulated pulse width.
-    // sin(t) is shared between both oscillators to save one trig call.
-    const float sinT = std::sin(t);
+    // ω_lfo = π/3: T_lfo = 6 s (5 LFO cycles per grand cycle).
+    // Shared between both oscillators to save one trig call.
+    const float sinT = std::sin(t * (kPi / 3.0F));
     o += (std::fmod(t * 33.0F, 1.0F) < 0.5F + sinT * 0.49F ? 1.0F : -1.0F) * 0.2F;
     o -= (std::fmod(t * 32.6F, 1.0F) < 0.5F + sinT * 0.499F ? 1.0F : -1.0F) * 0.2F;
     o += (std::fmod(t * 330.0F, 1.0F) < 0.5F ? -1.0F : 1.0F) * 0.02F;

@@ -5,6 +5,8 @@
 #include "app/DebugOverlayRenderer.h"
 #include "app/FuncbeatMelody.h"
 #include "app/MenuMusicPlayer.h"
+#include "app/ResonantBeatMelody.h"
+#include "app/SoundPool.h"
 #include "core/Time.h"
 #include "game/Game.h"
 #include "platform/Input.h"
@@ -27,12 +29,12 @@ private:
     MenuScreen menuScreen_{};
     RaylibRenderer renderer_{};
     Sound menuClickSound_{};
-    Sound powerUpSound_{};
-    Sound playerShotSound_{};
-    Sound enemyShotSound_{};
-    Sound enemySpawningSound_{};
-    Sound enemyExplodingSound_{};
-    Sound baseExplodingSound_{};
+    SoundPool<4> powerUpSound_{};
+    SoundPool<4> playerShotSound_{};
+    SoundPool<4> enemyShotSound_{};
+    SoundPool<4> enemySpawningSound_{};
+    SoundPool<4> enemyExplodingSound_{};
+    SoundPool<4> baseExplodingSound_{};
     bool audioReady_ = false;
     bool menuClickSoundLoaded_ = false;
     bool powerUpSoundLoaded_ = false;
@@ -42,12 +44,15 @@ private:
     bool enemyExplodingSoundLoaded_ = false;
     bool baseExplodingSoundLoaded_ = false;
     bool menuMusicPlayerReady_ = false;
+    bool gameplayMusicPlayerReady_ = false;
     bool exitRequested_ = false;
     bool gameplayPauseDialogOpen_ = false;
     ConfirmationDialog gameplayPauseDialog_{};
     AudioEventRouter audioEventRouter_{};
     FuncbeatMelody menuMelody_{};
     MenuMusicPlayer menuMusicPlayer_{};
+    ResonantBeatMelody gameplayMelody_{};
+    MenuMusicPlayer gameplayMusicPlayer_{};
     DebugOverlayRenderer debugOverlayRenderer_{};
     RenderTexture2D presentationTarget_{};
     bool presentationTargetLoaded_ = false;

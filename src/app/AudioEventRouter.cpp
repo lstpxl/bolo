@@ -17,13 +17,12 @@ float ComputeSpatialVolume(const Vec2f& listener, const Vec2f& source) {
     return 1.0F - (d - r1) / (r2 - r1);
 }
 
-void PlaySpatialSound(Sound& sound, const Vec2f& listener, const Vec2f& source) {
+void PlaySpatialSound(SoundPool<4>& pool, const Vec2f& listener, const Vec2f& source) {
     const float volume = ComputeSpatialVolume(listener, source);
     if (volume <= 0.0F) {
         return;
     }
-    SetSoundVolume(sound, volume);
-    PlaySound(sound);
+    pool.Play(volume);
 }
 }  // namespace
 
