@@ -18,8 +18,7 @@ constexpr int kPresentationScale =
     1;
 #endif
 
-// Temporary: set true to re-enable procedural menu music.
-constexpr bool kMenuMusicEnabled = false;
+constexpr bool kMenuMusicEnabled = true;
 
 bool TryLoadSoundAtPath(Sound& sound, const std::string& path) {
     if (!FileExists(path.c_str())) {
@@ -106,9 +105,9 @@ int GameApp::Run() {
         baseExplodingSoundLoaded_ =
             TryLoadSoundFromKnownPaths(baseExplodingSound_, "base-exploding.wav", "base-exploding sound");
         if (kMenuMusicEnabled) {
-            menuMusicGeneratorReady_ = menuMusicGenerator_.Initialize();
-            if (!menuMusicGeneratorReady_) {
-                bolt::log::Warning("AUDIO: menu music generator failed to initialize");
+            menuMusicPlayerReady_ = menuMusicPlayer_.Initialize(menuMelody_);
+            if (!menuMusicPlayerReady_) {
+                bolt::log::Warning("AUDIO: menu music player failed to initialize");
             }
         }
     }
@@ -174,9 +173,9 @@ int GameApp::Run() {
                         profiling::ScopedProfile renderScope(profiling::Scope::FrameRender);
                         frameHasBackbufferWork = Render(input);
                     }
-                    if (audioReady_ && menuMusicGeneratorReady_) {
-                        menuMusicGenerator_.SetEnabled(game_.Mode() == GameMode::Menu);
-                        menuMusicGenerator_.Update();
+                    if (audioReady_ && menuMusicPlayerReady_) {
+                        menuMusicPlayer_.SetEnabled(game_.Mode() == GameMode::Menu);
+                        menuMusicPlayer_.Update();
                     }
                 }
             }
@@ -220,9 +219,9 @@ int GameApp::Run() {
     menuScreen_.UnloadResources();
     renderer_.UnloadResources();
     if (audioReady_) {
-        if (menuMusicGeneratorReady_) {
-            menuMusicGenerator_.Shutdown();
-            menuMusicGeneratorReady_ = false;
+        if (menuMusicPlayerReady_) {
+            menuMusicPlayer_.Shutdown();
+            menuMusicPlayerReady_ = false;
         }
         CloseAudioDevice();
     }

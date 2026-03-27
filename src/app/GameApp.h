@@ -3,7 +3,8 @@
 #include "app/AppConfig.h"
 #include "app/AudioEventRouter.h"
 #include "app/DebugOverlayRenderer.h"
-#include "app/MenuMusicGenerator.h"
+#include "app/FuncbeatMelody.h"
+#include "app/MenuMusicPlayer.h"
 #include "core/Time.h"
 #include "game/Game.h"
 #include "platform/Input.h"
@@ -40,12 +41,13 @@ private:
     bool enemySpawningSoundLoaded_ = false;
     bool enemyExplodingSoundLoaded_ = false;
     bool baseExplodingSoundLoaded_ = false;
-    bool menuMusicGeneratorReady_ = false;
+    bool menuMusicPlayerReady_ = false;
     bool exitRequested_ = false;
     bool gameplayPauseDialogOpen_ = false;
     ConfirmationDialog gameplayPauseDialog_{};
     AudioEventRouter audioEventRouter_{};
-    MenuMusicGenerator menuMusicGenerator_{};
+    FuncbeatMelody menuMelody_{};
+    MenuMusicPlayer menuMusicPlayer_{};
     DebugOverlayRenderer debugOverlayRenderer_{};
     RenderTexture2D presentationTarget_{};
     bool presentationTargetLoaded_ = false;
