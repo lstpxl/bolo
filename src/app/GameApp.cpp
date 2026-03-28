@@ -112,7 +112,8 @@ int GameApp::Run() {
         menuClickSoundLoaded_ = TryLoadSoundFromKnownPaths(menuClickSound_, "ui-pass.wav", "menu click sound");
         menuSelectOnButtonSoundLoaded_ = TryLoadSoundFromKnownPaths(
             menuSelectOnButtonSound_, "positive-select.wav", "menu select-on-button sound");
-        powerUpSoundLoaded_ = TryLoadSoundPoolFromKnownPaths(powerUpSound_, "power-up.wav", "power-up sound");
+        powerUpSoundLoaded_ =
+            TryLoadSoundPoolFromKnownPaths(powerUpSound_, "power-up-digital.wav", "power-up (start mode) sound");
         playerShotSoundLoaded_ = TryLoadSoundPoolFromKnownPaths(playerShotSound_, "player-shot.wav", "player-shot sound");
         enemyShotSoundLoaded_ = TryLoadSoundPoolFromKnownPaths(enemyShotSound_, "enemy-shot.wav", "enemy-shot sound");
         enemySpawningSoundLoaded_ =

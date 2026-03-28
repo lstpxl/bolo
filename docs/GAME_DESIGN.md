@@ -163,7 +163,7 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
   - **hardRadius** (`kEnemyCollisionRadiusUnits`): collision radius for overlap and hit checks.
   - **softRadius** (`kEnemyAvoidanceRadiusUnits`): avoidance radius for steering (wall clearance, path planning, separation). Soft radius is larger than hard radius.
 - Enemy wall movement keeps additional margin: enemy disc edge stays at least `2px` away from maze walls.
-- Start mode: at game start (and level restart after all bases are destroyed), player enters a `1.5s` lock where movement/fire are disabled and fuel fills from `0` to max on HUD.
+- Start mode: at game start (and level restart after all bases are destroyed), player enters a `2.5s` lock where movement/fire are disabled and fuel fills from `0` to max on HUD.
 - Death mode: when player dies, player enters a `3s` lock with movement/fire disabled and a simple explosion animation before life loss + respawn resolution.
 - Respawn safety uses `BaseDistanceField` with bounds `8..36` cells from nearest alive base.
 - Respawn additionally requires no alive enemies within Manhattan distance `<= 3` cells.
@@ -420,7 +420,7 @@ World rendering is in `src/platform/Renderer2D.cpp`.
 
 ## Audio Events
 
-- `resources/audio/power-up.wav`: played when fueling start mode begins (game start and respawn refill).
+- `resources/audio/power-up-digital.wav`: played when fueling start mode begins (new game, respawn after life loss, and level restart after all bases destroyed).
 - `resources/audio/player-shot.wav`: played when player projectile count increases (player fires).
 - `resources/audio/player-explosion.wav`: played when the player enters death mode (explosion at `deathExplosionPosition`: projectile hit, ram/collision, base collision, or fuel empty). Uses the same distance attenuation as other gameplay sounds.
 - `resources/audio/enemy-shot.wav`: played when enemy projectile count increases (enemy fires).
