@@ -2,8 +2,9 @@
 
 #include <array>
 #include "app/AppConfig.h"
-#include "game/GameState.h"
 #include "raylib.h"
+
+struct GameState;
 
 class Renderer2D {
 public:
@@ -29,8 +30,6 @@ private:
     bool playerExplosionSheetLoaded_ = false;
     Texture2D baseExplosionSheet_{};
     bool baseExplosionSheetLoaded_ = false;
-    Texture2D baseAliveTexture_{};
-    bool baseAliveTextureLoaded_ = false;
     Texture2D baseDestroyedTexture_{};
     bool baseDestroyedTextureLoaded_ = false;
 };

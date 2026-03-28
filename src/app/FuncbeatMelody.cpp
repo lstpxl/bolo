@@ -44,7 +44,8 @@ void FuncbeatMelody::Reset() {
     rngState_ = 2463534242U;
 }
 
-float FuncbeatMelody::Synthesize(float t) {
+float FuncbeatMelody::Synthesize(float t, bool tense) {
+    (void)tense;
     // Impulse train at 2 Hz, 0.5% duty cycle — drives the resonant filter.
     float o = std::fmod(t * 2.0F, 1.0F) < 0.005F ? 1.0F : 0.0F;
 

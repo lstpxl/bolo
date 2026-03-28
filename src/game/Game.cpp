@@ -111,6 +111,7 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const GameplayVie
             return;
         }
         state_.world.startModeRemainingSeconds = 0.0F;
+        state_.world.startModeReason = StartModeReason::Unknown;
         state_.world.player.alive = false;
         state_.world.player.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
         state_.world.player.throttleNormalized = 0.0F;
@@ -132,6 +133,9 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const GameplayVie
         const float startProgress =
             1.0F - (state_.world.startModeRemainingSeconds / GameplayConstants::kStartModeDurationSeconds);
         state_.world.player.fuel = GameplayConstants::kFuelMax * std::clamp(startProgress, 0.0F, 1.0F);
+        if (state_.world.startModeRemainingSeconds <= 0.0F) {
+            state_.world.startModeReason = StartModeReason::Unknown;
+        }
     } else if (state_.world.player.fuel < GameplayConstants::kFuelMax && !state_.world.playerTurnLostPending) {
         state_.world.player.fuel = GameplayConstants::kFuelMax;
     }
@@ -155,7 +159,22 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const GameplayVie
         profiling::ScopedProfile scope(profiling::Scope::AiUpdate, true);
         UpdateEnemySystem(state_, view, deltaSeconds, random_, flowWorker_);
     }
-    if (!playerLocked) {
+    bool anyEnemySeesPlayer = false;
+    for (const EnemyTank& enemy : state_.world.enemies) {
+        if (enemy.alive && enemy.seesPlayer) {
+            anyEnemySeesPlayer = true;
+            break;
+        }
+    }
+    if (anyEnemySeesPlayer) {
+        state_.world.enemyVisualContactMusicTimerSeconds =
+            GameplayConstants::kEnemyVisualContactMusicHoldSeconds;
+    } else {
+        state_.world.enemyVisualContactMusicTimerSeconds =
+            std::max(0.0F, state_.world.enemyVisualContactMusicTimerSeconds - deltaSeconds);
+    }
+
+    if (state_.world.player.alive && state_.world.deathModeRemainingSeconds <= 0.0F) {
         profiling::ScopedProfile scope(profiling::Scope::PlayerUpdate);
         UpdatePlayerSystem(state_, playerInput, deltaSeconds);
     } else {
@@ -292,7 +311,9 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const GameplayVie
         state_.world.player.throttleNormalized = 0.0F;
         state_.world.player.fireCooldownSeconds = 0.0F;
         state_.world.player.fuel = 0.0F;
+        state_.world.enemyVisualContactMusicTimerSeconds = 0.0F;
         state_.world.startModeRemainingSeconds = GameplayConstants::kStartModeDurationSeconds;
+        state_.world.startModeReason = StartModeReason::Respawn;
         PlacePlayerAtSafeSpawn(state_, view, random_);
 
         state_.world.navigationCache.playerFlowField.Invalidate();
@@ -331,7 +352,9 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const GameplayVie
         state_.world.score = score;
         state_.world.player.lives = lives;
         state_.world.player.fuel = 0.0F;
+        state_.world.enemyVisualContactMusicTimerSeconds = 0.0F;
         state_.world.startModeRemainingSeconds = GameplayConstants::kStartModeDurationSeconds;
+        state_.world.startModeReason = StartModeReason::LevelComplete;
         state_.world.player.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
         state_.world.player.throttleNormalized = 0.0F;
         state_.world.levelCleared = true;
@@ -355,4 +378,9 @@ void Game::Render(IRenderer& renderer, const AppConfig& config, const FrameInput
         return;
     }
     renderer.RenderGameplay(state_, config, input);
+}
+
+bool Game::IsGameplayMusicTense() const {
+    return modeController_.Mode() == GameMode::Playing &&
+        state_.world.enemyVisualContactMusicTimerSeconds > 0.0F;
 }

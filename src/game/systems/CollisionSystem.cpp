@@ -17,6 +17,29 @@ float DistanceSq(const Vec2f& a, const Vec2f& b) {
     return dx * dx + dy * dy;
 }
 
+BaseOuterSegment SegmentForImpactPoint(const Vec2f& point, const EnemyBase& base) {
+    const float dx = point.x - base.position.x;
+    const float dy = point.y - base.position.y;
+    if (std::fabs(dx) >= std::fabs(dy)) {
+        return dx >= 0.0F ? BaseOuterSegment::Right : BaseOuterSegment::Left;
+    }
+    return dy >= 0.0F ? BaseOuterSegment::Bottom : BaseOuterSegment::Top;
+}
+
+bool IsPointInsideBaseFootprint(const Vec2f& point, const EnemyBase& base) {
+    const float halfBase = GameplayConstants::kEnemyBaseSizeUnits * 0.5F;
+    const float dx = std::fabs(point.x - base.position.x);
+    const float dy = std::fabs(point.y - base.position.y);
+    return dx <= halfBase && dy <= halfBase;
+}
+
+bool IsPointInsideBaseCore(const Vec2f& point, const EnemyBase& base) {
+    const float dx = point.x - base.position.x;
+    const float dy = point.y - base.position.y;
+    const float coreRadius = GameplayConstants::kEnemyBaseCoreRadiusUnits;
+    return dx * dx + dy * dy <= coreRadius * coreRadius;
+}
+
 void DecrementOriginBaseAliveCount(WorldState& world, EnemyTank& enemy) {
     if (enemy.originBaseIndex < 0 || enemy.originBaseIndex >= static_cast<int>(world.enemyBases.size())) {
         enemy.originBaseIndex = -1;
@@ -97,22 +120,34 @@ void UpdateCollisionSystem(GameState& state, float deltaSeconds) {
                 if (base.destroyed) {
                     continue;
                 }
-                const float dx = std::fabs(projectile.position.x - base.position.x);
-                const float dy = std::fabs(projectile.position.y - base.position.y);
-                const float halfBase = GameplayConstants::kEnemyBaseSizeUnits * 0.5F;
-                if (dx <= halfBase && dy <= halfBase) {
-                    base.destroyed = true;
-                    anyBaseDestroyed = true;
+                if (!IsPointInsideBaseFootprint(projectile.position, base)) {
+                    continue;
+                }
+
+                const BaseOuterSegment impactSegment = SegmentForImpactPoint(projectile.position, base);
+                int& impactSegmentHealth = base.SegmentHealthRef(impactSegment);
+                if (impactSegmentHealth > 0) {
+                    impactSegmentHealth -= 1;
+                    base.repairCountdownSeconds = GameplayConstants::kBaseRepairDelaySeconds;
                     projectile.alive = false;
-                    world.score += state.menuSettings.levelNumber * GameplayConstants::kBaseScorePerLevelMultiplier;
-                    world.player.fuel = GameplayConstants::kFuelMax;
-                    state.world.gameplayEvents.Push(GameplayEvent{
-                        .type = GameplayEventType::BaseDestroyed,
-                        .position = base.position,
-                        .baseIndex = baseIndex,
-                    });
                     break;
                 }
+
+                if (!IsPointInsideBaseCore(projectile.position, base)) {
+                    break;
+                }
+
+                base.destroyed = true;
+                anyBaseDestroyed = true;
+                projectile.alive = false;
+                world.score += state.menuSettings.levelNumber * GameplayConstants::kBaseScorePerLevelMultiplier;
+                world.player.fuel = GameplayConstants::kFuelMax;
+                state.world.gameplayEvents.Push(GameplayEvent{
+                    .type = GameplayEventType::BaseDestroyed,
+                    .position = base.position,
+                    .baseIndex = baseIndex,
+                });
+                break;
             }
         } else {
             if (world.player.alive &&

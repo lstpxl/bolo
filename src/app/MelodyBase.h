@@ -3,7 +3,7 @@
 #include <cstdint>
 
 // Interface for procedural melody generators used by MenuMusicPlayer.
-// Implement Reset() to clear synthesis state and Synthesize(t) to produce
+// Implement Reset() to clear synthesis state and Synthesize(t, tense) to produce
 // one sample at time t (seconds). Return values should be in [-1.0, 1.0].
 class MelodyBase {
 public:
@@ -19,5 +19,6 @@ public:
     virtual void Reset() = 0;
 
     // Produce one output sample. t is playback time in seconds.
-    virtual float Synthesize(float t) = 0;
+    // tense lets melodies select an alternate tense tonal sequence.
+    virtual float Synthesize(float t, bool tense) = 0;
 };

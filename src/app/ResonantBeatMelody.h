@@ -13,7 +13,7 @@
 class ResonantBeatMelody : public MelodyBase {
 public:
     void Reset() override;
-    float Synthesize(float t) override;
+    float Synthesize(float t, bool tense) override;
 
 private:
     // Resonant lowpass state (spring-mass: position + velocity).
@@ -22,4 +22,7 @@ private:
     // Cached pitch to avoid std::pow on every sample (note changes at ~4.3 Hz).
     int lastNoteIdx_ = -1;
     float cachedPitch_ = 0.0F;
+    // Tonality changes are quantized to note boundaries.
+    bool pendingTense_ = false;
+    bool activeTense_ = false;
 };

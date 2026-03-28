@@ -25,6 +25,7 @@ public:
     void StartGame(const AppConfig& config, const GameplayView& view);
     void Update(const FrameInput& input, float deltaSeconds, const GameplayView& view);
     void Render(IRenderer& renderer, const AppConfig& config, const FrameInput& input) const;
+    bool IsGameplayMusicTense() const;
 
 private:
     GameModeController modeController_{};

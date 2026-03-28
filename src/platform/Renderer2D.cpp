@@ -86,6 +86,60 @@ int RoundToInt(float value) {
     return static_cast<int>(std::round(value));
 }
 
+int BaseSegmentThicknessPixels(int segmentHealth) {
+    const int clampedHealth = std::clamp(segmentHealth, 0, GameplayConstants::kBaseOuterSegmentMaxHealth);
+    const float ratio =
+        static_cast<float>(clampedHealth) / static_cast<float>(GameplayConstants::kBaseOuterSegmentMaxHealth);
+    const int thickness = RoundToInt(ratio * static_cast<float>(kBaseHoleOffsetPx));
+    return std::clamp(thickness, 0, kBaseHoleOffsetPx);
+}
+
+void DrawAliveBaseWithSegmentHealth(const EnemyBase& base, int topLeftX, int topLeftY) {
+    const int topThickness = BaseSegmentThicknessPixels(base.topSegmentHealth);
+    const int rightThickness = BaseSegmentThicknessPixels(base.rightSegmentHealth);
+    const int bottomThickness = BaseSegmentThicknessPixels(base.bottomSegmentHealth);
+    const int leftThickness = BaseSegmentThicknessPixels(base.leftSegmentHealth);
+
+    if (topThickness > 0) {
+        DrawRectangle(topLeftX, topLeftY, kBaseSizePx, topThickness, kEnemyBaseShellColor);
+    }
+    if (bottomThickness > 0) {
+        DrawRectangle(
+            topLeftX,
+            topLeftY + kBaseSizePx - bottomThickness,
+            kBaseSizePx,
+            bottomThickness,
+            kEnemyBaseShellColor);
+    }
+
+    const int sideY = topLeftY + topThickness;
+    const int sideHeight = std::max(0, kBaseSizePx - topThickness - bottomThickness);
+    if (sideHeight > 0 && leftThickness > 0) {
+        DrawRectangle(topLeftX, sideY, leftThickness, sideHeight, kEnemyBaseShellColor);
+    }
+    if (sideHeight > 0 && rightThickness > 0) {
+        DrawRectangle(
+            topLeftX + kBaseSizePx - rightThickness,
+            sideY,
+            rightThickness,
+            sideHeight,
+            kEnemyBaseShellColor);
+    }
+
+    const int innerLeft = topLeftX + leftThickness;
+    const int innerTop = topLeftY + topThickness;
+    const int innerWidth = std::max(0, kBaseSizePx - leftThickness - rightThickness);
+    const int innerHeight = std::max(0, kBaseSizePx - topThickness - bottomThickness);
+    if (innerWidth > 0 && innerHeight > 0) {
+        DrawRectangle(innerLeft, innerTop, innerWidth, innerHeight, kBackgroundColor);
+    }
+    DrawCircle(
+        topLeftX + kBaseHalfPx,
+        topLeftY + kBaseHalfPx,
+        static_cast<float>(kBaseCoreRadiusPx),
+        kEnemyBaseColor);
+}
+
 
 Color EnemyColorForType(EnemyType type) {
     if (type == EnemyType::Drone) {
@@ -544,7 +598,6 @@ bool Renderer2D::LoadResources() {
         }
         UnloadImage(img);
     };
-    generateBaseTexture(kEnemyBaseShellColor, kEnemyBaseColor, baseAliveTexture_, baseAliveTextureLoaded_);
     generateBaseTexture(kDestroyedBaseColor, kDestroyedBaseColor, baseDestroyedTexture_, baseDestroyedTextureLoaded_);
 
     return playerTankSheetLoaded_;
@@ -575,11 +628,6 @@ void Renderer2D::UnloadResources() {
         UnloadTexture(baseExplosionSheet_);
         baseExplosionSheetLoaded_ = false;
         baseExplosionSheet_ = Texture2D{};
-    }
-    if (baseAliveTextureLoaded_) {
-        UnloadTexture(baseAliveTexture_);
-        baseAliveTextureLoaded_ = false;
-        baseAliveTexture_ = Texture2D{};
     }
     if (baseDestroyedTextureLoaded_) {
         UnloadTexture(baseDestroyedTexture_);
@@ -795,10 +843,10 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
                 const Vector2 baseScreenPosition = WorldToSnappedScreen(base.position, camera);
                 const int topLeftX = RoundToInt(baseScreenPosition.x) - kBaseHalfPx;
                 const int topLeftY = RoundToInt(baseScreenPosition.y) - kBaseHalfPx;
-                if (!base.destroyed && baseAliveTextureLoaded_) {
-                    DrawTexture(baseAliveTexture_, topLeftX, topLeftY, WHITE);
-                } else if (base.destroyed && baseDestroyedTextureLoaded_) {
+                if (base.destroyed && baseDestroyedTextureLoaded_) {
                     DrawTexture(baseDestroyedTexture_, topLeftX, topLeftY, WHITE);
+                } else if (!base.destroyed) {
+                    DrawAliveBaseWithSegmentHealth(base, topLeftX, topLeftY);
                 } else {
                     // Fallback if textures didn't load.
                     const Color shellColor = base.destroyed ? kDestroyedBaseColor : kEnemyBaseShellColor;

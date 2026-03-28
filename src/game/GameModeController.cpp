@@ -28,7 +28,9 @@ void GameModeController::StartGame(
     state.world.player.throttleNormalized = 0.0F;
     state.world.player.fireCooldownSeconds = 0.0F;
     state.world.playerTurnLostPending = false;
+    state.world.enemyVisualContactMusicTimerSeconds = 0.0F;
     state.world.startModeRemainingSeconds = GameplayConstants::kStartModeDurationSeconds;
+    state.world.startModeReason = StartModeReason::NewGame;
     state.world.deathModeRemainingSeconds = 0.0F;
     state.world.deathExplosionRemainingSeconds = 0.0F;
     state.world.score = 0;

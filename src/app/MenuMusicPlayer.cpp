@@ -33,6 +33,7 @@ bool MenuMusicPlayer::Initialize(MelodyBase& melody) {
     sampleCursor_ = 0;
     initialized_ = true;
     enabled_ = false;
+    tense_ = false;
     return true;
 }
 
@@ -51,6 +52,10 @@ void MenuMusicPlayer::SetEnabled(bool enabled) {
     } else {
         PauseAudioStream(stream_);
     }
+}
+
+void MenuMusicPlayer::SetTense(bool tense) {
+    tense_ = tense;
 }
 
 void MenuMusicPlayer::Update() {
@@ -76,13 +81,14 @@ void MenuMusicPlayer::Shutdown() {
     melody_ = nullptr;
     initialized_ = false;
     enabled_ = false;
+    tense_ = false;
     sampleCursor_ = 0;
 }
 
 void MenuMusicPlayer::FillBuffer() {
     for (std::uint32_t i = 0; i < kSampleBufferSamples; ++i) {
         const float t = static_cast<float>(sampleCursor_) * invSampleRate_;
-        const float sample = std::clamp(melody_->Synthesize(t), -1.0F, 1.0F);
+        const float sample = std::clamp(melody_->Synthesize(t, tense_), -1.0F, 1.0F);
         sampleBuffer_[i] = static_cast<short>(sample * 32767.0F);
         ++sampleCursor_;
     }

@@ -158,13 +158,64 @@ struct EnemyExplosion {
     bool active = false;
 };
 
+enum class BaseOuterSegment {
+    Top,
+    Right,
+    Bottom,
+    Left,
+};
+
 struct EnemyBase {
     Vec2f position;
     bool destroyed = false;
     bool explosionPlayed = false;
+    int topSegmentHealth = GameplayConstants::kBaseOuterSegmentMaxHealth;
+    int rightSegmentHealth = GameplayConstants::kBaseOuterSegmentMaxHealth;
+    int bottomSegmentHealth = GameplayConstants::kBaseOuterSegmentMaxHealth;
+    int leftSegmentHealth = GameplayConstants::kBaseOuterSegmentMaxHealth;
+    float repairCountdownSeconds = 0.0F;
     float enemyGenerationIntervalSeconds = GameplayConstants::kBaseSpawnCooldownSeconds;
     float enemyGenerationTimerSeconds = GameplayConstants::kBaseSpawnCooldownSeconds;
     int activeEnemies = 0;
+
+    int SegmentHealth(BaseOuterSegment segment) const {
+        switch (segment) {
+        case BaseOuterSegment::Top:
+            return topSegmentHealth;
+        case BaseOuterSegment::Right:
+            return rightSegmentHealth;
+        case BaseOuterSegment::Bottom:
+            return bottomSegmentHealth;
+        case BaseOuterSegment::Left:
+            return leftSegmentHealth;
+        }
+        return 0;
+    }
+
+    int& SegmentHealthRef(BaseOuterSegment segment) {
+        switch (segment) {
+        case BaseOuterSegment::Top:
+            return topSegmentHealth;
+        case BaseOuterSegment::Right:
+            return rightSegmentHealth;
+        case BaseOuterSegment::Bottom:
+            return bottomSegmentHealth;
+        case BaseOuterSegment::Left:
+            return leftSegmentHealth;
+        }
+        return topSegmentHealth;
+    }
+
+    bool HasDamagedSegments() const {
+        return topSegmentHealth < GameplayConstants::kBaseOuterSegmentMaxHealth ||
+            rightSegmentHealth < GameplayConstants::kBaseOuterSegmentMaxHealth ||
+            bottomSegmentHealth < GameplayConstants::kBaseOuterSegmentMaxHealth ||
+            leftSegmentHealth < GameplayConstants::kBaseOuterSegmentMaxHealth;
+    }
+
+    bool IsSegmentDamaged(BaseOuterSegment segment) const {
+        return SegmentHealth(segment) < GameplayConstants::kBaseOuterSegmentMaxHealth;
+    }
 };
 
 enum class ProjectileOwner {

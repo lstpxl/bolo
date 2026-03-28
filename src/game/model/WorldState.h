@@ -48,7 +48,9 @@ struct WorldState {
     std::vector<Projectile> projectiles{};
     int score = 0;
     bool playerTurnLostPending = false;
+    float enemyVisualContactMusicTimerSeconds = 0.0F;
     float startModeRemainingSeconds = 0.0F;
+    StartModeReason startModeReason = StartModeReason::Unknown;
     float deathModeRemainingSeconds = 0.0F;
     float deathExplosionRemainingSeconds = 0.0F;
     Vec2f deathExplosionPosition{.x = 0.0F, .y = 0.0F};

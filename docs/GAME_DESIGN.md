@@ -75,7 +75,9 @@ Defined in `src/game/GameState.h`.
 - `EnemyTank`
   - position, heading, type, subtype, alive flag
 - `EnemyBase`
-  - position, destroyed flag, active enemy count
+  - position, `destroyed` flag (core destroyed), active enemy count
+  - segmented outer layer health: `top/right/bottom/left`, each `0..4` (`4` at spawn)
+  - repair countdown timer (`4.0s`) used for automatic +1 healing ticks
 - `MazeState`
   - grid dimensions and `MazeCell` wall flags (`north/east/south/west`)
 
@@ -91,6 +93,13 @@ Enemy spawn table behavior (`src/game/systems/SpawnerSystem.cpp`):
   - diagonal heading: tank nose points at the matching base corner, then spawn center is shifted `0.5` world-units toward base core.
 - Spawn safety gate: before creating an enemy, spawn path from the initial spawn position must be clear for at least `6` world-units in its spawn heading (walls/bases/enemies considered). If blocked, base skips this attempt and retries next generation interval.
 - Failed spawn attempts (`no valid spawn heading`, `spawn point occupied`, or `6`-unit path gate blocked) reset that base's generation timer and wait one full generation interval before retry.
+- Spawn direction filter from damaged armor segments:
+  - damaged `top` blocks heading candidates toward top and top-diagonals (`N`, `NE`, `NW`)
+  - damaged `right` blocks (`E`, `NE`, `SE`)
+  - damaged `bottom` blocks (`S`, `SE`, `SW`)
+  - damaged `left` blocks (`W`, `NW`, `SW`)
+- Damaged segment definition: any segment with health `< 4`. Segment at `0` is breached and no longer protects the core from that side.
+- Base self-repair: when any segment is damaged, base repair countdown runs for `4.0s`; on expiry, the most damaged segment heals by `+1` (deterministic tie break `top`, `right`, `bottom`, `left`), then the timer repeats while any segment remains damaged.
 - Enemies inside or near any undestroyed base (base footprint + 1 unit clearance) are excluded from enemy–enemy mutual-kill and separation; they never die from base-proximity collisions.
 - Each base has its own enemy generation interval assigned at base creation as random `±50%` of `kBaseSpawnCooldownSeconds`.
 - Each base also has an enemy generation timer initialized from that interval; timer counts down and is reset to the same interval after a successful spawn.
@@ -163,7 +172,7 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
   - **hardRadius** (`kEnemyCollisionRadiusUnits`): collision radius for overlap and hit checks.
   - **softRadius** (`kEnemyAvoidanceRadiusUnits`): avoidance radius for steering (wall clearance, path planning, separation). Soft radius is larger than hard radius.
 - Enemy wall movement keeps additional margin: enemy disc edge stays at least `2px` away from maze walls.
-- Start mode: at game start (and level restart after all bases are destroyed), player enters a `2.5s` lock where movement/fire are disabled and fuel fills from `0` to max on HUD.
+- Start mode: player enters a `2.5s` refuel lock where fuel fills from `0` to max on HUD. During **respawn** start mode, hull/turret rotation remains enabled while movement/fire stay disabled; during **new game** and **level restart**, movement/rotation/fire are all disabled.
 - Death mode: when player dies, player enters a `3s` lock with movement/fire disabled and a simple explosion animation before life loss + respawn resolution.
 - Respawn safety uses `BaseDistanceField` with bounds `8..36` cells from nearest alive base.
 - Respawn additionally requires no alive enemies within Manhattan distance `<= 3` cells.
@@ -177,6 +186,11 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
 - **`kPlayerEnemyCollisionRadius`** – player–enemy overlap (`2 × kEntityRadiusUnits`).
 - **`kProjectileHitRadius`** – projectile vs enemy/player hit detection (0.7 units).
 - **`kPlayerBaseHardCollisionUnits`** – player death when inside base (halfBase + entityRadius).
+- Player projectile vs base:
+  - Impact side is resolved by dominant axis from base center (`abs(dx) >= abs(dy)` => left/right, else top/bottom).
+  - If impact segment health is `> 0`, that segment takes `1` damage and projectile is consumed.
+  - Core is killed only by a projectile inside the core radius that approaches through a breached (`0` health) segment.
+  - Base destruction occurs only on core hit; outer-layer hits alone cannot destroy a base.
 
 Enemy movement/steering code uses **`kWallClearanceForAvoidance`** (passed into geometry) and **`kEnemyWallAvoidanceUnits`** / **`kEnemyAvoidanceRadiusUnits`** for clearance queries. Wall model: finite line extruded as pill by half-thickness; bases use the same formula (halfSize + entityRadius + optional clearance).
 
@@ -387,7 +401,7 @@ World rendering is in `src/platform/Renderer2D.cpp`.
 - Enemy and projectile rendering is culled to camera-visible world bounds with a small safety margin.
 - Projectiles render as pixel-snapped `3x3` px rectangles in screen space (player shell `#FFFFFF`, enemy shell `#FFB000`).
 - Enemy tanks and bases are rendered in pixel-snapped screen space (derived from world positions) to match wall stability on handheld displays.
-- Base visuals use a `3x3` unit shell with an empty center square sized as `(1 unit + 8 px)`; a centered "core" disc is drawn inside the hole with diameter `(center hole - 10 px)`.
+- Base visuals use a `3x3` unit shell with a centered core disc. Each shell side (`top/right/bottom/left`) renders with independent thickness proportional to segment health (`4` = full original thickness, `0` = no shell on that side).
 - Enemy tank visuals load from `resources/textures/sprites.png` (`2x7` grid, `9x9` cells). Rows `4..7` map to `Drone`, `Torpedo`, `Hunter`, `Assassin` (matching `docs/original-1982/ENEMY_TYPES.md` order). Column 1 is facing 12 o'clock, column 2 is 45 degrees clockwise; the renderer precomputes all 8 directions at load time and uses the matching directional frame at draw time. Non-transparent source pixels are normalized to white during load, then tinted by enemy type color at draw time.
 - Player tank visuals load from `resources/textures/sprites.png` (`2x7` grid, `9x9` cells). Row `1` is body and row `2` is barrel; each direction frame is prebuilt by XOR-combining body+barrel cells and rendered in green (`#00C030`), with 8 directions precomputed from the two source columns.
 - Enemy sprite rendering uses pixel-snapped screen-space placement derived from world positions with integer sprite scaling (`9x9` source cells rendered at `18x18`, i.e. exact `2x`). Player gameplay footprint remains `kEntitySizeUnits = 1.0`, and the player sprite is rendered in pixel-snapped screen space at fixed `18x18` with per-frame pivot correction to avoid heading-frame jitter.
@@ -434,6 +448,7 @@ World rendering is in `src/platform/Renderer2D.cpp`.
   - If `3 * 6 < d <= 10 * 6`, volume is `V = 1 - (d - r1) / (r2 - r1)` with `r1 = 3 * 6`, `r2 = 10 * 6`.
 - Main menu background music is generated procedurally at runtime by a bytebeat-style synthesizer module (`src/app/MenuMusicGenerator.cpp`), not loaded from an audio asset file.
 - Procedural menu music is enabled only while `GameMode::Menu` is active and is paused immediately when transitioning to gameplay.
+- Gameplay procedural melody (`ResonantBeatMelody` via `MenuMusicPlayer`) has a dynamic tension gate: during `GameMode::Playing`, if any alive enemy has visual contact (`enemy.seesPlayer`), a music-contact timer is set to `4.0s`; when no enemies see the player, the timer counts down by fixed-step `dt`. Gameplay melody runs in `tense` mode while this timer is `> 0`.
 - `resources/audio/ui-pass.wav`: played for menu and confirmation feedback that is not a menu Select/Enter on a button: moving focus (Up/Down on the main menu, Left/Right between dialog buttons), changing level/density/debug, mouse clicks on controls, and Escape to cancel a dialog.
 - `resources/audio/positive-select.wav`: played when menu Select/Enter activates **Start** or **Quit** on the main menu, or **Confirm** / **Cancel** on a confirmation dialog (quit confirmation, gameplay pause), including when that choice exits the game or starts play.
 

@@ -210,6 +210,7 @@ int GameApp::Run() {
                         }
                         if (gameplayMusicPlayerReady_) {
                             gameplayMusicPlayer_.SetEnabled(game_.Mode() == GameMode::Playing);
+                            gameplayMusicPlayer_.SetTense(game_.IsGameplayMusicTense());
                             profiling::ScopedProfile gameplayMusicScope(profiling::Scope::GameplayMusicUpdate);
                             gameplayMusicPlayer_.Update();
                         }

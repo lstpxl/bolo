@@ -1,5 +1,6 @@
 #include "game/systems/SpawnerSystem.h"
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <vector>
@@ -30,7 +31,61 @@ struct SpawnRayChoice {
     float clearDistance = 0.0F;
 };
 
-SpawnRayChoice PickSpawnDirection(const WorldState& world, const Vec2f& baseCenter, Random& random) {
+BaseOuterSegment MostDamagedSegment(const EnemyBase& base) {
+    BaseOuterSegment mostDamaged = BaseOuterSegment::Top;
+    int minHealth = base.topSegmentHealth;
+    const auto consider = [&](BaseOuterSegment segment) {
+        const int health = base.SegmentHealth(segment);
+        if (health < minHealth) {
+            minHealth = health;
+            mostDamaged = segment;
+        }
+    };
+    consider(BaseOuterSegment::Right);
+    consider(BaseOuterSegment::Bottom);
+    consider(BaseOuterSegment::Left);
+    return mostDamaged;
+}
+
+void TickBaseRepair(EnemyBase& base, float deltaSeconds) {
+    if (!base.HasDamagedSegments()) {
+        base.repairCountdownSeconds = 0.0F;
+        return;
+    }
+    if (base.repairCountdownSeconds <= 0.0F) {
+        base.repairCountdownSeconds = GameplayConstants::kBaseRepairDelaySeconds;
+    }
+    base.repairCountdownSeconds -= deltaSeconds;
+    while (base.repairCountdownSeconds <= 0.0F && base.HasDamagedSegments()) {
+        int& health = base.SegmentHealthRef(MostDamagedSegment(base));
+        health = std::min(
+            GameplayConstants::kBaseOuterSegmentMaxHealth,
+            health + GameplayConstants::kBaseRepairHealthPerTick);
+        if (base.HasDamagedSegments()) {
+            base.repairCountdownSeconds += GameplayConstants::kBaseRepairDelaySeconds;
+        } else {
+            base.repairCountdownSeconds = 0.0F;
+        }
+    }
+}
+
+bool IsDirectionBlockedByDamagedSegments(const EnemyBase& base, const Vec2f& direction) {
+    if (base.IsSegmentDamaged(BaseOuterSegment::Top) && direction.y < -0.5F) {
+        return true;
+    }
+    if (base.IsSegmentDamaged(BaseOuterSegment::Bottom) && direction.y > 0.5F) {
+        return true;
+    }
+    if (base.IsSegmentDamaged(BaseOuterSegment::Right) && direction.x > 0.5F) {
+        return true;
+    }
+    if (base.IsSegmentDamaged(BaseOuterSegment::Left) && direction.x < -0.5F) {
+        return true;
+    }
+    return false;
+}
+
+SpawnRayChoice PickSpawnDirection(const WorldState& world, const EnemyBase& base, Random& random) {
     constexpr std::array<float, 8> kHeadings{
         0.0F, kPi * 0.25F, kPi * 0.5F, kPi * 0.75F, kPi, kPi * 1.25F, kPi * 1.5F, kPi * 1.75F};
 
@@ -41,9 +96,13 @@ SpawnRayChoice PickSpawnDirection(const WorldState& world, const Vec2f& baseCent
     float bestClear = -1.0F;
     for (int i = 0; i < static_cast<int>(kHeadings.size()); ++i) {
         const float heading = kHeadings[static_cast<std::size_t>(i)];
+        const Vec2f direction = core::angle::DirectionFromHeading(heading);
+        if (IsDirectionBlockedByDamagedSegments(base, direction)) {
+            continue;
+        }
         const float clearDistance = game::geometry::FreeDistanceAhead(
             world,
-            baseCenter,
+            base.position,
             heading,
             kSpawnProbeMaxUnits,
             GameplayConstants::kWallClearanceForAvoidance);
@@ -123,8 +182,12 @@ void UpdateSpawnerSystem(GameState& state, float deltaSeconds, Random& random) {
         EnemyBase& base = state.world.enemyBases[static_cast<std::size_t>(baseIndex)];
         if (base.destroyed) {
             base.activeEnemies = 0;
+            base.repairCountdownSeconds = 0.0F;
             continue;
         }
+
+        TickBaseRepair(base, deltaSeconds);
+
         if (base.enemyGenerationIntervalSeconds <= 0.0F) {
             base.enemyGenerationIntervalSeconds = GameplayConstants::kBaseSpawnCooldownSeconds;
         }
@@ -137,7 +200,7 @@ void UpdateSpawnerSystem(GameState& state, float deltaSeconds, Random& random) {
         }
 
         const game::EnemySpawnChoice spawnedEnemy = PickSpawnEnemyForLevel(state.menuSettings.levelNumber, random);
-        const SpawnRayChoice spawnDirection = PickSpawnDirection(state.world, base.position, random);
+        const SpawnRayChoice spawnDirection = PickSpawnDirection(state.world, base, random);
         if (!spawnDirection.found) {
             // Failed attempt: wait a full interval before retrying.
             ResetSpawnTimerAfterFailedAttempt(base);

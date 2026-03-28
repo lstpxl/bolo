@@ -10,6 +10,10 @@ struct GameplayConstants {
     static constexpr float kEntitySizeUnits = 0.875F;          // world-units (7px x 2 scale at 16px/unit)
     static constexpr float kEnemyBaseSizeUnits = 3.0F;       // world-units
     static constexpr int kEnemyBaseCount = 6;                // bases / maze
+    static constexpr int kBaseOuterSegmentMaxHealth = 4;     // hit points / side
+    static constexpr float kBaseRepairDelaySeconds = 4.0F;   // seconds
+    static constexpr int kBaseRepairHealthPerTick = 1;       // hit points
+    static constexpr float kEnemyBaseCoreRadiusUnits = 0.4375F;  // world-units (7 px @ 16 px/unit)
 
     static constexpr float kEntityRadiusUnits = kEntitySizeUnits * 0.5F; // world-units
 
@@ -46,6 +50,7 @@ struct GameplayConstants {
     static constexpr float kEnemyTorpedoFireInterval = 2.0F;         // seconds
     static constexpr float kEnemyHunterFireInterval = 1.5F;          // seconds
     static constexpr float kEnemyAssassinFireInterval = 1.0F;        // seconds
+    static constexpr float kEnemyVisualContactMusicHoldSeconds = 4.0F; // seconds
     static constexpr float kEnemyProjectileSpeed = 7.0F;             // world-units / second
     static constexpr float kEnemyAggroRangeUnits = 15.0F;           // world-units
     /// Half-angle (radians) from hull forward for `seesPlayer`: visible if bearing to player

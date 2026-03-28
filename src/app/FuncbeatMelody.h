@@ -14,7 +14,7 @@
 class FuncbeatMelody : public MelodyBase {
 public:
     void Reset() override;
-    float Synthesize(float t) override;
+    float Synthesize(float t, bool tense) override;
 
 private:
     // 4-pole cascaded resonant filter state (position + velocity per stage).
