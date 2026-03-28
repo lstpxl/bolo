@@ -11,12 +11,16 @@ struct AudioEventRouterConfig {
     bool enemySpawningLoaded = false;
     bool enemyExplodingLoaded = false;
     bool baseExplodingLoaded = false;
+    bool projectileWallHitLoaded = false;
+    bool playerExplosionLoaded = false;
     SoundPool<4>* powerUpSound = nullptr;
     SoundPool<4>* playerShotSound = nullptr;
     SoundPool<4>* enemyShotSound = nullptr;
     SoundPool<4>* enemySpawningSound = nullptr;
     SoundPool<4>* enemyExplodingSound = nullptr;
     SoundPool<4>* baseExplodingSound = nullptr;
+    SoundPool<4>* projectileWallHitSound = nullptr;
+    SoundPool<4>* playerExplosionSound = nullptr;
 };
 
 class AudioEventRouter {

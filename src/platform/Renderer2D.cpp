@@ -6,7 +6,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
-#include <limits>
 #include <string>
 #include "core/Log.h"
 #include "core/Profiling.h"
@@ -61,9 +60,6 @@ constexpr Color kEnemyBaseShellColor = ColorFromHexRGB(kEnemyBaseShellHex);
 constexpr Color kEnemyBaseColor = ColorFromHexRGB(kEnemyBaseHex);
 constexpr Color kPlayerShellColor = ColorFromHexRGB(kPlayerShellHex);
 constexpr Color kEnemyShellColor = ColorFromHexRGB(kEnemyShellHex);
-/// Brown text for base-distance debug overlay (raylib default font: size must be a multiple of 10).
-constexpr Color kBaseDistanceFieldDebugTextColor = ColorFromHexRGB(0x8B4513);
-constexpr int kBaseDistanceFieldDebugFontSize = 10;
 constexpr float kEnemyRenderCullMarginUnits = 2.0F;
 constexpr float kProjectileRenderCullMarginUnits = 1.0F;
 constexpr int kProjectileRenderSizePixels = 3;
@@ -733,11 +729,7 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
     }
 
     const bool showFlowField =
-#if defined(__APPLE__) && !defined(NDEBUG)
-        state.world.navigationCache.playerFlowField.HasBuild();
-#else
         state.menuSettings.debugInfo && state.world.navigationCache.playerFlowField.HasBuild();
-#endif
     if (showFlowField) {
         const auto& flowField = state.world.navigationCache.playerFlowField;
         const float cellSizeUnits = static_cast<float>(state.world.maze.cellSizeUnits);
@@ -758,40 +750,6 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
                     static_cast<float>(toX) * cellSizeUnits + cellHalfUnits,
                     static_cast<float>(toY) * cellSizeUnits + cellHalfUnits,
                     cellSizeUnits);
-            }
-        }
-    }
-
-    const bool showBaseDistanceField =
-#if defined(__APPLE__) && !defined(NDEBUG)
-        state.world.navigationCache.baseDistanceField.HasBuild();
-#else
-        state.menuSettings.debugInfo && state.world.navigationCache.baseDistanceField.HasBuild();
-#endif
-    if (showBaseDistanceField) {
-        const auto& baseDistanceField = state.world.navigationCache.baseDistanceField;
-        const float cellSizeUnits = static_cast<float>(state.world.maze.cellSizeUnits);
-        const float cellHalfUnits = cellSizeUnits * 0.5F;
-        char labelBuf[16]{};
-        for (int cellY = minCellY; cellY <= maxCellY; ++cellY) {
-            for (int cellX = minCellX; cellX <= maxCellX; ++cellX) {
-                const int d = baseDistanceField.DistanceAtCell(cellX, cellY);
-                const char* label = labelBuf;
-                if (d == std::numeric_limits<int>::max()) {
-                    label = "-";
-                } else {
-                    std::snprintf(labelBuf, sizeof(labelBuf), "%d", d);
-                }
-                const float cx = static_cast<float>(cellX) * cellSizeUnits + cellHalfUnits;
-                const float cy = static_cast<float>(cellY) * cellSizeUnits + cellHalfUnits;
-                const Vector2 screenPos = GetWorldToScreen2D(Vector2{cx, cy}, camera);
-                const int textWidth = MeasureText(label, kBaseDistanceFieldDebugFontSize);
-                DrawText(
-                    label,
-                    RoundToInt(screenPos.x) - textWidth / 2,
-                    RoundToInt(screenPos.y) - kBaseDistanceFieldDebugFontSize / 2,
-                    kBaseDistanceFieldDebugFontSize,
-                    kBaseDistanceFieldDebugTextColor);
             }
         }
     }

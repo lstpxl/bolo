@@ -62,9 +62,19 @@ void AudioEventRouter::RouteStep(
                 PlaySpatialSound(*config.baseExplodingSound, listener, event.position);
             }
             break;
+        case GameplayEventType::ProjectileHitWall:
+            if (config.projectileWallHitLoaded && config.projectileWallHitSound != nullptr) {
+                PlaySpatialSound(*config.projectileWallHitSound, listener, event.position);
+            }
+            break;
         case GameplayEventType::StartModeStarted:
             if (config.powerUpLoaded && config.powerUpSound != nullptr) {
                 PlaySpatialSound(*config.powerUpSound, listener, event.position);
+            }
+            break;
+        case GameplayEventType::PlayerExplosion:
+            if (config.playerExplosionLoaded && config.playerExplosionSound != nullptr) {
+                PlaySpatialSound(*config.playerExplosionSound, listener, event.position);
             }
             break;
         }

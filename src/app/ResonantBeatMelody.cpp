@@ -20,6 +20,8 @@ namespace {
 // notedata = "$$$000,,,,,,,,''", ASCII charCodeAt values for each of 16 steps:
 //   '$'=36  '0'=48  ','=44  '\''=39
 constexpr int kNoteData[16] = {36, 36, 36, 48, 48, 48, 44, 44, 44, 44, 44, 44, 44, 44, 39, 39};
+/// Output gain: 0.7 ≈ 30% quieter than unity.
+constexpr float kOutputGain = 0.7F;
 }  // namespace
 
 void ResonantBeatMelody::Reset() {
@@ -55,5 +57,5 @@ float ResonantBeatMelody::Synthesize(float t) {
     const float kickPhase = std::fmod(t * 4.3F, 2.0F);
     const float kick = std::sin(std::pow(kickPhase + 0.01F, 0.3F) * 180.0F) * 0.25F;
 
-    return lastSample_ + kick;
+    return (lastSample_ + kick) * kOutputGain;
 }

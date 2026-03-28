@@ -3,6 +3,8 @@
 #include <cstdint>
 #include "app/MelodyBase.h"
 
+// Main menu
+
 // "Funcbeat" procedural melody for the main menu.
 // Combines a sweeping resonant filter, detuned square oscillators,
 // LFO pulse-width modulation, and a sparse impulse trigger.

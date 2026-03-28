@@ -120,6 +120,10 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const GameplayVie
         state_.world.deathModeRemainingSeconds = GameplayConstants::kDeathModeDurationSeconds;
         state_.world.deathExplosionRemainingSeconds = GameplayConstants::kDeathExplosionDurationSeconds;
         state_.world.deathExplosionPosition = state_.world.player.position;
+        state_.world.gameplayEvents.Push(GameplayEvent{
+            .type = GameplayEventType::PlayerExplosion,
+            .position = state_.world.deathExplosionPosition,
+        });
     };
 
     if (state_.world.startModeRemainingSeconds > 0.0F) {
@@ -202,6 +206,22 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const GameplayVie
         for (EnemyExplosion& slot : state_.world.enemyExplosions) {
             if (!slot.active) {
                 slot.position = enemy.position;
+                slot.elapsedSeconds = 0.0F;
+                slot.active = true;
+                break;
+            }
+        }
+    }
+
+    // Spawn explosions for projectiles that hit walls (same sprite/radius as enemy death).
+    for (std::size_t ei = 0; ei < state_.world.gameplayEvents.count; ++ei) {
+        if (state_.world.gameplayEvents.events[ei].type != GameplayEventType::ProjectileHitWall) {
+            continue;
+        }
+        const Vec2f pos = state_.world.gameplayEvents.events[ei].position;
+        for (EnemyExplosion& slot : state_.world.enemyExplosions) {
+            if (!slot.active) {
+                slot.position = pos;
                 slot.elapsedSeconds = 0.0F;
                 slot.active = true;
                 break;

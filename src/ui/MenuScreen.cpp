@@ -331,8 +331,6 @@ constexpr int kDensityHatchSpriteCount = 5;
 constexpr int kDensityHatchGapPx = 16;
 constexpr int kDensityHatchRenderScale = 2;
 constexpr int kDensityHatchDrawPx = kDensityHatchCellPx * kDensityHatchRenderScale;
-// #E6D628 — menu hatch sprites (was black on transparent in source art).
-constexpr Color kDensityHatchTint = Color{230, 214, 40, 255};
 
 // Level slider: focus ring uses the outer band; `GuiSliderBar` is inset 2 px top/bottom so the
 // track/fill sits below the band edge like the horizontal `SLIDER_PADDING` gutter (raygui unchanged).
@@ -345,8 +343,9 @@ constexpr int kLevelSliderBorderPx = 2;
 constexpr int kLevelSliderPaddingPx = 2;
 constexpr Color kMenuSliderTrackBg = Color{40, 46, 58, 180};
 
-// Matches `DrawText(..., YELLOW)` used for the Density label (raylib `YELLOW`).
-const int kMenuYellowTextPacked = static_cast<int>(ColorToInt(YELLOW));
+// Main menu focusable row text, raygui packed colors, and density-hatch sprite tint (#0D8152).
+constexpr Color kMenuFocusableItemColor = Color{13, 129, 82, 255};
+const int kMenuFocusableTextPacked = static_cast<int>(ColorToInt(kMenuFocusableItemColor));
 
 void ApplyBoltMainMenuRayGuiStyle() {
     GuiLoadStyleDefault();
@@ -358,27 +357,27 @@ void ApplyBoltMainMenuRayGuiStyle() {
     GuiSetStyle(BUTTON, BORDER_WIDTH, 0);
     GuiSetStyle(BUTTON, BORDER_COLOR_NORMAL, transparent);
     GuiSetStyle(BUTTON, BASE_COLOR_NORMAL, transparent);
-    GuiSetStyle(BUTTON, TEXT_COLOR_NORMAL, kMenuYellowTextPacked);
+    GuiSetStyle(BUTTON, TEXT_COLOR_NORMAL, kMenuFocusableTextPacked);
     GuiSetStyle(BUTTON, BORDER_COLOR_FOCUSED, transparent);
     GuiSetStyle(BUTTON, BASE_COLOR_FOCUSED, transparent);
-    GuiSetStyle(BUTTON, TEXT_COLOR_FOCUSED, kMenuYellowTextPacked);
+    GuiSetStyle(BUTTON, TEXT_COLOR_FOCUSED, kMenuFocusableTextPacked);
     GuiSetStyle(BUTTON, BORDER_COLOR_PRESSED, transparent);
     GuiSetStyle(BUTTON, BASE_COLOR_PRESSED, transparent);
-    GuiSetStyle(BUTTON, TEXT_COLOR_PRESSED, kMenuYellowTextPacked);
+    GuiSetStyle(BUTTON, TEXT_COLOR_PRESSED, kMenuFocusableTextPacked);
 
     GuiSetStyle(SLIDER, BORDER_WIDTH, kLevelSliderBorderPx);
     GuiSetStyle(SLIDER, SLIDER_PADDING, kLevelSliderPaddingPx);
-    GuiSetStyle(SLIDER, BORDER_COLOR_NORMAL, kMenuYellowTextPacked);
-    GuiSetStyle(SLIDER, BORDER_COLOR_FOCUSED, kMenuYellowTextPacked);
-    GuiSetStyle(SLIDER, BORDER_COLOR_PRESSED, kMenuYellowTextPacked);
+    GuiSetStyle(SLIDER, BORDER_COLOR_NORMAL, kMenuFocusableTextPacked);
+    GuiSetStyle(SLIDER, BORDER_COLOR_FOCUSED, kMenuFocusableTextPacked);
+    GuiSetStyle(SLIDER, BORDER_COLOR_PRESSED, kMenuFocusableTextPacked);
     GuiSetStyle(SLIDER, BASE_COLOR_NORMAL, trackBg);
-    GuiSetStyle(SLIDER, BASE_COLOR_PRESSED, kMenuYellowTextPacked);
-    GuiSetStyle(SLIDER, TEXT_COLOR_FOCUSED, kMenuYellowTextPacked);
-    GuiSetStyle(SLIDER, TEXT_COLOR_PRESSED, kMenuYellowTextPacked);
+    GuiSetStyle(SLIDER, BASE_COLOR_PRESSED, kMenuFocusableTextPacked);
+    GuiSetStyle(SLIDER, TEXT_COLOR_FOCUSED, kMenuFocusableTextPacked);
+    GuiSetStyle(SLIDER, TEXT_COLOR_PRESSED, kMenuFocusableTextPacked);
 
-    GuiSetStyle(LABEL, TEXT_COLOR_NORMAL, kMenuYellowTextPacked);
-    GuiSetStyle(LABEL, TEXT_COLOR_FOCUSED, kMenuYellowTextPacked);
-    GuiSetStyle(LABEL, TEXT_COLOR_PRESSED, kMenuYellowTextPacked);
+    GuiSetStyle(LABEL, TEXT_COLOR_NORMAL, kMenuFocusableTextPacked);
+    GuiSetStyle(LABEL, TEXT_COLOR_FOCUSED, kMenuFocusableTextPacked);
+    GuiSetStyle(LABEL, TEXT_COLOR_PRESSED, kMenuFocusableTextPacked);
 }
 
 // Quit confirmation uses raygui buttons after the main menu already drew; restore visible outlines.
@@ -449,7 +448,7 @@ bool TryLoadDensityHatchSheet(Texture2D& outTexture) {
         return false;
     }
 
-    ReplaceOpaquePixelsRgb(image, kDensityHatchTint);
+    ReplaceOpaquePixelsRgb(image, kMenuFocusableItemColor);
     outTexture = LoadTextureFromImage(image);
     UnloadImage(image);
     if (outTexture.id == 0) {
@@ -512,6 +511,7 @@ MenuScreenResult MenuScreen::Render(
     mazeDensity_ = std::clamp(currentSettings.mazeDensity, kMinMazeDensity, kMaxMazeDensity);
     debugInfo_ = currentSettings.debugInfo;
     bool interactionOccurred = false;
+    bool menuButtonActivatedViaMenuSelect = false;
 
     if (!quitConfirmationOpen_) {
         if (input.menuNavigateDownPressed) {
@@ -764,7 +764,7 @@ MenuScreenResult MenuScreen::Render(
             levelHeaderBlockLeftX,
             static_cast<int>(levelTextDrawY),
             kLevelLabelFontPx,
-            YELLOW);
+            kMenuFocusableItemColor);
         const char* levelNumberText = TextFormat("%d", levelNumber_);
         const int levelNumberDrawW = MeasureText(levelNumberText, kLevelLabelFontPx);
         const int levelNumberDrawX =
@@ -775,7 +775,7 @@ MenuScreenResult MenuScreen::Render(
             levelNumberDrawX,
             static_cast<int>(levelTextDrawY),
             kLevelLabelFontPx,
-            YELLOW);
+            kMenuFocusableItemColor);
     }
 
     constexpr const char* kDensityUiLabel = "Density";
@@ -798,7 +798,7 @@ MenuScreenResult MenuScreen::Render(
             densityHeaderBlockLeftX,
             static_cast<int>(densityTextDrawY),
             kDensityLabelFontPx,
-            YELLOW);
+            kMenuFocusableItemColor);
         const char* densityNumberText = TextFormat("%d", mazeDensity_);
         const int densityNumberDrawW = MeasureText(densityNumberText, kDensityLabelFontPx);
         const int densityNumberDrawX =
@@ -809,7 +809,7 @@ MenuScreenResult MenuScreen::Render(
             densityNumberDrawX,
             static_cast<int>(densityTextDrawY),
             kDensityLabelFontPx,
-            YELLOW);
+            kMenuFocusableItemColor);
     }
 
     if (densityShowSprites) {
@@ -914,7 +914,7 @@ MenuScreenResult MenuScreen::Render(
         static_cast<int>(panelCenterX) - debugDrawW / 2,
         static_cast<int>(debugTextY),
         kDebugInfoMenuFontPx,
-        YELLOW);
+        kMenuFocusableItemColor);
     if (debugInfoValue != debugInfo_) {
         interactionOccurred = true;
     }
@@ -932,8 +932,10 @@ MenuScreenResult MenuScreen::Render(
         interactionOccurred = true;
         if (focusedControl_ == FocusedControl::Start) {
             startPressed = true;
+            menuButtonActivatedViaMenuSelect = true;
         } else if (focusedControl_ == FocusedControl::Quit) {
             quitPressed = true;
+            menuButtonActivatedViaMenuSelect = true;
         }
     }
 
@@ -1014,6 +1016,9 @@ MenuScreenResult MenuScreen::Render(
         if (modalResult.interactionOccurred) {
             interactionOccurred = true;
         }
+        if (modalResult.buttonActivatedViaMenuSelect) {
+            menuButtonActivatedViaMenuSelect = true;
+        }
 
         if (modalResult.confirmPressed) {
             confirmQuitPressed = true;
@@ -1029,6 +1034,7 @@ MenuScreenResult MenuScreen::Render(
         .startGameRequested = startPressed,
         .quitRequested = confirmQuitPressed,
         .interactionOccurred = interactionOccurred,
+        .menuButtonActivatedViaMenuSelect = menuButtonActivatedViaMenuSelect,
         .menuSettings =
             MenuSettings{
                 .levelNumber = levelNumber_,

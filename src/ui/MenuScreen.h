@@ -10,6 +10,8 @@ struct MenuScreenResult {
     bool startGameRequested;
     bool quitRequested;
     bool interactionOccurred;
+    /// Start or Quit, or a confirmation dialog button, activated with menu Select/Enter.
+    bool menuButtonActivatedViaMenuSelect;
     MenuSettings menuSettings;
 };
 

@@ -109,16 +109,22 @@ int GameApp::Run() {
     InitAudioDevice();
     audioReady_ = IsAudioDeviceReady();
     if (audioReady_) {
-        menuClickSoundLoaded_ = TryLoadSoundFromKnownPaths(menuClickSound_, "keyboard-click.wav", "menu click sound");
+        menuClickSoundLoaded_ = TryLoadSoundFromKnownPaths(menuClickSound_, "ui-pass.wav", "menu click sound");
+        menuSelectOnButtonSoundLoaded_ = TryLoadSoundFromKnownPaths(
+            menuSelectOnButtonSound_, "positive-select.wav", "menu select-on-button sound");
         powerUpSoundLoaded_ = TryLoadSoundPoolFromKnownPaths(powerUpSound_, "power-up.wav", "power-up sound");
         playerShotSoundLoaded_ = TryLoadSoundPoolFromKnownPaths(playerShotSound_, "player-shot.wav", "player-shot sound");
         enemyShotSoundLoaded_ = TryLoadSoundPoolFromKnownPaths(enemyShotSound_, "enemy-shot.wav", "enemy-shot sound");
         enemySpawningSoundLoaded_ =
             TryLoadSoundPoolFromKnownPaths(enemySpawningSound_, "enemy-spawning.wav", "enemy-spawning sound");
         enemyExplodingSoundLoaded_ =
-            TryLoadSoundPoolFromKnownPaths(enemyExplodingSound_, "enemy-exploding.wav", "enemy-exploding sound");
+            TryLoadSoundPoolFromKnownPaths(enemyExplodingSound_, "match-fire.wav", "enemy death sound");
         baseExplodingSoundLoaded_ =
             TryLoadSoundPoolFromKnownPaths(baseExplodingSound_, "base-exploding.wav", "base-exploding sound");
+        projectileWallHitSoundLoaded_ =
+            TryLoadSoundPoolFromKnownPaths(projectileWallHitSound_, "metal-hit.wav", "projectile wall-hit sound");
+        playerExplosionSoundLoaded_ =
+            TryLoadSoundPoolFromKnownPaths(playerExplosionSound_, "player-explosion.wav", "player explosion sound");
         if (kMenuMusicEnabled) {
             menuMusicPlayerReady_ = menuMusicPlayer_.Initialize(menuMelody_);
             if (!menuMusicPlayerReady_) {
@@ -174,12 +180,16 @@ int GameApp::Run() {
                                             .enemySpawningLoaded = enemySpawningSoundLoaded_,
                                             .enemyExplodingLoaded = enemyExplodingSoundLoaded_,
                                             .baseExplodingLoaded = baseExplodingSoundLoaded_,
+                                            .projectileWallHitLoaded = projectileWallHitSoundLoaded_,
+                                            .playerExplosionLoaded = playerExplosionSoundLoaded_,
                                             .powerUpSound = &powerUpSound_,
                                             .playerShotSound = &playerShotSound_,
                                             .enemyShotSound = &enemyShotSound_,
                                             .enemySpawningSound = &enemySpawningSound_,
                                             .enemyExplodingSound = &enemyExplodingSound_,
                                             .baseExplodingSound = &baseExplodingSound_,
+                                            .projectileWallHitSound = &projectileWallHitSound_,
+                                            .playerExplosionSound = &playerExplosionSound_,
                                         });
                                 }
                             }
@@ -219,6 +229,9 @@ int GameApp::Run() {
     if (menuClickSoundLoaded_) {
         UnloadSound(menuClickSound_);
     }
+    if (menuSelectOnButtonSoundLoaded_) {
+        UnloadSound(menuSelectOnButtonSound_);
+    }
     if (powerUpSoundLoaded_) {
         powerUpSound_.Unload();
     }
@@ -236,6 +249,12 @@ int GameApp::Run() {
     }
     if (baseExplodingSoundLoaded_) {
         baseExplodingSound_.Unload();
+    }
+    if (projectileWallHitSoundLoaded_) {
+        projectileWallHitSound_.Unload();
+    }
+    if (playerExplosionSoundLoaded_) {
+        playerExplosionSound_.Unload();
     }
     if (presentationTargetLoaded_) {
         UnloadRenderTexture(presentationTarget_);
@@ -281,7 +300,10 @@ void GameApp::RenderGameplayPauseDialog(const FrameInput& input) {
         },
         input);
 
-    if (menuClickSoundLoaded_ && dialogResult.interactionOccurred) {
+    if (menuSelectOnButtonSoundLoaded_ && dialogResult.buttonActivatedViaMenuSelect) {
+        PlaySound(menuSelectOnButtonSound_);
+    }
+    if (menuClickSoundLoaded_ && dialogResult.interactionOccurred && !dialogResult.buttonActivatedViaMenuSelect) {
         PlaySound(menuClickSound_);
     }
 
@@ -305,10 +327,13 @@ bool GameApp::Render(const FrameInput& input) {
             const MenuSettings previousSettings = game_.CurrentMenuSettings();
             const MenuScreenResult result = menuScreen_.Render(game_.CurrentMenuSettings(), config_, input);
             game_.SetMenuSettings(result.menuSettings);
+            if (menuSelectOnButtonSoundLoaded_ && result.menuButtonActivatedViaMenuSelect) {
+                PlaySound(menuSelectOnButtonSound_);
+            }
             if (menuClickSoundLoaded_ &&
-                (result.interactionOccurred ||
-                 result.startGameRequested ||
-                 result.quitRequested ||
+                ((result.interactionOccurred && !result.menuButtonActivatedViaMenuSelect) ||
+                 (result.startGameRequested && !result.menuButtonActivatedViaMenuSelect) ||
+                 (result.quitRequested && !result.menuButtonActivatedViaMenuSelect) ||
                  result.menuSettings.levelNumber != previousSettings.levelNumber ||
                  result.menuSettings.mazeDensity != previousSettings.mazeDensity ||
                  result.menuSettings.invisibility != previousSettings.invisibility ||

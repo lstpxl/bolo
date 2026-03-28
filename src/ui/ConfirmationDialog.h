@@ -7,6 +7,8 @@ struct ConfirmationDialogResult {
     bool confirmPressed = false;
     bool cancelPressed = false;
     bool interactionOccurred = false;
+    /// Confirm or cancel was chosen with menu Select/Enter (not mouse, not Escape).
+    bool buttonActivatedViaMenuSelect = false;
 };
 
 class ConfirmationDialog {

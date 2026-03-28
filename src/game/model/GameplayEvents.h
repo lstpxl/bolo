@@ -11,7 +11,9 @@ enum class GameplayEventType : std::uint8_t {
     EnemyDestroyed,
     EnemySpawned,
     BaseDestroyed,
+    ProjectileHitWall,
     StartModeStarted,
+    PlayerExplosion,
 };
 
 enum class StartModeReason : std::uint8_t {

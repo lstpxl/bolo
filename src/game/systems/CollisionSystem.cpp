@@ -46,6 +46,14 @@ void UpdateCollisionSystem(GameState& state, float deltaSeconds) {
             continue;
         }
         if (game::geometry::IsSegmentObscuredByWall(world, projectile.previousPosition, projectile.position)) {
+            const Vec2f hitPosition{
+                (projectile.previousPosition.x + projectile.position.x) * 0.5F,
+                (projectile.previousPosition.y + projectile.position.y) * 0.5F,
+            };
+            world.gameplayEvents.Push(GameplayEvent{
+                .type = GameplayEventType::ProjectileHitWall,
+                .position = hitPosition,
+            });
             projectile.alive = false;
             continue;
         }

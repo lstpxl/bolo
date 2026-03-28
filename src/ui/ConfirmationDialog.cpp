@@ -48,6 +48,7 @@ ConfirmationDialogResult ConfirmationDialog::Render(
 
     if (input.menuSelectPressed && !suppressInputPressOnce_) {
         result.interactionOccurred = true;
+        result.buttonActivatedViaMenuSelect = true;
         if (focus_ == Focus::Confirm) {
             confirmPressed = true;
         } else {

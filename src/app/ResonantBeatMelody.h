@@ -2,6 +2,8 @@
 
 #include "app/MelodyBase.h"
 
+// Gameplay
+
 // Resonant-bass + kick melody for the main menu.
 // Architecture: PWM pulse wave → resonant spring-mass lowpass → mix with
 // pitch-swept kick sine. Note sequence cycles 16 steps at 4.3 steps/sec.

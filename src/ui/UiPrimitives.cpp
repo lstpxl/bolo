@@ -17,7 +17,7 @@ void DrawFocusRing(const Rectangle& bounds, bool isFocused, float expandPx, floa
             .height = bounds.height + 2.0F * expandPx,
         },
         lineThickness,
-        Color{243, 0, 75, 255});
+        Color{162, 137, 5, 255});  // #A28905 selection frame
 }
 
 void DrawModalBackdrop(int width, int height) {
