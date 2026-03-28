@@ -18,6 +18,21 @@ float ForwardVisionHalfAngleRadians(EnemyType type) {
     return GameplayConstants::kEnemyForwardVisionHalfAngleRadiansDefault;
 }
 
+float EnemyVisualDetectRangeUnits(EnemyType type) {
+    switch (type) {
+    case EnemyType::Drone:
+        return GameplayConstants::kDroneDetectRangeUnits;
+    case EnemyType::Torpedo:
+        // Use Ram-detect distance for visual contact acquisition.
+        return GameplayConstants::kTorpedoRamDetectRangeUnits;
+    case EnemyType::Hunter:
+        return GameplayConstants::kHunterDetectRangeUnits;
+    case EnemyType::Assassin:
+        return GameplayConstants::kEnemyAggroRangeUnits;
+    }
+    return GameplayConstants::kDroneDetectRangeUnits;
+}
+
 /// Max distance at which an enemy may spawn a projectile toward the player — aligned with
 /// per-type detection / debug LOS radii (`GameplayConstants`).
 float EnemyProjectileMaxRangeUnits(const EnemyTank& enemy) {
@@ -94,7 +109,10 @@ EnemyPerception RunPerceptionPhase(
     perception.playerObscured =
         playerInvisible ||
         game::geometry::IsSegmentObscuredByWall(state.world, enemy.position, state.world.player.position);
-    enemy.seesPlayer = state.world.player.alive && !perception.playerObscured;
+    const float detectRange = EnemyVisualDetectRangeUnits(enemy.type);
+    const float detectRangeSq = detectRange * detectRange;
+    enemy.seesPlayer = state.world.player.alive && !perception.playerObscured &&
+        perception.distanceToPlayerSq <= detectRangeSq;
     if (enemy.seesPlayer && perception.distanceToPlayerSq > 1.0e-8F) {
         const float headingToPlayer = std::atan2(perception.toPlayer.x, -perception.toPlayer.y);
         const float relativeBearing = core::angle::AngleDistance(enemy.headingRadians, headingToPlayer);
@@ -128,6 +146,7 @@ void RunFiringPhase(
     const float fireRange = EnemyProjectileMaxRangeUnits(enemy);
     const float fireRangeSq = fireRange * fireRange;
     if (state.world.player.alive &&
+        enemy.seesPlayer &&
         enemy.fireCooldownSeconds <= 0.0F &&
         enemyVisibleInViewport &&
         !perception.playerObscured &&
