@@ -13,6 +13,7 @@
 #include "core/Profiling.h"
 #include "core/Random.h"
 #include "game/geometry/WorldGeometry.h"
+#include "game/model/WorldState.h"
 #include "game/navigation/CellCoordCache.h"
 #include "game/navigation/PlayerFlowField.h"
 #include "game/spatial/EnemyCellOccupancy.h"
@@ -225,15 +226,29 @@ bool IsInPlayerViewport(const Vec2f& point, const GameState& state, const Gamepl
            point.y >= center.y - halfHeight && point.y <= center.y + halfHeight;
 }
 
-EnemySimTier DetermineEnemySimTier(
-    const EnemyTank& enemy, const game::navigation::CellCoordCache& cellCache)
+// Same world point as `Renderer2D::DrawWorld` camera target (before pixel snap).
+Vec2f ViewportCenterWorldPosition(const WorldState& world)
 {
-    constexpr int fullTierRadiusCells = 3;
-    const game::navigation::MazeCellCoord playerCell = cellCache.PlayerCell();
-    const int dx = std::abs(enemy.cellCoord.x - playerCell.x);
-    const int dy = std::abs(enemy.cellCoord.y - playerCell.y);
-    const bool nearPlayer = std::max(dx, dy) <= fullTierRadiusCells;
-    return nearPlayer ? EnemySimTier::Full : EnemySimTier::Cheap;
+    return world.panModeActive ? world.panTarget : world.player.position;
+}
+
+int FullTierRadiusCellsFromView(const GameplayView& view, int cellSizeUnits)
+{
+    const float cs = static_cast<float>(cellSizeUnits);
+    const int dvw = static_cast<int>(std::ceil(view.viewportWidthUnits / cs));
+    const int dvh = static_cast<int>(std::ceil(view.viewportHeightUnits / cs));
+    return static_cast<int>(std::ceil(static_cast<double>(std::max(dvw, dvh)) + 0.5));
+}
+
+EnemySimTier DetermineEnemySimTier(
+    const EnemyTank& enemy,
+    const game::navigation::MazeCellCoord& referenceCell,
+    int fullTierRadiusCells)
+{
+    const int dx = std::abs(enemy.cellCoord.x - referenceCell.x);
+    const int dy = std::abs(enemy.cellCoord.y - referenceCell.y);
+    const bool nearReference = std::max(dx, dy) <= fullTierRadiusCells;
+    return nearReference ? EnemySimTier::Full : EnemySimTier::Cheap;
 }
 
 bool SegmentIntersectsWall(
@@ -493,6 +508,12 @@ void UpdateEnemySystem(
     game::navigation::PlayerFlowField& playerFlowField = navigationCache.playerFlowField;
 
     cellCache.UpdatePlayerCell(state.world.player.position);
+    const int fullTierRadiusCells =
+        FullTierRadiusCellsFromView(view, state.world.maze.cellSizeUnits);
+    const game::navigation::MazeCellCoord fullTierReferenceCell =
+        state.world.player.alive
+            ? cellCache.PlayerCell()
+            : cellCache.WorldToCell(ViewportCenterWorldPosition(state.world));
     if (kUseFlowFieldPathGuidance) {
         game::navigation::FlowFieldUpdateStats flowStats;
         playerFlowField.Update(
@@ -524,7 +545,8 @@ void UpdateEnemySystem(
         profiling::ScopedProfile enemyTypeScope(EnemyTypeProfileScope(enemy.type), true);
 
         const EnemySimTier previousTier = enemy.simTier;
-        enemy.simTier = DetermineEnemySimTier(enemy, cellCache);
+        enemy.simTier =
+            DetermineEnemySimTier(enemy, fullTierReferenceCell, fullTierRadiusCells);
         const bool reenteredFullTier =
             previousTier == EnemySimTier::Cheap && enemy.simTier == EnemySimTier::Full;
         if (reenteredFullTier) {

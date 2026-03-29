@@ -348,9 +348,11 @@ Local planner for a **single step** to one of the **8 adjacent** maze cells (car
 ### Offscreen Enemy Simulation LOD
 
 - Enemy simulation uses two runtime tiers:
-  - `Full`: enemy cell is within Chebyshev distance `<= 3` from the player cell.
-  - `Cheap`: enemy is farther than that (`> 3` cells).
-  - Tier selection uses this unified distance rule for all enemy types; AI mode does not override tier.
+  - `Full`: enemy cell is within Chebyshev distance `<= R` from a **reference cell** (`R` and reference below).
+  - `Cheap`: enemy is farther than that (`> R` cells).
+  - **Reference cell:** while the player is alive, the player’s maze cell (from `CellCoordCache` / `player.position`). While the player is dead (including death/game-over view), the maze cell containing the **viewport center** in world space — same world point as the render camera target (`panModeActive ? panTarget : player.position`), not the stale `PlayerCell` alone when the view has panned.
+  - **Radius `R`:** `ceil(max(dvw, dvh) + 1/2)` where `dvw = ceil(viewportWidthUnits / cellSizeUnits)` and `dvh = ceil(viewportHeightUnits / cellSizeUnits)`; `GameplayView` width is the world viewport excluding HUD (matches the maze draw area).
+  - Tier selection uses this unified rule for all enemy types; AI mode does not override tier.
 - In `Cheap` tier, enemies use cached segment movement:
   - heading is quantized to 8-way direction
   - drones choose next segment heading from `forward/-45/+45` by longest wall-only clearance (capped at `15`), with random tie-break

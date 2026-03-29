@@ -29,8 +29,9 @@ For each frame:
 - Update player cell in `CellCoordCache`.
 - Update flow-field cache with `PlayerFlowField::Update(...)` when flow guidance is enabled.
 - Precompute uncouple priority scores via `ComputeUncoupleEscapeScore(...)`.
-- Determine simulation tier per enemy with `DetermineEnemySimTier(...)`:
-  - `Full` if enemy is within 3 cells of player (`Chebyshev` cell distance).
+- Determine simulation tier per enemy with `DetermineEnemySimTier(...)` (Chebyshev cell distance `<= R` from a reference cell):
+  - **Alive player:** reference cell = player maze cell; `R = ceil(max(dvw,dvh) + 0.5)` with `dvw`/`dvh` = viewport size in cells from `GameplayView` (width excludes HUD).
+  - **Dead player:** reference cell = cell at viewport center world position (same as render camera target: `panModeActive ? panTarget : player.position`).
   - `Cheap` otherwise (no mode/type exceptions).
 - On `Cheap -> Full`, reset cheap-tier cached movement state, especially assassin segment/fail caches.
 
