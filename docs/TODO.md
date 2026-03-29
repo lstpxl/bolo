@@ -1,21 +1,12 @@
 # Potential game evolution
 
-## Performance Optimization
+## Fixes
 
-### Add Base Distance Field
+### Base Destruction
 
-Use BFS / flood fill starting from the base. Use multi-source flood fill (or multi-source BFS). If enemies need to know which base you store an additional field.
-
-Drones are consumers of this data. Helps to stay close to the base, closer to optimal distance, defined by const.
-
-### Add Player Distance Field
-
-May be used for enemy AI.
-
-For example:
-
-- if (distance < 10) attack
-- if (distance > 30) patrol
+- Base collision shape should be rectangular.
+- Bases collision geometry should change while its outer layer is being damaged and rendering should be changed acccordingly.
+- Base dimension is being reduced from the damaged side.
 
 ## Visuals
 
@@ -30,7 +21,17 @@ For example:
 
 ## Version 2 Roadmap Ideas
 
+### Main Menu Animation
+
+During Main Menu: play some enemy activity at the background: simplified maze, single enemy, travels from one base to another.
+
+- Smaller maze: 30 x 30 cells
+- Two bases: make sure at least 25 cells distance between
+- Enemy is spawned at the base and is being followed
+- It travels from one base to another
+
 ### Drones Starting the Alarm
 
 Drones can start the alarm, making other enemies know player location. It may create stealth element to the game!
 
+## Performance Optimization
