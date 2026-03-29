@@ -7,7 +7,8 @@ void SpawnProjectile(
     ProjectileOwner owner,
     const Vec2f& position,
     float headingRadians,
-    float speedUnitsPerSecond) {
+    float speedUnitsPerSecond,
+    std::uint32_t shooterEnemySessionId) {
     state.world.projectiles.push_back(Projectile{
         .previousPosition = position,
         .position = position,
@@ -17,6 +18,7 @@ void SpawnProjectile(
                 .y = -std::cos(headingRadians) * speedUnitsPerSecond,
             },
         .owner = owner,
+        .shooterEnemySessionId = shooterEnemySessionId,
         .remainingLifeSeconds = GameplayConstants::kProjectileLifetimeSeconds,
         .alive = true,
     });

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cstdint>
 #include <vector>
 #include "core/Types.h"
 #include "game/model/GameplayConstants.h"
@@ -156,6 +157,8 @@ struct EnemyTank {
     bool cheapTierCrowdedSlowMode = false;  // assassins: 0.5x speed when another enemy in same cell
     bool seesPlayer = false;
     bool alive = true;
+    /// Stable id assigned at spawn; used so enemy shells cannot instantly kill the shooter.
+    std::uint32_t spawnSessionId = 0;
 };
 
 struct EnemyExplosion {
@@ -234,6 +237,8 @@ struct Projectile {
     Vec2f position;
     Vec2f velocity;
     ProjectileOwner owner = ProjectileOwner::Enemy;
+    /// For `ProjectileOwner::Enemy`, matches `EnemyTank::spawnSessionId` of the shooter; `0` = none.
+    std::uint32_t shooterEnemySessionId = 0;
     float remainingLifeSeconds = 0.0F;
     bool alive = true;
 };

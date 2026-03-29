@@ -274,6 +274,7 @@ void UpdateSpawnerSystem(GameState& state, float deltaSeconds, Random& random) {
             .pathWaypointCount = 0,
             .pathWaypointIndex = 0,
             .alive = true,
+            .spawnSessionId = state.world.nextEnemySpawnSessionId++,
         });
         state.world.gameplayEvents.Push(GameplayEvent{
             .type = GameplayEventType::EnemySpawned,

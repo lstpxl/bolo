@@ -4,6 +4,7 @@
 #include <cstdint>
 #include "core/Log.h"
 #include "game/EnemyAppearance.h"
+#include "game/model/GameplayEvents.h"
 #include "game/model/EntityTypes.h"
 #include "game/systems/CollisionSystem.h"
 #include "game/systems/EnemySystem.h"
@@ -18,6 +19,54 @@ namespace {
 std::uint32_t MakeSeed() {
     std::random_device device;
     return device();
+}
+
+float DistanceSqExplosion(const Vec2f& a, const Vec2f& b) {
+    const float dx = a.x - b.x;
+    const float dy = a.y - b.y;
+    return dx * dx + dy * dy;
+}
+
+void DecrementOriginBaseAliveCountForBlast(WorldState& world, EnemyTank& enemy) {
+    if (enemy.originBaseIndex < 0 ||
+        enemy.originBaseIndex >= static_cast<int>(world.enemyBases.size())) {
+        enemy.originBaseIndex = -1;
+        return;
+    }
+    EnemyBase& origin = world.enemyBases[static_cast<std::size_t>(enemy.originBaseIndex)];
+    origin.activeEnemies = std::max(0, origin.activeEnemies - 1);
+    enemy.originBaseIndex = -1;
+}
+
+void ApplyExplosionBlast(GameState& state, const Vec2f& center, float radius) {
+    WorldState& world = state.world;
+    const float rSq = radius * radius;
+    if (world.player.alive &&
+        DistanceSqExplosion(world.player.position, center) <= rSq) {
+        world.player.alive = false;
+        world.playerTurnLostPending = true;
+    }
+    for (EnemyTank& enemy : world.enemies) {
+        if (!enemy.alive) {
+            continue;
+        }
+        if (enemy.simTier != EnemySimTier::Full) {
+            continue;
+        }
+        if (DistanceSqExplosion(enemy.position, center) > rSq) {
+            continue;
+        }
+        world.gameplayEvents.Push(GameplayEvent{
+            .type = GameplayEventType::EnemyDestroyed,
+            .position = enemy.position,
+            .enemyType = enemy.type,
+            .enemySubtype = enemy.subtype,
+        });
+        enemy.alive = false;
+        DecrementOriginBaseAliveCountForBlast(world, enemy);
+        world.score +=
+            state.menuSettings.levelNumber * GameplayConstants::kEnemyScorePerLevelMultiplier;
+    }
 }
 }  // namespace
 
@@ -219,6 +268,8 @@ void Game::RunPlayingWorldTick(
             .type = GameplayEventType::PlayerExplosion,
             .position = state_.world.deathExplosionPosition,
         });
+        state_.world.deathExplosionBlastRemainingSeconds =
+            GameplayConstants::kExplosionBlastDamageDurationSeconds;
     };
 
     if (state_.world.startModeRemainingSeconds > 0.0F) {
@@ -313,7 +364,7 @@ void Game::RunPlayingWorldTick(
     }
 
     // Spawn explosions for enemies that died this frame.
-    for (const EnemyTank& enemy : state_.world.enemies) {
+    for (EnemyTank& enemy : state_.world.enemies) {
         if (enemy.alive) {
             continue;
         }
@@ -357,6 +408,43 @@ void Game::RunPlayingWorldTick(
                 break;
             }
         }
+    }
+
+    // Blast damage for kExplosionBlastDamageDurationSeconds (VFX continues to kExplosionTotalDurationSeconds).
+    for (EnemyExplosion& ex : state_.world.enemyExplosions) {
+        if (ex.active &&
+            ex.elapsedSeconds < GameplayConstants::kExplosionBlastDamageDurationSeconds) {
+            ApplyExplosionBlast(
+                state_,
+                ex.position,
+                GameplayConstants::kExplosionBlastRadiusUnits);
+        }
+    }
+    for (EnemyExplosion& ex : state_.world.baseExplosions) {
+        if (ex.active &&
+            ex.elapsedSeconds < GameplayConstants::kExplosionBlastDamageDurationSeconds) {
+            ApplyExplosionBlast(
+                state_,
+                ex.position,
+                GameplayConstants::kBaseExplosionBlastRadiusUnits);
+        }
+    }
+    if (state_.world.deathExplosionBlastRemainingSeconds > 0.0F) {
+        ApplyExplosionBlast(
+            state_,
+            state_.world.deathExplosionPosition,
+            GameplayConstants::kExplosionBlastRadiusUnits);
+        state_.world.deathExplosionBlastRemainingSeconds =
+            std::max(0.0F, state_.world.deathExplosionBlastRemainingSeconds - deltaSeconds);
+    }
+
+    // Blast (and other late-tick kills) can set `playerTurnLostPending` after the earlier death trigger;
+    // arm death mode here so turn loss waits for `kDeathModeDurationSeconds`.
+    if (allowPendingDeathTrigger &&
+        !state_.world.player.alive &&
+        state_.world.playerTurnLostPending &&
+        state_.world.deathModeRemainingSeconds <= 0.0F) {
+        beginDeathMode();
     }
 
     // Tick active explosions.
@@ -411,6 +499,7 @@ void Game::RunPlayingWorldTick(
         state_.world.player.throttleNormalized = 0.0F;
         state_.world.player.fireCooldownSeconds = 0.0F;
         state_.world.player.fuel = 0.0F;
+        state_.world.deathExplosionBlastRemainingSeconds = 0.0F;
         state_.world.enemyVisualContactMusicTimerSeconds = 0.0F;
         state_.world.startModeRemainingSeconds = GameplayConstants::kStartModeDurationSeconds;
         state_.world.startModeReason = StartModeReason::Respawn;

@@ -104,6 +104,14 @@ struct GameplayConstants {
     static constexpr float kExplosionTotalDurationSeconds =
         static_cast<float>(kExplosionFrameCount) * kExplosionFrameDurationSeconds; // 0.9s
 
+    /// How long explosion blast damage applies per slot (VFX may run `kExplosionTotalDurationSeconds`).
+    static constexpr float kExplosionBlastDamageDurationSeconds = 0.5F;  // seconds
+
+    /// Gameplay blast kill radius from explosion center (enemy / wall / player death VFX).
+    static constexpr float kExplosionBlastRadiusUnits = 0.5F;   // world-units
+    /// Larger blast radius for destroyed base explosion VFX.
+    static constexpr float kBaseExplosionBlastRadiusUnits = 1.5F;  // world-units
+
     // Enemy explosion animation (explosion-1.png, 32×32 frames).
     static constexpr int kMaxEnemyExplosions = 64;                             // slots
     static constexpr int kEnemyExplosionSourceFrameSizePx = 32;                // px (source cell)

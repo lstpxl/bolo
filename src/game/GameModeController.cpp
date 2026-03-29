@@ -31,6 +31,7 @@ void GameModeController::StartGame(GameState& state, const MenuSettings& setting
     state.world.startModeReason = StartModeReason::NewGame;
     state.world.deathModeRemainingSeconds = 0.0F;
     state.world.deathExplosionRemainingSeconds = 0.0F;
+    state.world.deathExplosionBlastRemainingSeconds = 0.0F;
     state.world.score = 0;
     state.world.gameOver = false;
     mode_ = GameMode::Playing;

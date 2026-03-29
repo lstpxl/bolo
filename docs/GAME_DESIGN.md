@@ -182,7 +182,7 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
 - Enemy wall movement keeps additional margin: enemy disc edge stays at least `2px` away from maze walls.
 - Starting phase (`GameplayPhase::Starting`): after `StartGame`, the first fixed step starts the `1.0s` overlay timer (`kGameplayStartingPhaseMinSeconds`); the second runs `InitializeMazeWorld` while the timer counts down; when the timer expires, gameplay becomes active.
 - Start mode: player enters a `2.5s` refuel lock where fuel fills from `0` to max on HUD. During this lock (new game, respawn, and level restart), hull/turret rotation remains enabled while movement/fire stay disabled.
-- Death mode: when player dies, player enters a `3s` lock with movement/fire disabled and a simple explosion animation before life loss + respawn resolution.
+- Death mode: when player dies, player enters a `3s` lock with movement/fire disabled and a simple explosion animation before life loss + respawn resolution. `RunPlayingWorldTick` may arm death mode twice in one tick: once after collision/fuel and again after explosion blast damage, so kills from blast AoE still get the full lock before life decrement + respawn.
 - Game Over phase (`GameplayPhase::GameOver`): after last-life loss, the world keeps simulating until player input ends the phase and returns to menu.
 - Respawn safety uses `BaseDistanceField` with bounds `12..24` cells from nearest alive base.
 - Respawn additionally requires no alive enemies within Manhattan distance `<= 3` cells.
@@ -194,7 +194,10 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
 
 - **`kWallClearanceForHard`** – wall checks (IsPointInWall) for player and enemy; projectile-kill debug (expansion beyond wall half-thickness = `kEntityRadiusUnits`).
 - **`kPlayerEnemyCollisionRadius`** – player–enemy overlap (`2 × kEntityRadiusUnits`).
-- **`kProjectileHitRadius`** – projectile vs enemy/player hit detection (0.7 units).
+- **`kProjectileHitRadius`** – projectile hit detection (0.7 units) vs player and vs **full-tier** enemies. **Both** player-owned and enemy-owned shells use these rules: any shell can kill the player (if alive) or a full-tier enemy (cheap-tier enemies are not projectile targets, same as player shots). An enemy-owned shell **cannot** kill the enemy that fired it (`Projectile::shooterEnemySessionId` matches `EnemyTank::spawnSessionId`), so spawn-overlap does not instant self-kill.
+- **`kExplosionBlastDamageDurationSeconds`** (`0.5`) – how long blast damage applies per explosion slot and for the player-death blast (`deathExplosionBlastRemainingSeconds`). Explosion **sprites** still play for **`kExplosionTotalDurationSeconds`** (`0.9s`).
+- **`kExplosionBlastRadiusUnits`** (`0.5`) – gameplay blast kill radius from explosion center for enemy death, projectile wall impact, and player death explosion; kills the player and any **full-tier** (`EnemySimTier::Full`) alive enemy whose center lies within the radius (center-distance test). Cheap-tier enemies are not blast targets (saves CPU and matches simplified sim). Blast damage is applied **each frame** while the slot’s `elapsedSeconds` is within **`kExplosionBlastDamageDurationSeconds`**. Chain reactions: a full-tier enemy killed by blast spawns its own explosion that contributes overlapping blast intervals.
+- **`kBaseExplosionBlastRadiusUnits`** (`1.5`) – same blast rules as above for the base-destruction explosion (larger radius), including full-tier-only enemy kills, for **`kExplosionBlastDamageDurationSeconds`** per active base explosion slot.
 - **`kPlayerBaseHardCollisionUnits`** – player death when inside base (halfBase + entityRadius).
 - Player projectile vs base:
   - Impact side is resolved by dominant axis from base center (`abs(dx) >= abs(dy)` => left/right, else top/bottom).

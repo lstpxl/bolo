@@ -7,5 +7,6 @@ void SpawnProjectile(
     ProjectileOwner owner,
     const Vec2f& position,
     float headingRadians,
-    float speedUnitsPerSecond);
+    float speedUnitsPerSecond,
+    std::uint32_t shooterEnemySessionId = 0);
 void UpdateProjectileSystem(GameState& state, float deltaSeconds);

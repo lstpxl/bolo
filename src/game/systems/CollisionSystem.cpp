@@ -57,6 +57,45 @@ struct EnemyCollisionDeathDebugWindowStats {
 
 EnemyCollisionDeathDebugWindowStats gEnemyCollisionDeathDebugWindowStats{};
 std::uint64_t gLastEnemyCollisionDebugPrintedFrame = 0;
+
+/// Player- and enemy-owned shells use the same full-tier enemy hit rules.
+bool TryProjectileHitFullTierEnemy(GameState& state, Projectile& projectile) {
+    WorldState& world = state.world;
+    for (EnemyTank& enemy : world.enemies) {
+        if (!enemy.alive) {
+            continue;
+        }
+        if (enemy.simTier != EnemySimTier::Full) {
+            continue;
+        }
+        if (projectile.owner == ProjectileOwner::Enemy && projectile.shooterEnemySessionId != 0U &&
+            enemy.spawnSessionId == projectile.shooterEnemySessionId) {
+            continue;
+        }
+        if (DistanceSq(projectile.position, enemy.position) <=
+            GameplayConstants::kProjectileHitRadius * GameplayConstants::kProjectileHitRadius) {
+            gEnemyCollisionDeathDebugWindowStats.projectileKills += 1;
+            if (game::geometry::IsPointInWall(
+                    world,
+                    enemy.position,
+                    GameplayConstants::kWallClearanceForHard)) {
+                gEnemyCollisionDeathDebugWindowStats.projectileKillWallContact += 1;
+            }
+            state.world.gameplayEvents.Push(GameplayEvent{
+                .type = GameplayEventType::EnemyDestroyed,
+                .position = enemy.position,
+                .enemyType = enemy.type,
+                .enemySubtype = enemy.subtype,
+            });
+            enemy.alive = false;
+            DecrementOriginBaseAliveCount(world, enemy);
+            projectile.alive = false;
+            world.score += state.menuSettings.levelNumber * GameplayConstants::kEnemyScorePerLevelMultiplier;
+            return true;
+        }
+    }
+    return false;
+}
 }  // namespace
 
 void UpdateCollisionSystem(GameState& state, float deltaSeconds) {
@@ -82,36 +121,7 @@ void UpdateCollisionSystem(GameState& state, float deltaSeconds) {
         }
 
         if (projectile.owner == ProjectileOwner::Player) {
-            for (EnemyTank& enemy : world.enemies) {
-                if (!enemy.alive) {
-                    continue;
-                }
-                if (enemy.simTier != EnemySimTier::Full) {
-                    continue;
-                }
-                if (DistanceSq(projectile.position, enemy.position) <=
-                    GameplayConstants::kProjectileHitRadius * GameplayConstants::kProjectileHitRadius) {
-                    gEnemyCollisionDeathDebugWindowStats.projectileKills += 1;
-                    if (game::geometry::IsPointInWall(
-                            world,
-                            enemy.position,
-                            GameplayConstants::kWallClearanceForHard)) {
-                        gEnemyCollisionDeathDebugWindowStats.projectileKillWallContact += 1;
-                    }
-                    state.world.gameplayEvents.Push(GameplayEvent{
-                        .type = GameplayEventType::EnemyDestroyed,
-                        .position = enemy.position,
-                        .enemyType = enemy.type,
-                        .enemySubtype = enemy.subtype,
-                    });
-                    enemy.alive = false;
-                    DecrementOriginBaseAliveCount(world, enemy);
-                    projectile.alive = false;
-                    world.score += state.menuSettings.levelNumber * GameplayConstants::kEnemyScorePerLevelMultiplier;
-                    break;
-                }
-            }
-            if (!projectile.alive) {
+            if (TryProjectileHitFullTierEnemy(state, projectile)) {
                 continue;
             }
 
@@ -156,6 +166,10 @@ void UpdateCollisionSystem(GameState& state, float deltaSeconds) {
                 projectile.alive = false;
                 world.player.alive = false;
                 world.playerTurnLostPending = true;
+                continue;
+            }
+            if (TryProjectileHitFullTierEnemy(state, projectile)) {
+                continue;
             }
         }
     }

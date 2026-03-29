@@ -537,6 +537,8 @@ void InitializeMazeWorld(GameState& state, const GameplayView& view, Random& ran
     state.world.player.fuel = GameplayConstants::kFuelMax;
     state.world.enemies.clear();
     state.world.projectiles.clear();
+    state.world.nextEnemySpawnSessionId = 1;
+    state.world.deathExplosionBlastRemainingSeconds = 0.0F;
     state.world.playerTurnLostPending = false;
     state.world.levelCleared = false;
     state.world.levelClearMessageSeconds = 0.0F;

@@ -54,7 +54,10 @@ struct WorldState {
     StartModeReason startModeReason = StartModeReason::Unknown;
     float deathModeRemainingSeconds = 0.0F;
     float deathExplosionRemainingSeconds = 0.0F;
+    /// Blast damage window at player death; matches `kExplosionBlastDamageDurationSeconds`.
+    float deathExplosionBlastRemainingSeconds = 0.0F;
     Vec2f deathExplosionPosition{.x = 0.0F, .y = 0.0F};
+    std::uint32_t nextEnemySpawnSessionId = 1;
     bool levelCleared = false;
     bool gameOver = false;
     float levelClearMessageSeconds = 0.0F;

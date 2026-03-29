@@ -159,7 +159,8 @@ void RunFiringPhase(
             ProjectileOwner::Enemy,
             enemy.position,
             quantizedHeadingToPlayer,
-            GameplayConstants::kEnemyProjectileSpeed);
+            GameplayConstants::kEnemyProjectileSpeed,
+            enemy.spawnSessionId);
         enemy.fireCooldownSeconds = EnemyFireInterval(enemy.type);
     }
 }
