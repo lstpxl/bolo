@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
+#include <limits>
 #include <string>
 #include "core/Log.h"
 #include "core/Profiling.h"
@@ -195,9 +196,9 @@ void DrawFlowFieldArrow(const Camera2D& camera, float fromX, float fromY, float 
         fromScreen.y + dir.y * arrowLenPx * 0.8F,
     };
 
-    constexpr Color kFlowArrowColor{24, 50, 64, 180};
+    constexpr Color kFlowArrowColor{0, 56, 0, 230};
     const float headSize = std::clamp(arrowLenPx * 0.22F, 2.0F, 6.0F);
-    DrawLineEx(tail, tip, 1.0F, kFlowArrowColor);
+    DrawLineEx(tail, tip, 2.0F, kFlowArrowColor);
     DrawTriangle(
         tip,
         Vector2{
@@ -209,6 +210,29 @@ void DrawFlowFieldArrow(const Camera2D& camera, float fromX, float fromY, float 
             tip.y - dir.y * headSize + perp.y * headSize * 0.6F,
         },
         kFlowArrowColor);
+}
+
+void DrawBaseDistanceLabel(
+    const Camera2D& camera,
+    int cellX,
+    int cellY,
+    int cellSizeUnits,
+    int baseDistanceCells) {
+    constexpr int kDebugFontSize = 10;
+    constexpr Color kDebugTextColor{104, 0, 144, 235};
+    constexpr Color kDebugTextShadow{0, 0, 0, 200};
+    char text[12];
+    std::snprintf(text, sizeof(text), "%d", baseDistanceCells);
+    const int textWidth = MeasureText(text, kDebugFontSize);
+    const float centerX =
+        (static_cast<float>(cellX) + 0.5F) * static_cast<float>(cellSizeUnits);
+    const float centerY =
+        (static_cast<float>(cellY) + 0.5F) * static_cast<float>(cellSizeUnits);
+    const Vector2 centerScreen = GetWorldToScreen2D(Vector2{centerX, centerY}, camera);
+    const int drawX = RoundToInt(centerScreen.x - static_cast<float>(textWidth) * 0.5F);
+    const int drawY = RoundToInt(centerScreen.y - static_cast<float>(kDebugFontSize) * 0.5F);
+    DrawText(text, drawX + 1, drawY + 1, kDebugFontSize, kDebugTextShadow);
+    DrawText(text, drawX, drawY, kDebugFontSize, kDebugTextColor);
 }
 
 bool IsWorldPointVisible(
@@ -778,6 +802,8 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
 
     const bool showFlowField =
         state.menuSettings.debugInfo && state.world.navigationCache.playerFlowField.HasBuild();
+    const bool showBaseDistanceField =
+        state.menuSettings.debugInfo && state.world.navigationCache.baseDistanceField.HasBuild();
     if (showFlowField) {
         const auto& flowField = state.world.navigationCache.playerFlowField;
         const float cellSizeUnits = static_cast<float>(state.world.maze.cellSizeUnits);
@@ -798,6 +824,23 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
                     static_cast<float>(toX) * cellSizeUnits + cellHalfUnits,
                     static_cast<float>(toY) * cellSizeUnits + cellHalfUnits,
                     cellSizeUnits);
+            }
+        }
+    }
+    if (showBaseDistanceField) {
+        const auto& baseDistanceField = state.world.navigationCache.baseDistanceField;
+        for (int cellY = minCellY; cellY <= maxCellY; ++cellY) {
+            for (int cellX = minCellX; cellX <= maxCellX; ++cellX) {
+                const int baseDistanceCells = baseDistanceField.DistanceAtCell(cellX, cellY);
+                if (baseDistanceCells == std::numeric_limits<int>::max()) {
+                    continue;
+                }
+                DrawBaseDistanceLabel(
+                    camera,
+                    cellX,
+                    cellY,
+                    state.world.maze.cellSizeUnits,
+                    baseDistanceCells);
             }
         }
     }

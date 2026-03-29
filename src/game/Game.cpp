@@ -72,7 +72,8 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const GameplayVie
     if (input.invisibilityTogglePressed) {
         state_.menuSettings.invisibility = !state_.menuSettings.invisibility;
         const bool shouldHaveFlowActive =
-            game::LevelHasFlowConsumers(state_.menuSettings.levelNumber) && !state_.menuSettings.invisibility;
+            (game::LevelHasFlowConsumers(state_.menuSettings.levelNumber) || state_.menuSettings.debugInfo) &&
+            !state_.menuSettings.invisibility;
         bolt::log::Debug("[INVIS] I pressed: invisibility=%d shouldHaveFlowActive=%d level=%d",
             state_.menuSettings.invisibility ? 1 : 0, shouldHaveFlowActive ? 1 : 0, state_.menuSettings.levelNumber);
         state_.world.navigationCache.playerFlowField.SetCacheActive(shouldHaveFlowActive);
@@ -325,7 +326,8 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const GameplayVie
                             return e.alive && (e.type == EnemyType::Assassin || e.type == EnemyType::Hunter);
                         });
         const bool shouldHaveFlowActive =
-            hasFlowConsumers && !state_.menuSettings.invisibility;
+            (hasFlowConsumers || state_.menuSettings.debugInfo) &&
+            !state_.menuSettings.invisibility;
         bolt::log::Debug("[FLOW] Respawn: invisibility=%d hasFlowConsumers=%d shouldHaveFlowActive=%d",
             state_.menuSettings.invisibility ? 1 : 0, hasFlowConsumers ? 1 : 0, shouldHaveFlowActive ? 1 : 0);
         state_.world.navigationCache.playerFlowField.SetCacheActive(shouldHaveFlowActive);

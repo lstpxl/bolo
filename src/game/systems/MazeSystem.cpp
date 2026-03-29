@@ -544,7 +544,7 @@ void InitializeMazeWorld(GameState& state, const GameplayView& view, Random& ran
     state.world.panTarget = state.world.player.position;
 
     const bool shouldHaveFlowActive =
-        game::LevelHasFlowConsumers(state.menuSettings.levelNumber) &&
+        (game::LevelHasFlowConsumers(state.menuSettings.levelNumber) || state.menuSettings.debugInfo) &&
         !state.menuSettings.invisibility;
     bolt::log::Debug("[FLOW] InitializeMazeWorld: invisibility=%d level=%d shouldHaveFlowActive=%d",
         state.menuSettings.invisibility ? 1 : 0, state.menuSettings.levelNumber, shouldHaveFlowActive ? 1 : 0);

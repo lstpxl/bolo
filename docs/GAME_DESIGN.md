@@ -320,7 +320,7 @@ Local planner for a **single step** to one of the **8 adjacent** maze cells (car
 ### Player-Directed Flow-field
 
 - Flow-field build treats cells occupied by undestroyed bases as blocking (non-traversable).
-- Flow-field is *active* only when the level can spawn assassins or hunters (levels 5+) and invisibility is off. On levels without these consumers (e.g. level 4) or when invisibility is on, the flow field is inactive and not built. Toggling invisibility (I key) always invalidates the current flow cache: invisibility on clears stale flow immediately; invisibility off activates flow rebuild toward the player.
+- Flow-field is *active* when invisibility is off and either (a) the level can spawn assassins/hunters (levels 5+) or (b) menu `Debug info` is on. This keeps player-directed flow overlays available in debug mode on lower levels. Toggling invisibility (I key) always invalidates the current flow cache: invisibility on clears stale flow immediately; invisibility off activates flow rebuild toward the player.
 - Flow-field initial build is requested at level init (InitializeMazeWorld), not during enemy processing. This ensures assassins never wait for a build; the field is ready when the first assassin spawns.
 - Player respawn invalidates the flow field so it is rebuilt for the new player position; any in-flight background rebuild for the old position is discarded.
 - Enemy steering does not require player-cell-version freshness; cached flow-field data remains valid until scheduled cache refresh.
@@ -413,8 +413,8 @@ World rendering is in `src/platform/Renderer2D.cpp`.
 - HUD lives indicators are left-aligned in the lives row; as lives decrease, icons disappear from the right.
 - Gameplay view draws top-left debug text (axes/perf/profiling) only when menu `Debug info` is enabled.
 - With `Debug info`, visible enemies also draw overlay diagnostics: **LOS** to player as an always-on **red** line whenever `enemy.seesPlayer` is true (no additional per-type range color/range gating in renderer); green line to current hunter scout waypoint or (for non-torpedo cheap-tier movement) cached segment end; yellow line to current torpedo `Fly` path waypoint when `torpedoFlyPathActive` (cheap- and full-tier); plus hard/avoidance radius circles and nearest-wall distance label.
-- Flow-field guidance arrows are drawn at maze-cell centers for visible cells when a flow field build exists and menu `Debug info` is on.
-- `BaseDistanceField` is used for gameplay (spawn safety, drone return-to-base, flow rebuilds); it is not drawn as an on-screen number overlay.
+- Flow-field guidance arrows are drawn at maze-cell centers for visible cells when a player flow-field build exists and menu `Debug info` is on.
+- With `Debug info`, visible maze cells also draw `BaseDistanceField` values as cell-center numbers (unreachable cells are skipped).
 - HUD draws an icon counter strip above the radar blocks at font size `10`: base rectangle icon plus enemy type sprites (`Drone/Torpedo/Hunter/Assassin`) with per-type alive counts, tinted by corresponding minimap colors.
 - Debug-overlay text content is refreshed every `4` frames and cached between refreshes to reduce per-frame formatting/query overhead.
 - HUD minimap uses a persistent `60x60` logical render texture (maze-cell aligned) and blits it scaled `2x` to `120x120` in the HUD. The minimap is horizontally centered in HUD content and uses matching vertical margins above/below. Enemy/base markers are single-pixel points in that logical texture; player marker is drawn dynamically on top.
