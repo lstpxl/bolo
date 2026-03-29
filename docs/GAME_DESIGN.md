@@ -20,10 +20,16 @@ This file describes the current BOLT implementation in this repository:
 2. Player selects:
    - `Level` in range `1..9`
    - `Density` in range `1..5`
-3. Player starts a generated maze run.
-4. Player navigates the maze and interacts with enemy bases/tanks (expanded combat rules are still in progress).
-5. Player can return to menu during gameplay with START/Enter.
-6. Any transition from gameplay back to main menu resets active world runtime state (enemies, projectiles, bases, minimap markers, and navigation/collision runtime caches) so the next run starts from a clean world.
+3. Player starts a generated maze run and enters **Starting phase**.
+4. During **Starting phase**, the first fixed step arms a `1.0s` timer (`kGameplayStartingPhaseMinSeconds`) and shows `STARTING...`. The next fixed step runs `InitializeMazeWorld` (maze generation, base placement, base distance/flow rebuild, initial player spawn, navigation cache setup) while that timer counts down. Subsequent steps only wait until the timer reaches zero; there is no other gameplay simulation during Starting.
+5. Starting phase transitions into active gameplay.
+6. Player navigates the maze and interacts with enemy bases/tanks (expanded combat rules are still in progress).
+7. If the player loses the last life, gameplay enters **Game Over phase**.
+8. During Game Over phase, enemies/projectiles/world simulation continues; player movement/fire stays disabled; UI shows `GAME OVER`.
+9. Game Over phase ends when player presses any input, then the game transitions back to main menu.
+10. Player can return to menu during gameplay with START/Enter.
+11. Any transition from gameplay back to main menu resets active world runtime state (enemies, projectiles, bases, minimap markers, and navigation/collision runtime caches) so the next run starts from a clean world.
+12. On that transition, the app suppresses menu **Start**, **Select**/Enter, navigation, and fire bindings until no interaction input remains held (`FrameInput::anyInteractionDown` is false), so the same key that dismissed Game Over (or exited pause) cannot immediately start a new run.
 
 ## World and Unit System
 
@@ -174,8 +180,10 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
   - **hardRadius** (`kEnemyCollisionRadiusUnits`): collision radius for overlap and hit checks.
   - **softRadius** (`kEnemyAvoidanceRadiusUnits`): avoidance radius for steering (wall clearance, path planning, separation). Soft radius is larger than hard radius.
 - Enemy wall movement keeps additional margin: enemy disc edge stays at least `2px` away from maze walls.
+- Starting phase (`GameplayPhase::Starting`): after `StartGame`, the first fixed step starts the `1.0s` overlay timer (`kGameplayStartingPhaseMinSeconds`); the second runs `InitializeMazeWorld` while the timer counts down; when the timer expires, gameplay becomes active.
 - Start mode: player enters a `2.5s` refuel lock where fuel fills from `0` to max on HUD. During this lock (new game, respawn, and level restart), hull/turret rotation remains enabled while movement/fire stay disabled.
 - Death mode: when player dies, player enters a `3s` lock with movement/fire disabled and a simple explosion animation before life loss + respawn resolution.
+- Game Over phase (`GameplayPhase::GameOver`): after last-life loss, the world keeps simulating until player input ends the phase and returns to menu.
 - Respawn safety uses `BaseDistanceField` with bounds `12..24` cells from nearest alive base.
 - Respawn additionally requires no alive enemies within Manhattan distance `<= 3` cells.
 - If random respawn placement fails, fallback first picks the farthest strict-valid cell by base-distance; if no strict candidate exists, fallback relaxes base-distance bounds but still enforces enemy-clearance.

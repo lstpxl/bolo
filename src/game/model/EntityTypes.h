@@ -11,6 +11,12 @@ enum class GameMode {
     Playing,
 };
 
+enum class GameplayPhase {
+    Starting,
+    Active,
+    GameOver,
+};
+
 struct MazeCell {
     bool northWall = true;
     bool eastWall = true;

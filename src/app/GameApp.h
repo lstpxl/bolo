@@ -52,6 +52,7 @@ private:
     bool menuMusicPlayerReady_ = false;
     bool gameplayMusicPlayerReady_ = false;
     bool exitRequested_ = false;
+    bool suppressMenuInteractionUntilRelease_ = false;
     bool gameplayPauseDialogOpen_ = false;
     ConfirmationDialog gameplayPauseDialog_{};
     AudioEventRouter audioEventRouter_{};

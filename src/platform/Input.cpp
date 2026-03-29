@@ -114,6 +114,44 @@ FrameInput PollFrameInput() {
     const bool keyReversePressed = IsKeyPressed(KEY_DOWN);
     const bool keyForwardReleased = IsKeyReleased(KEY_UP);
     const bool keyReverseReleased = IsKeyReleased(KEY_DOWN);
+    const int anyKeyPressedCode = GetKeyPressed();
+    const bool anyKnownKeyDown =
+        IsKeyDown(KEY_LEFT) ||
+        IsKeyDown(KEY_RIGHT) ||
+        IsKeyDown(KEY_UP) ||
+        IsKeyDown(KEY_DOWN) ||
+        IsKeyDown(KEY_SPACE) ||
+        IsKeyDown(KEY_ENTER) ||
+        IsKeyDown(KEY_ESCAPE) ||
+        IsKeyDown(KEY_P) ||
+        IsKeyDown(KEY_I) ||
+        IsKeyDown(KEY_W) ||
+        IsKeyDown(KEY_A) ||
+        IsKeyDown(KEY_S) ||
+        IsKeyDown(KEY_D) ||
+        IsKeyDown(KEY_ONE) ||
+        IsKeyDown(KEY_TWO);
+    const bool anyGamepadButtonDown =
+        IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_UP) ||
+        IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_RIGHT) ||
+        IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_DOWN) ||
+        IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_LEFT) ||
+        IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_UP) ||
+        IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT) ||
+        IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN) ||
+        IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_LEFT) ||
+        IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_TRIGGER_1) ||
+        IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_TRIGGER_1) ||
+        IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_TRIGGER_2) ||
+        IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_TRIGGER_2) ||
+        IsGamepadButtonDown(0, GAMEPAD_BUTTON_MIDDLE_LEFT) ||
+        IsGamepadButtonDown(0, GAMEPAD_BUTTON_MIDDLE_RIGHT) ||
+        IsGamepadButtonDown(0, GAMEPAD_BUTTON_MIDDLE);
+    const bool anyAxisDown =
+        std::abs(moveX) > 0.0F ||
+        std::abs(moveY) > 0.0F ||
+        std::abs(turnInput) > 0.0F ||
+        std::abs(turretTurnInput) > 0.0F;
 
     const bool pauseDown = escapeDown || gamepadStartDown || gamepadMiddleDown;
     const bool pausePressed = pauseDown && !previousPauseDown;
@@ -153,5 +191,25 @@ FrameInput PollFrameInput() {
         .panSouthPressed = IsKeyDown(KEY_S),
         .panWestPressed = IsKeyDown(KEY_A),
         .panEastPressed = IsKeyDown(KEY_D),
+        .anyInteractionPressed =
+            anyKeyPressedCode != 0 ||
+            keyForwardPressed ||
+            keyReversePressed ||
+            gamepadForwardPressed ||
+            gamepadReversePressed ||
+            IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_LEFT) ||
+            IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_RIGHT) ||
+            IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN) ||
+            IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT) ||
+            IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_UP) ||
+            IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_LEFT) ||
+            IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_TRIGGER_1) ||
+            IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_TRIGGER_1) ||
+            IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_TRIGGER_2) ||
+            IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_TRIGGER_2) ||
+            IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_LEFT) ||
+            IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_RIGHT) ||
+            IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE),
+        .anyInteractionDown = anyKnownKeyDown || anyGamepadButtonDown || anyAxisDown,
     };
 }

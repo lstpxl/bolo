@@ -48,13 +48,19 @@ void Game::RequestMenu() {
     // Stop any pending async flow-field work before dropping gameplay state.
     flowWorker_.Drain();
     state_.world = WorldState{};
+    state_.gameplayPhase = GameplayPhase::Starting;
+    state_.startingPhaseRemainingSeconds = 0.0F;
+    state_.gameOverPhaseRemainingSeconds = 0.0F;
+    state_.gameOverAwaitInputClear = false;
+    state_.startingSequencePhase = 0;
     modeController_.RequestMenu();
 }
 
 void Game::StartGame(const AppConfig& config, const GameplayView& view) {
+    (void)view;
     bolt::log::Debug("[FLOW] StartGame: draining worker, invisibility=%d", state_.menuSettings.invisibility ? 1 : 0);
     flowWorker_.Drain();
-    modeController_.StartGame(state_, state_.menuSettings, config, view, random_);
+    modeController_.StartGame(state_, state_.menuSettings, config);
     bolt::log::Debug("[FLOW] StartGame done: invisibility=%d level=%d",
         state_.menuSettings.invisibility ? 1 : 0, state_.menuSettings.levelNumber);
 }
@@ -64,6 +70,90 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const GameplayVie
         return;
     }
     profiling::ScopedProfile gameScope(profiling::Scope::GameUpdate, true);
+
+    switch (state_.gameplayPhase) {
+    case GameplayPhase::Starting:
+        UpdateStartingPhase(deltaSeconds, view);
+        return;
+    case GameplayPhase::Active:
+        UpdateActivePhase(input, deltaSeconds, view);
+        return;
+    case GameplayPhase::GameOver:
+        UpdateGameOverPhase(input, deltaSeconds, view);
+        return;
+    }
+}
+
+void Game::UpdateStartingPhase(float deltaSeconds, const GameplayView& view) {
+    if (state_.startingSequencePhase == 0) {
+        state_.startingPhaseRemainingSeconds = GameplayConstants::kGameplayStartingPhaseMinSeconds;
+        state_.startingSequencePhase = 1;
+        return;
+    }
+    if (state_.startingSequencePhase == 1) {
+        flowWorker_.Drain();
+        InitializeMazeWorld(state_, view, random_);
+        state_.startingSequencePhase = 2;
+        state_.startingPhaseRemainingSeconds =
+            std::max(0.0F, state_.startingPhaseRemainingSeconds - deltaSeconds);
+        return;
+    }
+    state_.startingPhaseRemainingSeconds =
+        std::max(0.0F, state_.startingPhaseRemainingSeconds - deltaSeconds);
+    if (state_.startingPhaseRemainingSeconds <= 0.0F) {
+        state_.gameplayPhase = GameplayPhase::Active;
+        state_.startingSequencePhase = 0;
+        state_.world.gameplayEvents.Push(GameplayEvent{
+            .type = GameplayEventType::StartModeStarted,
+            .position = state_.world.player.position,
+            .startModeReason = StartModeReason::NewGame,
+        });
+    }
+}
+
+void Game::UpdateActivePhase(const FrameInput& input, float deltaSeconds, const GameplayView& view) {
+    RunPlayingWorldTick(
+        input,
+        deltaSeconds,
+        view,
+        true,
+        true,
+        true,
+        true,
+        true);
+}
+
+void Game::UpdateGameOverPhase(const FrameInput& input, float deltaSeconds, const GameplayView& view) {
+    (void)deltaSeconds;
+    RunPlayingWorldTick(
+        input,
+        deltaSeconds,
+        view,
+        false,
+        false,
+        false,
+        false,
+        false);
+    if (state_.gameOverAwaitInputClear) {
+        if (!input.anyInteractionDown) {
+            state_.gameOverAwaitInputClear = false;
+        }
+        return;
+    }
+    if (input.anyInteractionPressed) {
+        RequestMenu();
+    }
+}
+
+void Game::RunPlayingWorldTick(
+    const FrameInput& input,
+    float deltaSeconds,
+    const GameplayView& view,
+    bool allowPlayerDriving,
+    bool allowPendingDeathTrigger,
+    bool allowFuelDeath,
+    bool allowTurnLossAndRespawn,
+    bool allowLevelComplete) {
 
     // Pan mode: P toggles; W/A/S/D move viewport 1 cell when active.
     if (input.panTogglePressed) {
@@ -105,7 +195,7 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const GameplayVie
     }
 
     FrameInput playerInput = input;
-    if (state_.world.panModeActive) {
+    if (state_.world.panModeActive || !allowPlayerDriving) {
         playerInput.moveX = 0.0F;
         playerInput.moveY = 0.0F;
     }
@@ -178,7 +268,7 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const GameplayVie
             std::max(0.0F, state_.world.enemyVisualContactMusicTimerSeconds - deltaSeconds);
     }
 
-    if (state_.world.player.alive && state_.world.deathModeRemainingSeconds <= 0.0F) {
+    if (allowPlayerDriving && state_.world.player.alive && state_.world.deathModeRemainingSeconds <= 0.0F) {
         profiling::ScopedProfile scope(profiling::Scope::PlayerUpdate);
         UpdatePlayerSystem(state_, playerInput, deltaSeconds);
     } else {
@@ -202,7 +292,8 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const GameplayVie
         UpdateMazeSystem(state_, deltaSeconds);
     }
 
-    if (!state_.world.player.alive &&
+    if (allowPendingDeathTrigger &&
+        !state_.world.player.alive &&
         state_.world.playerTurnLostPending &&
         state_.world.deathModeRemainingSeconds <= 0.0F) {
         beginDeathMode();
@@ -211,7 +302,7 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const GameplayVie
     // Fuel/rules.
     const float speedSq = state_.world.player.velocity.x * state_.world.player.velocity.x +
         state_.world.player.velocity.y * state_.world.player.velocity.y;
-    if (!playerLocked && speedSq > GameplayConstants::kFuelDrainMovementThresholdSq) {
+    if (allowFuelDeath && !playerLocked && speedSq > GameplayConstants::kFuelDrainMovementThresholdSq) {
         state_.world.player.fuel -= deltaSeconds * (
             GameplayConstants::kFuelDrainBasePerSecond +
             state_.world.player.throttleNormalized * GameplayConstants::kFuelDrainThrottlePerSecond);
@@ -303,11 +394,16 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const GameplayVie
         state_.world.enemies.end());
 
     // Turn loss handling.
-    if (!state_.world.player.alive && state_.world.deathModeRemainingSeconds <= 0.0F) {
+    if (allowTurnLossAndRespawn &&
+        !state_.world.player.alive &&
+        state_.world.deathModeRemainingSeconds <= 0.0F) {
         state_.world.player.lives -= 1;
         if (state_.world.player.lives <= 0) {
             state_.world.gameOver = true;
-            RequestMenu();
+            state_.gameplayPhase = GameplayPhase::GameOver;
+            state_.gameOverPhaseRemainingSeconds = 0.0F;
+            state_.gameOverAwaitInputClear = true;
+            state_.world.playerTurnLostPending = false;
             return;
         }
         state_.world.player.alive = true;
@@ -348,7 +444,7 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const GameplayVie
             ++aliveBases;
         }
     }
-    if (aliveBases == 0) {
+    if (allowLevelComplete && aliveBases == 0) {
         bolt::log::Debug("[FLOW] Level complete: draining, invisibility=%d", state_.menuSettings.invisibility ? 1 : 0);
         flowWorker_.Drain();
         const int score = state_.world.score;
@@ -371,9 +467,9 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const GameplayVie
         });
     }
 
-    if (state_.world.levelClearMessageSeconds > 0.0F) {
+    if (allowLevelComplete && state_.world.levelClearMessageSeconds > 0.0F) {
         state_.world.levelClearMessageSeconds = std::max(0.0F, state_.world.levelClearMessageSeconds - deltaSeconds);
-    } else {
+    } else if (allowLevelComplete) {
         state_.world.levelCleared = false;
     }
 }

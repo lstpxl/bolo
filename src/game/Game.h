@@ -28,6 +28,19 @@ public:
     bool IsGameplayMusicTense() const;
 
 private:
+    void UpdateStartingPhase(float deltaSeconds, const GameplayView& view);
+    void UpdateActivePhase(const FrameInput& input, float deltaSeconds, const GameplayView& view);
+    void UpdateGameOverPhase(const FrameInput& input, float deltaSeconds, const GameplayView& view);
+    void RunPlayingWorldTick(
+        const FrameInput& input,
+        float deltaSeconds,
+        const GameplayView& view,
+        bool allowPlayerDriving,
+        bool allowPendingDeathTrigger,
+        bool allowFuelDeath,
+        bool allowTurnLossAndRespawn,
+        bool allowLevelComplete);
+
     GameModeController modeController_{};
     GameState state_{};
     RuntimeContext runtimeContext_{};

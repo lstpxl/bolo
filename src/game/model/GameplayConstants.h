@@ -177,6 +177,7 @@ struct GameplayConstants {
     static constexpr float kFuelDrainBasePerSecond = 0.9F;           // fuel units / second
     static constexpr float kFuelDrainThrottlePerSecond = 1.1F;       // fuel units / second @ throttle=1
     static constexpr float kLevelClearMessageSeconds = 2.0F;         // seconds
+    static constexpr float kGameplayStartingPhaseMinSeconds = 1.0F;  // seconds
     static constexpr int kEnemyScorePerLevelMultiplier = 1;          // points * level
     static constexpr int kBaseScorePerLevelMultiplier = 100;         // points * level
 

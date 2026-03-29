@@ -1,7 +1,6 @@
 #include "game/GameModeController.h"
 
 #include "core/Log.h"
-#include "game/systems/MazeSystem.h"
 
 GameMode GameModeController::Mode() const {
     return mode_;
@@ -11,16 +10,15 @@ void GameModeController::RequestMenu() {
     mode_ = GameMode::Menu;
 }
 
-void GameModeController::StartGame(
-    GameState& state,
-    const MenuSettings& settings,
-    const AppConfig& config,
-    const GameplayView& view,
-    Random& random) {
+void GameModeController::StartGame(GameState& state, const MenuSettings& settings, const AppConfig& config) {
     (void)config;
     bolt::log::Debug("[FLOW] GameModeController::StartGame: settings.invisibility=%d level=%d",
         settings.invisibility ? 1 : 0, settings.levelNumber);
     state.menuSettings = settings;
+    state.gameplayPhase = GameplayPhase::Starting;
+    state.startingSequencePhase = 0;
+    state.startingPhaseRemainingSeconds = 0.0F;
+    state.gameOverPhaseRemainingSeconds = 0.0F;
     state.world.player.lives = GameplayConstants::kStartingLives;
     state.world.player.fuel = 0.0F;
     state.world.player.alive = true;
@@ -35,11 +33,5 @@ void GameModeController::StartGame(
     state.world.deathExplosionRemainingSeconds = 0.0F;
     state.world.score = 0;
     state.world.gameOver = false;
-    InitializeMazeWorld(state, view, random);
-    state.world.gameplayEvents.Push(GameplayEvent{
-        .type = GameplayEventType::StartModeStarted,
-        .position = state.world.player.position,
-        .startModeReason = StartModeReason::NewGame,
-    });
     mode_ = GameMode::Playing;
 }

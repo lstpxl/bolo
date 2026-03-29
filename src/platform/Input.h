@@ -30,6 +30,8 @@ struct FrameInput {
     bool panSouthPressed = false;
     bool panWestPressed = false;
     bool panEastPressed = false;
+    bool anyInteractionPressed = false;
+    bool anyInteractionDown = false;
 };
 
 FrameInput PollFrameInput();

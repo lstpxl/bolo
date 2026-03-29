@@ -161,7 +161,11 @@ int GameApp::Run() {
                     while (fixedStepTimer_.ShouldStep() && fixedStepsThisFrame < kMaxFixedStepsPerFrame) {
                         profiling::ScopedProfile fixedStepScope(profiling::Scope::FixedStepUpdate, true);
                         if (game_.Mode() == GameMode::Playing) {
-                            if (input.gameplayPausePressed && !gameplayPauseDialogOpen_) {
+                            const GameplayPhase gameplayPhase = game_.State().gameplayPhase;
+                            const bool canOpenGameplayPauseDialog =
+                                gameplayPhase == GameplayPhase::Active ||
+                                gameplayPhase == GameplayPhase::GameOver;
+                            if (canOpenGameplayPauseDialog && input.gameplayPausePressed && !gameplayPauseDialogOpen_) {
                                 gameplayPauseDialogOpen_ = true;
                                 gameplayPauseDialog_.Open(ConfirmationDialog::Focus::Cancel);
                             }
@@ -200,9 +204,30 @@ int GameApp::Run() {
                         ++fixedStepsThisFrame;
                     }
 
+                    FrameInput renderInput = input;
+                    const GameMode modeBeforeRender = game_.Mode();
+                    if (previousMode == GameMode::Playing && modeBeforeRender == GameMode::Menu) {
+                        suppressMenuInteractionUntilRelease_ = true;
+                        gameplayPauseDialogOpen_ = false;
+                        renderer_.ResetTransientState();
+                    }
+                    if (modeBeforeRender == GameMode::Menu && suppressMenuInteractionUntilRelease_) {
+                        if (!input.anyInteractionDown) {
+                            suppressMenuInteractionUntilRelease_ = false;
+                        } else {
+                            renderInput.shootPressed = false;
+                            renderInput.startPressed = false;
+                            renderInput.gameplayPausePressed = false;
+                            renderInput.menuNavigateUpPressed = false;
+                            renderInput.menuNavigateDownPressed = false;
+                            renderInput.menuNavigateLeftPressed = false;
+                            renderInput.menuNavigateRightPressed = false;
+                            renderInput.menuSelectPressed = false;
+                        }
+                    }
                     {
                         profiling::ScopedProfile renderScope(profiling::Scope::FrameRender);
-                        frameHasBackbufferWork = Render(input);
+                        frameHasBackbufferWork = Render(renderInput);
                     }
                     if (audioReady_) {
                         if (menuMusicPlayerReady_) {
@@ -218,12 +243,7 @@ int GameApp::Run() {
                     }
                 }
             }
-            const GameMode currentMode = game_.Mode();
-            if (previousMode == GameMode::Playing && currentMode == GameMode::Menu) {
-                gameplayPauseDialogOpen_ = false;
-                renderer_.ResetTransientState();
-            }
-            previousMode = currentMode;
+            previousMode = game_.Mode();
 
             if (frameHasBackbufferWork) {
                 profiling::ScopedProfile presentScope(profiling::Scope::FramePresent);
@@ -327,7 +347,8 @@ void GameApp::RenderGameplayPauseDialog(const FrameInput& input) {
 }
 
 bool GameApp::Render(const FrameInput& input) {
-    if (game_.Mode() == GameMode::Playing) {
+    if (game_.Mode() == GameMode::Playing &&
+        game_.State().gameplayPhase != GameplayPhase::Starting) {
         renderer_.PrepareGameplayRender(game_.State(), config_, input);
     }
 
@@ -359,12 +380,33 @@ bool GameApp::Render(const FrameInput& input) {
                 exitRequested_ = true;
             }
         } else {
-            game_.Render(renderer_, config_, input);
-            if (game_.State().menuSettings.debugInfo) {
+            const GameState& state = game_.State();
+            const int worldWidth = config_.screenWidth - ComputeHudWidth(config_);
+
+            if (state.gameplayPhase == GameplayPhase::Starting) {
+                // Starting phase intentionally renders no world/HUD.
+                const int overlayFontSize = 40;
+                const char* overlayText = "STARTING...";
+                const int textWidth = MeasureText(overlayText, overlayFontSize);
+                const int textX = (config_.screenWidth - textWidth) / 2;
+                const int textY = (config_.screenHeight / 2) - (overlayFontSize / 2);
+                DrawText(overlayText, std::max(0, textX), textY, overlayFontSize, YELLOW);
+            } else {
+                game_.Render(renderer_, config_, input);
+                if (state.gameplayPhase == GameplayPhase::GameOver) {
+                    const int overlayFontSize = 40;
+                    const char* overlayText = "GAME OVER";
+                    const int textWidth = MeasureText(overlayText, overlayFontSize);
+                    const int textX = (worldWidth - textWidth) / 2;
+                    const int textY = (config_.screenHeight / 2) - (overlayFontSize / 2);
+                    DrawText(overlayText, std::max(0, textX), textY, overlayFontSize, YELLOW);
+                }
+            }
+            if (state.gameplayPhase != GameplayPhase::Starting && game_.State().menuSettings.debugInfo) {
                 profiling::ScopedProfile overlayScope(profiling::Scope::RenderOverlay);
                 debugOverlayRenderer_.Draw(game_.State(), config_, input);
             }
-            if (gameplayPauseDialogOpen_) {
+            if (state.gameplayPhase != GameplayPhase::Starting && gameplayPauseDialogOpen_) {
                 profiling::ScopedProfile overlayScope(profiling::Scope::RenderOverlay);
                 RenderGameplayPauseDialog(input);
             }

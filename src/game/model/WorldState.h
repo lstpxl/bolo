@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cstdint>
 #include "core/Types.h"
 #include "game/model/EntityTypes.h"
 #include "game/model/GameplayEvents.h"
@@ -65,6 +66,12 @@ struct WorldState {
 };
 
 struct GameState {
+    GameplayPhase gameplayPhase = GameplayPhase::Starting;
+    float startingPhaseRemainingSeconds = 0.0F;
+    float gameOverPhaseRemainingSeconds = 0.0F;
+    bool gameOverAwaitInputClear = false;
+    /// 0 = arm Starting timer; 1 = run `InitializeMazeWorld`; 2 = wait for timer (idle).
+    std::uint8_t startingSequencePhase = 0;
     MenuSettings menuSettings{
         .levelNumber = kDefaultGameLevelNumber,
         .mazeDensity = 1,
