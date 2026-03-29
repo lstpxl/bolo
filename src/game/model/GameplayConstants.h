@@ -131,7 +131,8 @@ struct GameplayConstants {
     static constexpr float kBaseExplosionRenderWorldUnits = 4.0F;              // world units (64px / 16px·unit⁻¹)
 
     // Game phase tuning.
-    static constexpr float kStartModeDurationSeconds = 2.5F;         // seconds
+    // Refuel lock: fuel ramps 0 → max over this interval (new game, respawn, level restart).
+    static constexpr float kStartModeDurationSeconds = 1.6F;
     static constexpr float kDeathModeDurationSeconds = 3.0F;         // seconds
     static constexpr float kDeathExplosionDurationSeconds = 3.0F;    // seconds
 

@@ -12,6 +12,7 @@
 #include "app/BuildInfo.h"
 #include "core/Log.h"
 #include "core/ResourceLocator.h"
+#include "ui/BoltMenuSlider.h"
 #include "ui/UiPrimitives.h"
 #include "raygui.h"
 #include "raylib.h"
@@ -332,53 +333,9 @@ constexpr int kDensityHatchGapPx = 16;
 constexpr int kDensityHatchRenderScale = 2;
 constexpr int kDensityHatchDrawPx = kDensityHatchCellPx * kDensityHatchRenderScale;
 
-// Level slider: focus ring uses the outer band; `GuiSliderBar` is inset 2 px top/bottom so the
-// track/fill sits below the band edge like the horizontal `SLIDER_PADDING` gutter (raygui unchanged).
-constexpr float kLevelSliderFocusBandHeightPx = 32.0F;
-constexpr float kLevelSliderBarVertInsetPx = 2.0F;
-constexpr float kLevelSliderBarBoundsHeightPx =
-    kLevelSliderFocusBandHeightPx - 2.0F * kLevelSliderBarVertInsetPx;
-constexpr float kLevelSliderInnerSideGapPx = 2.0F;
-constexpr int kLevelSliderBorderPx = 2;
-constexpr int kLevelSliderPaddingPx = 2;
-constexpr Color kMenuSliderTrackBg = Color{40, 46, 58, 180};
-
 // Main menu focusable row text, raygui packed colors, and density-hatch sprite tint (#0D8152).
 constexpr Color kMenuFocusableItemColor = Color{13, 129, 82, 255};
 const int kMenuFocusableTextPacked = static_cast<int>(ColorToInt(kMenuFocusableItemColor));
-
-void ApplyBoltMainMenuRayGuiStyle() {
-    GuiLoadStyleDefault();
-
-    const int transparent = static_cast<int>(ColorToInt(BLANK));
-    const int trackBg = static_cast<int>(ColorToInt(kMenuSliderTrackBg));
-
-    // Start / Quit: text only unless keyboard focus ring is drawn separately; no button chrome.
-    GuiSetStyle(BUTTON, BORDER_WIDTH, 0);
-    GuiSetStyle(BUTTON, BORDER_COLOR_NORMAL, transparent);
-    GuiSetStyle(BUTTON, BASE_COLOR_NORMAL, transparent);
-    GuiSetStyle(BUTTON, TEXT_COLOR_NORMAL, kMenuFocusableTextPacked);
-    GuiSetStyle(BUTTON, BORDER_COLOR_FOCUSED, transparent);
-    GuiSetStyle(BUTTON, BASE_COLOR_FOCUSED, transparent);
-    GuiSetStyle(BUTTON, TEXT_COLOR_FOCUSED, kMenuFocusableTextPacked);
-    GuiSetStyle(BUTTON, BORDER_COLOR_PRESSED, transparent);
-    GuiSetStyle(BUTTON, BASE_COLOR_PRESSED, transparent);
-    GuiSetStyle(BUTTON, TEXT_COLOR_PRESSED, kMenuFocusableTextPacked);
-
-    GuiSetStyle(SLIDER, BORDER_WIDTH, kLevelSliderBorderPx);
-    GuiSetStyle(SLIDER, SLIDER_PADDING, kLevelSliderPaddingPx);
-    GuiSetStyle(SLIDER, BORDER_COLOR_NORMAL, kMenuFocusableTextPacked);
-    GuiSetStyle(SLIDER, BORDER_COLOR_FOCUSED, kMenuFocusableTextPacked);
-    GuiSetStyle(SLIDER, BORDER_COLOR_PRESSED, kMenuFocusableTextPacked);
-    GuiSetStyle(SLIDER, BASE_COLOR_NORMAL, trackBg);
-    GuiSetStyle(SLIDER, BASE_COLOR_PRESSED, kMenuFocusableTextPacked);
-    GuiSetStyle(SLIDER, TEXT_COLOR_FOCUSED, kMenuFocusableTextPacked);
-    GuiSetStyle(SLIDER, TEXT_COLOR_PRESSED, kMenuFocusableTextPacked);
-
-    GuiSetStyle(LABEL, TEXT_COLOR_NORMAL, kMenuFocusableTextPacked);
-    GuiSetStyle(LABEL, TEXT_COLOR_FOCUSED, kMenuFocusableTextPacked);
-    GuiSetStyle(LABEL, TEXT_COLOR_PRESSED, kMenuFocusableTextPacked);
-}
 
 void ReplaceOpaquePixelsRgb(Image& image, Color rgb) {
     if (image.data == nullptr) {
@@ -599,7 +556,7 @@ MenuScreenResult MenuScreen::Render(
 
     const float levelLabelY = startButtonY + kMenuQuitButtonHeight + kMenuItemDoubleGapPx - kLevelRowUpPx;
     const float levelGaugeY =
-        levelLabelY + (kMenuQuitButtonHeight - kLevelSliderFocusBandHeightPx) * 0.5F;
+        levelLabelY + (kMenuQuitButtonHeight - ui::bolt_menu_slider::kFocusBandHeightPx) * 0.5F;
     const float densityLabelY =
         levelLabelY + kMenuQuitButtonHeight + kMenuItemSingleGapPx - (kDensityRowUpPx - kLevelRowUpPx);
     constexpr int kDensityLabelFontPx = 20;
@@ -609,19 +566,20 @@ MenuScreenResult MenuScreen::Render(
     const float debugInfoY =
         densityLabelY + kMenuQuitButtonHeight + kMenuItemSingleGapPx - (kDebugRowUpPx - kDensityRowUpPx);
 
-    ApplyBoltMainMenuRayGuiStyle();
+    ui::bolt_menu_slider::ApplyBoltMenuSliderRayGuiStyle(
+        kMenuFocusableItemColor, ui::bolt_menu_slider::kBorderPx, ui::bolt_menu_slider::kPaddingPx);
     GuiSetStyle(DEFAULT, TEXT_SIZE, 20);
 
     constexpr float kLevelSliderWidthFactor = 0.75F;
     const float levelSliderWidth = gaugeWidth * kLevelSliderWidthFactor;
     const float levelSliderX = panelCenterX - levelSliderWidth * 0.5F;
     const Rectangle levelGauge =
-        Rectangle{levelSliderX, levelGaugeY, levelSliderWidth, kLevelSliderFocusBandHeightPx};
+        Rectangle{levelSliderX, levelGaugeY, levelSliderWidth, ui::bolt_menu_slider::kFocusBandHeightPx};
     const Rectangle levelSliderBarBounds = Rectangle{
         levelGauge.x,
-        levelGauge.y + kLevelSliderBarVertInsetPx,
+        levelGauge.y + ui::bolt_menu_slider::kBarVertInsetPx,
         levelGauge.width,
-        kLevelSliderBarBoundsHeightPx,
+        ui::bolt_menu_slider::kBarBoundsHeightPx,
     };
 
     const float densityBlockWidth =
@@ -853,34 +811,11 @@ MenuScreenResult MenuScreen::Render(
         }
 
         // raygui's SliderBar applies SLIDER_PADDING vertically but not horizontally.
-        // Mask 2 px at left/right so border-to-fill gaps match on both axes.
-        const float levelSliderFillY =
-            levelSliderBarBounds.y + static_cast<float>(kLevelSliderBorderPx + kLevelSliderPaddingPx);
-        const float levelSliderFillH = levelSliderBarBounds.height -
-            2.0F * static_cast<float>(kLevelSliderBorderPx + kLevelSliderPaddingPx);
-        if (levelSliderFillH > 0.0F && kLevelSliderInnerSideGapPx > 0.0F) {
-            const float levelSliderLeftGapX =
-                levelSliderBarBounds.x + static_cast<float>(kLevelSliderBorderPx);
-            const float levelSliderRightGapX =
-                levelSliderBarBounds.x + levelSliderBarBounds.width -
-                static_cast<float>(kLevelSliderBorderPx) - kLevelSliderInnerSideGapPx;
-            DrawRectangleRec(
-                Rectangle{
-                    levelSliderLeftGapX,
-                    levelSliderFillY,
-                    kLevelSliderInnerSideGapPx,
-                    levelSliderFillH,
-                },
-                kMenuSliderTrackBg);
-            DrawRectangleRec(
-                Rectangle{
-                    levelSliderRightGapX,
-                    levelSliderFillY,
-                    kLevelSliderInnerSideGapPx,
-                    levelSliderFillH,
-                },
-                kMenuSliderTrackBg);
-        }
+        ui::bolt_menu_slider::DrawInnerSideGapMasks(
+            levelSliderBarBounds,
+            ui::bolt_menu_slider::kBorderPx,
+            ui::bolt_menu_slider::kPaddingPx,
+            ui::bolt_menu_slider::kInnerSideGapPx);
     }
 
     const char* const debugMenuLine = TextFormat("Debug info: %s", debugInfoValue ? "On" : "Off");

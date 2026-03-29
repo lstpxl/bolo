@@ -12,6 +12,8 @@
 #include "core/Profiling.h"
 #include "core/ResourceLocator.h"
 #include "game/geometry/WorldGeometry.h"
+#include "game/model/GameplayConstants.h"
+#include "game/model/WorldState.h"
 #include "game/systems/EnemySystem.h"
 #include "raylib.h"
 
@@ -627,6 +629,45 @@ bool Renderer2D::LoadResources() {
     return playerTankSheetLoaded_;
 }
 
+namespace {
+
+/// Horizontally centered in the maze viewport; bottom inset equals left/right margin. Frame + fill only.
+void DrawFuellingSliderInMazeViewport(const Rectangle& mazeViewport, float fuel, float fuelMax) {
+    constexpr Color kFuellingGold = Color{224, 206, 4, 200};
+    constexpr float kLayoutScale = 1.65F;
+    constexpr float kReferenceBandPx = 32.0F;
+    constexpr float kFrameLinePx = 2.0F;
+
+    const float barOuterH = kReferenceBandPx * kLayoutScale * 0.5F;
+    const float barOuterW = std::min(520.0F, mazeViewport.width * 0.82F);
+    const float margin = (mazeViewport.width - barOuterW) * 0.5F;
+    const float outerX = mazeViewport.x + margin;
+    const float outerBottom = mazeViewport.y + mazeViewport.height - margin;
+    const float outerY = outerBottom - barOuterH;
+    const Rectangle outer = Rectangle{
+        outerX,
+        outerY,
+        barOuterW,
+        barOuterH,
+    };
+    DrawRectangleLinesEx(outer, kFrameLinePx, kFuellingGold);
+
+    const float innerX = outer.x + kFrameLinePx;
+    const float innerY = outer.y + kFrameLinePx;
+    const float innerW = outer.width - 2.0F * kFrameLinePx;
+    const float innerH = outer.height - 2.0F * kFrameLinePx;
+    if (innerW <= 0.0F || innerH <= 0.0F) {
+        return;
+    }
+    const float fillT = std::clamp(fuel / fuelMax, 0.0F, 1.0F);
+    const float fillW = innerW * fillT;
+    if (fillW > 0.0F) {
+        DrawRectangleRec(Rectangle{innerX, innerY, fillW, innerH}, kFuellingGold);
+    }
+}
+
+}  // namespace
+
 void Renderer2D::UnloadResources() {
     if (playerTankSheetLoaded_) {
         UnloadTexture(playerTankSheet_);
@@ -1168,5 +1209,10 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
         const float halfFrame = static_cast<float>(kPlayerRenderSizePx) * 0.5F;
         DrawTexturePro(playerTankSheet_, sourceRect, destRect, Vector2{halfFrame, halfFrame}, 0.0F, WHITE);
     }
+
+    if (state.world.startModeRemainingSeconds > 0.0F && state.world.player.alive) {
+        DrawFuellingSliderInMazeViewport(worldViewport, state.world.player.fuel, GameplayConstants::kFuelMax);
+    }
+
     EndScissorMode();
 }
