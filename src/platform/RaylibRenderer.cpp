@@ -11,6 +11,10 @@ void RaylibRenderer::UnloadResources() {
     renderer2D_.UnloadResources();
 }
 
+void RaylibRenderer::ResetTransientState() {
+    hudPanel_.ResetTransientState();
+}
+
 void RaylibRenderer::PrepareGameplayRender(const GameState& state, const AppConfig& config, const FrameInput& input) {
     hudPanel_.PrepareRenderTargets(state, config, input);
 }

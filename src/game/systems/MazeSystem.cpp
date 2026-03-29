@@ -520,14 +520,14 @@ void InitializeMazeWorld(GameState& state, const GameplayView& view, Random& ran
             view,
             random,
             true,
-            GameplayConstants::kPlayerSpawnMinBaseDistanceCells,
+            GameplayConstants::kPlayerInitialSpawnMinBaseDistanceCells,
             GameplayConstants::kPlayerInitialSpawnMaxBaseDistanceCells,
             false) &&
         !PlacePlayerDeterministic(
             state,
             view,
             true,
-            GameplayConstants::kPlayerSpawnMinBaseDistanceCells,
+            GameplayConstants::kPlayerInitialSpawnMinBaseDistanceCells,
             GameplayConstants::kPlayerInitialSpawnMaxBaseDistanceCells,
             false,
             true)) {
@@ -561,7 +561,7 @@ bool PlacePlayerAtSafeSpawn(GameState& state, const GameplayView& view, Random& 
             view,
             random,
             false,
-            GameplayConstants::kPlayerSpawnMinBaseDistanceCells,
+            GameplayConstants::kPlayerRespawnMinBaseDistanceCells,
             GameplayConstants::kPlayerRespawnMaxBaseDistanceCells,
             true)) {
         return true;
@@ -570,7 +570,7 @@ bool PlacePlayerAtSafeSpawn(GameState& state, const GameplayView& view, Random& 
             state,
             view,
             false,
-            GameplayConstants::kPlayerSpawnMinBaseDistanceCells,
+            GameplayConstants::kPlayerRespawnMinBaseDistanceCells,
             GameplayConstants::kPlayerRespawnMaxBaseDistanceCells,
             true,
             true)) {
@@ -580,7 +580,7 @@ bool PlacePlayerAtSafeSpawn(GameState& state, const GameplayView& view, Random& 
             state,
             view,
             false,
-            GameplayConstants::kPlayerSpawnMinBaseDistanceCells,
+            GameplayConstants::kPlayerRespawnMinBaseDistanceCells,
             GameplayConstants::kPlayerRespawnMaxBaseDistanceCells,
             true,
             false)) {

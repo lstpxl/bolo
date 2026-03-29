@@ -45,6 +45,9 @@ void Game::SetMenuSettings(const MenuSettings& settings) {
 }
 
 void Game::RequestMenu() {
+    // Stop any pending async flow-field work before dropping gameplay state.
+    flowWorker_.Drain();
+    state_.world = WorldState{};
     modeController_.RequestMenu();
 }
 

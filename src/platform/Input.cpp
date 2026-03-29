@@ -4,6 +4,8 @@
 #include "raylib.h"
 
 FrameInput PollFrameInput() {
+    static bool previousPauseDown = false;
+
     constexpr float axisDeadzone = 0.2F;
     constexpr float axisToRawScale = 32767.0F;
     float moveX = 0.0F;
@@ -98,7 +100,7 @@ FrameInput PollFrameInput() {
         (gamepadMiddleDown && gamepadStartDown);
     const bool gamepadSouthPressed = IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN);
     const bool gamepadEastPressed = IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT);
-    const bool escapePressed = IsKeyPressed(KEY_ESCAPE);
+    const bool escapeDown = IsKeyDown(KEY_ESCAPE);
     const bool gamepadForwardDown = IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_UP);
     const bool gamepadReverseDown = IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_DOWN);
     const bool gamepadForwardPressed = IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_UP);
@@ -112,6 +114,10 @@ FrameInput PollFrameInput() {
     const bool keyReversePressed = IsKeyPressed(KEY_DOWN);
     const bool keyForwardReleased = IsKeyReleased(KEY_UP);
     const bool keyReverseReleased = IsKeyReleased(KEY_DOWN);
+
+    const bool pauseDown = escapeDown || gamepadStartDown || gamepadMiddleDown;
+    const bool pausePressed = pauseDown && !previousPauseDown;
+    previousPauseDown = pauseDown;
 
     return FrameInput{
         .moveX = moveX,
@@ -130,7 +136,7 @@ FrameInput PollFrameInput() {
         .reverseButtonReleased = keyReverseReleased || gamepadReverseReleased,
         .shootPressed = IsKeyPressed(KEY_SPACE) || gamepadSouthPressed,
         .startPressed = IsKeyPressed(KEY_ENTER) || gamepadStartPressed,
-        .gameplayPausePressed = escapePressed || gamepadStartPressed,
+        .gameplayPausePressed = pausePressed,
         .quitRequested = gamepadQuitComboPressed,
         .menuNavigateUpPressed =
             IsKeyPressed(KEY_UP) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_UP),

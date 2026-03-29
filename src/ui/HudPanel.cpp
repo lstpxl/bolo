@@ -200,6 +200,32 @@ void HudPanel::ReleaseResources() {
     cachedBasesRadarQuadrant_ = -2;
 }
 
+void HudPanel::ResetTransientState() const {
+    cacheInitialized_ = false;
+    lastEnemySnapshotSeconds_ = 0.0;
+    lastFuelSnapshotSeconds_ = 0.0;
+
+    cachedFuel_ = GameplayConstants::kFuelMax;
+    cachedEnemyCount_ = 0;
+    cachedAliveBases_ = 0;
+    cachedDronesAlive_ = 0;
+    cachedTorpedoesAlive_ = 0;
+    cachedHuntersAlive_ = 0;
+    cachedAssassinsAlive_ = 0;
+
+    minimapMarkersDirty_ = true;
+    lastMinimapEnemyUpdateFrame_ = 0;
+    minimapEntityCursorIndex_ = -kMinimapTrackedBaseCount;
+    minimapEntityCellValid_.fill(false);
+    if (minimapMarkersTargetLoaded_) {
+        ResetMinimapMarkersLayer();
+    }
+
+    basesRadarDirty_ = true;
+    lastBasesRadarUpdateFrame_ = 0;
+    cachedBasesRadarQuadrant_ = -2;
+}
+
 HudPanel::HudLayout HudPanel::BuildHudLayout(int panelX, int hudWidth, int screenHeight) {
     HudLayout layout{};
     layout.panelX = panelX;

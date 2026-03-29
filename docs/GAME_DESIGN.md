@@ -23,6 +23,7 @@ This file describes the current BOLT implementation in this repository:
 3. Player starts a generated maze run.
 4. Player navigates the maze and interacts with enemy bases/tanks (expanded combat rules are still in progress).
 5. Player can return to menu during gameplay with START/Enter.
+6. Any transition from gameplay back to main menu resets active world runtime state (enemies, projectiles, bases, minimap markers, and navigation/collision runtime caches) so the next run starts from a clean world.
 
 ## World and Unit System
 
@@ -59,7 +60,7 @@ Algorithm and constraints:
    - both horizontal and vertical walls present across all quadrants (`IsWallDistributionValid`)
 4. Place exactly 6 enemy bases on unique cells.
 5. Place player on cell centers using `BaseDistanceField` (maze cardinal distance to nearest alive base):
-   - initial spawn distance bounds: `8..24` cells from nearest base
+   - initial spawn distance bounds: `8..20` cells from nearest base
    - no overlap with any base footprint
    - no base visible in initial camera rectangle
    - deterministic fallback picks the farthest valid cell by base-distance, then `(0,0)` if none
@@ -173,9 +174,9 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
   - **hardRadius** (`kEnemyCollisionRadiusUnits`): collision radius for overlap and hit checks.
   - **softRadius** (`kEnemyAvoidanceRadiusUnits`): avoidance radius for steering (wall clearance, path planning, separation). Soft radius is larger than hard radius.
 - Enemy wall movement keeps additional margin: enemy disc edge stays at least `2px` away from maze walls.
-- Start mode: player enters a `2.5s` refuel lock where fuel fills from `0` to max on HUD. During **respawn** start mode, hull/turret rotation remains enabled while movement/fire stay disabled; during **new game** and **level restart**, movement/rotation/fire are all disabled.
+- Start mode: player enters a `2.5s` refuel lock where fuel fills from `0` to max on HUD. During this lock (new game, respawn, and level restart), hull/turret rotation remains enabled while movement/fire stay disabled.
 - Death mode: when player dies, player enters a `3s` lock with movement/fire disabled and a simple explosion animation before life loss + respawn resolution.
-- Respawn safety uses `BaseDistanceField` with bounds `8..36` cells from nearest alive base.
+- Respawn safety uses `BaseDistanceField` with bounds `12..24` cells from nearest alive base.
 - Respawn additionally requires no alive enemies within Manhattan distance `<= 3` cells.
 - If random respawn placement fails, fallback first picks the farthest strict-valid cell by base-distance; if no strict candidate exists, fallback relaxes base-distance bounds but still enforces enemy-clearance.
 

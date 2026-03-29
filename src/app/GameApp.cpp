@@ -138,6 +138,7 @@ int GameApp::Run() {
         }
     }
 
+    GameMode previousMode = game_.Mode();
     while (!exitRequested_ && !WindowShouldClose()) {
         profiling::Profiler::Instance().BeginFrame();
         {
@@ -217,6 +218,13 @@ int GameApp::Run() {
                     }
                 }
             }
+            const GameMode currentMode = game_.Mode();
+            if (previousMode == GameMode::Playing && currentMode == GameMode::Menu) {
+                gameplayPauseDialogOpen_ = false;
+                renderer_.ResetTransientState();
+            }
+            previousMode = currentMode;
+
             if (frameHasBackbufferWork) {
                 profiling::ScopedProfile presentScope(profiling::Scope::FramePresent);
                 EndDrawing();
@@ -285,7 +293,7 @@ int GameApp::Run() {
 void GameApp::RenderGameplayPauseDialog(const FrameInput& input) {
     ui::primitives::DrawModalBackdrop(config_.screenWidth, config_.screenHeight);
 
-    const float dialogWidth = std::min(360.0F, static_cast<float>(config_.screenWidth) - 48.0F);
+    const float dialogWidth = std::min(400.0F, static_cast<float>(config_.screenWidth) - 48.0F);
     const Rectangle dialog = {
         .x = (static_cast<float>(config_.screenWidth) - dialogWidth) * 0.5F,
         .y = static_cast<float>(config_.screenHeight) * 0.5F - 75.0F,
@@ -297,8 +305,9 @@ void GameApp::RenderGameplayPauseDialog(const FrameInput& input) {
         ConfirmationDialog::Spec{
             .bounds = dialog,
             .message = "Paused",
-            .confirmButtonLabel = "Quit to menu",
+            .confirmButtonLabel = "Quit",
             .cancelButtonLabel = "Resume",
+            .buttonTextSize = 20,
         },
         input);
 

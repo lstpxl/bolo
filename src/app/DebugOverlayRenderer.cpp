@@ -15,66 +15,12 @@ constexpr int kOverlayEnemyStatsTopPx = 44;
 }
 
 void DebugOverlayRenderer::ReleaseResources() {
-    if (!renderTargetLoaded_) {
-        return;
-    }
-
-    UnloadRenderTexture(renderTarget_);
-    renderTarget_ = RenderTexture2D{};
-    renderTargetLoaded_ = false;
-    renderTargetWidth_ = 0;
-    renderTargetHeight_ = 0;
     overlayCacheInitialized_ = false;
-}
-
-void DebugOverlayRenderer::EnsureRenderTarget(int width, int height) const {
-    if (width <= 0 || height <= 0) {
-        return;
-    }
-
-    const bool sizeChanged = renderTargetLoaded_ && (renderTargetWidth_ != width || renderTargetHeight_ != height);
-    if (sizeChanged) {
-        UnloadRenderTexture(renderTarget_);
-        renderTarget_ = RenderTexture2D{};
-        renderTargetLoaded_ = false;
-        renderTargetWidth_ = 0;
-        renderTargetHeight_ = 0;
-        overlayCacheInitialized_ = false;
-    }
-
-    if (renderTargetLoaded_) {
-        return;
-    }
-
-    renderTarget_ = LoadRenderTexture(width, height);
-    renderTargetLoaded_ = renderTarget_.id != 0;
-    if (!renderTargetLoaded_) {
-        return;
-    }
-
-    SetTextureFilter(renderTarget_.texture, TEXTURE_FILTER_POINT);
-    renderTargetWidth_ = width;
-    renderTargetHeight_ = height;
-    overlayCacheInitialized_ = false;
-}
-
-void DebugOverlayRenderer::RebuildRenderTarget() const {
-    if (!renderTargetLoaded_) {
-        return;
-    }
-
-    BeginTextureMode(renderTarget_);
-    ClearBackground(BLANK);
-    DrawText(axesTextCache_, kOverlayTextLeftPx, kOverlayAxesTopPx, 10, RAYWHITE);
-    DrawText(perfTextCache_, kOverlayTextLeftPx, kOverlayPerfTopPx, 10, GREEN);
-    DrawText(profileTextCache_, kOverlayTextLeftPx, kOverlayProfileTopPx, 10, LIGHTGRAY);
-    DrawText(enemyStatsTextCache_, kOverlayTextLeftPx, kOverlayEnemyStatsTopPx, 10, LIGHTGRAY);
-    EndTextureMode();
 }
 
 void DebugOverlayRenderer::Draw(const GameState& state, const AppConfig& config, const FrameInput& input) const {
     (void)state;
-    EnsureRenderTarget(config.screenWidth, config.screenHeight);
+    (void)config;
 
     const std::uint64_t frameIndex = profiling::Profiler::Instance().FrameIndex();
     const bool shouldRefreshCache =
@@ -159,24 +105,6 @@ void DebugOverlayRenderer::Draw(const GameState& state, const AppConfig& config,
 
         lastOverlayUpdateFrame_ = frameIndex;
         overlayCacheInitialized_ = true;
-        RebuildRenderTarget();
-    }
-
-    if (renderTargetLoaded_) {
-        const Rectangle source{
-            .x = 0.0F,
-            .y = 0.0F,
-            .width = static_cast<float>(renderTargetWidth_),
-            .height = -static_cast<float>(renderTargetHeight_),
-        };
-        const Rectangle destination{
-            .x = 0.0F,
-            .y = 0.0F,
-            .width = static_cast<float>(renderTargetWidth_),
-            .height = static_cast<float>(renderTargetHeight_),
-        };
-        DrawTexturePro(renderTarget_.texture, source, destination, Vector2{0.0F, 0.0F}, 0.0F, WHITE);
-        return;
     }
 
     DrawText(axesTextCache_, kOverlayTextLeftPx, kOverlayAxesTopPx, 10, RAYWHITE);

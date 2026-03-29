@@ -4,6 +4,27 @@
 #include "raygui.h"
 #include "raylib.h"
 
+void ConfirmationDialog::ApplyRayGuiStyle(int buttonTextSize) {
+    GuiLoadStyleDefault();
+    const int transparent = static_cast<int>(ColorToInt(BLANK));
+    const int borderGold = static_cast<int>(ColorToInt(Color{180, 160, 70, 255}));
+    const int borderGoldHi = static_cast<int>(ColorToInt(Color{255, 209, 102, 255}));
+    const int textLight = static_cast<int>(ColorToInt(Color{210, 215, 225, 255}));
+    const int pressedTint = static_cast<int>(ColorToInt(Fade(WHITE, 0.15F)));
+
+    GuiSetStyle(DEFAULT, TEXT_SIZE, buttonTextSize);
+    GuiSetStyle(BUTTON, BORDER_WIDTH, 1);
+    GuiSetStyle(BUTTON, BORDER_COLOR_NORMAL, borderGold);
+    GuiSetStyle(BUTTON, BASE_COLOR_NORMAL, transparent);
+    GuiSetStyle(BUTTON, TEXT_COLOR_NORMAL, textLight);
+    GuiSetStyle(BUTTON, BORDER_COLOR_FOCUSED, borderGoldHi);
+    GuiSetStyle(BUTTON, BASE_COLOR_FOCUSED, transparent);
+    GuiSetStyle(BUTTON, TEXT_COLOR_FOCUSED, textLight);
+    GuiSetStyle(BUTTON, BORDER_COLOR_PRESSED, borderGoldHi);
+    GuiSetStyle(BUTTON, BASE_COLOR_PRESSED, pressedTint);
+    GuiSetStyle(BUTTON, TEXT_COLOR_PRESSED, textLight);
+}
+
 void ConfirmationDialog::Open(Focus initialFocus) {
     focus_ = initialFocus;
     suppressInputPressOnce_ = true;
@@ -12,20 +33,22 @@ void ConfirmationDialog::Open(Focus initialFocus) {
 ConfirmationDialogResult ConfirmationDialog::Render(
     const Spec& spec,
     const FrameInput& input) {
+    ApplyRayGuiStyle(spec.buttonTextSize);
     const Rectangle confirmButton = {
-        .x = spec.bounds.x + 24.0F,
-        .y = spec.bounds.y + 98.0F,
-        .width = 132.0F,
-        .height = 30.0F,
+        .x = spec.bounds.x + spec.buttonsSidePadding,
+        .y = spec.bounds.y + spec.buttonsTop,
+        .width = spec.buttonWidth,
+        .height = spec.buttonHeight,
     };
     const Rectangle cancelButton = {
-        .x = spec.bounds.x + spec.bounds.width - 24.0F - 132.0F,
-        .y = spec.bounds.y + 98.0F,
-        .width = 132.0F,
-        .height = 30.0F,
+        .x = spec.bounds.x + spec.bounds.width - spec.buttonsSidePadding - spec.buttonWidth,
+        .y = spec.bounds.y + spec.buttonsTop,
+        .width = spec.buttonWidth,
+        .height = spec.buttonHeight,
     };
 
-    DrawRectangleRounded(spec.bounds, 0.12F, 8, Color{32, 32, 32, 248});
+    DrawRectangleRounded(spec.bounds, 0.12F, 8, Color{8, 8, 8, 124});
+    DrawRectangleRoundedLinesEx(spec.bounds, 0.12F, 8, 1.0F, Color{180, 160, 70, 255});
     constexpr int kDialogMessageFontPx = 20;
     const int messageWidth = MeasureText(spec.message, kDialogMessageFontPx);
     const int messageX = static_cast<int>(
@@ -56,7 +79,7 @@ ConfirmationDialogResult ConfirmationDialog::Render(
         }
     }
 
-    if (IsKeyPressed(KEY_ESCAPE) && !suppressInputPressOnce_) {
+    if (input.gameplayPausePressed && !suppressInputPressOnce_) {
         cancelPressed = true;
         result.interactionOccurred = true;
     }
@@ -67,5 +90,6 @@ ConfirmationDialogResult ConfirmationDialog::Render(
 
     result.confirmPressed = confirmPressed;
     result.cancelPressed = cancelPressed;
+    GuiLoadStyleDefault();
     return result;
 }

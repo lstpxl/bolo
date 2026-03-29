@@ -33,9 +33,10 @@ struct GameplayConstants {
     static constexpr float kJoystickAcceleration = 0.7F;             // normalized-velocity units / second
     static constexpr float kPlayerProjectileSpeed = 20.0F;           // world-units / second
     static constexpr float kPlayerFireCooldownSeconds = 0.22F;       // seconds
-    static constexpr int kPlayerSpawnMinBaseDistanceCells = 8;       // cells
-    static constexpr int kPlayerInitialSpawnMaxBaseDistanceCells = 24; // cells
-    static constexpr int kPlayerRespawnMaxBaseDistanceCells = 36;    // cells
+    static constexpr int kPlayerInitialSpawnMinBaseDistanceCells = 8;  // cells
+    static constexpr int kPlayerInitialSpawnMaxBaseDistanceCells = 20; // cells
+    static constexpr int kPlayerRespawnMinBaseDistanceCells = 12;      // cells
+    static constexpr int kPlayerRespawnMaxBaseDistanceCells = 24;      // cells
     static constexpr int kPlayerRespawnEnemyExclusionManhattanCells = 3; // cells
 
     // Enemy tuning.

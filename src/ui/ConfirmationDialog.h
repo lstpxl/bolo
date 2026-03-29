@@ -23,8 +23,14 @@ public:
         const char* message = "";
         const char* confirmButtonLabel = "";
         const char* cancelButtonLabel = "";
+        int buttonTextSize = 20;
+        float buttonWidth = 132.0F;
+        float buttonHeight = 30.0F;
+        float buttonsSidePadding = 24.0F;
+        float buttonsTop = 98.0F;
     };
 
+    static void ApplyRayGuiStyle(int buttonTextSize = 20);
     void Open(Focus initialFocus);
 
     ConfirmationDialogResult Render(

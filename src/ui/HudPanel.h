@@ -12,6 +12,7 @@ struct GameState;
 class HudPanel {
 public:
     void ReleaseResources();
+    void ResetTransientState() const;
     void PrepareRenderTargets(const GameState& state, const AppConfig& config, const FrameInput& input) const;
     void DrawPrepared(const GameState& state, const AppConfig& config, const FrameInput& input) const;
 

@@ -380,28 +380,6 @@ void ApplyBoltMainMenuRayGuiStyle() {
     GuiSetStyle(LABEL, TEXT_COLOR_PRESSED, kMenuFocusableTextPacked);
 }
 
-// Quit confirmation uses raygui buttons after the main menu already drew; restore visible outlines.
-void ApplyConfirmationDialogRayGuiStyle() {
-    GuiLoadStyleDefault();
-    const int transparent = static_cast<int>(ColorToInt(BLANK));
-    const int borderGold = static_cast<int>(ColorToInt(Color{180, 160, 70, 255}));
-    const int borderGoldHi = static_cast<int>(ColorToInt(Color{255, 209, 102, 255}));
-    const int textLight = static_cast<int>(ColorToInt(Color{210, 215, 225, 255}));
-    const int pressedTint = static_cast<int>(ColorToInt(Fade(WHITE, 0.15F)));
-
-    GuiSetStyle(DEFAULT, TEXT_SIZE, 20);
-    GuiSetStyle(BUTTON, BORDER_WIDTH, 1);
-    GuiSetStyle(BUTTON, BORDER_COLOR_NORMAL, borderGold);
-    GuiSetStyle(BUTTON, BASE_COLOR_NORMAL, transparent);
-    GuiSetStyle(BUTTON, TEXT_COLOR_NORMAL, textLight);
-    GuiSetStyle(BUTTON, BORDER_COLOR_FOCUSED, borderGoldHi);
-    GuiSetStyle(BUTTON, BASE_COLOR_FOCUSED, transparent);
-    GuiSetStyle(BUTTON, TEXT_COLOR_FOCUSED, textLight);
-    GuiSetStyle(BUTTON, BORDER_COLOR_PRESSED, borderGoldHi);
-    GuiSetStyle(BUTTON, BASE_COLOR_PRESSED, pressedTint);
-    GuiSetStyle(BUTTON, TEXT_COLOR_PRESSED, textLight);
-}
-
 void ReplaceOpaquePixelsRgb(Image& image, Color rgb) {
     if (image.data == nullptr) {
         return;
@@ -996,7 +974,6 @@ MenuScreenResult MenuScreen::Render(
 
     bool confirmQuitPressed = false;
     if (quitConfirmationOpen_) {
-        ApplyConfirmationDialogRayGuiStyle();
         const float dialogWidth = std::min(400.0F, static_cast<float>(config.screenWidth) - 48.0F);
         const float dialogHeight = 150.0F;
         const Rectangle dialog = {
