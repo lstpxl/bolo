@@ -19,6 +19,9 @@ void GameModeController::StartGame(GameState& state, const MenuSettings& setting
     state.startingSequencePhase = 0;
     state.startingPhaseRemainingSeconds = 0.0F;
     state.gameOverPhaseRemainingSeconds = 0.0F;
+    state.victoryPhaseRemainingSeconds = 0.0F;
+    state.gameOverAwaitInputClear = false;
+    state.victoryAwaitInputClear = false;
     state.world.player.lives = GameplayConstants::kStartingLives;
     state.world.player.fuel = 0.0F;
     state.world.player.alive = true;

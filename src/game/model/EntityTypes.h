@@ -16,6 +16,7 @@ enum class GameplayPhase {
     Starting,
     Active,
     GameOver,
+    Victory,
 };
 
 struct MazeCell {

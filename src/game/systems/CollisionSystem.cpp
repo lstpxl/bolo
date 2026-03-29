@@ -26,11 +26,24 @@ BaseOuterSegment SegmentForImpactPoint(const Vec2f& point, const EnemyBase& base
     return dy >= 0.0F ? BaseOuterSegment::Bottom : BaseOuterSegment::Top;
 }
 
-bool IsPointInsideBaseFootprint(const Vec2f& point, const EnemyBase& base) {
+float BaseSideInsetUnitsFromDamage(int segmentHealth) {
+    constexpr float kInsetStepUnits = 3.0F / static_cast<float>(GameplayConstants::kPixelsPerUnit);
+    const int clampedHealth = std::clamp(segmentHealth, 0, GameplayConstants::kBaseOuterSegmentMaxHealth);
+    const int damagePoints = GameplayConstants::kBaseOuterSegmentMaxHealth - clampedHealth;
+    return static_cast<float>(damagePoints) * kInsetStepUnits;
+}
+
+bool IsPointInsideBaseFootprint(const Vec2f& point, const EnemyBase& base, float clearanceUnits) {
     const float halfBase = GameplayConstants::kEnemyBaseSizeUnits * 0.5F;
-    const float dx = std::fabs(point.x - base.position.x);
-    const float dy = std::fabs(point.y - base.position.y);
-    return dx <= halfBase && dy <= halfBase;
+    const float leftInset = BaseSideInsetUnitsFromDamage(base.leftSegmentHealth);
+    const float rightInset = BaseSideInsetUnitsFromDamage(base.rightSegmentHealth);
+    const float topInset = BaseSideInsetUnitsFromDamage(base.topSegmentHealth);
+    const float bottomInset = BaseSideInsetUnitsFromDamage(base.bottomSegmentHealth);
+    const float minX = base.position.x - halfBase + leftInset - clearanceUnits;
+    const float maxX = base.position.x + halfBase - rightInset + clearanceUnits;
+    const float minY = base.position.y - halfBase + topInset - clearanceUnits;
+    const float maxY = base.position.y + halfBase - bottomInset + clearanceUnits;
+    return point.x >= minX && point.x <= maxX && point.y >= minY && point.y <= maxY;
 }
 
 bool IsPointInsideBaseCore(const Vec2f& point, const EnemyBase& base) {
@@ -130,7 +143,7 @@ void UpdateCollisionSystem(GameState& state, float deltaSeconds) {
                 if (base.destroyed) {
                     continue;
                 }
-                if (!IsPointInsideBaseFootprint(projectile.position, base)) {
+                if (!IsPointInsideBaseFootprint(projectile.position, base, 0.0F)) {
                     continue;
                 }
 
@@ -237,10 +250,10 @@ void UpdateCollisionSystem(GameState& state, float deltaSeconds) {
         if (base.destroyed) {
             continue;
         }
-        const float dx = std::fabs(world.player.position.x - base.position.x);
-        const float dy = std::fabs(world.player.position.y - base.position.y);
-        const float baseThreshold = GameplayConstants::kPlayerBaseHardCollisionUnits;
-        if (dx <= baseThreshold && dy <= baseThreshold) {
+        if (IsPointInsideBaseFootprint(
+                world.player.position,
+                base,
+                GameplayConstants::kEntityRadiusUnits)) {
             world.player.alive = false;
             world.playerTurnLostPending = true;
             return;

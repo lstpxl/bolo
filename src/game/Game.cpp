@@ -100,7 +100,9 @@ void Game::RequestMenu() {
     state_.gameplayPhase = GameplayPhase::Starting;
     state_.startingPhaseRemainingSeconds = 0.0F;
     state_.gameOverPhaseRemainingSeconds = 0.0F;
+    state_.victoryPhaseRemainingSeconds = 0.0F;
     state_.gameOverAwaitInputClear = false;
+    state_.victoryAwaitInputClear = false;
     state_.startingSequencePhase = 0;
     modeController_.RequestMenu();
 }
@@ -129,6 +131,9 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const GameplayVie
         return;
     case GameplayPhase::GameOver:
         UpdateGameOverPhase(input, deltaSeconds, view);
+        return;
+    case GameplayPhase::Victory:
+        UpdateVictoryPhase(input, deltaSeconds, view);
         return;
     }
 }
@@ -186,6 +191,32 @@ void Game::UpdateGameOverPhase(const FrameInput& input, float deltaSeconds, cons
     if (state_.gameOverAwaitInputClear) {
         if (!input.anyInteractionDown) {
             state_.gameOverAwaitInputClear = false;
+        }
+        return;
+    }
+    if (input.anyInteractionPressed) {
+        RequestMenu();
+    }
+}
+
+void Game::UpdateVictoryPhase(const FrameInput& input, float deltaSeconds, const GameplayView& view) {
+    RunPlayingWorldTick(
+        input,
+        deltaSeconds,
+        view,
+        false,
+        false,
+        false,
+        false,
+        false);
+    state_.victoryPhaseRemainingSeconds =
+        std::max(0.0F, state_.victoryPhaseRemainingSeconds - deltaSeconds);
+    if (state_.victoryPhaseRemainingSeconds > 0.0F) {
+        return;
+    }
+    if (state_.victoryAwaitInputClear) {
+        if (!input.anyInteractionDown) {
+            state_.victoryAwaitInputClear = false;
         }
         return;
     }
@@ -526,7 +557,7 @@ void Game::RunPlayingWorldTick(
         });
     }
 
-    // Level complete handling.
+    // Victory handling (all bases destroyed).
     int aliveBases = 0;
     for (const EnemyBase& base : state_.world.enemyBases) {
         if (!base.destroyed) {
@@ -534,32 +565,16 @@ void Game::RunPlayingWorldTick(
         }
     }
     if (allowLevelComplete && aliveBases == 0) {
-        bolt::log::Debug("[FLOW] Level complete: draining, invisibility=%d", state_.menuSettings.invisibility ? 1 : 0);
+        bolt::log::Debug("[FLOW] Victory: all bases destroyed, entering Victory phase");
         flowWorker_.Drain();
-        const int score = state_.world.score;
-        const int lives = state_.world.player.lives;
-        InitializeMazeWorld(state_, view, random_);
-        state_.world.score = score;
-        state_.world.player.lives = lives;
-        state_.world.player.fuel = 0.0F;
         state_.world.enemyVisualContactMusicTimerSeconds = 0.0F;
-        state_.world.startModeRemainingSeconds = GameplayConstants::kStartModeDurationSeconds;
-        state_.world.startModeReason = StartModeReason::LevelComplete;
-        state_.world.player.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
-        state_.world.player.throttleNormalized = 0.0F;
-        state_.world.levelCleared = true;
-        state_.world.levelClearMessageSeconds = GameplayConstants::kLevelClearMessageSeconds;
-        state_.world.gameplayEvents.Push(GameplayEvent{
-            .type = GameplayEventType::StartModeStarted,
-            .position = state_.world.player.position,
-            .startModeReason = StartModeReason::LevelComplete,
-        });
-    }
-
-    if (allowLevelComplete && state_.world.levelClearMessageSeconds > 0.0F) {
-        state_.world.levelClearMessageSeconds = std::max(0.0F, state_.world.levelClearMessageSeconds - deltaSeconds);
-    } else if (allowLevelComplete) {
         state_.world.levelCleared = false;
+        state_.world.levelClearMessageSeconds = 0.0F;
+        state_.gameplayPhase = GameplayPhase::Victory;
+        state_.victoryPhaseRemainingSeconds = GameplayConstants::kVictoryPhaseDurationSeconds;
+        state_.victoryAwaitInputClear = true;
+        state_.world.playerTurnLostPending = false;
+        return;
     }
 }
 

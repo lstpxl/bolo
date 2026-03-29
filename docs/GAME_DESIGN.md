@@ -24,12 +24,15 @@ This file describes the current BOLT implementation in this repository:
 4. During **Starting phase**, the first fixed step arms a `1.0s` timer (`kGameplayStartingPhaseMinSeconds`) and shows `STARTING...`. The next fixed step runs `InitializeMazeWorld` (maze generation, base placement, base distance/flow rebuild, initial player spawn, navigation cache setup) while that timer counts down. Subsequent steps only wait until the timer reaches zero; there is no other gameplay simulation during Starting.
 5. Starting phase transitions into active gameplay.
 6. Player navigates the maze and interacts with enemy bases/tanks (expanded combat rules are still in progress).
-7. If the player loses the last life, gameplay enters **Game Over phase**.
-8. During Game Over phase, enemies/projectiles/world simulation continues; player movement/fire stays disabled; UI shows `GAME OVER`.
-9. Game Over phase ends when player presses any input, then the game transitions back to main menu.
-10. Player can return to menu during gameplay with START/Enter.
-11. Any transition from gameplay back to main menu resets active world runtime state (enemies, projectiles, bases, minimap markers, and navigation/collision runtime caches) so the next run starts from a clean world.
-12. On that transition, the app suppresses menu **Start**, **Select**/Enter, navigation, and fire bindings until no interaction input remains held (`FrameInput::anyInteractionDown` is false), so the same key that dismissed Game Over (or exited pause) cannot immediately start a new run.
+7. If the player destroys the last base, gameplay enters **Victory phase**.
+8. During Victory phase, enemies/projectiles/world simulation continues; player movement/fire stays disabled; UI shows `Congratulations` for `3.0s`.
+9. After the Victory message window, Victory phase ends when player presses any input, then the game transitions back to main menu.
+10. If the player loses the last life, gameplay enters **Game Over phase**.
+11. During Game Over phase, enemies/projectiles/world simulation continues; player movement/fire stays disabled; UI shows `GAME OVER`.
+12. Game Over phase ends when player presses any input, then the game transitions back to main menu.
+13. Player can return to menu during gameplay with START/Enter.
+14. Any transition from gameplay back to main menu resets active world runtime state (enemies, projectiles, bases, minimap markers, and navigation/collision runtime caches) so the next run starts from a clean world.
+15. On that transition, the app suppresses menu **Start**, **Select**/Enter, navigation, and fire bindings until no interaction input remains held (`FrameInput::anyInteractionDown` is false), so the same key that dismissed Game Over, dismissed Victory, or exited pause cannot immediately start a new run.
 
 ## World and Unit System
 
@@ -181,9 +184,10 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
   - **softRadius** (`kEnemyAvoidanceRadiusUnits`): avoidance radius for steering (wall clearance, path planning, separation). Soft radius is larger than hard radius.
 - Enemy wall movement keeps additional margin: enemy disc edge stays at least `2px` away from maze walls.
 - Starting phase (`GameplayPhase::Starting`): after `StartGame`, the first fixed step starts the `1.0s` overlay timer (`kGameplayStartingPhaseMinSeconds`); the second runs `InitializeMazeWorld` while the timer counts down; when the timer expires, gameplay becomes active.
-- Start mode: player enters a `1.6s` refuel lock (`kStartModeDurationSeconds`) where fuel fills from `0` to max on HUD. A fuelling bar in `Renderer2D.cpp` uses raylib primitives only (`DrawRectangleLinesEx` + left-anchored `DrawRectangleRec` fill; no unfilled track): horizontally centered in the maze viewport, half the previous bar height, bottom inset from the viewport equals the horizontal side inset `(viewportWidth - barWidth) / 2` with `barWidth = min(520, 82% viewport width)`. Color: semi-transparent `rgb(224, 206, 4)` at alpha `200`. During this lock (new game, respawn, and level restart), hull/turret rotation remains enabled while movement/fire stay disabled.
+- Start mode: player enters a `1.6s` refuel lock (`kStartModeDurationSeconds`) where fuel fills from `0` to max on HUD. A fuelling bar in `Renderer2D.cpp` uses raylib primitives only (`DrawRectangleLinesEx` + left-anchored `DrawRectangleRec` fill; no unfilled track): horizontally centered in the maze viewport, half the previous bar height, bottom inset from the viewport equals the horizontal side inset `(viewportWidth - barWidth) / 2` with `barWidth = min(520, 82% viewport width)`. Color: semi-transparent `rgb(224, 206, 4)` at alpha `200`. During this lock (new game and respawn), hull/turret rotation remains enabled while movement/fire stay disabled.
 - Death mode: when player dies, player enters a `3s` lock with movement/fire disabled and a simple explosion animation before life loss + respawn resolution. `RunPlayingWorldTick` may arm death mode twice in one tick: once after collision/fuel and again after explosion blast damage, so kills from blast AoE still get the full lock before life decrement + respawn.
 - Game Over phase (`GameplayPhase::GameOver`): after last-life loss, the world keeps simulating until player input ends the phase and returns to menu.
+- Victory phase (`GameplayPhase::Victory`): after the last base is destroyed, the world keeps simulating with player driving disabled; `Congratulations` is shown for `3.0s`, then player input returns to menu (same input-clear/press gating as Game Over).
 - Respawn safety uses `BaseDistanceField` with bounds `12..24` cells from nearest alive base.
 - Respawn additionally requires no alive enemies within Manhattan distance `<= 3` cells.
 - If random respawn placement fails, fallback first picks the farthest strict-valid cell by base-distance; if no strict candidate exists, fallback relaxes base-distance bounds but still enforces enemy-clearance.
@@ -199,6 +203,7 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
 - **`kExplosionBlastRadiusUnits`** (`0.5`) – gameplay blast kill radius from explosion center for enemy death, projectile wall impact, and player death explosion; kills the player and any **full-tier** (`EnemySimTier::Full`) alive enemy whose center lies within the radius (center-distance test). Cheap-tier enemies are not blast targets (saves CPU and matches simplified sim). Blast damage is applied **each frame** while the slot’s `elapsedSeconds` is within **`kExplosionBlastDamageDurationSeconds`**. Chain reactions: a full-tier enemy killed by blast spawns its own explosion that contributes overlapping blast intervals.
 - **`kBaseExplosionBlastRadiusUnits`** (`1.5`) – same blast rules as above for the base-destruction explosion (larger radius), including full-tier-only enemy kills, for **`kExplosionBlastDamageDurationSeconds`** per active base explosion slot.
 - **`kPlayerBaseHardCollisionUnits`** – player death when inside base (halfBase + entityRadius).
+- Base footprint collision model is an axis-aligned rectangle in world space with side-specific insets from armor damage: full side uses `0` inset, and each missing side-health point adds `3 px` (`3/16` world-units) inset on that side. This damaged rectangle is used for projectile-vs-base footprint checks and base obstacle/hard-collision checks (with appropriate entity-radius clearance where needed).
 - Player projectile vs base:
   - Impact side is resolved by dominant axis from base center (`abs(dx) >= abs(dy)` => left/right, else top/bottom).
   - If impact segment health is `> 0`, that segment takes `1` damage and projectile is consumed.
@@ -411,14 +416,14 @@ World rendering is in `src/platform/Renderer2D.cpp`.
 - Game world uses full screen area except HUD region.
 - Camera target follows player and snaps to pixel grid.
 - Maze walls are rendered in screen space at fixed 2px thickness for handheld stability.
-- Current gameplay palette (hex): background `#000000`, walls `#CCCCCC`, player `#00C030`, drone `#A0FF00`, torpedo `#FFFF00`, hunter `#FFA500`, assassin `#FF6500`, enemy base shell `#CC66CC`, enemy base core `#FF00FF`, destroyed base `#404040`, player shell `#FFFFFF`, enemy shell `#FFB000`.
+- Current gameplay palette (hex): background `#000000`, walls `#CCCCCC`, player `#03C703`, drone `#42BE8F`, torpedo `#A4AD43`, hunter `#DD9143`, assassin `#DD9143`, enemy base shell `#5E6CC0`, enemy base core `#8C9DF6`, destroyed base `#303030`, player shell `#FFFFFF`, enemy shell `#FFB000`.
 - Visible maze cell range is culled for rendering performance.
 - Enemy and projectile rendering is culled to camera-visible world bounds with a small safety margin.
 - Projectiles render as pixel-snapped `3x3` px rectangles in screen space (player shell `#FFFFFF`, enemy shell `#FFB000`).
 - Enemy tanks and bases are rendered in pixel-snapped screen space (derived from world positions) to match wall stability on handheld displays.
-- Base visuals use a `3x3` unit shell with a centered core disc. Each shell side (`top/right/bottom/left`) renders with independent thickness proportional to segment health (`4` = full original thickness, `0` = no shell on that side).
+- Base visuals use a `3x3` unit shell with a centered core disc (`48x48` px at `16 px/unit`). Full shell thickness is `12 px` per side; each missing segment-health point removes exactly `3 px` from that side (`12, 9, 6, 3, 0` for health `4..0`). Top and bottom segments are drawn full width; left and right segments use the full sprite height so corners thin with the damaged side (same layout as the healthy baked texture and the damaged crop-from-healthy path). During `GameplayPhase::Starting`, the renderer rasterizes the healthy alive base (full segment health) and the destroyed base into CPU images, then uploads one shared texture each; there is no screen-space procedural fallback for bases during play. Per-base damaged textures are cached lazily after damage (crop from the healthy bake, transparent outside the clipped area) and dropped when healing starts (or when the base returns to healthy/destroyed state). Damaged base rendering is a 2-pass composite: destroyed texture first, then damaged cached texture.
 - Enemy tank visuals load from `resources/textures/sprites.png` (`2x7` grid, `9x9` cells). Rows `4..7` map to `Drone`, `Torpedo`, `Hunter`, `Assassin` (matching `docs/original-1982/ENEMY_TYPES.md` order). Column 1 is facing 12 o'clock, column 2 is 45 degrees clockwise; the renderer precomputes all 8 directions at load time and uses the matching directional frame at draw time. Non-transparent source pixels are normalized to white during load, then tinted by enemy type color at draw time.
-- Player tank visuals load from `resources/textures/sprites.png` (`2x7` grid, `9x9` cells). Row `1` is body and row `2` is barrel; each direction frame is prebuilt by XOR-combining body+barrel cells and rendered in green (`#00C030`), with 8 directions precomputed from the two source columns.
+- Player tank visuals load from `resources/textures/sprites.png` (`2x7` grid, `9x9` cells). Row `1` is body and row `2` is barrel; each direction frame is prebuilt by XOR-combining body+barrel cells and rendered in green (`#03C703`), with 8 directions precomputed from the two source columns.
 - Enemy sprite rendering uses pixel-snapped screen-space placement derived from world positions with integer sprite scaling (`9x9` source cells rendered at `18x18`, i.e. exact `2x`). Player gameplay footprint remains `kEntitySizeUnits = 1.0`, and the player sprite is rendered in pixel-snapped screen space at fixed `18x18` with per-frame pivot correction to avoid heading-frame jitter.
 - Compile-time presentation scaling: macOS builds use `2x` point-scaled presentation (logical `640x480` framebuffer upscaled to `1280x960` in the window). Handheld and other non-macOS builds keep `1x` (`640x480` window).
 - Default logical resolution is `640x480` on all platforms; macOS matches the handheld visible maze area (`1 unit = 16 px`) at doubled pixel size.
@@ -449,7 +454,7 @@ World rendering is in `src/platform/Renderer2D.cpp`.
 
 ## Audio Events
 
-- `resources/audio/power-up-digital.wav`: played when fueling start mode begins (new game, respawn after life loss, and level restart after all bases destroyed).
+- `resources/audio/power-up-digital.wav`: played when fueling start mode begins (new game and respawn after life loss).
 - `resources/audio/player-shot.wav`: played when player projectile count increases (player fires).
 - `resources/audio/player-explosion.wav`: played when the player enters death mode (explosion at `deathExplosionPosition`: projectile hit, ram/collision, base collision, or fuel empty). Uses the same distance attenuation as other gameplay sounds.
 - `resources/audio/enemy-shot.wav`: played when enemy projectile count increases (enemy fires).

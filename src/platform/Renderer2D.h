@@ -2,6 +2,7 @@
 
 #include <array>
 #include "app/AppConfig.h"
+#include "game/model/GameplayConstants.h"
 #include "raylib.h"
 
 struct GameState;
@@ -17,6 +18,14 @@ private:
     static constexpr int kEnemyTankTypeCount = 4;
     static constexpr int kEnemyTankDirectionCount = 8;
     static constexpr int kEnemyTankFrameSizePx = 9;
+    static constexpr int kBaseDamageCacheSlotCount = GameplayConstants::kEnemyBaseCount;
+    struct BaseHealthSnapshot {
+        int top = GameplayConstants::kBaseOuterSegmentMaxHealth;
+        int right = GameplayConstants::kBaseOuterSegmentMaxHealth;
+        int bottom = GameplayConstants::kBaseOuterSegmentMaxHealth;
+        int left = GameplayConstants::kBaseOuterSegmentMaxHealth;
+        bool initialized = false;
+    };
     Texture2D playerTankSheet_{};
     bool playerTankSheetLoaded_ = false;
     int playerTankFrameSizePx_ = 9;
@@ -30,6 +39,12 @@ private:
     bool playerExplosionSheetLoaded_ = false;
     Texture2D baseExplosionSheet_{};
     bool baseExplosionSheetLoaded_ = false;
+    Texture2D baseHealthyTexture_{};
+    bool baseHealthyTextureLoaded_ = false;
+    std::array<Texture2D, kBaseDamageCacheSlotCount> baseDamagedTextures_{};
+    std::array<bool, kBaseDamageCacheSlotCount> baseDamagedTextureLoaded_{};
+    std::array<BaseHealthSnapshot, kBaseDamageCacheSlotCount> baseHealthSnapshots_{};
+    std::array<bool, kBaseDamageCacheSlotCount> baseDamageCacheDisabled_{};
     Texture2D baseDestroyedTexture_{};
     bool baseDestroyedTextureLoaded_ = false;
 };

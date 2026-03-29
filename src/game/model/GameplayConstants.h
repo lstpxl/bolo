@@ -135,6 +135,7 @@ struct GameplayConstants {
     static constexpr float kStartModeDurationSeconds = 1.6F;
     static constexpr float kDeathModeDurationSeconds = 3.0F;         // seconds
     static constexpr float kDeathExplosionDurationSeconds = 3.0F;    // seconds
+    static constexpr float kVictoryPhaseDurationSeconds = 3.0F;      // seconds
 
     // Projectiles and collisions.
     // Clearance constants (expansion beyond wall half-thickness or base half-size).

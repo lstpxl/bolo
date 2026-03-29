@@ -73,26 +73,41 @@ bool RayAabbFirstHitInRange(const Vec2f& origin, const Vec2f& dir,
     return true;
 }
 
+float BaseSideInsetUnitsFromDamage(int segmentHealth) {
+    constexpr float kInsetStepUnits = 3.0F / static_cast<float>(GameplayConstants::kPixelsPerUnit);
+    const int clampedHealth = std::clamp(segmentHealth, 0, GameplayConstants::kBaseOuterSegmentMaxHealth);
+    const int damagePoints = GameplayConstants::kBaseOuterSegmentMaxHealth - clampedHealth;
+    return static_cast<float>(damagePoints) * kInsetStepUnits;
+}
+
 float BaseHitDistance(const WorldState& world, const Vec2f& from, const Vec2f& dir,
     float maxDistance, float planningClearance, bool startsInsideBase) {
     if (startsInsideBase) {
         return maxDistance;
     }
 
-    const float halfBase = GameplayConstants::kEnemyBaseSizeUnits * 0.5F + planningClearance;
     float best = maxDistance;
     for (const EnemyBase& base : world.enemyBases) {
         if (base.destroyed) {
             continue;
         }
+        const float halfBase = GameplayConstants::kEnemyBaseSizeUnits * 0.5F;
+        const float minX =
+            base.position.x - halfBase + BaseSideInsetUnitsFromDamage(base.leftSegmentHealth) - planningClearance;
+        const float maxX =
+            base.position.x + halfBase - BaseSideInsetUnitsFromDamage(base.rightSegmentHealth) + planningClearance;
+        const float minY =
+            base.position.y - halfBase + BaseSideInsetUnitsFromDamage(base.topSegmentHealth) - planningClearance;
+        const float maxY =
+            base.position.y + halfBase - BaseSideInsetUnitsFromDamage(base.bottomSegmentHealth) + planningClearance;
         float t = best;
         if (RayAabbFirstHitInRange(
                 from,
                 dir,
-                base.position.x - halfBase,
-                base.position.y - halfBase,
-                base.position.x + halfBase,
-                base.position.y + halfBase,
+                minX,
+                minY,
+                maxX,
+                maxY,
                 0.0F,
                 best,
                 t)) {
@@ -214,9 +229,15 @@ bool IsPointInUndestroyedBase(const WorldState& world, const Vec2f& point, float
         if (base.destroyed) {
             continue;
         }
-        const float dx = std::fabs(point.x - base.position.x);
-        const float dy = std::fabs(point.y - base.position.y);
-        if (dx <= halfBase + clearanceUnits && dy <= halfBase + clearanceUnits) {
+        const float minX =
+            base.position.x - halfBase + BaseSideInsetUnitsFromDamage(base.leftSegmentHealth) - clearanceUnits;
+        const float maxX =
+            base.position.x + halfBase - BaseSideInsetUnitsFromDamage(base.rightSegmentHealth) + clearanceUnits;
+        const float minY =
+            base.position.y - halfBase + BaseSideInsetUnitsFromDamage(base.topSegmentHealth) - clearanceUnits;
+        const float maxY =
+            base.position.y + halfBase - BaseSideInsetUnitsFromDamage(base.bottomSegmentHealth) + clearanceUnits;
+        if (point.x >= minX && point.x <= maxX && point.y >= minY && point.y <= maxY) {
             return true;
         }
     }

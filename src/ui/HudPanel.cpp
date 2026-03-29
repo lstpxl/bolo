@@ -18,16 +18,16 @@ constexpr int kMinimapLogicalSizePixels = 60;
 constexpr int kMinimapDisplayScale = 2;
 constexpr int kMinimapDisplaySizePixels = kMinimapLogicalSizePixels * kMinimapDisplayScale;
 
-constexpr Color kDroneMapColor{138, 43, 226, 255};      // #8A2BE2
-constexpr Color kTorpedoMapColor{255, 255, 0, 255};     // #FFFF00
-constexpr Color kHunterMapColor{255, 165, 0, 255};      // #FFA500
-constexpr Color kAssassinMapColor{255, 0, 0, 255};      // #FF0000
-constexpr Color kPlayerMapColor{0, 255, 255, 255};      // #00FFFF
+constexpr Color kDroneMapColor{66, 190, 143, 255};      // #42BE8F
+constexpr Color kTorpedoMapColor{164, 173, 67, 255};    // #A4AD43
+constexpr Color kHunterMapColor{221, 145, 67, 255};     // #DD9143
+constexpr Color kAssassinMapColor{221, 145, 67, 255};   // #DD9143
+constexpr Color kPlayerMapColor{3, 199, 3, 255};        // rgb(3, 199, 3)
 constexpr Color kBaseMapColor{255, 0, 255, 255};        // #FF00FF
 constexpr Color kDestroyedBaseMapColor{96, 96, 96, 255};    // #606060
 constexpr Color kPanelColor{27, 31, 39, 255};
 constexpr Color kPanelDividerColor{58, 66, 80, 255};
-constexpr Color kCompassBackgroundColor{237, 126, 188, 255};
+constexpr Color kCompassBackgroundColor{18, 60, 26, 255};   // #123C1A
 constexpr Color kQuadrantDimColor{18, 60, 26, 255};
 constexpr Color kQuadrantBrightColor{160, 255, 120, 255};
 
@@ -369,7 +369,7 @@ void HudPanel::EnsureLivesIconTexture() const {
 
     Image playerBodyUp = ExtractSpriteCell(sourceSheet, 0, kPlayerBodyRowIndex, kSpriteSheetCellSize);
     Image playerBarrelUp = ExtractSpriteCell(sourceSheet, 0, kPlayerBarrelRowIndex, kSpriteSheetCellSize);
-    const Color playerColor = ColorFromHexRGB(0x00C030U);
+    const Color playerColor = ColorFromHexRGB(0x03C703U);
     Image playerFrame = CombineCellsXor(playerBodyUp, playerBarrelUp, playerColor);
     ImageResizeNN(&playerFrame, kLivesIconSizePixels, kLivesIconSizePixels);
     livesIconTexture_ = LoadTextureFromImage(playerFrame);

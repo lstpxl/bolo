@@ -40,14 +40,14 @@ constexpr Color ColorFromHexRGB(std::uint32_t hex) {
 
 constexpr std::uint32_t kBackgroundHex = 0x000000;
 constexpr std::uint32_t kWallsHex = 0xCCCCCC;
-constexpr std::uint32_t kDestroyedBaseHex = 0x404040;
-constexpr std::uint32_t kPlayerHex = 0x00C030;
-constexpr std::uint32_t kDroneHex = 0xA0FF00;
-constexpr std::uint32_t kTorpedoHex = 0xFFFF00;
-constexpr std::uint32_t kHunterHex = 0xFFA500;
-constexpr std::uint32_t kAssassinHex = 0xFF6500;
-constexpr std::uint32_t kEnemyBaseShellHex = 0xA050A0;
-constexpr std::uint32_t kEnemyBaseHex = 0xFF00FF;
+constexpr std::uint32_t kDestroyedBaseHex = 0x303030;
+constexpr std::uint32_t kPlayerHex = 0x03C703;
+constexpr std::uint32_t kDroneHex = 0x42BE8F;
+constexpr std::uint32_t kTorpedoHex = 0xA4AD43;
+constexpr std::uint32_t kHunterHex = 0xDD9143;
+constexpr std::uint32_t kAssassinHex = 0xDD9143;
+constexpr std::uint32_t kEnemyBaseShellHex = 0x5E6CC0;
+constexpr std::uint32_t kEnemyBaseHex = 0x8C9DF6;
 constexpr std::uint32_t kPlayerShellHex = 0xFFFFFF;
 constexpr std::uint32_t kEnemyShellHex = 0xFFB000;
 
@@ -76,6 +76,13 @@ constexpr int kBaseHoleHalfPx = kBaseHolePx / 2;
 constexpr int kBaseHoleOffsetPx = kBaseHalfPx - kBaseHoleHalfPx;
 constexpr int kBaseCoreDiameterPx = (kBaseHolePx - 10 > 2) ? (kBaseHolePx - 10) : 2;
 constexpr int kBaseCoreRadiusPx = kBaseCoreDiameterPx / 2;
+constexpr int kBaseOuterThicknessPx = 12;
+constexpr int kBaseThicknessStepPx = 3;
+static_assert(kBaseSizePx == 48, "Enemy base sprite size must stay 48x48 px");
+static_assert(kBaseHoleOffsetPx == kBaseOuterThicknessPx, "Base outer shell must be 12 px at full health");
+static_assert(
+    GameplayConstants::kBaseOuterSegmentMaxHealth * kBaseThicknessStepPx == kBaseOuterThicknessPx,
+    "Base segment thickness step must be 3 px per health point");
 
 Vector2 SnapWorldToPixelGrid(const Vec2f& worldPosition) {
     const float pixelsPerUnit = static_cast<float>(GameplayConstants::kPixelsPerUnit);
@@ -91,58 +98,144 @@ int RoundToInt(float value) {
 
 int BaseSegmentThicknessPixels(int segmentHealth) {
     const int clampedHealth = std::clamp(segmentHealth, 0, GameplayConstants::kBaseOuterSegmentMaxHealth);
-    const float ratio =
-        static_cast<float>(clampedHealth) / static_cast<float>(GameplayConstants::kBaseOuterSegmentMaxHealth);
-    const int thickness = RoundToInt(ratio * static_cast<float>(kBaseHoleOffsetPx));
-    return std::clamp(thickness, 0, kBaseHoleOffsetPx);
+    const int thickness = clampedHealth * kBaseThicknessStepPx;
+    return std::clamp(thickness, 0, kBaseOuterThicknessPx);
 }
 
-void DrawAliveBaseWithSegmentHealth(const EnemyBase& base, int topLeftX, int topLeftY) {
+int BaseSideInsetPixelsFromDamage(int segmentHealth) {
+    const int thickness = BaseSegmentThicknessPixels(segmentHealth);
+    return std::clamp(kBaseOuterThicknessPx - thickness, 0, kBaseOuterThicknessPx);
+}
+
+bool IsBaseFullyHealthy(const EnemyBase& base) {
+    return base.topSegmentHealth >= GameplayConstants::kBaseOuterSegmentMaxHealth &&
+           base.rightSegmentHealth >= GameplayConstants::kBaseOuterSegmentMaxHealth &&
+           base.bottomSegmentHealth >= GameplayConstants::kBaseOuterSegmentMaxHealth &&
+           base.leftSegmentHealth >= GameplayConstants::kBaseOuterSegmentMaxHealth;
+}
+
+/// Rasterize alive base at pixel origin (same geometry as world draw); `img` must be `kBaseSizePx`².
+void RasterizeAliveBaseToImage(Image& img, const EnemyBase& base, Color shellColor, Color coreColor) {
     const int topThickness = BaseSegmentThicknessPixels(base.topSegmentHealth);
     const int rightThickness = BaseSegmentThicknessPixels(base.rightSegmentHealth);
     const int bottomThickness = BaseSegmentThicknessPixels(base.bottomSegmentHealth);
     const int leftThickness = BaseSegmentThicknessPixels(base.leftSegmentHealth);
+    constexpr int kOrigin = 0;
+    const int innerLeft = kOrigin + kBaseHoleOffsetPx;
+    const int innerTop = kOrigin + kBaseHoleOffsetPx;
+    const int innerRight = kOrigin + kBaseSizePx - kBaseHoleOffsetPx;
+    const int innerBottom = kOrigin + kBaseSizePx - kBaseHoleOffsetPx;
+
+    ImageDrawRectangle(&img, 0, 0, kBaseSizePx, kBaseSizePx, kBackgroundColor);
 
     if (topThickness > 0) {
-        DrawRectangle(topLeftX, topLeftY, kBaseSizePx, topThickness, kEnemyBaseShellColor);
+        ImageDrawRectangle(&img, kOrigin, innerTop - topThickness, kBaseSizePx, topThickness, shellColor);
     }
     if (bottomThickness > 0) {
-        DrawRectangle(
-            topLeftX,
-            topLeftY + kBaseSizePx - bottomThickness,
-            kBaseSizePx,
-            bottomThickness,
-            kEnemyBaseShellColor);
+        ImageDrawRectangle(&img, kOrigin, innerBottom, kBaseSizePx, bottomThickness, shellColor);
+    }
+    if (leftThickness > 0) {
+        ImageDrawRectangle(&img, innerLeft - leftThickness, kOrigin, leftThickness, kBaseSizePx, shellColor);
+    }
+    if (rightThickness > 0) {
+        ImageDrawRectangle(&img, innerRight, kOrigin, rightThickness, kBaseSizePx, shellColor);
     }
 
-    const int sideY = topLeftY + topThickness;
-    const int sideHeight = std::max(0, kBaseSizePx - topThickness - bottomThickness);
-    if (sideHeight > 0 && leftThickness > 0) {
-        DrawRectangle(topLeftX, sideY, leftThickness, sideHeight, kEnemyBaseShellColor);
-    }
-    if (sideHeight > 0 && rightThickness > 0) {
-        DrawRectangle(
-            topLeftX + kBaseSizePx - rightThickness,
-            sideY,
-            rightThickness,
-            sideHeight,
-            kEnemyBaseShellColor);
-    }
-
-    const int innerLeft = topLeftX + leftThickness;
-    const int innerTop = topLeftY + topThickness;
-    const int innerWidth = std::max(0, kBaseSizePx - leftThickness - rightThickness);
-    const int innerHeight = std::max(0, kBaseSizePx - topThickness - bottomThickness);
-    if (innerWidth > 0 && innerHeight > 0) {
-        DrawRectangle(innerLeft, innerTop, innerWidth, innerHeight, kBackgroundColor);
-    }
-    DrawCircle(
-        topLeftX + kBaseHalfPx,
-        topLeftY + kBaseHalfPx,
-        static_cast<float>(kBaseCoreRadiusPx),
-        kEnemyBaseColor);
+    ImageDrawRectangle(&img, kBaseHoleOffsetPx, kBaseHoleOffsetPx, kBaseHolePx, kBaseHolePx, kBackgroundColor);
+    ImageDrawCircle(&img, kBaseHalfPx, kBaseHalfPx, kBaseCoreRadiusPx, coreColor);
 }
 
+void RasterizeDestroyedBaseToImage(Image& img) {
+    ImageDrawRectangle(&img, 0, 0, kBaseSizePx, kBaseSizePx, kDestroyedBaseColor);
+    ImageDrawRectangle(&img, kBaseHoleOffsetPx, kBaseHoleOffsetPx, kBaseHolePx, kBaseHolePx, kBackgroundColor);
+    ImageDrawCircle(&img, kBaseHalfPx, kBaseHalfPx, kBaseCoreRadiusPx, kDestroyedBaseColor);
+}
+
+bool EnsureHealthyBaseTexture(Texture2D& texture, bool& loaded) {
+    if (loaded) {
+        return true;
+    }
+    Image img = GenImageColor(kBaseSizePx, kBaseSizePx, kBackgroundColor);
+    const EnemyBase healthyBase{};
+    RasterizeAliveBaseToImage(img, healthyBase, kEnemyBaseShellColor, kEnemyBaseColor);
+    texture = LoadTextureFromImage(img);
+    loaded = texture.id != 0;
+    if (loaded) {
+        SetTextureFilter(texture, TEXTURE_FILTER_POINT);
+    } else {
+        bolt::log::Warning("RENDER: failed to upload healthy base texture");
+    }
+    UnloadImage(img);
+    return loaded;
+}
+
+bool EnsureDestroyedBaseTexture(Texture2D& texture, bool& loaded) {
+    if (loaded) {
+        return true;
+    }
+    Image img = GenImageColor(kBaseSizePx, kBaseSizePx, kDestroyedBaseColor);
+    RasterizeDestroyedBaseToImage(img);
+    texture = LoadTextureFromImage(img);
+    loaded = texture.id != 0;
+    if (loaded) {
+        SetTextureFilter(texture, TEXTURE_FILTER_POINT);
+    } else {
+        bolt::log::Warning("RENDER: failed to upload destroyed base texture");
+    }
+    UnloadImage(img);
+    return loaded;
+}
+
+bool BuildDamagedBaseTextureFromHealthy(const Texture2D& healthyTexture, const EnemyBase& base, Texture2D& outTexture) {
+    if (healthyTexture.id == 0) {
+        return false;
+    }
+    Image healthyImage = LoadImageFromTexture(healthyTexture);
+    if (healthyImage.data == nullptr || healthyImage.width <= 0 || healthyImage.height <= 0) {
+        return false;
+    }
+    const int leftInsetPx = BaseSideInsetPixelsFromDamage(base.leftSegmentHealth);
+    const int rightInsetPx = BaseSideInsetPixelsFromDamage(base.rightSegmentHealth);
+    const int topInsetPx = BaseSideInsetPixelsFromDamage(base.topSegmentHealth);
+    const int bottomInsetPx = BaseSideInsetPixelsFromDamage(base.bottomSegmentHealth);
+    const int visibleWidthPx = std::max(1, kBaseSizePx - leftInsetPx - rightInsetPx);
+    const int visibleHeightPx = std::max(1, kBaseSizePx - topInsetPx - bottomInsetPx);
+
+    // Keep removed pixels transparent so the first pass (destroyed base texture) shows through.
+    Image outputImage = GenImageColor(kBaseSizePx, kBaseSizePx, BLANK);
+    const Rectangle sourceRect{
+        static_cast<float>(leftInsetPx),
+        static_cast<float>(topInsetPx),
+        static_cast<float>(visibleWidthPx),
+        static_cast<float>(visibleHeightPx),
+    };
+    Image clippedImage = ImageFromImage(healthyImage, sourceRect);
+    if (clippedImage.data != nullptr && clippedImage.width > 0 && clippedImage.height > 0) {
+        const Rectangle clippedRect{
+            0.0F,
+            0.0F,
+            static_cast<float>(clippedImage.width),
+            static_cast<float>(clippedImage.height),
+        };
+        const Rectangle destinationRect{
+            static_cast<float>(leftInsetPx),
+            static_cast<float>(topInsetPx),
+            static_cast<float>(visibleWidthPx),
+            static_cast<float>(visibleHeightPx),
+        };
+        ImageDraw(&outputImage, clippedImage, clippedRect, destinationRect, WHITE);
+    }
+    UnloadImage(clippedImage);
+    UnloadImage(healthyImage);
+
+    outTexture = LoadTextureFromImage(outputImage);
+    const bool loaded = outTexture.id != 0;
+    if (loaded) {
+        SetTextureFilter(outTexture, TEXTURE_FILTER_POINT);
+    }
+    UnloadImage(outputImage);
+    return loaded;
+}
 
 Color EnemyColorForType(EnemyType type) {
     if (type == EnemyType::Drone) {
@@ -412,6 +505,20 @@ bool Renderer2D::LoadResources() {
     for (Vector2& offset : playerTankFrameOffsetsPixels_) {
         offset = Vector2{0.0F, 0.0F};
     }
+    baseHealthyTexture_ = Texture2D{};
+    baseHealthyTextureLoaded_ = false;
+    for (Texture2D& texture : baseDamagedTextures_) {
+        texture = Texture2D{};
+    }
+    for (bool& loaded : baseDamagedTextureLoaded_) {
+        loaded = false;
+    }
+    for (BaseHealthSnapshot& snapshot : baseHealthSnapshots_) {
+        snapshot = BaseHealthSnapshot{};
+    }
+    for (bool& disabled : baseDamageCacheDisabled_) {
+        disabled = false;
+    }
     Image sourceSheet{};
     if (!TryLoadImageFromTextureDirectory(sourceSheet, "sprites.png")) {
         bolt::log::Warning("RENDER: sprites.png not found");
@@ -612,20 +719,6 @@ bool Renderer2D::LoadResources() {
     UnloadImage(playerBodyUp);
     UnloadImage(sourceSheet);
 
-    // Pre-bake base sprites into textures so each base draws in one call instead of three.
-    auto generateBaseTexture = [&](Color shellColor, Color coreColor, Texture2D& outTexture, bool& outLoaded) {
-        Image img = GenImageColor(kBaseSizePx, kBaseSizePx, shellColor);
-        ImageDrawRectangle(&img, kBaseHoleOffsetPx, kBaseHoleOffsetPx, kBaseHolePx, kBaseHolePx, kBackgroundColor);
-        ImageDrawCircle(&img, kBaseHalfPx, kBaseHalfPx, kBaseCoreRadiusPx, coreColor);
-        outTexture = LoadTextureFromImage(img);
-        outLoaded = outTexture.id != 0;
-        if (outLoaded) {
-            SetTextureFilter(outTexture, TEXTURE_FILTER_POINT);
-        }
-        UnloadImage(img);
-    };
-    generateBaseTexture(kDestroyedBaseColor, kDestroyedBaseColor, baseDestroyedTexture_, baseDestroyedTextureLoaded_);
-
     return playerTankSheetLoaded_;
 }
 
@@ -694,6 +787,21 @@ void Renderer2D::UnloadResources() {
         baseExplosionSheetLoaded_ = false;
         baseExplosionSheet_ = Texture2D{};
     }
+    if (baseHealthyTextureLoaded_) {
+        UnloadTexture(baseHealthyTexture_);
+        baseHealthyTextureLoaded_ = false;
+        baseHealthyTexture_ = Texture2D{};
+    }
+    for (std::size_t i = 0; i < baseDamagedTextures_.size(); ++i) {
+        if (!baseDamagedTextureLoaded_[i]) {
+            continue;
+        }
+        UnloadTexture(baseDamagedTextures_[i]);
+        baseDamagedTextureLoaded_[i] = false;
+        baseDamagedTextures_[i] = Texture2D{};
+        baseHealthSnapshots_[i] = BaseHealthSnapshot{};
+        baseDamageCacheDisabled_[i] = false;
+    }
     if (baseDestroyedTextureLoaded_) {
         UnloadTexture(baseDestroyedTexture_);
         baseDestroyedTextureLoaded_ = false;
@@ -722,6 +830,20 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
     };
     camera.rotation = 0.0F;
     camera.zoom = static_cast<float>(GameplayConstants::kPixelsPerUnit);
+
+    if (state.gameplayPhase == GameplayPhase::Starting) {
+        EnsureHealthyBaseTexture(baseHealthyTexture_, baseHealthyTextureLoaded_);
+        EnsureDestroyedBaseTexture(baseDestroyedTexture_, baseDestroyedTextureLoaded_);
+        for (std::size_t i = 0; i < baseDamagedTextures_.size(); ++i) {
+            if (baseDamagedTextureLoaded_[i]) {
+                UnloadTexture(baseDamagedTextures_[i]);
+                baseDamagedTextureLoaded_[i] = false;
+                baseDamagedTextures_[i] = Texture2D{};
+            }
+            baseHealthSnapshots_[i] = BaseHealthSnapshot{};
+            baseDamageCacheDisabled_[i] = false;
+        }
+    }
 
 #if defined(__APPLE__) && !defined(NDEBUG)
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
@@ -923,24 +1045,94 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
 
         {
             profiling::ScopedProfile drawScope(profiling::Scope::RenderWorldEnemiesDraw);
-            for (const EnemyBase& base : state.world.enemyBases) {
+            for (std::size_t baseIndex = 0; baseIndex < state.world.enemyBases.size(); ++baseIndex) {
+                const EnemyBase& base = state.world.enemyBases[baseIndex];
                 const Vector2 baseScreenPosition = WorldToSnappedScreen(base.position, camera);
                 const int topLeftX = RoundToInt(baseScreenPosition.x) - kBaseHalfPx;
                 const int topLeftY = RoundToInt(baseScreenPosition.y) - kBaseHalfPx;
-                if (base.destroyed && baseDestroyedTextureLoaded_) {
-                    DrawTexture(baseDestroyedTexture_, topLeftX, topLeftY, WHITE);
+                if (base.destroyed) {
+                    if (baseIndex < baseDamagedTextures_.size() && baseDamagedTextureLoaded_[baseIndex]) {
+                        UnloadTexture(baseDamagedTextures_[baseIndex]);
+                        baseDamagedTextures_[baseIndex] = Texture2D{};
+                        baseDamagedTextureLoaded_[baseIndex] = false;
+                    }
+                    if (EnsureDestroyedBaseTexture(baseDestroyedTexture_, baseDestroyedTextureLoaded_)) {
+                        DrawTexture(baseDestroyedTexture_, topLeftX, topLeftY, WHITE);
+                    }
                 } else if (!base.destroyed) {
-                    DrawAliveBaseWithSegmentHealth(base, topLeftX, topLeftY);
-                } else {
-                    // Fallback if textures didn't load.
-                    const Color shellColor = base.destroyed ? kDestroyedBaseColor : kEnemyBaseShellColor;
-                    const Color coreColor = base.destroyed ? kDestroyedBaseColor : kEnemyBaseColor;
-                    DrawRectangle(topLeftX, topLeftY, kBaseSizePx, kBaseSizePx, shellColor);
-                    DrawRectangle(
-                        topLeftX + kBaseHoleOffsetPx, topLeftY + kBaseHoleOffsetPx,
-                        kBaseHolePx, kBaseHolePx, kBackgroundColor);
-                    DrawCircle(topLeftX + kBaseHalfPx, topLeftY + kBaseHalfPx,
-                               static_cast<float>(kBaseCoreRadiusPx), coreColor);
+                    const bool hasCacheSlot = baseIndex < baseDamagedTextures_.size();
+                    const bool fullyHealthy = IsBaseFullyHealthy(base);
+                    if (fullyHealthy) {
+                        if (hasCacheSlot && baseDamagedTextureLoaded_[baseIndex]) {
+                            UnloadTexture(baseDamagedTextures_[baseIndex]);
+                            baseDamagedTextures_[baseIndex] = Texture2D{};
+                            baseDamagedTextureLoaded_[baseIndex] = false;
+                        }
+                        if (hasCacheSlot) {
+                            baseDamageCacheDisabled_[baseIndex] = false;
+                        }
+                        if (EnsureHealthyBaseTexture(baseHealthyTexture_, baseHealthyTextureLoaded_)) {
+                            DrawTexture(baseHealthyTexture_, topLeftX, topLeftY, WHITE);
+                        }
+                    } else {
+                        if (EnsureDestroyedBaseTexture(baseDestroyedTexture_, baseDestroyedTextureLoaded_)) {
+                            DrawTexture(baseDestroyedTexture_, topLeftX, topLeftY, WHITE);
+                        }
+                        if (hasCacheSlot) {
+                            BaseHealthSnapshot& snapshot = baseHealthSnapshots_[baseIndex];
+                            const bool hasSnapshot = snapshot.initialized;
+                            const bool healed =
+                                hasSnapshot &&
+                                (base.topSegmentHealth > snapshot.top ||
+                                 base.rightSegmentHealth > snapshot.right ||
+                                 base.bottomSegmentHealth > snapshot.bottom ||
+                                 base.leftSegmentHealth > snapshot.left);
+                            const bool tookDamage =
+                                hasSnapshot &&
+                                (base.topSegmentHealth < snapshot.top ||
+                                 base.rightSegmentHealth < snapshot.right ||
+                                 base.bottomSegmentHealth < snapshot.bottom ||
+                                 base.leftSegmentHealth < snapshot.left);
+
+                            if (healed) {
+                                if (baseDamagedTextureLoaded_[baseIndex]) {
+                                    UnloadTexture(baseDamagedTextures_[baseIndex]);
+                                    baseDamagedTextures_[baseIndex] = Texture2D{};
+                                    baseDamagedTextureLoaded_[baseIndex] = false;
+                                }
+                                baseDamageCacheDisabled_[baseIndex] = true;
+                            }
+
+                            const bool shouldTryCache =
+                                !baseDamageCacheDisabled_[baseIndex] &&
+                                EnsureHealthyBaseTexture(baseHealthyTexture_, baseHealthyTextureLoaded_) &&
+                                (!baseDamagedTextureLoaded_[baseIndex] || tookDamage);
+                            if (shouldTryCache) {
+                                if (baseDamagedTextureLoaded_[baseIndex]) {
+                                    UnloadTexture(baseDamagedTextures_[baseIndex]);
+                                    baseDamagedTextures_[baseIndex] = Texture2D{};
+                                    baseDamagedTextureLoaded_[baseIndex] = false;
+                                }
+                                baseDamagedTextureLoaded_[baseIndex] = BuildDamagedBaseTextureFromHealthy(
+                                    baseHealthyTexture_,
+                                    base,
+                                    baseDamagedTextures_[baseIndex]);
+                            }
+
+                            if (baseDamagedTextureLoaded_[baseIndex]) {
+                                DrawTexture(baseDamagedTextures_[baseIndex], topLeftX, topLeftY, WHITE);
+                            }
+
+                            snapshot.top = base.topSegmentHealth;
+                            snapshot.right = base.rightSegmentHealth;
+                            snapshot.bottom = base.bottomSegmentHealth;
+                            snapshot.left = base.leftSegmentHealth;
+                            snapshot.initialized = true;
+                        } else if (EnsureHealthyBaseTexture(baseHealthyTexture_, baseHealthyTextureLoaded_)) {
+                            DrawTexture(baseHealthyTexture_, topLeftX, topLeftY, WHITE);
+                        }
+
+                    }
                 }
             }
 
