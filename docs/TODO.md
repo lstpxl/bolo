@@ -26,9 +26,12 @@
 During Main Menu: play some enemy activity at the background: simplified maze, single enemy, travels from one base to another.
 
 - Smaller maze: 30 x 30 cells
-- Two bases: make sure at least 25 cells distance between
-- Enemy is spawned at the base and is being followed
-- It travels from one base to another
+- No bases
+- No shooting
+- No player
+- Enemies are limitedly spawned
+- One enemy is being followed by camera, camera switches followed enemy periodically
+- It travels using regular algorithms (base location is mocked, player field is mocked)
 
 ### Drones Starting the Alarm
 
