@@ -2,15 +2,10 @@
 
 ## Fixes
 
-### Base Destruction
-
-- Base collision shape should be rectangular.
-- Bases collision geometry should change while its outer layer is being damaged and rendering should be changed acccordingly.
-- Base dimension is being reduced from the damaged side.
-
 ## Visuals
 
 - Make Explosions sprites 1 bit
+- Make base destruction pixel-level
 
 ## Cheap tune music
 
