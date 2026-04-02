@@ -543,6 +543,10 @@ bool Renderer2D::LoadResources() {
     Image playerBarrel45 = ExtractSpriteCell(sourceSheet, 1, kPlayerBarrelRowIndex, kSpriteSheetCellSize);
     Image playerFrame0 = CombineCellsXor(playerBodyUp, playerBarrelUp, kPlayerColor);
     Image playerFrame1 = CombineCellsXor(playerBody45, playerBarrel45, kPlayerColor);
+    UnloadImage(playerBarrel45);
+    UnloadImage(playerBarrelUp);
+    UnloadImage(playerBody45);
+    UnloadImage(playerBodyUp);
     Image playerFrame2 = ImageCopy(playerFrame0);
     ImageRotateCW(&playerFrame2);
     Image playerFrame3 = ImageCopy(playerFrame1);
@@ -568,6 +572,14 @@ bool Renderer2D::LoadResources() {
     DrawSpriteCell(playerSheet, playerFrame5, 5, 0, kSpriteSheetCellSize);
     DrawSpriteCell(playerSheet, playerFrame6, 6, 0, kSpriteSheetCellSize);
     DrawSpriteCell(playerSheet, playerFrame7, 7, 0, kSpriteSheetCellSize);
+    UnloadImage(playerFrame7);
+    UnloadImage(playerFrame6);
+    UnloadImage(playerFrame5);
+    UnloadImage(playerFrame4);
+    UnloadImage(playerFrame3);
+    UnloadImage(playerFrame2);
+    UnloadImage(playerFrame1);
+    UnloadImage(playerFrame0);
 
     playerTankSheet_ = LoadTextureFromImage(playerSheet);
     playerTankSheetLoaded_ = playerTankSheet_.id != 0;
@@ -584,6 +596,7 @@ bool Renderer2D::LoadResources() {
     } else {
         bolt::log::Warning("RENDER: failed to create player spritesheet texture from sprites.png");
     }
+    UnloadImage(playerSheet);
 
     Image enemySheet = GenImageColor(
         kEnemyTankDirectionCount * kEnemySpriteSheetCellSize,

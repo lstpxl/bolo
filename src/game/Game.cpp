@@ -8,6 +8,7 @@
 #include "game/model/EntityTypes.h"
 #include "game/systems/CollisionSystem.h"
 #include "game/systems/EnemySystem.h"
+#include "game/systems/EnemySystemHelpers.h"
 #include "game/systems/MazeSystem.h"
 #include "game/systems/PlayerSystem.h"
 #include "game/systems/ProjectileSystem.h"
@@ -27,16 +28,6 @@ float DistanceSqExplosion(const Vec2f& a, const Vec2f& b) {
     return dx * dx + dy * dy;
 }
 
-void DecrementOriginBaseAliveCountForBlast(WorldState& world, EnemyTank& enemy) {
-    if (enemy.originBaseIndex < 0 ||
-        enemy.originBaseIndex >= static_cast<int>(world.enemyBases.size())) {
-        enemy.originBaseIndex = -1;
-        return;
-    }
-    EnemyBase& origin = world.enemyBases[static_cast<std::size_t>(enemy.originBaseIndex)];
-    origin.activeEnemies = std::max(0, origin.activeEnemies - 1);
-    enemy.originBaseIndex = -1;
-}
 
 void ApplyExplosionBlast(GameState& state, const Vec2f& center, float radius) {
     WorldState& world = state.world;
@@ -63,7 +54,7 @@ void ApplyExplosionBlast(GameState& state, const Vec2f& center, float radius) {
             .enemySubtype = enemy.subtype,
         });
         enemy.alive = false;
-        DecrementOriginBaseAliveCountForBlast(world, enemy);
+        DecrementOriginBaseAliveCount(world, enemy);
         world.score +=
             state.menuSettings.levelNumber * GameplayConstants::kEnemyScorePerLevelMultiplier;
     }

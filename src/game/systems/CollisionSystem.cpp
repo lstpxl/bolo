@@ -9,13 +9,9 @@
 #include <cstdio>
 #include "core/Profiling.h"
 #include "game/geometry/WorldGeometry.h"
+#include "game/systems/EnemySystemHelpers.h"
 
 namespace {
-float DistanceSq(const Vec2f& a, const Vec2f& b) {
-    const float dx = a.x - b.x;
-    const float dy = a.y - b.y;
-    return dx * dx + dy * dy;
-}
 
 BaseOuterSegment SegmentForImpactPoint(const Vec2f& point, const EnemyBase& base) {
     const float dx = point.x - base.position.x;
@@ -53,15 +49,6 @@ bool IsPointInsideBaseCore(const Vec2f& point, const EnemyBase& base) {
     return dx * dx + dy * dy <= coreRadius * coreRadius;
 }
 
-void DecrementOriginBaseAliveCount(WorldState& world, EnemyTank& enemy) {
-    if (enemy.originBaseIndex < 0 || enemy.originBaseIndex >= static_cast<int>(world.enemyBases.size())) {
-        enemy.originBaseIndex = -1;
-        return;
-    }
-    EnemyBase& origin = world.enemyBases[static_cast<std::size_t>(enemy.originBaseIndex)];
-    origin.activeEnemies = std::max(0, origin.activeEnemies - 1);
-    enemy.originBaseIndex = -1;
-}
 
 struct EnemyCollisionDeathDebugWindowStats {
     std::uint64_t projectileKills = 0;

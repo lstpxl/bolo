@@ -136,3 +136,14 @@ float EnemySubtypeSpeedMultiplier(EnemyType type, EnemySubtype subtype) {
     }
     return 1.0F;
 }
+
+void DecrementOriginBaseAliveCount(WorldState& world, EnemyTank& enemy) {
+    if (enemy.originBaseIndex < 0 ||
+        enemy.originBaseIndex >= static_cast<int>(world.enemyBases.size())) {
+        enemy.originBaseIndex = -1;
+        return;
+    }
+    EnemyBase& origin = world.enemyBases[static_cast<std::size_t>(enemy.originBaseIndex)];
+    origin.activeEnemies = std::max(0, origin.activeEnemies - 1);
+    enemy.originBaseIndex = -1;
+}

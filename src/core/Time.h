@@ -2,7 +2,7 @@
 
 class FixedStepTimer {
 public:
-    explicit FixedStepTimer(float stepSeconds);
+    FixedStepTimer(float stepSeconds, int maxStepsPerFrame);
 
     void Accumulate(float frameSeconds);
     bool ShouldStep() const;
@@ -11,5 +11,6 @@ public:
 
 private:
     float stepSeconds_;
+    int maxStepsPerFrame_;
     float accumulator_ = 0.0F;
 };

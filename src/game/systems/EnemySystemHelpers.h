@@ -35,3 +35,7 @@ int EnemyTypeTelemetryIndex(EnemyType type);
 
 /// Speed multiplier by subtype (`Basic` = `0.75`, Hunter `Lord` = `1.25`, else `1.0`).
 float EnemySubtypeSpeedMultiplier(EnemyType type, EnemySubtype subtype);
+
+/// Decrements the origin base's active-enemy count and clears `enemy.originBaseIndex`.
+/// Safe to call on enemies with no valid origin base (index is clamped/cleared).
+void DecrementOriginBaseAliveCount(WorldState& world, EnemyTank& enemy);

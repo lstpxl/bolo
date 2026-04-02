@@ -2,13 +2,15 @@
 
 #include <algorithm>
 
-FixedStepTimer::FixedStepTimer(float stepSeconds) : stepSeconds_(stepSeconds) {}
+FixedStepTimer::FixedStepTimer(float stepSeconds, int maxStepsPerFrame)
+    : stepSeconds_(stepSeconds), maxStepsPerFrame_(maxStepsPerFrame) {}
 
 void FixedStepTimer::Accumulate(float frameSeconds) {
     // Clamp overly long frames to avoid huge catch-up bursts.
-    const float clampedFrame = std::min(frameSeconds, stepSeconds_ * 4.0F);
+    const float cap = stepSeconds_ * static_cast<float>(maxStepsPerFrame_);
+    const float clampedFrame = std::min(frameSeconds, cap);
     accumulator_ += clampedFrame;
-    accumulator_ = std::min(accumulator_, stepSeconds_ * 8.0F);
+    accumulator_ = std::min(accumulator_, cap);
 }
 
 bool FixedStepTimer::ShouldStep() const {

@@ -314,17 +314,6 @@ Vec2f ResolveWallContactRecoveryPosition(
     return currentPosition;
 }
 
-[[maybe_unused]] void DecrementOriginBaseAliveCount(WorldState& world, EnemyTank& enemy)
-{
-    if (enemy.originBaseIndex < 0 ||
-        enemy.originBaseIndex >= static_cast<int>(world.enemyBases.size())) {
-        enemy.originBaseIndex = -1;
-        return;
-    }
-    EnemyBase& origin = world.enemyBases[static_cast<std::size_t>(enemy.originBaseIndex)];
-    origin.activeEnemies = std::max(0, origin.activeEnemies - 1);
-    enemy.originBaseIndex = -1;
-}
 
 bool TrySeparationTurn(
     const WorldState& world, const std::vector<EnemyTank>& enemies, int selfIndex, float speed,

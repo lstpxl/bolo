@@ -63,45 +63,27 @@ With 144 enemies: 144² = 20 736 `bool` bits (~2.6 KB), allocated every fixed st
 
 ---
 
-**M-4 · Drone spawn self-awareness interval is wrong (6..12 s instead of documented 5..8 s)**
+**M-4 · ~~Drone spawn self-awareness interval is wrong (6..12 s instead of documented 5..8 s)~~ — Fixed**
 
-- **File:** `src/game/systems/SpawnerSystem.cpp` lines 255–257
-- **Evidence:**
-```cpp
-const float selfAwarenessInterval = (spawnedEnemy.type == EnemyType::Drone)
-    ? random.NextFloat(6.0F, 12.0F)   // <-- actual spawn value
-    : random.NextFloat(4.0F, 8.0F);
-```
-`GAME_DESIGN.md` says: "Drone: random in `5..8` seconds (`kDroneSelfAwarenessIntervalMinSeconds` / `MaxSeconds`)." The constants exist but are not used at spawn. Subsequent resets in `RunPerceptionPhase` correctly use 5..8.
-- **Impact:** The first self-awareness interval for every drone is 6..12 s instead of 5..8. Drones are sluggish/confused for longer on first spawn. Not gamebreaking, but a doc/code disagreement.
-- **Recommended fix:** Replace `random.NextFloat(6.0F, 12.0F)` with `random.NextFloat(GameplayConstants::kDroneSelfAwarenessIntervalMinSeconds, GameplayConstants::kDroneSelfAwarenessIntervalMaxSeconds)`.
+- **Resolution:** Replaced `random.NextFloat(6.0F, 12.0F)` with `random.NextFloat(GameplayConstants::kDroneSelfAwarenessIntervalMinSeconds, GameplayConstants::kDroneSelfAwarenessIntervalMaxSeconds)` in `SpawnerSystem.cpp`. First-spawn interval now matches the documented 5..8 s range used by all subsequent resets.
 
 ---
 
-**M-5 · `DecrementOriginBaseAliveCount` duplicated across `Game.cpp` and `CollisionSystem.cpp`**
+**M-5 · ~~`DecrementOriginBaseAliveCount` duplicated across `Game.cpp` and `CollisionSystem.cpp`~~ — Fixed**
 
-- **Files:** `src/game/Game.cpp` lines 30–39, `src/game/systems/CollisionSystem.cpp` lines 56–64
-- **Evidence:** Both anonymous-namespace implementations are byte-for-byte identical.
-- **Impact:** DRY violation; if base-count bookkeeping needs adjusting (e.g., bounds-check change), both copies must be updated.
-- **Recommended fix:** Move to `EnemySystemHelpers.h/.cpp` or a shared game-utility header and remove the duplicates.
+- **Resolution:** `DecrementOriginBaseAliveCount` moved to `EnemySystemHelpers.h/.cpp`. All three duplicate definitions removed (`Game.cpp` ForBlast variant, `CollisionSystem.cpp` anonymous-namespace copy, `EnemySystem.cpp` `[[maybe_unused]]` copy). `CollisionSystem.cpp` and `Game.cpp` now include `EnemySystemHelpers.h` and call the shared function. The local `DistanceSq` in `CollisionSystem.cpp` (which also duplicated the helpers version) was removed at the same time.
 
 ---
 
-**M-6 · `Renderer2D::LoadResources` leaks intermediate CPU image data**
+**M-6 · ~~`Renderer2D::LoadResources` leaks intermediate CPU image data~~ — Fixed**
 
-- **File:** `src/platform/Renderer2D.cpp` lines 540–586
-- **Evidence:** `playerBodyUp`, `playerBody45`, `playerBarrelUp`, `playerBarrel45`, `playerFrame0`..`playerFrame7`, and `playerSheet` are allocated via `ExtractSpriteCell`, `CombineCellsXor`, `ImageCopy`, `GenImageColor` but never passed to `UnloadImage` after GPU upload. Compare the enemy path (lines 641–648) which does call `UnloadImage` for all intermediaries.
-- **Impact:** ~15–20 small CPU images (~2–5 KB total) leaked at startup. No runtime consequence since it happens once, but it's inconsistent with the enemy path and would trigger under sanitizers.
-- **Recommended fix:** Add `UnloadImage` calls for all player intermediate images and `playerSheet` after GPU upload, matching the pattern already used for enemy sprite frames.
+- **Resolution:** Added `UnloadImage` for `playerBodyUp`, `playerBody45`, `playerBarrelUp`, `playerBarrel45` immediately after the composed frames are built; `UnloadImage` for `playerFrame0`–`playerFrame7` after they are drawn into `playerSheet`; and `UnloadImage` for `playerSheet` after `LoadTextureFromImage` and pivot computation. Now matches the enemy-path pattern.
 
 ---
 
-**M-7 · Fixed-step accumulator cap (8×) mismatches consume cap (4×) — undocumented**
+**M-7 · ~~Fixed-step accumulator cap (8×) mismatches consume cap (4×) — undocumented~~ — Fixed**
 
-- **Files:** `src/core/Time.cpp` line 11, `src/app/GameApp.cpp` line 160
-- **Evidence:** `Accumulate` clamps accumulator to `stepSeconds * 8.0F`. `kMaxFixedStepsPerFrame = 4` only consumes 4 steps per frame. After a 4-step spike, 4 pending steps queue up and take 2 full frames to drain, causing slow-motion catch-up.
-- **Impact:** Not a bug per se (the clamping is deliberate defence-in-depth), but the 4 vs. 8 relationship is undocumented. If `kMaxFixedStepsPerFrame` is raised to 8, the cap would need matching.
-- **Recommended fix:** Document the intent: "accumulator cap is 2× the per-frame step cap so a back-to-back spike pair drains in 2 frames, not indefinitely." Or align the cap: `stepSeconds_ * static_cast<float>(kMaxFixedStepsPerFrame)`.
+- **Resolution:** `FixedStepTimer` now accepts a second constructor parameter `int maxStepsPerFrame`. `Accumulate` uses `stepSeconds_ * static_cast<float>(maxStepsPerFrame_)` for both the single-frame clamp and the accumulator cap, so the two limits are always in sync. `kMaxFixedStepsPerFrame = 4` moved from a local `constexpr` in `GameApp.cpp` to a `private static constexpr` in `GameApp` (header), and is passed to the `FixedStepTimer` constructor in the member initializer.
 
 ---
 
@@ -222,13 +204,13 @@ The project has zero automated tests (`tests/`, `gtest`, `CTest` all absent). Al
 | H-2 | SAP `pairVisited` O(n²) alloc per call | Same: hot path, heap alloc, grows with enemy count |
 | M-1 | Chain-kill explosion VFX missing | Correctness — contradicts documented chain-reaction behavior |
 | M-2 | `IsWallDistributionValid` not implemented | Design doc vs. code mismatch; maze quality not enforced |
-| M-4 | Drone spawn interval wrong constant | Doc/code disagreement; fix is one-liner |
+| M-4 | ~~Drone spawn interval wrong constant~~ | ~~Doc/code disagreement; fix is one-liner~~ — **Fixed** |
 
 ## Recommended Follow-Ups
 
 - ~~Document the off-screen firing gate (M-3) in `GAME_DESIGN.md`~~ — Fixed
-- Fix image leaks in `LoadResources` (M-6) — trivial `UnloadImage` additions
-- Deduplicate `DecrementOriginBaseAliveCount` (M-5) and `IsInPlayerViewport` (L-6)
+- ~~Fix image leaks in `LoadResources` (M-6) — trivial `UnloadImage` additions~~ — **Fixed**
+- ~~Deduplicate `DecrementOriginBaseAliveCount` (M-5)~~ — **Fixed**; `IsInPlayerViewport` (L-6) still open
 - Track phase-3 optimization work (R-1) on the performance backlog
 - Add even a minimal crash/smoke-test harness (R-2)
 

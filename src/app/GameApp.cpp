@@ -157,7 +157,6 @@ int GameApp::Run() {
                     fixedStepTimer_.Accumulate(GetFrameTime());
 
                     int fixedStepsThisFrame = 0;
-                    constexpr int kMaxFixedStepsPerFrame = 4;
                     while (fixedStepTimer_.ShouldStep() && fixedStepsThisFrame < kMaxFixedStepsPerFrame) {
                         profiling::ScopedProfile fixedStepScope(profiling::Scope::FixedStepUpdate, true);
                         if (game_.Mode() == GameMode::Playing) {

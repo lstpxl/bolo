@@ -253,7 +253,9 @@ void UpdateSpawnerSystem(GameState& state, float deltaSeconds, Random& random) {
             mode = EnemyAiMode::Fly;
         }
         const float selfAwarenessInterval = (spawnedEnemy.type == EnemyType::Drone)
-            ? random.NextFloat(6.0F, 12.0F)
+            ? random.NextFloat(
+                  GameplayConstants::kDroneSelfAwarenessIntervalMinSeconds,
+                  GameplayConstants::kDroneSelfAwarenessIntervalMaxSeconds)
             : random.NextFloat(4.0F, 8.0F);
         state.world.enemies.push_back(EnemyTank{
             .position = spawnPosition,

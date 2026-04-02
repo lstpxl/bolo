@@ -23,8 +23,10 @@ private:
     void RenderGameplayPauseDialog(const FrameInput& input);
     bool Render(const FrameInput& input);
 
+    static constexpr int kMaxFixedStepsPerFrame = 4;
+
     AppConfig config_ = MakeDefaultAppConfig();
-    FixedStepTimer fixedStepTimer_{config_.fixedDeltaSeconds};
+    FixedStepTimer fixedStepTimer_{config_.fixedDeltaSeconds, kMaxFixedStepsPerFrame};
     Game game_{};
     MenuScreen menuScreen_{};
     RaylibRenderer renderer_{};
