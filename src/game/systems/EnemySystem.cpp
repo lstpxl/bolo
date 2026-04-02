@@ -309,7 +309,9 @@ Vec2f ResolveWallContactRecoveryPosition(
 
 bool TrySeparationTurn(
     const WorldState& world, const std::vector<EnemyTank>& enemies, int selfIndex, float speed,
-    float deltaSeconds, float& chosenHeading, Vec2f& candidatePosition)
+    float deltaSeconds, float& chosenHeading, Vec2f& candidatePosition,
+    const game::spatial::EnemyCellOccupancy& occupancy,
+    const game::navigation::CellCoordCache& cellCache)
 {
     const EnemyTank& self = enemies[static_cast<std::size_t>(selfIndex)];
     const std::array<float, 2> turnOffsets{-kEightDirectionStep, kEightDirectionStep};
@@ -330,15 +332,18 @@ bool TrySeparationTurn(
             continue;
         }
         float nearestSq = std::numeric_limits<float>::infinity();
-        for (int i = 0; i < static_cast<int>(enemies.size()); ++i) {
-            if (i == selfIndex) {
-                continue;
+        const game::navigation::MazeCellCoord candidateCell = cellCache.WorldToCell(candidate);
+        for (int dy = -1; dy <= 1; ++dy) {
+            for (int dx = -1; dx <= 1; ++dx) {
+                occupancy.ForEachInCell(
+                    candidateCell.x + dx, candidateCell.y + dy, selfIndex, [&](int i) {
+                        const EnemyTank& other = enemies[static_cast<std::size_t>(i)];
+                        if (!other.alive) {
+                            return;
+                        }
+                        nearestSq = std::min(nearestSq, DistanceSq(candidate, other.position));
+                    });
             }
-            const EnemyTank& other = enemies[static_cast<std::size_t>(i)];
-            if (!other.alive) {
-                continue;
-            }
-            nearestSq = std::min(nearestSq, DistanceSq(candidate, other.position));
         }
         if (nearestSq > bestDistanceSq && nearestSq >= sepSq) {
             bestDistanceSq = nearestSq;
@@ -353,6 +358,8 @@ bool TrySeparationTurn(
 bool IsMovementBlockedByEnemies(
     const std::vector<EnemyTank>& enemies, const std::vector<Vec2f>& frameStartPositions,
     int selfIndex, const Vec2f& from, const Vec2f& to, float minSeparation,
+    const game::spatial::EnemyCellOccupancy& occupancy,
+    const game::navigation::CellCoordCache& cellCache,
     const std::vector<float>* uncoupleEscapeScores = nullptr)
 {
     auto otherYieldsToSelf = [&](int otherIndex) {
@@ -383,53 +390,69 @@ bool IsMovementBlockedByEnemies(
         return false;
     };
 
+    // The occupancy grid is built from frameStartPositions at the start of the tick.
+    // For already-processed enemies (i < selfIndex) we use other.position (post-move), but the
+    // occupancy grid still indexes them in their frame-start cell. A cross-cell move in one step
+    // is geometrically impossible at 60 fps (enemy speed << cell size of 6 units), so the
+    // frame-start occupancy is a valid broad-phase filter — no reachable candidates are missed.
     constexpr float kSeparationProgressEpsilon = 0.001F;
     const float hardMinSeparation = GameplayConstants::kEnemyMutualKillDistanceUnits;
-    for (int i = 0; i < static_cast<int>(enemies.size()); ++i) {
-        if (i == selfIndex) {
-            continue;
-        }
-        const bool yieldedByPriority = otherYieldsToSelf(i);
-        const EnemyTank& other = enemies[static_cast<std::size_t>(i)];
-        if (!other.alive) {
-            continue;
-        }
+    bool blocked = false;
+    const game::navigation::MazeCellCoord toCell = cellCache.WorldToCell(to);
+    for (int dy = -1; dy <= 1 && !blocked; ++dy) {
+        for (int dx = -1; dx <= 1 && !blocked; ++dx) {
+            occupancy.ForEachInCell(toCell.x + dx, toCell.y + dy, selfIndex, [&](int i) {
+                if (blocked) {
+                    return;
+                }
+                const bool yieldedByPriority = otherYieldsToSelf(i);
+                const EnemyTank& other = enemies[static_cast<std::size_t>(i)];
+                if (!other.alive) {
+                    return;
+                }
 
-        // Use updated position for already-processed enemies and frame-start position for others.
-        const Vec2f otherObstacle =
-            (i < selfIndex) ? other.position : frameStartPositions[static_cast<std::size_t>(i)];
+                // Use updated position for already-processed enemies and frame-start position for others.
+                const Vec2f otherObstacle =
+                    (i < selfIndex) ? other.position : frameStartPositions[static_cast<std::size_t>(i)];
 
-        const float fromDistance = Distance(from, otherObstacle);
-        const float toDistance = Distance(to, otherObstacle);
-        const bool separatingFromOverlap =
-            fromDistance < minSeparation && toDistance > fromDistance + kSeparationProgressEpsilon;
+                const float fromDistance = Distance(from, otherObstacle);
+                const float toDistance = Distance(to, otherObstacle);
+                const bool separatingFromOverlap =
+                    fromDistance < minSeparation && toDistance > fromDistance + kSeparationProgressEpsilon;
 
-        // Priority yield is only a deadlock-breaker for already-overlapping uncouple peers.
-        // It must never allow deeper overlap, new preferred-separation violations, or retreating
-        // back into crowding after an overlap started resolving.
-        if (yieldedByPriority) {
-            if (toDistance < hardMinSeparation) {
-                return true;
-            }
-            if (fromDistance >= minSeparation && toDistance < minSeparation) {
-                return true;
-            }
-            if (fromDistance < minSeparation &&
-                toDistance < fromDistance + kSeparationProgressEpsilon) {
-                return true;
-            }
-            continue;
-        }
+                // Priority yield is only a deadlock-breaker for already-overlapping uncouple peers.
+                // It must never allow deeper overlap, new preferred-separation violations, or retreating
+                // back into crowding after an overlap started resolving.
+                if (yieldedByPriority) {
+                    if (toDistance < hardMinSeparation) {
+                        blocked = true;
+                        return;
+                    }
+                    if (fromDistance >= minSeparation && toDistance < minSeparation) {
+                        blocked = true;
+                        return;
+                    }
+                    if (fromDistance < minSeparation &&
+                        toDistance < fromDistance + kSeparationProgressEpsilon) {
+                        blocked = true;
+                        return;
+                    }
+                    return;
+                }
 
-        if (toDistance < minSeparation && !separatingFromOverlap) {
-            return true;
-        }
-        if (!separatingFromOverlap &&
-            DistancePointToSegment(otherObstacle, from, to) < minSeparation) {
-            return true;
+                if (toDistance < minSeparation && !separatingFromOverlap) {
+                    blocked = true;
+                    return;
+                }
+                if (!separatingFromOverlap &&
+                    DistancePointToSegment(otherObstacle, from, to) < minSeparation) {
+                    blocked = true;
+                    return;
+                }
+            });
         }
     }
-    return false;
+    return blocked;
 }
 
 profiling::Scope EnemyTypeProfileScope(EnemyType type)
@@ -1149,31 +1172,42 @@ void UpdateEnemySystem(
                         enemyIndex < static_cast<int>(uncoupleEscapeScores.size())
                             ? uncoupleEscapeScores[static_cast<std::size_t>(enemyIndex)]
                             : -1000.0F;
-                    for (int i = 0; i < static_cast<int>(state.world.enemies.size()); ++i) {
-                        if (i == enemyIndex) {
-                            continue;
+                    // Occupancy grid is built from frameStartPositions; already-processed enemies
+                    // (i < enemyIndex) may have moved slightly from their indexed cell, but
+                    // cross-cell moves per step are impossible at 60 fps (speed << 6 unit cell).
+                    const game::navigation::MazeCellCoord probeCell =
+                        cellCache.WorldToCell(candidatePosition);
+                    for (int dy = -1; dy <= 1; ++dy) {
+                        for (int dx = -1; dx <= 1; ++dx) {
+                            occupancy.ForEachInCell(
+                                probeCell.x + dx, probeCell.y + dy, enemyIndex, [&](int i) {
+                                    const EnemyTank& other =
+                                        state.world.enemies[static_cast<std::size_t>(i)];
+                                    if (!other.alive) {
+                                        return;
+                                    }
+                                    if (enemy.aiMode == EnemyAiMode::Uncouple &&
+                                        other.aiMode == EnemyAiMode::Uncouple &&
+                                        i < static_cast<int>(uncoupleEscapeScores.size())) {
+                                        const float otherScore =
+                                            uncoupleEscapeScores[static_cast<std::size_t>(i)];
+                                        const bool otherYieldsToSelf =
+                                            (selfUncoupleScore > otherScore + kUncouplePriorityEpsilon) ||
+                                            (std::fabs(selfUncoupleScore - otherScore) <=
+                                                    kUncouplePriorityEpsilon &&
+                                                enemyIndex < i);
+                                        if (otherYieldsToSelf) {
+                                            return;
+                                        }
+                                    }
+                                    currentMinDistSqToOthers = std::min(
+                                        currentMinDistSqToOthers,
+                                        DistanceSq(enemy.position, other.position));
+                                    minDistSqToOthers = std::min(
+                                        minDistSqToOthers,
+                                        DistanceSq(candidatePosition, other.position));
+                                });
                         }
-                        const EnemyTank& other = state.world.enemies[static_cast<std::size_t>(i)];
-                        if (!other.alive) {
-                            continue;
-                        }
-                        if (enemy.aiMode == EnemyAiMode::Uncouple &&
-                            other.aiMode == EnemyAiMode::Uncouple &&
-                            i < static_cast<int>(uncoupleEscapeScores.size())) {
-                            const float otherScore = uncoupleEscapeScores[static_cast<std::size_t>(i)];
-                            const bool otherYieldsToSelf =
-                                (selfUncoupleScore > otherScore + kUncouplePriorityEpsilon) ||
-                                (std::fabs(selfUncoupleScore - otherScore) <=
-                                        kUncouplePriorityEpsilon &&
-                                    enemyIndex < i);
-                            if (otherYieldsToSelf) {
-                                continue;
-                            }
-                        }
-                        currentMinDistSqToOthers = std::min(
-                            currentMinDistSqToOthers, DistanceSq(enemy.position, other.position));
-                        minDistSqToOthers =
-                            std::min(minDistSqToOthers, DistanceSq(candidatePosition, other.position));
                     }
                     constexpr float kSeparationProgressEpsilonSq = 0.01F;
                     const bool makingSeparationProgress =
@@ -1184,7 +1218,7 @@ void UpdateEnemySystem(
                         Vec2f turnCandidate = candidatePosition;
                         if (TrySeparationTurn(
                                 state.world, state.world.enemies, enemyIndex, speed, deltaSeconds,
-                                turnHeading, turnCandidate)) {
+                                turnHeading, turnCandidate, occupancy, cellCache)) {
                             movementHeading = turnHeading;
                             candidatePosition = turnCandidate;
                         } else {
@@ -1209,7 +1243,7 @@ void UpdateEnemySystem(
                             blocked = IsMovementBlockedByEnemies(
                                 state.world.enemies, frameStartPositions, enemyIndex, previousPosition,
                                 candidatePosition, GameplayConstants::kEnemyPreferredSeparationUnits,
-                                &uncoupleEscapeScores);
+                                occupancy, cellCache, &uncoupleEscapeScores);
                         }
                     }
                     if (blocked) {
@@ -1221,7 +1255,7 @@ void UpdateEnemySystem(
                                 profiling::Scope::EnemyMovementOverlapSeparationTurn, true);
                             foundTurn = TrySeparationTurn(
                                 state.world, state.world.enemies, enemyIndex, speed, deltaSeconds,
-                                turnHeading, turnCandidate);
+                                turnHeading, turnCandidate, occupancy, cellCache);
                         }
                         bool turnValid = false;
                         if (foundTurn) {
@@ -1230,7 +1264,7 @@ void UpdateEnemySystem(
                             turnValid = !IsMovementBlockedByEnemies(
                                 state.world.enemies, frameStartPositions, enemyIndex, previousPosition,
                                 turnCandidate, GameplayConstants::kEnemyPreferredSeparationUnits,
-                                &uncoupleEscapeScores);
+                                occupancy, cellCache, &uncoupleEscapeScores);
                         }
                         if (turnValid) {
                             movementHeading = turnHeading;
