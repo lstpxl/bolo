@@ -71,6 +71,8 @@ enum class Scope : std::uint8_t {
     FramePresent,
     MenuMusicUpdate,
     GameplayMusicUpdate,
+    MusicFillBuffer,
+    MusicUpdateStream,
     AudioRouteStep,
     AudioRouteRemovedEnemyMatch,
     Count

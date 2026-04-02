@@ -271,6 +271,8 @@ const std::array<const char*, kScopeCount> kScopeNames = {
     "frame.present",
     "menu.music",
     "gameplay.music",
+    "music.fill_buffer",
+    "music.update_stream",
     "audio.route_step",
     "audio.route.removed_enemy_match",
 };

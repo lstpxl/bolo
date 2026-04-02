@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profile #47 Analysis</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;700&display=swap');
+
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --red: #f85149;
+    --orange: #e3b341;
+    --green: #3fb950;
+    --blue: #58a6ff;
+    --purple: #bc8cff;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'IBM Plex Sans', sans-serif; font-size: 13px; padding: 20px; min-height: 100vh; }
+
+  h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; margin-bottom: 4px; }
+  .subtitle { color: var(--muted); font-size: 12px; font-family: 'IBM Plex Mono', monospace; margin-bottom: 20px; }
+
+  .metrics-row {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .metric {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+  }
+  .metric-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; font-family: 'IBM Plex Mono', monospace; }
+  .metric-value { font-size: 20px; font-weight: 700; font-family: 'IBM Plex Mono', monospace; }
+  .metric-sub { font-size: 10px; color: var(--muted); margin-top: 3px; font-family: 'IBM Plex Mono', monospace; }
+  .red { color: var(--red); }
+  .orange { color: var(--orange); }
+  .green { color: var(--green); }
+  .blue { color: var(--blue); }
+  .purple { color: var(--purple); }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 16px; }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .panel-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+  }
+  .chart-wrap { position: relative; height: 200px; }
+  .chart-wrap-tall { position: relative; height: 240px; }
+
+  .findings {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .finding {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--orange);
+    border-radius: 4px;
+    padding: 10px 12px;
+  }
+  .finding.critical { border-left-color: var(--red); }
+  .finding.ok { border-left-color: var(--green); }
+  .finding-title { font-weight: 600; font-size: 12px; margin-bottom: 4px; }
+  .finding-body { color: var(--muted); font-size: 11px; line-height: 1.6; font-family: 'IBM Plex Mono', monospace; }
+
+  .spike-table { width: 100%; border-collapse: collapse; font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
+  .spike-table th { color: var(--muted); text-align: left; padding: 4px 8px; font-weight: 400; border-bottom: 1px solid var(--border); }
+  .spike-table td { padding: 5px 8px; border-bottom: 1px solid #1e242c; vertical-align: middle; }
+  .spike-table tr:last-child td { border-bottom: none; }
+  .bar-cell { width: 80px; }
+  .bar-bg { background: #1e242c; border-radius: 2px; height: 8px; width: 100%; }
+  .bar-fill { height: 8px; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<h1>Profile #47 — Handheld Frame Analysis</h1>
+<div class="subtitle">budget=16.667ms (60fps) · frames 120–13200 · ~220s session · peak live heap: 460KB · all values are 120-frame rolling window averages</div>
+
+<!-- Summary metrics -->
+<div class="metrics-row">
+  <div class="metric">
+    <div class="metric-label">Best Window</div>
+    <div class="metric-value orange">101.1%</div>
+    <div class="metric-sub">of budget (16.855ms)</div>
+  </div>
+  <div class="metric">
+    <div class="metric-label">Worst Window</div>
+    <div class="metric-value red">118.0%</div>
+    <div class="metric-sub">@ frame 7200 (19.67ms)</div>
+  </div>
+  <div class="metric">
+    <div class="metric-label">Peak cpu_work</div>
+    <div class="metric-value orange">16.03ms</div>
+    <div class="metric-sub">96.2% of 15ms budget</div>
+  </div>
+  <div class="metric">
+    <div class="metric-label">Peak ai_update</div>
+    <div class="metric-value blue">4.80ms</div>
+    <div class="metric-sub">~116 enemies alive</div>
+  </div>
+  <div class="metric">
+    <div class="metric-label">Music Spike Max</div>
+    <div class="metric-value red">36.69ms</div>
+    <div class="metric-sub">gameplay.music 1-frame</div>
+  </div>
+  <div class="metric">
+    <div class="metric-label">Enemy Peak</div>
+    <div class="metric-value green">120</div>
+    <div class="metric-sub">stable plateau ~104</div>
+  </div>
+</div>
+
+<!-- Row 1: Frame timeline + CPU breakdown -->
+<div class="grid-2">
+  <div class="panel">
+    <div class="panel-title">Frame Total — Rolling 120-Frame Window Average (ms)</div>
+    <div class="chart-wrap-tall">
+      <canvas id="frameTotalChart"></canvas>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-title">CPU Work Breakdown — Stacked (ms)</div>
+    <div class="chart-wrap-tall">
+      <canvas id="cpuBreakdownChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Row 2: AI scaling + Spike table -->
+<div class="grid-3">
+  <div class="panel">
+    <div class="panel-title">Enemy Count vs AI Update + Fixed Step Time</div>
+    <div class="chart-wrap">
+      <canvas id="aiScalingChart"></canvas>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-title">Worst Single-Frame Spikes (max recorded)</div>
+    <table class="spike-table">
+      <thead>
+        <tr><th>System</th><th>Max (ms)</th><th></th></tr>
+      </thead>
+      <tbody id="spikeTableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Row 3: Findings -->
+<div class="panel">
+  <div class="panel-title">Findings</div>
+  <div class="findings">
+    <div class="finding critical">
+      <div class="finding-title">🔴 frame.total always over budget</div>
+      <div class="finding-body">Every measured window exceeds 16.667ms. Best: 101.1% (menu), worst: 118.0% (frame 7200). Total = cpu_work + vsync-present. When cpu_work rises, present time shrinks (GPU gets work), but the sum still clips over budget, resulting in consistent ~1–3ms frame overruns.</div>
+    </div>
+    <div class="finding critical">
+      <div class="finding-title">🔴 gameplay.music — pathological spikes</div>
+      <div class="finding-body">Window avg hit 4.11ms @ frame 7200 (25% of budget!). Single-frame max: 36.69ms. P95 hits 15ms+ during active gameplay. At frames 1320–1560 it was the primary frame-blow cause alongside audio.route_step (max: 21.9ms). Deserves immediate investigation.</div>
+    </div>
+    <div class="finding critical">
+      <div class="finding-title">🔴 audio.route.removed_enemy_match — 6–12ms stalls</div>
+      <div class="finding-body">Fires each time an enemy leaves audio routing. Single call max: 12.45ms. At frame 7200 the 120-frame window avg was 2.47ms from these events alone. Appears O(n) or worse — a linear scan across all tracked routes. Peaks at ~40 total calls recorded across session.</div>
+    </div>
+    <div class="finding">
+      <div class="finding-title">🟡 system.ai_update scales with enemy count</div>
+      <div class="finding-body">0.6ms @ 9 enemies → 4.8ms @ 116 enemies (~0.041ms/enemy). Mostly linear. At max theoretical 200 enemies → ~8ms, pushing fixed_step near its 9.5ms budget. Current plateau of ~104 enemies keeps it at ~3.2ms steady state. Acceptable, but monitor if enemy cap rises.</div>
+    </div>
+    <div class="finding">
+      <div class="finding-title">🟡 system.physics_collision — 14.7ms spike</div>
+      <div class="finding-body">Window avg is fine (0.1–0.2ms) but max=14.733ms appears repeatedly after frame ~1320. Isolated worst-case collision resolution path. Not causing sustained overruns but would be a frame-stall when hit during an already-heavy frame.</div>
+    </div>
+    <div class="finding">
+      <div class="finding-title">🟡 frame.fixed_step max=96.6ms (init stutter)</div>
+      <div class="finding-body">Recorded from session start, persists in history readouts. Almost certainly a single-frame stall during world/flow-field init at frame ~300. Ongoing P95 is 4–11ms — fine. The 96ms max inflates "max" columns across all game.update subsystems but is not recurring.</div>
+    </div>
+    <div class="finding ok">
+      <div class="finding-title">🟢 frame.render well within budget</div>
+      <div class="finding-body">Stable 4.8–5.4ms vs 6.5ms budget. render.world: ~2.5ms, render.hud: ~0.85ms, render.world.maze: ~1.0ms, render.world.effects: ~0.5ms. No render regression across 13,200 frames. ~1ms of headroom vs budget even at peak enemy counts.</div>
+    </div>
+    <div class="finding ok">
+      <div class="finding-title">🟢 Memory: no leaks detected</div>
+      <div class="finding-body">Balanced alloc/free throughout (e.g. +109/-109 per window). Live heap: ~400KB during gameplay, returns to ~20KB on menu exit (frame 13200). Peak: 460KB. No growing unfreed allocation delta observed over the 220-second session.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const BUDGET = 16.667;
+const CPU_BUDGET = 15.0;
+
+// [frame, total, cpu_work, render, ai_update, fixed_step, music, alive]
+const data = [
+  [120,   17.063, 2.995,  2.459, 0,     0.758, 0.001, 0],
+  [240,   16.874, 3.028,  2.405, 0,     0.002, 0.001, 0],
+  [360,   17.665, 3.616,  2.255, 0,     0.859, 0.217, 0],
+  [480,   16.857, 6.164,  4.804, 0.618, 0.758, 0.537, 9],
+  [600,   16.862, 6.420,  4.786, 1.033, 1.190, 0.363, 17],
+  [720,   16.852, 6.849,  4.912, 1.269, 1.434, 0.427, 26],
+  [840,   16.852, 7.820,  5.108, 1.977, 2.155, 0.448, 34],
+  [960,   16.857, 8.291,  5.064, 2.446, 2.635, 0.495, 42],
+  [1080,  16.869, 8.734,  5.125, 2.863, 3.068, 0.437, 45],
+  [1200,  16.898, 8.995,  5.193, 2.681, 2.930, 0.744, 51],
+  [1320,  17.854, 11.365, 5.492, 2.705, 3.225, 2.324, 56],
+  [1440,  18.212, 12.354, 5.304, 2.374, 2.973, 3.727, 61],
+  [1560,  17.970, 11.422, 5.260, 2.092, 2.551, 3.343, 66],
+  [1680,  17.028, 9.313,  5.058, 2.315, 2.581, 1.536, 71],
+  [1800,  16.863, 8.490,  5.133, 2.581, 2.816, 0.440, 77],
+  [1920,  17.090, 10.344, 5.165, 2.767, 3.186, 1.807, 83],
+  [2040,  16.905, 9.122,  5.149, 3.043, 3.264, 0.602, 89],
+  [2760,  16.933, 10.688, 4.941, 4.696, 4.941, 0.630, 96],
+  [3600,  17.480, 11.200, 5.000, 3.800, 4.200, 2.437, 104],
+  [5400,  16.929, 10.227, 5.008, 4.054, 4.316, 0.743, 104],
+  [7200,  19.666, 16.027, 5.446, 4.803, 5.383, 4.112, 116],
+  [8880,  17.050, 8.820,  5.050, 3.100, 3.200, 0.348, 112],
+  [12240, 17.354, 11.354, 5.400, 3.219, 3.732, 1.981, 104],
+  [12360, 16.876, 9.367,  5.155, 3.143, 3.387, 0.686, 104],
+  [12480, 16.873, 9.127,  5.234, 3.199, 3.419, 0.363, 104],
+  [12600, 16.868, 9.190,  5.256, 3.229, 3.452, 0.342, 104],
+  [12720, 16.873, 8.987,  5.196, 3.062, 3.312, 0.371, 104],
+  [12840, 16.927, 9.905,  5.198, 2.915, 3.259, 1.314, 103],
+  [12960, 16.955, 8.844,  5.006, 2.900, 3.104, 0.603, 103],
+  [13080, 16.862, 8.137,  4.805, 2.909, 2.752, 0.459, 103],
+  [13200, 16.855, 4.053,  3.438, 0,     0.003, 0.128, 0],
+];
+
+const labels     = data.map(d => (d[0]/60).toFixed(0) + 's');
+const totals     = data.map(d => d[1]);
+const cpuWork    = data.map(d => d[2]);
+const renderVals = data.map(d => d[3]);
+const aiVals     = data.map(d => d[4]);
+const musicVals  = data.map(d => d[6]);
+const aliveVals  = data.map(d => d[7]);
+const otherVals  = data.map(d => Math.max(0, +(d[2] - d[3] - d[4] - d[6]).toFixed(3)));
+
+const gridColor = 'rgba(48,54,61,0.7)';
+const tooltipDefaults = {
+  titleFont: { family: 'IBM Plex Mono', size: 11 },
+  bodyFont:  { family: 'IBM Plex Mono', size: 11 },
+  backgroundColor: '#161b22',
+  borderColor: '#30363d',
+  borderWidth: 1,
+};
+const tickStyle = { color: '#8b949e', font: { size: 10, family: 'IBM Plex Mono' } };
+
+// ── Chart 1: Frame Total ──
+new Chart(document.getElementById('frameTotalChart'), {
+  type: 'line',
+  data: {
+    labels,
+    datasets: [
+      {
+        label: 'frame.total',
+        data: totals,
+        borderColor: '#f85149',
+        backgroundColor: 'rgba(248,81,73,0.07)',
+        borderWidth: 2,
+        tension: 0.3,
+        fill: true,
+        pointRadius: 3,
+        pointBackgroundColor: totals.map(v => v > BUDGET ? '#f85149' : '#3fb950'),
+      },
+      {
+        label: 'frame.cpu_work',
+        data: cpuWork,
+        borderColor: '#e3b341',
+        borderWidth: 1.5,
+        tension: 0.3,
+        fill: false,
+        pointRadius: 2,
+      },
+      {
+        label: '16.667ms frame budget',
+        data: Array(data.length).fill(BUDGET),
+        borderColor: 'rgba(63,185,80,0.55)',
+        borderWidth: 1.5,
+        borderDash: [6, 3],
+        fill: false,
+        pointRadius: 0,
+      },
+      {
+        label: '15ms cpu budget',
+        data: Array(data.length).fill(CPU_BUDGET),
+        borderColor: 'rgba(227,179,65,0.4)',
+        borderWidth: 1,
+        borderDash: [3, 3],
+        fill: false,
+        pointRadius: 0,
+      },
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: false,
+    plugins: {
+      legend: { labels: { color: '#8b949e', font: { size: 10, family: 'IBM Plex Mono' }, boxWidth: 10, padding: 10 } },
+      tooltip: { ...tooltipDefaults,
+        callbacks: {
+          label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)}ms (${(ctx.parsed.y/BUDGET*100).toFixed(0)}% budget)`
+        }
+      }
+    },
+    scales: {
+      x: { ticks: { ...tickStyle, maxTicksLimit: 12 }, grid: { color: gridColor } },
+      y: { ticks: tickStyle, grid: { color: gridColor }, min: 0, max: 22,
+           title: { display: true, text: 'ms', color: '#8b949e', font: { size: 10 } } }
+    }
+  }
+});
+
+// ── Chart 2: CPU Breakdown ──
+new Chart(document.getElementById('cpuBreakdownChart'), {
+  type: 'line',
+  data: {
+    labels,
+    datasets: [
+      {
+        label: 'render',
+        data: renderVals,
+        backgroundColor: 'rgba(88,166,255,0.55)',
+        borderColor: '#58a6ff',
+        borderWidth: 1,
+        fill: 'origin',
+        tension: 0.3,
+        pointRadius: 0,
+      },
+      {
+        label: 'ai_update',
+        data: aiVals,
+        backgroundColor: 'rgba(63,185,80,0.5)',
+        borderColor: '#3fb950',
+        borderWidth: 1,
+        fill: '-1',
+        tension: 0.3,
+        pointRadius: 0,
+      },
+      {
+        label: 'gameplay.music',
+        data: musicVals,
+        backgroundColor: 'rgba(248,81,73,0.55)',
+        borderColor: '#f85149',
+        borderWidth: 1,
+        fill: '-1',
+        tension: 0.3,
+        pointRadius: 0,
+      },
+      {
+        label: 'other (physics / spawn / …)',
+        data: otherVals,
+        backgroundColor: 'rgba(188,140,255,0.45)',
+        borderColor: '#bc8cff',
+        borderWidth: 1,
+        fill: '-1',
+        tension: 0.3,
+        pointRadius: 0,
+      },
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: false,
+    plugins: {
+      legend: { labels: { color: '#8b949e', font: { size: 10, family: 'IBM Plex Mono' }, boxWidth: 10, padding: 10 } },
+      tooltip: { ...tooltipDefaults }
+    },
+    scales: {
+      x: { ticks: { ...tickStyle, maxTicksLimit: 12 }, grid: { color: gridColor } },
+      y: { ticks: tickStyle, grid: { color: gridColor }, min: 0, max: 18, stacked: true,
+           title: { display: true, text: 'ms (stacked)', color: '#8b949e', font: { size: 10 } } }
+    }
+  }
+});
+
+// ── Chart 3: AI Scaling ──
+const aiData = data.filter(d => d[7] > 0);
+new Chart(document.getElementById('aiScalingChart'), {
+  type: 'line',
+  data: {
+    labels: aiData.map(d => (d[0]/60).toFixed(0) + 's'),
+    datasets: [
+      {
+        label: 'system.ai_update (ms)',
+        data: aiData.map(d => d[4]),
+        borderColor: '#3fb950',
+        backgroundColor: 'rgba(63,185,80,0.1)',
+        borderWidth: 2,
+        tension: 0.3,
+        fill: true,
+        pointRadius: 2,
+        yAxisID: 'y',
+      },
+      {
+        label: 'frame.fixed_step (ms)',
+        data: aiData.map(d => d[5]),
+        borderColor: '#e3b341',
+        borderWidth: 1.5,
+        tension: 0.3,
+        fill: false,
+        pointRadius: 2,
+        yAxisID: 'y',
+      },
+      {
+        label: 'alive enemies (right axis)',
+        data: aiData.map(d => d[7]),
+        borderColor: '#bc8cff',
+        borderWidth: 1.5,
+        borderDash: [4, 2],
+        tension: 0.3,
+        fill: false,
+        pointRadius: 2,
+        yAxisID: 'y2',
+      },
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: false,
+    plugins: {
+      legend: { labels: { color: '#8b949e', font: { size: 10, family: 'IBM Plex Mono' }, boxWidth: 10, padding: 10 } },
+      tooltip: { ...tooltipDefaults }
+    },
+    scales: {
+      x: { ticks: { ...tickStyle, maxTicksLimit: 12 }, grid: { color: gridColor } },
+      y: { ticks: tickStyle, grid: { color: gridColor }, min: 0, max: 7,
+           title: { display: true, text: 'ms', color: '#8b949e', font: { size: 10 } } },
+      y2: {
+        type: 'linear', position: 'right', min: 0, max: 140,
+        ticks: { color: '#bc8cff', font: { size: 10, family: 'IBM Plex Mono' } },
+        grid: { drawOnChartArea: false },
+        title: { display: true, text: 'enemies', color: '#bc8cff', font: { size: 10 } }
+      }
+    }
+  }
+});
+
+// ── Spike Table ──
+const spikes = [
+  { name: 'frame.cpu_work',              max: 98.850,  color: '#f85149' },
+  { name: 'gameplay.music',              max: 36.690,  color: '#f85149' },
+  { name: 'audio.route_step',            max: 21.935,  color: '#f85149' },
+  { name: 'system.ai_update',            max: 21.943,  color: '#e3b341' },
+  { name: 'frame.render',                max: 27.016,  color: '#e3b341' },
+  { name: 'system.physics_collision',    max: 14.733,  color: '#e3b341' },
+  { name: 'audio.route.removed_match',   max: 12.453,  color: '#e3b341' },
+  { name: 'frame.render.world',          max: 11.219,  color: '#58a6ff' },
+  { name: 'enemy.ai.movement',           max: 6.808,   color: '#58a6ff' },
+  { name: 'enemy.physics.frontal_coll',  max: 1.835,   color: '#3fb950' },
+];
+
+const tbody = document.getElementById('spikeTableBody');
+spikes.forEach(s => {
+  const pct = Math.min(100, (s.max / 110) * 100);
+  tbody.innerHTML += `
+    <tr>
+      <td style="color:${s.color};font-size:10px">${s.name}</td>
+      <td style="font-weight:600;text-align:right">${s.max.toFixed(1)}</td>
+      <td class="bar-cell">
+        <div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:${s.color}"></div></div>
+      </td>
+    </tr>`;
+});
+</script>
+</body>
+</html>
