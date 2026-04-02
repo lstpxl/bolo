@@ -1,22 +1,63 @@
 #include "app/MenuMusicPlayer.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cstdint>
 
 #include "core/Log.h"
 #include "core/Profiling.h"
 
-namespace {
-struct MusicPlayerWindowStats {
-    std::uint64_t updateCalls = 0;
-    std::uint64_t activeUpdateCalls = 0;
-    std::uint64_t processedBuffers = 0;
-    std::uint64_t maxBuffersPerUpdate = 0;
-};
+void MenuMusicPlayer::SetLabel(const char* label) {
+    label_ = label;
+}
 
-MusicPlayerWindowStats gMusicPlayerWindowStats{};
-std::uint64_t gLastMusicPlayerWindowPrintedFrame = 0;
-}  // namespace
+void MenuMusicPlayer::ResetWindowStats() {
+    windowUpdateCalls_ = 0;
+    windowActiveUpdateCalls_ = 0;
+    windowProcessedBuffers_ = 0;
+    windowMaxBuffersPerUpdate_ = 0;
+    windowSlowUploadCount_ = 0;
+    windowMaxUploadUs_ = 0;
+    windowTotalUploadUs_ = 0;
+}
+
+void MenuMusicPlayer::ReportWindowIfDue(std::uint64_t frameIndex) {
+    const auto& profiler = profiling::Profiler::Instance();
+    if (!profiler.ShouldEmitPeriodicReport() || frameIndex == lastReportFrame_) {
+        return;
+    }
+    lastReportFrame_ = frameIndex;
+
+    const float avgBufPerCall = windowUpdateCalls_ > 0
+        ? static_cast<float>(windowProcessedBuffers_) / static_cast<float>(windowUpdateCalls_)
+        : 0.0F;
+    const float avgBufPerActive = windowActiveUpdateCalls_ > 0
+        ? static_cast<float>(windowProcessedBuffers_) / static_cast<float>(windowActiveUpdateCalls_)
+        : 0.0F;
+    const float avgUploadMs = windowProcessedBuffers_ > 0
+        ? static_cast<float>(windowTotalUploadUs_) / static_cast<float>(windowProcessedBuffers_) / 1000.0F
+        : 0.0F;
+    const float maxUploadMs = static_cast<float>(windowMaxUploadUs_) / 1000.0F;
+    const float totalUploadMs = static_cast<float>(windowTotalUploadUs_) / 1000.0F;
+
+    bolt::log::Profile(
+        "[MUSIC_PLAYER_WINDOW] label=%s calls=%llu activeCalls=%llu buffers=%llu"
+        " avg(buf/call=%.2f active=%.2f) max(buf/call=%llu)"
+        " upload(total=%.2fms avg=%.3fms max=%.3fms slow=%llu)\n",
+        label_,
+        static_cast<unsigned long long>(windowUpdateCalls_),
+        static_cast<unsigned long long>(windowActiveUpdateCalls_),
+        static_cast<unsigned long long>(windowProcessedBuffers_),
+        avgBufPerCall,
+        avgBufPerActive,
+        static_cast<unsigned long long>(windowMaxBuffersPerUpdate_),
+        totalUploadMs,
+        avgUploadMs,
+        maxUploadMs,
+        static_cast<unsigned long long>(windowSlowUploadCount_));
+
+    ResetWindowStats();
+}
 
 bool MenuMusicPlayer::Initialize(MelodyBase& melody) {
     if (initialized_) {
@@ -73,34 +114,16 @@ void MenuMusicPlayer::SetTense(bool tense) {
 
 void MenuMusicPlayer::Update() {
     profiling::ScopedProfile scope(profiling::Scope::MenuMusicUpdate);
-    gMusicPlayerWindowStats.updateCalls += 1;
+    const auto& profiler = profiling::Profiler::Instance();
+    const std::uint64_t frameIndex = profiler.FrameIndex();
+
+    ++windowUpdateCalls_;
     if (!initialized_ || !enabled_) {
-        const auto& profiler = profiling::Profiler::Instance();
-        const std::uint64_t frameIndex = profiler.FrameIndex();
-        if (profiler.ShouldEmitPeriodicReport() && frameIndex != gLastMusicPlayerWindowPrintedFrame) {
-            gLastMusicPlayerWindowPrintedFrame = frameIndex;
-            const float avgBuffersPerUpdate = gMusicPlayerWindowStats.updateCalls > 0
-                ? static_cast<float>(gMusicPlayerWindowStats.processedBuffers) /
-                    static_cast<float>(gMusicPlayerWindowStats.updateCalls)
-                : 0.0F;
-            const float avgBuffersPerActiveUpdate = gMusicPlayerWindowStats.activeUpdateCalls > 0
-                ? static_cast<float>(gMusicPlayerWindowStats.processedBuffers) /
-                    static_cast<float>(gMusicPlayerWindowStats.activeUpdateCalls)
-                : 0.0F;
-            bolt::log::Profile(
-                "[MUSIC_PLAYER_WINDOW] calls=%llu activeCalls=%llu buffers=%llu avg(buf/call=%.2f active=%.2f) max(buf/call=%llu)\n",
-                static_cast<unsigned long long>(gMusicPlayerWindowStats.updateCalls),
-                static_cast<unsigned long long>(gMusicPlayerWindowStats.activeUpdateCalls),
-                static_cast<unsigned long long>(gMusicPlayerWindowStats.processedBuffers),
-                avgBuffersPerUpdate,
-                avgBuffersPerActiveUpdate,
-                static_cast<unsigned long long>(gMusicPlayerWindowStats.maxBuffersPerUpdate));
-            gMusicPlayerWindowStats = MusicPlayerWindowStats{};
-        }
+        ReportWindowIfDue(frameIndex);
         return;
     }
 
-    gMusicPlayerWindowStats.activeUpdateCalls += 1;
+    ++windowActiveUpdateCalls_;
     std::uint64_t processedBuffersThisUpdate = 0;
     while (IsAudioStreamProcessed(stream_)) {
         {
@@ -109,36 +132,29 @@ void MenuMusicPlayer::Update() {
         }
         {
             profiling::ScopedProfile uploadScope(profiling::Scope::MusicUpdateStream);
+            const auto uploadStart = std::chrono::steady_clock::now();
             UpdateAudioStream(stream_, sampleBuffer_.data(), static_cast<int>(kSampleBufferSamples));
+            const std::uint64_t uploadUs = static_cast<std::uint64_t>(
+                std::chrono::duration_cast<std::chrono::microseconds>(
+                    std::chrono::steady_clock::now() - uploadStart)
+                .count());
+            windowTotalUploadUs_ += uploadUs;
+            windowMaxUploadUs_ = std::max(windowMaxUploadUs_, uploadUs);
+            if (uploadUs > kSlowUploadThresholdUs) {
+                ++windowSlowUploadCount_;
+                bolt::log::Debug(
+                    "[MUSIC_UPLOAD_SPIKE] label=%s frame=%llu upload=%.3fms\n",
+                    label_,
+                    static_cast<unsigned long long>(frameIndex),
+                    static_cast<float>(uploadUs) / 1000.0F);
+            }
         }
-        processedBuffersThisUpdate += 1;
+        ++processedBuffersThisUpdate;
     }
-    gMusicPlayerWindowStats.processedBuffers += processedBuffersThisUpdate;
-    gMusicPlayerWindowStats.maxBuffersPerUpdate =
-        std::max<std::uint64_t>(gMusicPlayerWindowStats.maxBuffersPerUpdate, processedBuffersThisUpdate);
+    windowProcessedBuffers_ += processedBuffersThisUpdate;
+    windowMaxBuffersPerUpdate_ = std::max(windowMaxBuffersPerUpdate_, processedBuffersThisUpdate);
 
-    const auto& profiler = profiling::Profiler::Instance();
-    const std::uint64_t frameIndex = profiler.FrameIndex();
-    if (profiler.ShouldEmitPeriodicReport() && frameIndex != gLastMusicPlayerWindowPrintedFrame) {
-        gLastMusicPlayerWindowPrintedFrame = frameIndex;
-        const float avgBuffersPerUpdate = gMusicPlayerWindowStats.updateCalls > 0
-            ? static_cast<float>(gMusicPlayerWindowStats.processedBuffers) /
-                static_cast<float>(gMusicPlayerWindowStats.updateCalls)
-            : 0.0F;
-        const float avgBuffersPerActiveUpdate = gMusicPlayerWindowStats.activeUpdateCalls > 0
-            ? static_cast<float>(gMusicPlayerWindowStats.processedBuffers) /
-                static_cast<float>(gMusicPlayerWindowStats.activeUpdateCalls)
-            : 0.0F;
-        bolt::log::Profile(
-            "[MUSIC_PLAYER_WINDOW] calls=%llu activeCalls=%llu buffers=%llu avg(buf/call=%.2f active=%.2f) max(buf/call=%llu)\n",
-            static_cast<unsigned long long>(gMusicPlayerWindowStats.updateCalls),
-            static_cast<unsigned long long>(gMusicPlayerWindowStats.activeUpdateCalls),
-            static_cast<unsigned long long>(gMusicPlayerWindowStats.processedBuffers),
-            avgBuffersPerUpdate,
-            avgBuffersPerActiveUpdate,
-            static_cast<unsigned long long>(gMusicPlayerWindowStats.maxBuffersPerUpdate));
-        gMusicPlayerWindowStats = MusicPlayerWindowStats{};
-    }
+    ReportWindowIfDue(frameIndex);
 }
 
 void MenuMusicPlayer::Shutdown() {

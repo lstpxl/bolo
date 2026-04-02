@@ -127,10 +127,12 @@ int GameApp::Run() {
         playerExplosionSoundLoaded_ =
             TryLoadSoundPoolFromKnownPaths(playerExplosionSound_, "player-explosion.wav", "player explosion sound");
         if (kMenuMusicEnabled) {
+            menuMusicPlayer_.SetLabel("menu");
             menuMusicPlayerReady_ = menuMusicPlayer_.Initialize(menuMelody_);
             if (!menuMusicPlayerReady_) {
                 bolt::log::Warning("AUDIO: menu music player failed to initialize");
             }
+            gameplayMusicPlayer_.SetLabel("gameplay");
             gameplayMusicPlayerReady_ = gameplayMusicPlayer_.Initialize(gameplayMelody_);
             if (!gameplayMusicPlayerReady_) {
                 bolt::log::Warning("AUDIO: gameplay music player failed to initialize");
