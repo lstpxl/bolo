@@ -438,8 +438,16 @@ void InitializeMazeWorld(GameState& state, const GameplayView& view, Random& ran
 
     state.world.navigationCache.cellCoords.ConfigureFromMaze(state.world.maze);
 
+    constexpr int kMaxMazeGenAttempts = 200;
+    int mazeAttempts = 0;
     do {
         GenerateConnectedMaze(state.world.maze, random, state.menuSettings.mazeDensity);
+        ++mazeAttempts;
+        if (mazeAttempts >= kMaxMazeGenAttempts) {
+            bolt::log::Error("[MAZE] Failed to generate valid maze after %d attempts — using last result",
+                kMaxMazeGenAttempts);
+            break;
+        }
     } while (
         !IsMazeFullyAccessible(state.world.maze) ||
         !IsMazeWallTopologyValid(state.world.maze));

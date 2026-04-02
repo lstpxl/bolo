@@ -138,6 +138,8 @@ void Game::UpdateStartingPhase(float deltaSeconds, const GameplayView& view) {
     if (state_.startingSequencePhase == 1) {
         flowWorker_.Drain();
         InitializeMazeWorld(state_, view, random_);
+        flowWorker_.stableMaze = state_.world.maze;
+        flowWorker_.stableCellCoords = state_.world.navigationCache.cellCoords;
         state_.startingSequencePhase = 2;
         state_.startingPhaseRemainingSeconds =
             std::max(0.0F, state_.startingPhaseRemainingSeconds - deltaSeconds);

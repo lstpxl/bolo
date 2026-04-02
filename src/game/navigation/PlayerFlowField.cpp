@@ -229,14 +229,12 @@ void ScheduleRebuild(game::navigation::FlowRebuildWorker& flowWorker,
     }
     flowWorker.buildGeneration = navigationCache.flowFieldInvalidationGeneration;
     flowWorker.inFlight = true;
-    MazeState mazeCopy = world.maze;
-    game::navigation::CellCoordCache cacheCopy = navigationCache.cellCoords;
     std::vector<EnemyBase> basesCopy = world.enemyBases;
     flowWorker.future = std::async(
         std::launch::async,
         [&pending = flowWorker.pendingFlowField,
-         m = std::move(mazeCopy),
-         c = std::move(cacheCopy),
+         &m = flowWorker.stableMaze,
+         &c = flowWorker.stableCellCoords,
          b = std::move(basesCopy)]() mutable {
             pending.Rebuild(m, c, b);
         });

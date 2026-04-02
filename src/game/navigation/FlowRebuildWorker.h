@@ -13,6 +13,12 @@ struct FlowRebuildWorker {
     bool inFlight = false;
     int buildGeneration = 0;
 
+    // Stable copies of maze and cell-coord data set once after InitializeMazeWorld.
+    // The maze never changes mid-game, so ScheduleRebuild reads these instead of
+    // copying world.maze / navigationCache.cellCoords on every call.
+    MazeState stableMaze{};
+    CellCoordCache stableCellCoords{};
+
     // Block until any in-flight rebuild finishes. Call before resetting level state.
     void Drain() {
         if (inFlight) {
