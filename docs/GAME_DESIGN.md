@@ -175,7 +175,7 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
   - `Hunter Lord`: `125%` of hunter advanced speed
 - Assassin advanced speed has two modes: `1.5` world-units/second when not in aggro mode, and `3.0` world-units/second when `assassinInAggroMode` is true (assassin, `seesPlayer`, and distance `<= kEnemyAggroRangeUnits`).
 - Enemy projectile firing heading is quantized to the same 8-way (45-degree) directions.
-- Enemy projectile firing is gated by `enemy.seesPlayer` (alive + unobstructed + in-range + inside forward cone), plus per-type firing constraints.
+- Enemy projectile firing is gated by: `enemy.simTier == EnemySimTier::Full` (cheap-tier enemies never fire), `enemy.seesPlayer` (alive + unobstructed + in-range + inside forward cone), cooldown expired, player not obscured, within per-type fire range, plus per-type firing constraints.
 - Enemy projectile spawn range uses per-type fire ranges (`Drone`: `kDroneDetectRangeUnits`; `Torpedo` `Ram`: `kTorpedoRamDetectRangeUnits`; `Torpedo` non-`Ram`: `kTorpedoDetectRangeUnits`; `Hunter`: `kHunterDetectRangeUnits`; `Assassin`: `kEnemyAggroRangeUnits`), not a single global range.
 - Player and enemy collision shape is treated as a disc with `9px` diameter.
 - **Enemy dual-radius model:** agents use two radii (universal for all enemy types):

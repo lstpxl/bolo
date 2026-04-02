@@ -50,13 +50,6 @@ float EnemyProjectileMaxRangeUnits(const EnemyTank& enemy) {
     return GameplayConstants::kDroneDetectRangeUnits;
 }
 
-bool IsInPlayerViewport(const Vec2f& point, const GameState& state, const GameplayView& view) {
-    const float halfWidth = view.viewportWidthUnits * 0.5F;
-    const float halfHeight = view.viewportHeightUnits * 0.5F;
-    const Vec2f center = state.world.player.position;
-    return point.x >= center.x - halfWidth && point.x <= center.x + halfWidth &&
-        point.y >= center.y - halfHeight && point.y <= center.y + halfHeight;
-}
 }  // namespace
 
 float EnemyFireInterval(EnemyType type) {
@@ -133,10 +126,8 @@ void RunFiringPhase(
     GameState& state,
     EnemyTank& enemy,
     const EnemyPerception& perception,
-    const GameplayView& view,
     float deltaSeconds) {
     enemy.fireCooldownSeconds -= deltaSeconds;
-    const bool enemyVisibleInViewport = IsInPlayerViewport(enemy.position, state, view);
     bool canFireTypeSpecific = true;
     if (enemy.type == EnemyType::Torpedo) {
         canFireTypeSpecific = (enemy.aiMode == EnemyAiMode::Ram)
@@ -146,9 +137,9 @@ void RunFiringPhase(
     const float fireRange = EnemyProjectileMaxRangeUnits(enemy);
     const float fireRangeSq = fireRange * fireRange;
     if (state.world.player.alive &&
+        enemy.simTier == EnemySimTier::Full &&
         enemy.seesPlayer &&
         enemy.fireCooldownSeconds <= 0.0F &&
-        enemyVisibleInViewport &&
         !perception.playerObscured &&
         canFireTypeSpecific &&
         perception.distanceToPlayerSq <= fireRangeSq) {

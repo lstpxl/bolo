@@ -1,7 +1,6 @@
 #pragma once
 
 #include "core/Random.h"
-#include "game/GameplayView.h"
 #include "game/model/EntityTypes.h"
 
 struct GameState;
@@ -29,5 +28,4 @@ void RunFiringPhase(
     GameState& state,
     EnemyTank& enemy,
     const EnemyPerception& perception,
-    const GameplayView& view,
     float deltaSeconds);

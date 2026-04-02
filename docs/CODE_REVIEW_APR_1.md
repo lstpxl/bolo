@@ -57,19 +57,9 @@ With 144 enemies: 144² = 20 736 `bool` bits (~2.6 KB), allocated every fixed st
 
 ---
 
-**M-3 · Undocumented firing gate: off-screen enemies never fire**
+**M-3 · ~~Undocumented firing gate: off-screen enemies never fire~~ — Fixed**
 
-- **File:** `src/game/systems/EnemySystemCombatPhase.cpp` lines 139, 148–154
-- **Evidence:**
-```cpp
-const bool enemyVisibleInViewport = IsInPlayerViewport(enemy.position, state, view);
-// ...
-if (state.world.player.alive && enemy.seesPlayer && enemy.fireCooldownSeconds <= 0.0F &&
-    enemyVisibleInViewport && !perception.playerObscured && ...
-```
-`GAME_DESIGN.md` states: "Enemy projectile firing is gated by `enemy.seesPlayer` … plus per-type firing constraints." There is no mention of `enemyVisibleInViewport` as a gating condition.
-- **Impact:** Enemies just outside the viewport cannot fire even if they theoretically see the player. This is likely an intentional fairness rule, but the design doc is silent on it. If removed accidentally, projectiles would appear from nowhere.
-- **Recommended fix:** Document this rule explicitly in `GAME_DESIGN.md`: "Enemy projectile firing additionally requires the enemy to be within the viewport bounds."
+- **Resolution:** The `enemyVisibleInViewport` gate was removed from `RunFiringPhase`. In its place, a semantically correct gate was added: `enemy.simTier == EnemySimTier::Full` — only full-tier enemies may fire; cheap-tier enemies never fire regardless of line-of-sight or cooldown state. `GAME_DESIGN.md` updated to document all firing gates explicitly. The unused `const GameplayView& view` parameter was also removed from `RunFiringPhase`.
 
 ---
 
@@ -236,7 +226,7 @@ The project has zero automated tests (`tests/`, `gtest`, `CTest` all absent). Al
 
 ## Recommended Follow-Ups
 
-- Document the off-screen firing gate (M-3) in `GAME_DESIGN.md`
+- ~~Document the off-screen firing gate (M-3) in `GAME_DESIGN.md`~~ — Fixed
 - Fix image leaks in `LoadResources` (M-6) — trivial `UnloadImage` additions
 - Deduplicate `DecrementOriginBaseAliveCount` (M-5) and `IsInPlayerViewport` (L-6)
 - Track phase-3 optimization work (R-1) on the performance backlog

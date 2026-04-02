@@ -1461,7 +1461,7 @@ void UpdateEnemySystem(
 
         {
             profiling::ScopedProfile phaseScope(profiling::Scope::EnemyAiFiring, true);
-            RunFiringPhase(state, enemy, perception, view, deltaSeconds);
+            RunFiringPhase(state, enemy, perception, deltaSeconds);
         }
 
         const game::navigation::MazeCellCoord fullCell = cellCache.WorldToCell(enemy.position);
