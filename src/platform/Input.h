@@ -34,4 +34,10 @@ struct FrameInput {
     bool anyInteractionDown = false;
 };
 
-FrameInput PollFrameInput();
+/// Persistent input state that must be owned by the caller and reset on each game start.
+/// Holds edge-detect state that would otherwise live as a static local inside PollFrameInput.
+struct InputPollState {
+    bool previousPauseDown = false;
+};
+
+FrameInput PollFrameInput(InputPollState& pollState);

@@ -3,8 +3,7 @@
 #include <cmath>
 #include "raylib.h"
 
-FrameInput PollFrameInput() {
-    static bool previousPauseDown = false;
+FrameInput PollFrameInput(InputPollState& pollState) {
 
     constexpr float axisDeadzone = 0.2F;
     constexpr float axisToRawScale = 32767.0F;
@@ -154,8 +153,8 @@ FrameInput PollFrameInput() {
         std::abs(turretTurnInput) > 0.0F;
 
     const bool pauseDown = escapeDown || gamepadStartDown || gamepadMiddleDown;
-    const bool pausePressed = pauseDown && !previousPauseDown;
-    previousPauseDown = pauseDown;
+    const bool pausePressed = pauseDown && !pollState.previousPauseDown;
+    pollState.previousPauseDown = pauseDown;
 
     return FrameInput{
         .moveX = moveX,

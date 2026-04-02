@@ -7,6 +7,8 @@ namespace {
 float ComputeSpatialVolume(const Vec2f& listener, const Vec2f& source) {
     const float r1 = 3.0F * static_cast<float>(GameplayConstants::kMazeCellSizeUnits);
     const float r2 = 10.0F * static_cast<float>(GameplayConstants::kMazeCellSizeUnits);
+    // Octile approximation overestimates diagonal distances by up to ~4%.
+    // Intentional: the error is negligible at gameplay scale and avoids a sqrt per sound event.
     const float d = core::math::ApproximateEuclideanDistanceOctile(listener, source);
     if (d > r2) {
         return 0.0F;

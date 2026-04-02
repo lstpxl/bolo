@@ -169,7 +169,6 @@ void Game::UpdateActivePhase(const FrameInput& input, float deltaSeconds, const 
 }
 
 void Game::UpdateGameOverPhase(const FrameInput& input, float deltaSeconds, const GameplayView& view) {
-    (void)deltaSeconds;
     RunPlayingWorldTick(
         input,
         deltaSeconds,

@@ -217,14 +217,6 @@ bool IsPointInUndestroyedBase(const WorldState& world, const Vec2f& point, float
     return game::geometry::IsPointInUndestroyedBase(world, point, clearanceUnits);
 }
 
-bool IsInPlayerViewport(const Vec2f& point, const GameState& state, const GameplayView& view)
-{
-    const float halfWidth = view.viewportWidthUnits * 0.5F;
-    const float halfHeight = view.viewportHeightUnits * 0.5F;
-    const Vec2f center = state.world.player.position;
-    return point.x >= center.x - halfWidth && point.x <= center.x + halfWidth &&
-           point.y >= center.y - halfHeight && point.y <= center.y + halfHeight;
-}
 
 // Same world point as `Renderer2D::DrawWorld` camera target (before pixel snap).
 Vec2f ViewportCenterWorldPosition(const WorldState& world)

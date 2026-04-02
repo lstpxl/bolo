@@ -59,6 +59,10 @@ private:
     int lastCellY_ = -1;
     bool cacheActive_ = false;
     int age_ = 0;
+    // Rate-limit guards for debug log messages; reset in Invalidate() so each new build
+    // session produces its first few log lines again.
+    int debugSkipLogCount_ = 0;
+    int debugNoBuildLogCount_ = 0;
 };
 
 }  // namespace game::navigation

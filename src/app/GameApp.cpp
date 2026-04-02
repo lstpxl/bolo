@@ -149,7 +149,7 @@ int GameApp::Run() {
                 profiling::ScopedProfile cpuWorkScope(profiling::Scope::FrameCpuWork, true);
                 {
                     profiling::ScopedProfile inputScope(profiling::Scope::FrameInputPoll);
-                    input = PollFrameInput();
+                    input = PollFrameInput(inputPollState_);
                 }
                 if (input.quitRequested) {
                     exitRequested_ = true;
@@ -374,6 +374,7 @@ bool GameApp::Render(const FrameInput& input) {
             }
             if (result.startGameRequested) {
                 gameplayPauseDialogOpen_ = false;
+                inputPollState_ = {};
                 game_.StartGame(config_, BuildGameplayView(config_));
             }
             if (result.quitRequested) {

@@ -26,6 +26,7 @@ private:
     static constexpr int kMaxFixedStepsPerFrame = 4;
 
     AppConfig config_ = MakeDefaultAppConfig();
+    InputPollState inputPollState_{};
     FixedStepTimer fixedStepTimer_{config_.fixedDeltaSeconds, kMaxFixedStepsPerFrame};
     Game game_{};
     MenuScreen menuScreen_{};

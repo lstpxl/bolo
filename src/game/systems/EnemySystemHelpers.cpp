@@ -137,6 +137,14 @@ float EnemySubtypeSpeedMultiplier(EnemyType type, EnemySubtype subtype) {
     return 1.0F;
 }
 
+bool IsInPlayerViewport(const Vec2f& point, const GameState& state, const GameplayView& view) {
+    const float halfWidth = view.viewportWidthUnits * 0.5F;
+    const float halfHeight = view.viewportHeightUnits * 0.5F;
+    const Vec2f center = state.world.player.position;
+    return point.x >= center.x - halfWidth && point.x <= center.x + halfWidth &&
+           point.y >= center.y - halfHeight && point.y <= center.y + halfHeight;
+}
+
 void DecrementOriginBaseAliveCount(WorldState& world, EnemyTank& enemy) {
     if (enemy.originBaseIndex < 0 ||
         enemy.originBaseIndex >= static_cast<int>(world.enemyBases.size())) {

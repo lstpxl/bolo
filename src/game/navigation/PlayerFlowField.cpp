@@ -115,7 +115,7 @@ void PlayerFlowField::Rebuild(const MazeState& maze, const CellCoordCache& cellC
             if (IsCellOccupiedByBase(cellCache, neighborX, neighborY, bases)) {
                 continue;
             }
-            if (!CanTraverse(maze, neighborX, neighborY, currentX, currentY)) {
+            if (!CanTraverse(maze, currentX, currentY, neighborX, neighborY)) {
                 continue;
             }
             const int neighborHash = cellCache.CellHash(neighborX, neighborY);
@@ -179,6 +179,8 @@ void PlayerFlowField::Invalidate() {
     hasBuild_ = false;
     lastCellX_ = -1;
     lastCellY_ = -1;
+    debugSkipLogCount_ = 0;
+    debugNoBuildLogCount_ = 0;
 }
 
 void PlayerFlowField::OverrideNextCellHash(int fromCellHash, int toCellHash) {
@@ -248,8 +250,7 @@ void PlayerFlowField::OnPlayerCellChanged(int newCellX, int newCellY,
     const ::WorldState& world,
     FlowFieldUpdateStats* outStats) {
     if (!cacheActive_) {
-        static int skipCount = 0;
-        if (++skipCount <= 3) {
+        if (++debugSkipLogCount_ <= 3) {
             bolt::log::Debug("[FLOW] OnPlayerCellChanged: skip (cacheActive=false) cell=%d,%d", newCellX, newCellY);
         }
         return;
@@ -326,8 +327,7 @@ void PlayerFlowField::Update(FlowRebuildWorker& flowWorker,
             outStats->rebuildScheduled = true;
         }
     } else if (!hasBuild_) {
-        static int noBuildCount = 0;
-        if (++noBuildCount <= 5) {
+        if (++debugNoBuildLogCount_ <= 5) {
             bolt::log::Debug("[FLOW] Update: no build yet cacheActive=%d inFlight=%d cell=%d,%d",
                 cacheActive_ ? 1 : 0, flowWorker.inFlight ? 1 : 0, currentCellX, currentCellY);
         }

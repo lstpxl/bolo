@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
-#include <vector>
 #include "core/AngleMath.h"
 #include "core/Random.h"
 #include "game/EnemyAppearance.h"
@@ -17,12 +16,42 @@ constexpr float kRequiredSpawnClearUnits = 6.0F;
 constexpr float kSpawnProbeMaxUnits = 8.0F;
 
 game::EnemySpawnChoice PickSpawnEnemyForLevel(int level, Random& random) {
-    std::vector<game::EnemySpawnChoice> candidates = game::EnemyTypesForLevel(level);
-    if (candidates.empty()) {
-        return game::EnemySpawnChoice{.type = EnemyType::Drone, .subtype = EnemySubtype::Advanced};
+    struct LevelChoices {
+        game::EnemySpawnChoice choices[3];
+        int count;
+    };
+    // Max 3 choices per level; mirrors EnemyTypesForLevel() but avoids a heap allocation.
+    static const LevelChoices kByLevel[] = {
+        /* 1 */ {{{EnemyType::Drone,    EnemySubtype::Basic},    {}, {}}, 1},
+        /* 2 */ {{{EnemyType::Drone,    EnemySubtype::Advanced}, {}, {}}, 1},
+        /* 3 */ {{{EnemyType::Drone,    EnemySubtype::Advanced},
+                  {EnemyType::Torpedo,  EnemySubtype::Basic},    {}}, 2},
+        /* 4 */ {{{EnemyType::Drone,    EnemySubtype::Advanced},
+                  {EnemyType::Torpedo,  EnemySubtype::Advanced}, {}}, 2},
+        /* 5 */ {{{EnemyType::Drone,    EnemySubtype::Advanced},
+                  {EnemyType::Torpedo,  EnemySubtype::Advanced},
+                  {EnemyType::Hunter,   EnemySubtype::Basic}},      3},
+        /* 6 */ {{{EnemyType::Drone,    EnemySubtype::Advanced},
+                  {EnemyType::Torpedo,  EnemySubtype::Advanced},
+                  {EnemyType::Hunter,   EnemySubtype::Advanced}},   3},
+        /* 7 */ {{{EnemyType::Hunter,   EnemySubtype::Advanced}, {}, {}}, 1},
+        /* 8 */ {{{EnemyType::Hunter,   EnemySubtype::Advanced},
+                  {EnemyType::Assassin, EnemySubtype::Advanced}, {}}, 2},
+        /* 9 */ {{{EnemyType::Assassin, EnemySubtype::Advanced}, {}, {}}, 1},
+    };
+    static constexpr game::EnemySpawnChoice kDefault{
+        .type = EnemyType::Drone, .subtype = EnemySubtype::Advanced};
+
+    static constexpr int kLevelCount = static_cast<int>(sizeof(kByLevel) / sizeof(kByLevel[0]));
+    if (level < 1 || level > kLevelCount) {
+        return kDefault;
     }
-    const int pickedIndex = random.NextInt(0, static_cast<int>(candidates.size()) - 1);
-    return candidates[static_cast<std::size_t>(pickedIndex)];
+    const LevelChoices& entry = kByLevel[static_cast<std::size_t>(level - 1)];
+    if (entry.count <= 0) {
+        return kDefault;
+    }
+    const int pickedIndex = random.NextInt(0, entry.count - 1);
+    return entry.choices[static_cast<std::size_t>(pickedIndex)];
 }
 
 struct SpawnRayChoice {

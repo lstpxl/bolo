@@ -4,6 +4,7 @@
 #include <vector>
 #include "core/Random.h"
 #include "core/Types.h"
+#include "game/GameplayView.h"
 #include "game/model/EntityTypes.h"
 #include "game/model/WorldState.h"
 
@@ -39,3 +40,6 @@ float EnemySubtypeSpeedMultiplier(EnemyType type, EnemySubtype subtype);
 /// Decrements the origin base's active-enemy count and clears `enemy.originBaseIndex`.
 /// Safe to call on enemies with no valid origin base (index is clamped/cleared).
 void DecrementOriginBaseAliveCount(WorldState& world, EnemyTank& enemy);
+
+/// Returns true if `point` falls within the player's current viewport rectangle.
+bool IsInPlayerViewport(const Vec2f& point, const GameState& state, const GameplayView& view);

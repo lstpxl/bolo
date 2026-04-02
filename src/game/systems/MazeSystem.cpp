@@ -598,8 +598,12 @@ bool PlacePlayerAtSafeSpawn(GameState& state, const GameplayView& view, Random& 
             GameplayConstants::kPlayerRespawnMaxBaseDistanceCells,
             true,
             false)) {
+        // Non-ideal placement: third fallback succeeded but safety constraints were relaxed.
+        // Return false to signal to the caller that the placement is sub-optimal.
+        bolt::log::Debug("[MAZE] PlacePlayerAtSafeSpawn: non-ideal placement (third fallback succeeded)");
         return false;
     }
+    bolt::log::Debug("[MAZE] PlacePlayerAtSafeSpawn: all fallbacks failed, using cell (0,0)");
     ApplyPlayerSpawnPosition(state.world, CellCenterPosition(state.world.maze, 0, 0));
     return false;
 }
