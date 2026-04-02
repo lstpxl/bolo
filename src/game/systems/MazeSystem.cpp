@@ -538,6 +538,18 @@ void InitializeMazeWorld(GameState& state, const GameplayView& view, Random& ran
     state.world.enemies.clear();
     state.world.projectiles.clear();
     state.world.nextEnemySpawnSessionId = 1;
+
+    // Pre-size the broadphase pair-visited scratch to the enemy cap so
+    // ForEachCandidatePair never needs to allocate during fixed-step updates.
+    {
+        const std::size_t cap = static_cast<std::size_t>(GameplayConstants::kMaxAliveEnemies);
+        const std::size_t pairCount = cap * cap;
+        EnemySystemScratch& scratch = state.world.enemySystemScratch;
+        if (scratch.pairVisitedMarks.size() < pairCount) {
+            scratch.pairVisitedMarks.assign(pairCount, 0U);
+        }
+        scratch.pairVisitedEpoch = 1U;
+    }
     state.world.deathExplosionBlastRemainingSeconds = 0.0F;
     state.world.playerTurnLostPending = false;
     state.world.levelCleared = false;

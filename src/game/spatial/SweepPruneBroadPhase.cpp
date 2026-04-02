@@ -1,7 +1,9 @@
 #include "game/spatial/SweepPruneBroadPhase.h"
 
 #include <algorithm>
+#include <cassert>
 #include <limits>
+#include "core/Log.h"
 
 namespace game::spatial {
 
@@ -141,7 +143,15 @@ void SweepPruneBroadPhase::ForEachCandidatePair(
         return;
     }
     const std::size_t pairCount = static_cast<std::size_t>(maxId_) * static_cast<std::size_t>(maxId_);
+    // Callers must pre-size pairVisitedScratch to at least kMaxAliveEnemies^2 before fixed-step
+    // play begins (see InitializeMazeWorld). Any growth here is unexpected and expensive.
+    assert(pairVisitedScratch.size() >= pairCount &&
+           "pairVisitedScratch under-sized; caller must pre-size to kMaxAliveEnemies^2");
     if (pairVisitedScratch.size() < pairCount) {
+        bolt::log::Warning(
+            "[SWEEP_PRUNE] pairVisitedScratch too small (%zu < %zu); growing in hot path. "
+            "Caller must pre-size to kMaxAliveEnemies^2 before gameplay begins.",
+            pairVisitedScratch.size(), pairCount);
         pairVisitedScratch.resize(pairCount, 0U);
     }
     std::uint32_t epoch = pairVisitedEpoch + 1U;

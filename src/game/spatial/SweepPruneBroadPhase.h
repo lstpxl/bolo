@@ -23,6 +23,19 @@ public:
 
     void BeginFrame(int maxId);
     void UpdateEntity(int id, const Vec2f& from, const Vec2f& to, float radius, bool active);
+
+    /// Invoke `fn(a, b)` once for every unique overlapping pair of active entities.
+    ///
+    /// **Caller contract — scratch buffer sizing:**
+    ///   `pairVisitedScratch` MUST be pre-sized to at least `kMaxAliveEnemies * kMaxAliveEnemies`
+    ///   elements before gameplay begins (e.g. in InitializeMazeWorld). Growing the buffer during
+    ///   fixed-step updates is an O(n²) allocation and will trigger a warning + assert.
+    ///
+    /// **Caller contract — epoch reuse:**
+    ///   `pairVisitedEpoch` must be initialised to 1 and passed back unmodified between calls so
+    ///   the epoch-based deduplication correctly identifies which entries belong to the current
+    ///   traversal. Resetting the scratch buffer (e.g. after a level transition) requires setting
+    ///   `pairVisitedEpoch = 1` and filling `pairVisitedScratch` with 0.
     void ForEachCandidatePair(
         std::function<void(int a, int b)> fn,
         std::vector<std::uint32_t>& pairVisitedScratch,
