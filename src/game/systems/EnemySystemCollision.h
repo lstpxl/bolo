@@ -17,5 +17,7 @@ void ResolveEnemyCollisionsSinglePass(
     game::spatial::SweepPruneBroadPhase& broadPhase,
     const std::vector<std::uint8_t>& includeMask,
     const std::vector<std::uint8_t>& reenteredFullTierMask,
+    std::vector<std::uint32_t>& pairVisitedScratch,
+    std::uint32_t& pairVisitedEpoch,
     EnterUncoupleCallback enterUncoupleMode,
     ShouldEnterSeparationCallback shouldEnterSeparationUncouple);

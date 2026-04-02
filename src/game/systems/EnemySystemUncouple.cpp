@@ -87,7 +87,10 @@ float SelectUncoupleHeading(
     const std::vector<EnemyTank>& enemies,
     int selfIndex,
     float fallbackHeading,
-    Random& random) {
+    Random& random,
+    std::vector<int>* candidateIndicesScratch,
+    std::vector<std::uint32_t>* raySeenMarksScratch,
+    std::uint32_t* raySeenEpochScratch) {
     const EnemyTank& self = enemies[static_cast<std::size_t>(selfIndex)];
     auto chooseQuantizedHeadingWithClearance = [&](float desiredHeading) {
         const float quantizedDesired = QuantizeToEightDirections(desiredHeading);
@@ -99,7 +102,11 @@ float SelectUncoupleHeading(
             quantizedDesired,
             kUncouplePriorityClearProbeUnits,
             GameplayConstants::kWallClearanceForAvoidance,
-            1.0F);
+            1.0F,
+            nullptr,
+            candidateIndicesScratch,
+            raySeenMarksScratch,
+            raySeenEpochScratch);
         if (quantizedClear > kUncoupleBlockedHeadingThresholdUnits) {
             return quantizedDesired;
         }
@@ -116,7 +123,11 @@ float SelectUncoupleHeading(
                 candidateHeading,
                 kUncouplePriorityClearProbeUnits,
                 GameplayConstants::kWallClearanceForAvoidance,
-                1.0F);
+                1.0F,
+                nullptr,
+                candidateIndicesScratch,
+                raySeenMarksScratch,
+                raySeenEpochScratch);
             const float alignDesired = std::cos(SignedAngleDelta(candidateHeading, desiredHeading));
             const float alignFallback = std::cos(SignedAngleDelta(candidateHeading, fallbackHeading));
             const float score = clear * 2.0F + alignDesired * 0.6F + alignFallback * 0.25F;
@@ -335,7 +346,10 @@ float ComputeUncoupleEscapeScore(
     const game::navigation::CellCoordCache& cellCache,
     const game::navigation::PlayerFlowField& flowField,
     const std::vector<EnemyTank>& enemies,
-    int selfIndex) {
+    int selfIndex,
+    std::vector<int>* candidateIndicesScratch,
+    std::vector<std::uint32_t>* raySeenMarksScratch,
+    std::uint32_t* raySeenEpochScratch) {
     if (selfIndex < 0 || selfIndex >= static_cast<int>(enemies.size())) {
         return -1000.0F;
     }
@@ -360,7 +374,11 @@ float ComputeUncoupleEscapeScore(
         strategicHeading,
         kUncouplePriorityClearProbeUnits,
         GameplayConstants::kWallClearanceForAvoidance,
-        1.0F);
+        1.0F,
+        nullptr,
+        candidateIndicesScratch,
+        raySeenMarksScratch,
+        raySeenEpochScratch);
     const float alignment = std::cos(SignedAngleDelta(self.headingRadians, strategicHeading));
 
     const float crowdingRangeSq = kUncouplePriorityCrowdingRangeUnits * kUncouplePriorityCrowdingRangeUnits;

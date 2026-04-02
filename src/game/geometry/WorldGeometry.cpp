@@ -425,16 +425,30 @@ float FreeDistanceAhead(const WorldState& world, const Vec2f& from, float headin
 float FreeDistanceAheadWithEnemies(const WorldState& world,
     const std::vector<EnemyTank>& enemies, int selfIndex, const Vec2f& from,
     float headingRadians, float maxDistance, float clearanceUnits,
-    float planningClearanceScale, const game::spatial::EnemyCellOccupancy* rayQueryOccupancy) {
+    float planningClearanceScale, const game::spatial::EnemyCellOccupancy* rayQueryOccupancy,
+    std::vector<int>* candidateIndicesScratch, std::vector<std::uint32_t>* raySeenMarksScratch,
+    std::uint32_t* raySeenEpochScratch) {
     const float staticObstacleDistance =
         FreeDistanceAhead(world, from, headingRadians, maxDistance, clearanceUnits, planningClearanceScale);
     const float probeDistance = std::min(maxDistance, staticObstacleDistance);
     const float separationRadius = GameplayConstants::kEnemyPreferredSeparationUnits;
 
-    std::vector<int> candidateIndices;
+    std::vector<int> localCandidateIndices{};
+    std::vector<int>& candidateIndices = candidateIndicesScratch != nullptr
+        ? *candidateIndicesScratch
+        : localCandidateIndices;
+    candidateIndices.clear();
     if (rayQueryOccupancy != nullptr) {
         const Vec2f dir = core::angle::DirectionFromHeading(headingRadians);
-        rayQueryOccupancy->GetEnemiesAlongRay(enemies, selfIndex, from, dir, probeDistance, candidateIndices);
+        rayQueryOccupancy->GetEnemiesAlongRay(
+            enemies,
+            selfIndex,
+            from,
+            dir,
+            probeDistance,
+            candidateIndices,
+            raySeenMarksScratch,
+            raySeenEpochScratch);
     } else {
         const float filterRadius = probeDistance + separationRadius;
         const float filterRadiusSq = filterRadius * filterRadius;

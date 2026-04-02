@@ -133,11 +133,23 @@ bool SweepPruneBroadPhase::Overlaps(float minA, float maxA, float minB, float ma
     return !(maxA < minB || maxB < minA);
 }
 
-void SweepPruneBroadPhase::ForEachCandidatePair(std::function<void(int a, int b)> fn) {
+void SweepPruneBroadPhase::ForEachCandidatePair(
+    std::function<void(int a, int b)> fn,
+    std::vector<std::uint32_t>& pairVisitedScratch,
+    std::uint32_t& pairVisitedEpoch) {
     if (maxId_ <= 1) {
         return;
     }
-    std::vector<bool> pairVisited(static_cast<std::size_t>(maxId_ * maxId_), false);
+    const std::size_t pairCount = static_cast<std::size_t>(maxId_) * static_cast<std::size_t>(maxId_);
+    if (pairVisitedScratch.size() < pairCount) {
+        pairVisitedScratch.resize(pairCount, 0U);
+    }
+    std::uint32_t epoch = pairVisitedEpoch + 1U;
+    if (epoch == 0U) {
+        std::fill(pairVisitedScratch.begin(), pairVisitedScratch.end(), 0U);
+        epoch = 1U;
+    }
+    pairVisitedEpoch = epoch;
     const auto& items = sortedByMinX_.items;
     for (int i = 0; i < static_cast<int>(items.size()); ++i) {
         const int idA = items[static_cast<std::size_t>(i)].id;
@@ -170,10 +182,10 @@ void SweepPruneBroadPhase::ForEachCandidatePair(std::function<void(int a, int b)
                 continue;
             }
             const std::size_t key = static_cast<std::size_t>(lo * maxId_ + hi);
-            if (pairVisited[key]) {
+            if (pairVisitedScratch[key] == epoch) {
                 continue;
             }
-            pairVisited[key] = true;
+            pairVisitedScratch[key] = epoch;
             frameStats_.candidatePairs += 1;
             fn(lo, hi);
         }

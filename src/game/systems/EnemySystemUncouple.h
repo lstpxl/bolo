@@ -22,7 +22,10 @@ float SelectUncoupleHeading(
     const std::vector<EnemyTank>& enemies,
     int selfIndex,
     float fallbackHeading,
-    Random& random);
+    Random& random,
+    std::vector<int>* candidateIndicesScratch = nullptr,
+    std::vector<std::uint32_t>* raySeenMarksScratch = nullptr,
+    std::uint32_t* raySeenEpochScratch = nullptr);
 
 void EnterUncoupleMode(
     std::vector<EnemyTank>& enemies,
@@ -38,4 +41,7 @@ float ComputeUncoupleEscapeScore(
     const game::navigation::CellCoordCache& cellCache,
     const game::navigation::PlayerFlowField& flowField,
     const std::vector<EnemyTank>& enemies,
-    int selfIndex);
+    int selfIndex,
+    std::vector<int>* candidateIndicesScratch = nullptr,
+    std::vector<std::uint32_t>* raySeenMarksScratch = nullptr,
+    std::uint32_t* raySeenEpochScratch = nullptr);

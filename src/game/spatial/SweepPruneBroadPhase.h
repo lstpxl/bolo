@@ -23,7 +23,10 @@ public:
 
     void BeginFrame(int maxId);
     void UpdateEntity(int id, const Vec2f& from, const Vec2f& to, float radius, bool active);
-    void ForEachCandidatePair(std::function<void(int a, int b)> fn);
+    void ForEachCandidatePair(
+        std::function<void(int a, int b)> fn,
+        std::vector<std::uint32_t>& pairVisitedScratch,
+        std::uint32_t& pairVisitedEpoch);
 
     bool GetNeighborsX(int id, int& previousId, int& nextId) const;
     bool GetNeighborsY(int id, int& previousId, int& nextId) const;

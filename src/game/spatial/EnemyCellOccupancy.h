@@ -49,7 +49,9 @@ public:
     /// Ray from `from` along `dir` for up to `maxDist`; dir should be normalized.
     void GetEnemiesAlongRay(const std::vector<EnemyTank>& enemies,
         int selfIndex, const Vec2f& from, const Vec2f& dir, float maxDist,
-        std::vector<int>& out) const;
+        std::vector<int>& out,
+        std::vector<std::uint32_t>* seenMarksScratch = nullptr,
+        std::uint32_t* seenEpochScratch = nullptr) const;
 
     bool IsConfigured() const { return widthCells_ > 0 && heightCells_ > 0 && maxEnemies_ > 0; }
 

@@ -35,7 +35,10 @@ float SelectTorpedoMoveHeading(
     Random& random,
     bool& startRetreat,
     bool& decidedStraight,
-    const game::spatial::EnemyCellOccupancy* rayQueryOccupancy);
+    const game::spatial::EnemyCellOccupancy* rayQueryOccupancy,
+    std::vector<int>* candidateIndicesScratch = nullptr,
+    std::vector<std::uint32_t>* raySeenMarksScratch = nullptr,
+    std::uint32_t* raySeenEpochScratch = nullptr);
 
 void EnterTorpedoTargetingMode(EnemyTank& enemy);
 void EnterTorpedoRotateMode(EnemyTank& enemy);

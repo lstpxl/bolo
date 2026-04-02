@@ -122,14 +122,37 @@ int EnemyCellOccupancy::CountInCell(int cellX, int cellY) const {
 
 void EnemyCellOccupancy::GetEnemiesAlongRay(const std::vector<EnemyTank>& enemies,
     int selfIndex, const Vec2f& from, const Vec2f& dir, float maxDist,
-    std::vector<int>& out) const {
+    std::vector<int>& out, std::vector<std::uint32_t>* seenMarksScratch,
+    std::uint32_t* seenEpochScratch) const {
+    out.clear();
     if (maxDist <= 0.0F || widthCells_ <= 0 || heightCells_ <= 0 || enemies.empty()) {
         return;
     }
 
-    std::vector<bool> seen(enemies.size(), false);
+    std::vector<std::uint8_t> localSeen{};
+    std::vector<std::uint32_t>* seenMarks = seenMarksScratch;
+    std::uint32_t epoch = 1U;
+    if (seenMarks != nullptr && seenEpochScratch != nullptr) {
+        if (seenMarks->size() < enemies.size()) {
+            seenMarks->resize(enemies.size(), 0U);
+        }
+        epoch = *seenEpochScratch + 1U;
+        if (epoch == 0U) {
+            std::fill(seenMarks->begin(), seenMarks->end(), 0U);
+            epoch = 1U;
+        }
+        *seenEpochScratch = epoch;
+    } else {
+        seenMarks = nullptr;
+        localSeen.assign(enemies.size(), 0U);
+    }
     if (selfIndex >= 0 && selfIndex < static_cast<int>(enemies.size())) {
-        seen[static_cast<std::size_t>(selfIndex)] = true;
+        const std::size_t self = static_cast<std::size_t>(selfIndex);
+        if (seenMarks != nullptr) {
+            (*seenMarks)[self] = epoch;
+        } else {
+            localSeen[self] = 1U;
+        }
     }
 
     const float step = static_cast<float>(cellSizeUnits_) * 0.5F;
@@ -159,13 +182,22 @@ void EnemyCellOccupancy::GetEnemiesAlongRay(const std::vector<EnemyTank>& enemie
                 if (i < 0 || i >= static_cast<int>(enemies.size())) {
                     continue;
                 }
-                if (seen[static_cast<std::size_t>(i)]) {
+                const std::size_t idx = static_cast<std::size_t>(i);
+                if (seenMarks != nullptr) {
+                    if ((*seenMarks)[idx] == epoch) {
+                        continue;
+                    }
+                } else if (localSeen[idx] != 0U) {
                     continue;
                 }
                 if (!enemies[static_cast<std::size_t>(i)].alive) {
                     continue;
                 }
-                seen[static_cast<std::size_t>(i)] = true;
+                if (seenMarks != nullptr) {
+                    (*seenMarks)[idx] = epoch;
+                } else {
+                    localSeen[idx] = 1U;
+                }
                 out.push_back(i);
             }
         });

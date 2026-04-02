@@ -1,6 +1,6 @@
 #pragma once
 
-#include "game/GameState.h"
+#include "game/model/WorldState.h"
 #include <vector>
 
 namespace game::spatial {
@@ -35,7 +35,10 @@ float FreeDistanceAheadWithEnemies(const WorldState& world,
     const std::vector<EnemyTank>& enemies, int selfIndex, const Vec2f& from,
     float headingRadians, float maxDistance, float clearanceUnits,
     float planningClearanceScale = 1.0F,
-    const game::spatial::EnemyCellOccupancy* rayQueryOccupancy = nullptr);
+    const game::spatial::EnemyCellOccupancy* rayQueryOccupancy = nullptr,
+    std::vector<int>* candidateIndicesScratch = nullptr,
+    std::vector<std::uint32_t>* raySeenMarksScratch = nullptr,
+    std::uint32_t* raySeenEpochScratch = nullptr);
 
 /// Returns distance to nearest wall in any of 8 directions (for debug visualization).
 float DistanceToNearestWall(const WorldState& world, const Vec2f& point, float maxProbeDistance);

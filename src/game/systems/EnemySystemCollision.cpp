@@ -29,6 +29,8 @@ void ResolveEnemyCollisionsSinglePass(
     game::spatial::SweepPruneBroadPhase& broadPhase,
     const std::vector<std::uint8_t>& includeMask,
     const std::vector<std::uint8_t>& reenteredFullTierMask,
+    std::vector<std::uint32_t>& pairVisitedScratch,
+    std::uint32_t& pairVisitedEpoch,
     EnterUncoupleCallback enterUncoupleMode,
     ShouldEnterSeparationCallback shouldEnterSeparationUncouple) {
     (void)reenteredFullTierMask;
@@ -84,60 +86,63 @@ void ResolveEnemyCollisionsSinglePass(
     }
     {
         profiling::ScopedProfile pairTraverseScope(profiling::Scope::EnemyFrontalPairTraverse, true);
-        broadPhase.ForEachCandidatePair([&](int i, int j) {
-            EnemyTank& a = world.enemies[static_cast<std::size_t>(i)];
-            EnemyTank& b = world.enemies[static_cast<std::size_t>(j)];
-            if (!a.alive || !b.alive) {
-                return;
-            }
-
-            const bool inBase =
-                game::geometry::IsPointInUndestroyedBase(world, a.position, GameplayConstants::kWallClearanceForAvoidance) ||
-                game::geometry::IsPointInUndestroyedBase(world, b.position, GameplayConstants::kWallClearanceForAvoidance);
-
-            frameStats.frontalPairsVisited += 1;
-            gEnemyRuntimeWindowStats.frontalPairsByType[PairTypeMatrixIndex(a.type, b.type)] += 1;
-            if (inBase) {
-                gEnemyRuntimeWindowStats.frontalPairsBaseSkipped += 1;
-            } else {
-                profiling::ScopedProfile frontalPairScope(profiling::Scope::EnemyFrontalPairNarrowphase, true);
-                frameStats.frontalPairsDistanceChecks += 1;
-                const float centerDistSq = DistanceSq(a.position, b.position);
-                if (centerDistSq <= killDistSq) {
-                    enterUncoupleMode(world.enemies, j, i, kReasonFrontalCollision);
-                    enterUncoupleMode(world.enemies, i, j, kReasonFrontalCollision);
+        broadPhase.ForEachCandidatePair(
+            [&](int i, int j) {
+                EnemyTank& a = world.enemies[static_cast<std::size_t>(i)];
+                EnemyTank& b = world.enemies[static_cast<std::size_t>(j)];
+                if (!a.alive || !b.alive) {
+                    return;
                 }
-            }
 
-            if (!a.alive || !b.alive) {
-                return;
-            }
+                const bool inBase =
+                    game::geometry::IsPointInUndestroyedBase(world, a.position, GameplayConstants::kWallClearanceForAvoidance) ||
+                    game::geometry::IsPointInUndestroyedBase(world, b.position, GameplayConstants::kWallClearanceForAvoidance);
 
-            frameStats.separationPairsVisited += 1;
-            gEnemyRuntimeWindowStats.separationPairsByType[PairTypeMatrixIndex(a.type, b.type)] += 1;
-            if (inBase) {
-                gEnemyRuntimeWindowStats.separationPairsBaseSkipped += 1;
-                return;
-            }
+                frameStats.frontalPairsVisited += 1;
+                gEnemyRuntimeWindowStats.frontalPairsByType[PairTypeMatrixIndex(a.type, b.type)] += 1;
+                if (inBase) {
+                    gEnemyRuntimeWindowStats.frontalPairsBaseSkipped += 1;
+                } else {
+                    profiling::ScopedProfile frontalPairScope(profiling::Scope::EnemyFrontalPairNarrowphase, true);
+                    frameStats.frontalPairsDistanceChecks += 1;
+                    const float centerDistSq = DistanceSq(a.position, b.position);
+                    if (centerDistSq <= killDistSq) {
+                        enterUncoupleMode(world.enemies, j, i, kReasonFrontalCollision);
+                        enterUncoupleMode(world.enemies, i, j, kReasonFrontalCollision);
+                    }
+                }
 
-            profiling::ScopedProfile separationPairScope(profiling::Scope::EnemySeparationPairResolve, true);
-            const float distSq = DistanceSq(a.position, b.position);
-            // Close-overlap pairs are already handled in the frontal branch above.
-            // Avoid re-entering uncouple again in separation for the same pair/frame.
-            if (distSq <= killDistSq) {
-                return;
-            }
-            if (distSq >= separationDistSq) {
-                return;
-            }
-            if (!shouldEnterSeparationUncouple(a, b, distSq)) {
-                return;
-            }
+                if (!a.alive || !b.alive) {
+                    return;
+                }
 
-            frameStats.separationPairsResolved += 1;
-            enterUncoupleMode(world.enemies, j, i, kReasonSeparationProximity);
-            enterUncoupleMode(world.enemies, i, j, kReasonSeparationProximity);
-        });
+                frameStats.separationPairsVisited += 1;
+                gEnemyRuntimeWindowStats.separationPairsByType[PairTypeMatrixIndex(a.type, b.type)] += 1;
+                if (inBase) {
+                    gEnemyRuntimeWindowStats.separationPairsBaseSkipped += 1;
+                    return;
+                }
+
+                profiling::ScopedProfile separationPairScope(profiling::Scope::EnemySeparationPairResolve, true);
+                const float distSq = DistanceSq(a.position, b.position);
+                // Close-overlap pairs are already handled in the frontal branch above.
+                // Avoid re-entering uncouple again in separation for the same pair/frame.
+                if (distSq <= killDistSq) {
+                    return;
+                }
+                if (distSq >= separationDistSq) {
+                    return;
+                }
+                if (!shouldEnterSeparationUncouple(a, b, distSq)) {
+                    return;
+                }
+
+                frameStats.separationPairsResolved += 1;
+                enterUncoupleMode(world.enemies, j, i, kReasonSeparationProximity);
+                enterUncoupleMode(world.enemies, i, j, kReasonSeparationProximity);
+            },
+            pairVisitedScratch,
+            pairVisitedEpoch);
     }
     const game::spatial::SweepPruneBroadPhase::FrameStats& sapStats = broadPhase.GetFrameStats();
     gEnemyRuntimeWindowStats.sapUpdateCalls += sapStats.updateCalls;

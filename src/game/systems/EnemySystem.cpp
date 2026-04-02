@@ -475,7 +475,9 @@ void UpdateEnemySystem(
     profiling::ScopedProfile scope(profiling::Scope::EnemyUpdate, true);
     gEnemyRuntimeStats = EnemyRuntimeStats{};
     const bool playerInvisible = state.menuSettings.invisibility;
-    std::vector<Vec2f> frameStartPositions{};
+    EnemySystemScratch& enemyScratch = state.world.enemySystemScratch;
+    std::vector<Vec2f>& frameStartPositions = enemyScratch.frameStartPositions;
+    frameStartPositions.clear();
     frameStartPositions.reserve(state.world.enemies.size());
     for (const EnemyTank& enemy : state.world.enemies) {
         frameStartPositions.push_back(enemy.position);
@@ -527,12 +529,21 @@ void UpdateEnemySystem(
         }
     }
 
-    std::vector<std::uint8_t> reenteredFullTierMask(state.world.enemies.size(), 0U);
-    std::vector<float> uncoupleEscapeScores(state.world.enemies.size(), -1000.0F);
+    std::vector<std::uint8_t>& reenteredFullTierMask = enemyScratch.reenteredFullTierMask;
+    reenteredFullTierMask.assign(state.world.enemies.size(), 0U);
+    std::vector<float>& uncoupleEscapeScores = enemyScratch.uncoupleEscapeScores;
+    uncoupleEscapeScores.assign(state.world.enemies.size(), -1000.0F);
     for (int enemyIndex = 0; enemyIndex < static_cast<int>(state.world.enemies.size());
         ++enemyIndex) {
         uncoupleEscapeScores[static_cast<std::size_t>(enemyIndex)] = ComputeUncoupleEscapeScore(
-            state.world, cellCache, playerFlowField, state.world.enemies, enemyIndex);
+            state.world,
+            cellCache,
+            playerFlowField,
+            state.world.enemies,
+            enemyIndex,
+            &enemyScratch.candidateIndices,
+            &enemyScratch.raySeenMarks,
+            &enemyScratch.raySeenEpoch);
     }
 
     for (int enemyIndex = 0; enemyIndex < static_cast<int>(state.world.enemies.size());
@@ -661,8 +672,14 @@ void UpdateEnemySystem(
                         }
                     }
                     movementHeading = SelectUncoupleHeading(
-                        state.world, state.world.enemies, enemyIndex, uncoupleFallbackHeading,
-                        random);
+                        state.world,
+                        state.world.enemies,
+                        enemyIndex,
+                        uncoupleFallbackHeading,
+                        random,
+                        &enemyScratch.candidateIndices,
+                        &enemyScratch.raySeenMarks,
+                        &enemyScratch.raySeenEpoch);
                     enemy.desiredHeadingRadians = movementHeading;
                     handledByUncoupleMovement = true;
                 } else {
@@ -792,7 +809,11 @@ void UpdateEnemySystem(
                         state.world, state.world.enemies, enemyIndex, enemy.position,
                         enemy.headingRadians, kTorpedoNearCollisionCheckDistanceUnits,
                         GameplayConstants::kWallClearanceForAvoidance,
-                        kEnemyPlanningClearanceScale, &rayQueryOccupancy);
+                        kEnemyPlanningClearanceScale,
+                        &rayQueryOccupancy,
+                        &enemyScratch.candidateIndices,
+                        &enemyScratch.raySeenMarks,
+                        &enemyScratch.raySeenEpoch);
                     if (enemy.torpedoRetreatMovedUnits >= kTorpedoRetreatExitClearanceUnits &&
                         forwardClear >= kTorpedoRetreatExitClearanceUnits) {
                         targetSpeed = 0.0F;
@@ -820,7 +841,11 @@ void UpdateEnemySystem(
                             state.world, state.world.enemies, enemyIndex, enemy.position,
                             straightHeading, kTorpedoNearCollisionCheckDistanceUnits,
                             GameplayConstants::kWallClearanceForAvoidance,
-                            kEnemyPlanningClearanceScale, &rayQueryOccupancy);
+                            kEnemyPlanningClearanceScale,
+                            &rayQueryOccupancy,
+                            &enemyScratch.candidateIndices,
+                            &enemyScratch.raySeenMarks,
+                            &enemyScratch.raySeenEpoch);
                         if (nearClear < kTorpedoImmediateObstacleDistanceUnits) {
                             InvalidateTorpedoFlyPath(enemy);
                             enemy.aiMode = EnemyAiMode::Retreat;
@@ -846,7 +871,12 @@ void UpdateEnemySystem(
                             bool decidedStraight = true;
                             movementHeading = SelectTorpedoMoveHeading(
                                 state.world, state.world.enemies, enemyIndex, enemy, random,
-                                startRetreat, decidedStraight, &rayQueryOccupancy);
+                                startRetreat,
+                                decidedStraight,
+                                &rayQueryOccupancy,
+                                &enemyScratch.candidateIndices,
+                                &enemyScratch.raySeenMarks,
+                                &enemyScratch.raySeenEpoch);
                             if (startRetreat) {
                                 InvalidateTorpedoFlyPath(enemy);
                                 enemy.aiMode = EnemyAiMode::Retreat;
@@ -1439,7 +1469,8 @@ void UpdateEnemySystem(
         occupancy.SetCell(enemyIndex, fullCell.x, fullCell.y);
     }
 
-    std::vector<std::uint8_t> fullTierMask(state.world.enemies.size(), 0U);
+    std::vector<std::uint8_t>& fullTierMask = enemyScratch.fullTierMask;
+    fullTierMask.assign(state.world.enemies.size(), 0U);
     for (std::size_t i = 0; i < state.world.enemies.size(); ++i) {
         const EnemyTank& enemy = state.world.enemies[i];
         if (!enemy.alive) {
@@ -1468,7 +1499,11 @@ void UpdateEnemySystem(
         game::spatial::SweepPruneBroadPhase& broadPhase = state.world.collisionCache.sweepPrune;
         ResolveEnemyCollisionsSinglePass(
             state.world, gEnemyRuntimeStats, frameStartPositions, broadPhase, fullTierMask,
-            reenteredFullTierMask, EnterUncoupleByReasonCode, ShouldEnterSeparationUncouple);
+            reenteredFullTierMask,
+            enemyScratch.pairVisitedMarks,
+            enemyScratch.pairVisitedEpoch,
+            EnterUncoupleByReasonCode,
+            ShouldEnterSeparationUncouple);
         gEnemyRuntimeWindowStats.collisionPassRuns += 1;
     } else {
         gEnemyRuntimeWindowStats.collisionPassSkips += 1;

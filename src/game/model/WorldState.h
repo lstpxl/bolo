@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstdint>
+#include <vector>
 #include "core/Types.h"
 #include "game/model/EntityTypes.h"
 #include "game/model/GameplayEvents.h"
@@ -25,6 +26,18 @@ struct NavigationRuntimeCache {
 
 struct CollisionRuntimeCache {
     game::spatial::SweepPruneBroadPhase sweepPrune{};
+};
+
+struct EnemySystemScratch {
+    std::vector<Vec2f> frameStartPositions{};
+    std::vector<std::uint8_t> reenteredFullTierMask{};
+    std::vector<float> uncoupleEscapeScores{};
+    std::vector<std::uint8_t> fullTierMask{};
+    std::vector<int> candidateIndices{};
+    std::vector<std::uint32_t> raySeenMarks{};
+    std::uint32_t raySeenEpoch = 1U;
+    std::vector<std::uint32_t> pairVisitedMarks{};
+    std::uint32_t pairVisitedEpoch = 1U;
 };
 
 struct WorldState {
@@ -63,6 +76,7 @@ struct WorldState {
     float levelClearMessageSeconds = 0.0F;
     NavigationRuntimeCache navigationCache{};
     CollisionRuntimeCache collisionCache{};
+    EnemySystemScratch enemySystemScratch{};
     bool panModeActive = false;
     Vec2f panTarget{.x = 0.0F, .y = 0.0F};
     GameplayEventQueue gameplayEvents{};

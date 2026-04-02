@@ -365,7 +365,10 @@ float SelectTorpedoMoveHeading(
     Random& random,
     bool& startRetreat,
     bool& decidedStraight,
-    const game::spatial::EnemyCellOccupancy* rayQueryOccupancy) {
+    const game::spatial::EnemyCellOccupancy* rayQueryOccupancy,
+    std::vector<int>* candidateIndicesScratch,
+    std::vector<std::uint32_t>* raySeenMarksScratch,
+    std::uint32_t* raySeenEpochScratch) {
     profiling::ScopedProfile selectScope(profiling::Scope::EnemyTorpedoSelectHeading, true);
     gEnemyRuntimeWindowStats.torpedoHeadingEvalCalls += 1;
     startRetreat = false;
@@ -380,7 +383,10 @@ float SelectTorpedoMoveHeading(
         kSegmentBuildProbeMaxUnits,
         GameplayConstants::kWallClearanceForAvoidance,
         kEnemyPlanningClearanceScale,
-        rayQueryOccupancy);
+        rayQueryOccupancy,
+        candidateIndicesScratch,
+        raySeenMarksScratch,
+        raySeenEpochScratch);
     const float leftHeading = core::angle::QuantizeToEightDirections(straightHeading - kEightDirectionStep);
     const float rightHeading = core::angle::QuantizeToEightDirections(straightHeading + kEightDirectionStep);
     const float leftClear = game::geometry::FreeDistanceAheadWithEnemies(
@@ -392,7 +398,10 @@ float SelectTorpedoMoveHeading(
         kSegmentBuildProbeMaxUnits,
         GameplayConstants::kWallClearanceForAvoidance,
         kEnemyPlanningClearanceScale,
-        rayQueryOccupancy);
+        rayQueryOccupancy,
+        candidateIndicesScratch,
+        raySeenMarksScratch,
+        raySeenEpochScratch);
     const float rightClear = game::geometry::FreeDistanceAheadWithEnemies(
         world,
         enemies,
@@ -402,7 +411,10 @@ float SelectTorpedoMoveHeading(
         kSegmentBuildProbeMaxUnits,
         GameplayConstants::kWallClearanceForAvoidance,
         kEnemyPlanningClearanceScale,
-        rayQueryOccupancy);
+        rayQueryOccupancy,
+        candidateIndicesScratch,
+        raySeenMarksScratch,
+        raySeenEpochScratch);
 
     if (straightClearWithEnemies < kTorpedoImmediateObstacleDistanceUnits &&
         leftClear < kTorpedoImmediateObstacleDistanceUnits &&
