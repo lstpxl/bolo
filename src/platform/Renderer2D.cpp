@@ -717,19 +717,6 @@ bool Renderer2D::LoadResources() {
         baseExplosionSheet_,
         baseExplosionSheetLoaded_);
 
-    UnloadImage(playerSheet);
-    UnloadImage(playerFrame7);
-    UnloadImage(playerFrame6);
-    UnloadImage(playerFrame5);
-    UnloadImage(playerFrame4);
-    UnloadImage(playerFrame3);
-    UnloadImage(playerFrame2);
-    UnloadImage(playerFrame1);
-    UnloadImage(playerFrame0);
-    UnloadImage(playerBarrel45);
-    UnloadImage(playerBarrelUp);
-    UnloadImage(playerBody45);
-    UnloadImage(playerBodyUp);
     UnloadImage(sourceSheet);
 
     return playerTankSheetLoaded_;
