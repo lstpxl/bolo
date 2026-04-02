@@ -394,21 +394,6 @@ void Game::RunPlayingWorldTick(
         }
     }
 
-    // Spawn explosions for enemies that died this frame.
-    for (EnemyTank& enemy : state_.world.enemies) {
-        if (enemy.alive) {
-            continue;
-        }
-        for (EnemyExplosion& slot : state_.world.enemyExplosions) {
-            if (!slot.active) {
-                slot.position = enemy.position;
-                slot.elapsedSeconds = 0.0F;
-                slot.active = true;
-                break;
-            }
-        }
-    }
-
     // Spawn explosions for projectiles that hit walls (same sprite/radius as enemy death).
     for (std::size_t ei = 0; ei < state_.world.gameplayEvents.count; ++ei) {
         if (state_.world.gameplayEvents.events[ei].type != GameplayEventType::ProjectileHitWall) {
@@ -476,6 +461,21 @@ void Game::RunPlayingWorldTick(
         state_.world.playerTurnLostPending &&
         state_.world.deathModeRemainingSeconds <= 0.0F) {
         beginDeathMode();
+    }
+
+    // Spawn explosions for all enemies that died this frame (including blast chain-kills above).
+    for (EnemyTank& enemy : state_.world.enemies) {
+        if (enemy.alive) {
+            continue;
+        }
+        for (EnemyExplosion& slot : state_.world.enemyExplosions) {
+            if (!slot.active) {
+                slot.position = enemy.position;
+                slot.elapsedSeconds = 0.0F;
+                slot.active = true;
+                break;
+            }
+        }
     }
 
     // Tick active explosions.
