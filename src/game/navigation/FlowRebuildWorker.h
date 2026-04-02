@@ -13,9 +13,9 @@ struct FlowRebuildWorker {
     bool inFlight = false;
     int buildGeneration = 0;
 
-    // Stable copies of maze and cell-coord data set once after InitializeMazeWorld.
-    // The maze never changes mid-game, so ScheduleRebuild reads these instead of
-    // copying world.maze / navigationCache.cellCoords on every call.
+    // Maze copy set after InitializeMazeWorld (maze never changes mid-game).
+    // Cell coords are copied again in ScheduleRebuild so the async job sees the current
+    // player cell / hash (the init-time snapshot never gets UpdatePlayerCell).
     MazeState stableMaze{};
     CellCoordCache stableCellCoords{};
 

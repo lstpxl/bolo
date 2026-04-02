@@ -91,7 +91,11 @@ void PlayerFlowField::Rebuild(const MazeState& maze, const CellCoordCache& cellC
         hasBuild_ = false;
         return;
     }
-    const int goalHash = cellCache.PlayerCellHash();
+    const int goalHash = cellCache.CellHash(playerCell.x, playerCell.y);
+    if (goalHash < 0 || goalHash >= totalCells) {
+        hasBuild_ = false;
+        return;
+    }
     std::deque<int> queue{};
     queue.push_back(goalHash);
     distance_[static_cast<std::size_t>(goalHash)] = 0;
@@ -227,6 +231,10 @@ void ScheduleRebuild(game::navigation::FlowRebuildWorker& flowWorker,
         bolt::log::Debug("[FLOW] ScheduleRebuild: skip (inFlight)");
         return;
     }
+    // Async rebuild reads stableCellCoords; copy live coords so player cell / hash match the
+    // frame that scheduled the build (stable snapshot is only maze-sized at init and never
+    // receives UpdatePlayerCell, so PlayerCellHash() would stay -1 and crash on distance_[hash]).
+    flowWorker.stableCellCoords = navigationCache.cellCoords;
     flowWorker.buildGeneration = navigationCache.flowFieldInvalidationGeneration;
     flowWorker.inFlight = true;
     std::vector<EnemyBase> basesCopy = world.enemyBases;

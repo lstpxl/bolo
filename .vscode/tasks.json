@@ -34,15 +34,15 @@
       "problemMatcher": []
     },
     {
-      "label": "BOLT: Fetch RG353V Profile",
+      "label": "BOLT: Fetch RG353V Logs",
       "type": "shell",
-      "command": "RG353V_DEVICE_IP=${input:rg353vDeviceIp} npm run fetch-profile:rg353v",
+      "command": "RG353V_DEVICE_IP=${input:rg353vDeviceIp} npm run fetch-logs:rg353v",
       "problemMatcher": []
     },
     {
-      "label": "BOLT: Remove RG353V Profile",
+      "label": "BOLT: Remove RG353V Logs",
       "type": "shell",
-      "command": "RG353V_DEVICE_IP=${input:rg353vDeviceIp} npm run remove-profile:rg353v",
+      "command": "RG353V_DEVICE_IP=${input:rg353vDeviceIp} npm run remove-logs:rg353v",
       "problemMatcher": []
     },
     {

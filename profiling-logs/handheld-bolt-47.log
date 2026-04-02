@@ -1,0 +1,949 @@
+[2026-04-02 20:23:51.725] [info] RAYLIB: Initializing raylib 5.6-dev
+[2026-04-02 20:23:51.725] [info] RAYLIB: Platform backend: DESKTOP (SDL)
+[2026-04-02 20:23:51.725] [info] RAYLIB: Supported raylib modules:
+[2026-04-02 20:23:51.725] [info] RAYLIB:     > rcore:..... loaded (mandatory)
+[2026-04-02 20:23:51.725] [info] RAYLIB:     > rlgl:...... loaded (mandatory)
+[2026-04-02 20:23:51.725] [info] RAYLIB:     > rshapes:... loaded (optional)
+[2026-04-02 20:23:51.725] [info] RAYLIB:     > rtextures:. loaded (optional)
+[2026-04-02 20:23:51.725] [info] RAYLIB:     > rtext:..... loaded (optional)
+[2026-04-02 20:23:51.725] [info] RAYLIB:     > rmodels:... loaded (optional)
+[2026-04-02 20:23:51.725] [info] RAYLIB:     > raudio:.... loaded (optional)
+[2026-04-02 20:23:51.949] [info] RAYLIB: DISPLAY: Device initialized successfully
+[2026-04-02 20:23:51.949] [info] RAYLIB:     > Display size: 640 x 480
+[2026-04-02 20:23:51.949] [info] RAYLIB:     > Screen size:  640 x 480
+[2026-04-02 20:23:51.949] [info] RAYLIB:     > Render size:  640 x 480
+[2026-04-02 20:23:51.949] [info] RAYLIB:     > Viewport offsets: 0, 0
+[2026-04-02 20:23:51.950] [info] RAYLIB: GLAD: OpenGL ES 2.0 loaded successfully
+[2026-04-02 20:23:51.950] [info] RAYLIB: GL: Supported extensions count: 99
+[2026-04-02 20:23:51.950] [info] RAYLIB: GL: OpenGL device information:
+[2026-04-02 20:23:51.950] [info] RAYLIB:     > Vendor:   ARM
+[2026-04-02 20:23:51.950] [info] RAYLIB:     > Renderer: Mali-G52
+[2026-04-02 20:23:51.951] [info] RAYLIB:     > Version:  OpenGL ES 3.2 v1.g13p0-01eac0.fdf91928d758c45c1787782175b35c6a
+[2026-04-02 20:23:51.951] [info] RAYLIB:     > GLSL:     OpenGL ES GLSL ES 3.20
+[2026-04-02 20:23:51.951] [info] RAYLIB: GL: VAO extension detected, VAO functions loaded successfully
+[2026-04-02 20:23:51.951] [info] RAYLIB: GL: NPOT textures extension detected, full NPOT textures supported
+[2026-04-02 20:23:51.951] [info] RAYLIB: GL: ETC1 compressed textures supported
+[2026-04-02 20:23:51.951] [info] RAYLIB: GL: ASTC compressed textures supported
+[2026-04-02 20:23:51.951] [info] RAYLIB: PLATFORM: DESKTOP (SDL2): Initialized successfully
+[2026-04-02 20:23:51.952] [info] RAYLIB: TEXTURE: [ID 1] Texture loaded successfully (1x1 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:23:51.952] [info] RAYLIB: TEXTURE: [ID 1] Default texture loaded successfully
+[2026-04-02 20:23:51.954] [info] RAYLIB: SHADER: [ID 1] Vertex shader compiled successfully
+[2026-04-02 20:23:51.955] [info] RAYLIB: SHADER: [ID 2] Fragment shader compiled successfully
+[2026-04-02 20:23:51.970] [info] RAYLIB: SHADER: [ID 3] Program shader loaded successfully
+[2026-04-02 20:23:51.970] [info] RAYLIB: SHADER: [ID 3] Default shader loaded successfully
+[2026-04-02 20:23:51.980] [info] RAYLIB: RLGL: Render batch vertex buffers loaded successfully in RAM (CPU)
+[2026-04-02 20:23:51.981] [info] RAYLIB: RLGL: Render batch vertex buffers loaded successfully in VRAM (GPU)
+[2026-04-02 20:23:51.983] [info] RAYLIB: RLGL: Default OpenGL state initialized successfully
+[2026-04-02 20:23:51.985] [info] RAYLIB: TEXTURE: [ID 2] Texture loaded successfully (128x128 | GRAY_ALPHA | 1 mipmaps)
+[2026-04-02 20:23:51.985] [info] RAYLIB: FONT: Default font loaded successfully (224 glyphs)
+[2026-04-02 20:23:51.986] [info] RAYLIB: SYSTEM: Working Directory: /roms2/ports/bolt
+[2026-04-02 20:23:51.986] [info] RAYLIB: TIMER: Target time per frame: 16.667 milliseconds
+[2026-04-02 20:23:51.987] [info] RAYLIB: FILEIO: [resources/textures/sprites.png] File loaded successfully
+[2026-04-02 20:23:51.988] [info] RAYLIB: IMAGE: Data loaded successfully (18x63 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:23:51.989] [info] RAYLIB: TEXTURE: [ID 3] Texture loaded successfully (72x9 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:23:51.993] [info] RAYLIB: TEXTURE: [ID 4] Texture loaded successfully (72x36 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:23:51.994] [info] RAYLIB: FILEIO: [resources/textures/explosion-1.png] File loaded successfully
+[2026-04-02 20:23:51.998] [info] RAYLIB: IMAGE: Data loaded successfully (192x32 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:23:51.999] [info] RAYLIB: TEXTURE: [ID 5] Texture loaded successfully (192x32 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:23:52.000] [info] RAYLIB: FILEIO: [resources/textures/explosion-2.png] File loaded successfully
+[2026-04-02 20:23:52.005] [info] RAYLIB: IMAGE: Data loaded successfully (192x32 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:23:52.006] [info] RAYLIB: TEXTURE: [ID 6] Texture loaded successfully (192x32 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:23:52.008] [info] RAYLIB: FILEIO: [resources/textures/explosion-3-large.png] File loaded successfully
+[2026-04-02 20:23:52.025] [info] RAYLIB: IMAGE: Data loaded successfully (384x64 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:23:52.025] [info] RAYLIB: TEXTURE: [ID 7] Texture loaded successfully (384x64 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:23:52.029] [info] RAYLIB: FILEIO: [resources/fonts/absolute_10.png] File loaded successfully
+[2026-04-02 20:23:52.073] [info] RAYLIB: IMAGE: Data loaded successfully (416x176 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:23:52.074] [info] RAYLIB: TEXTURE: [ID 8] Texture loaded successfully (416x176 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:23:52.077] [info] RAYLIB: FILEIO: [resources/fonts/pixuf.ttf] File loaded successfully
+[2026-04-02 20:23:52.098] [info] RAYLIB: TEXTURE: [ID 9] Texture loaded successfully (256x256 | GRAY_ALPHA | 1 mipmaps)
+[2026-04-02 20:23:52.098] [info] RAYLIB: FONT: Data loaded successfully (16 pixel size | 95 glyphs)
+[2026-04-02 20:23:52.099] [info] RAYLIB: FILEIO: [resources/textures/density-hatch.png] File loaded successfully
+[2026-04-02 20:23:52.100] [info] RAYLIB: IMAGE: Data loaded successfully (80x16 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:23:52.100] [info] RAYLIB: TEXTURE: [ID 10] Texture loaded successfully (80x16 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:23:52.254] [info] RAYLIB: AUDIO: Device initialized successfully
+[2026-04-02 20:23:52.254] [info] RAYLIB:     > Backend:       miniaudio | ALSA
+[2026-04-02 20:23:52.254] [info] RAYLIB:     > Format:        32-bit IEEE Floating Point -> 32-bit IEEE Floating Point
+[2026-04-02 20:23:52.254] [info] RAYLIB:     > Channels:      2 -> 2
+[2026-04-02 20:23:52.254] [info] RAYLIB:     > Sample rate:   44100 -> 44100
+[2026-04-02 20:23:52.254] [info] RAYLIB:     > Periods size:  3072
+[2026-04-02 20:23:52.256] [info] RAYLIB: FILEIO: [resources/audio/ui-pass.wav] File loaded successfully
+[2026-04-02 20:23:52.256] [info] RAYLIB: WAVE: Data loaded successfully (48000 Hz, 16 bit, 1 channels)
+[2026-04-02 20:23:52.272] [info] AUDIO: menu click sound loaded from: resources/audio/ui-pass.wav
+[2026-04-02 20:23:52.275] [info] RAYLIB: FILEIO: [resources/audio/positive-select.wav] File loaded successfully
+[2026-04-02 20:23:52.275] [info] RAYLIB: WAVE: Data loaded successfully (48000 Hz, 16 bit, 1 channels)
+[2026-04-02 20:23:52.298] [info] AUDIO: menu select-on-button sound loaded from: resources/audio/positive-select.wav
+[2026-04-02 20:23:52.306] [info] RAYLIB: FILEIO: [resources/audio/power-up-digital.wav] File loaded successfully
+[2026-04-02 20:23:52.306] [info] RAYLIB: WAVE: Data loaded successfully (48000 Hz, 16 bit, 1 channels)
+[2026-04-02 20:23:52.579] [info] AUDIO: power-up (start mode) sound loaded from: resources/audio/power-up-digital.wav
+[2026-04-02 20:23:52.581] [info] RAYLIB: FILEIO: [resources/audio/player-shot.wav] File loaded successfully
+[2026-04-02 20:23:52.581] [info] RAYLIB: WAVE: Data loaded successfully (48000 Hz, 16 bit, 1 channels)
+[2026-04-02 20:23:52.630] [info] AUDIO: player-shot sound loaded from: resources/audio/player-shot.wav
+[2026-04-02 20:23:52.633] [info] RAYLIB: FILEIO: [resources/audio/enemy-shot.wav] File loaded successfully
+[2026-04-02 20:23:52.633] [info] RAYLIB: WAVE: Data loaded successfully (48000 Hz, 16 bit, 1 channels)
+[2026-04-02 20:23:52.698] [info] AUDIO: enemy-shot sound loaded from: resources/audio/enemy-shot.wav
+[2026-04-02 20:23:52.701] [info] RAYLIB: FILEIO: [resources/audio/enemy-spawning.wav] File loaded successfully
+[2026-04-02 20:23:52.701] [info] RAYLIB: WAVE: Data loaded successfully (48000 Hz, 16 bit, 1 channels)
+[2026-04-02 20:23:52.807] [info] AUDIO: enemy-spawning sound loaded from: resources/audio/enemy-spawning.wav
+[2026-04-02 20:23:52.810] [info] RAYLIB: FILEIO: [resources/audio/match-fire.wav] File loaded successfully
+[2026-04-02 20:23:52.810] [info] RAYLIB: WAVE: Data loaded successfully (48000 Hz, 16 bit, 1 channels)
+[2026-04-02 20:23:52.926] [info] AUDIO: enemy death sound loaded from: resources/audio/match-fire.wav
+[2026-04-02 20:23:52.932] [info] RAYLIB: FILEIO: [resources/audio/base-exploding.wav] File loaded successfully
+[2026-04-02 20:23:52.932] [info] RAYLIB: WAVE: Data loaded successfully (48000 Hz, 16 bit, 1 channels)
+[2026-04-02 20:23:53.216] [info] AUDIO: base-exploding sound loaded from: resources/audio/base-exploding.wav
+[2026-04-02 20:23:53.220] [info] RAYLIB: FILEIO: [resources/audio/metal-hit.wav] File loaded successfully
+[2026-04-02 20:23:53.220] [info] RAYLIB: WAVE: Data loaded successfully (48000 Hz, 16 bit, 1 channels)
+[2026-04-02 20:23:53.379] [info] AUDIO: projectile wall-hit sound loaded from: resources/audio/metal-hit.wav
+[2026-04-02 20:23:53.385] [info] RAYLIB: FILEIO: [resources/audio/player-explosion.wav] File loaded successfully
+[2026-04-02 20:23:53.385] [info] RAYLIB: WAVE: Data loaded successfully (48000 Hz, 16 bit, 1 channels)
+[2026-04-02 20:23:53.717] [info] AUDIO: player explosion sound loaded from: resources/audio/player-explosion.wav
+[2026-04-02 20:23:53.718] [info] RAYLIB: STREAM: Initialized successfully (16000 Hz, 16 bit, Mono)
+[2026-04-02 20:23:53.721] [info] RAYLIB: STREAM: Initialized successfully (16000 Hz, 16 bit, Mono)
+[2026-04-02 20:23:58.485] [debug] [FLOW] StartGame: draining worker, invisibility=0
+[2026-04-02 20:23:58.486] [debug] [FLOW] GameModeController::StartGame: settings.invisibility=0 level=4
+[2026-04-02 20:23:58.486] [debug] [FLOW] StartGame done: invisibility=0 level=4
+[2026-04-02 20:23:58.606] [debug] [NAV] BaseDistanceField rebuild 60x60 cells in 9.704 ms
+[2026-04-02 20:23:58.611] [debug] [NAV] BaseFlowField rebuild 60x60 cells in 4.110 ms
+[2026-04-02 20:23:58.613] [debug] [FLOW] InitializeMazeWorld: invisibility=0 level=4 shouldHaveFlowActive=0
+[2026-04-02 20:23:59.553] [info] RAYLIB: TEXTURE: [ID 11] Texture loaded successfully (160x480 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:23:59.553] [info] RAYLIB: TEXTURE: [ID 1] Depth renderbuffer loaded successfully (24 bits)
+[2026-04-02 20:23:59.553] [info] RAYLIB: FBO: [ID 1] Framebuffer object created successfully
+[2026-04-02 20:23:59.553] [info] RAYLIB: TEXTURE: [ID 12] Texture loaded successfully (60x60 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:23:59.553] [info] RAYLIB: TEXTURE: [ID 2] Depth renderbuffer loaded successfully (24 bits)
+[2026-04-02 20:23:59.553] [info] RAYLIB: FBO: [ID 2] Framebuffer object created successfully
+[2026-04-02 20:23:59.554] [info] RAYLIB: TEXTURE: [ID 13] Texture loaded successfully (66x66 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:23:59.554] [info] RAYLIB: TEXTURE: [ID 3] Depth renderbuffer loaded successfully (24 bits)
+[2026-04-02 20:23:59.554] [info] RAYLIB: FBO: [ID 3] Framebuffer object created successfully
+[2026-04-02 20:23:59.554] [info] RAYLIB: FILEIO: [resources/textures/sprites.png] File loaded successfully
+[2026-04-02 20:23:59.555] [info] RAYLIB: IMAGE: Data loaded successfully (18x63 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:23:59.556] [info] RAYLIB: TEXTURE: [ID 14] Texture loaded successfully (36x36 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:23:59.556] [info] RAYLIB: FILEIO: [resources/textures/sprites.png] File loaded successfully
+[2026-04-02 20:23:59.557] [info] RAYLIB: IMAGE: Data loaded successfully (18x63 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:23:59.557] [info] RAYLIB: TEXTURE: [ID 15] Texture loaded successfully (10x10 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:23:59.557] [info] RAYLIB: TEXTURE: [ID 16] Texture loaded successfully (10x10 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:23:59.557] [info] RAYLIB: TEXTURE: [ID 17] Texture loaded successfully (10x10 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:23:59.558] [info] RAYLIB: TEXTURE: [ID 18] Texture loaded successfully (10x10 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:23:59.576] [info] RAYLIB: TEXTURE: [ID 19] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:23:59.579] [debug] [INVIS] HUD compass block invisibility=0 (log #1)
+[2026-04-02 20:23:59.583] [debug] [FLOW] OnPlayerCellChanged: skip (cacheActive=false) cell=22,53
+[2026-04-02 20:23:59.596] [debug] [INVIS] HUD compass block invisibility=0 (log #2)
+[2026-04-02 20:23:59.600] [debug] [FLOW] OnPlayerCellChanged: skip (cacheActive=false) cell=22,53
+[2026-04-02 20:23:59.605] [debug] [INVIS] HUD compass block invisibility=0 (log #3)
+[2026-04-02 20:23:59.616] [debug] [FLOW] OnPlayerCellChanged: skip (cacheActive=false) cell=22,53
+[2026-04-02 20:23:59.621] [debug] [INVIS] HUD compass block invisibility=0 (log #4)
+[2026-04-02 20:23:59.638] [debug] [INVIS] HUD compass block invisibility=0 (log #5)
+[2026-04-02 20:23:59.655] [debug] [INVIS] HUD compass block invisibility=0 (log #6)
+[2026-04-02 20:23:59.673] [debug] [INVIS] HUD compass block invisibility=0 (log #7)
+[2026-04-02 20:23:59.690] [debug] [INVIS] HUD compass block invisibility=0 (log #8)
+[2026-04-02 20:23:59.706] [debug] [INVIS] HUD compass block invisibility=0 (log #9)
+[2026-04-02 20:23:59.724] [debug] [INVIS] HUD compass block invisibility=0 (log #10)
+[2026-04-02 20:23:59.965] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:23:59.965] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:23:59.965] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:23:59.965] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:23:59.965] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:24:02.005] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:24:02.005] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:24:02.006] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:24:02.006] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:24:02.006] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:24:04.047] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:24:04.047] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:24:04.047] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:24:04.048] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:24:04.048] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:24:06.087] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:24:06.088] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:24:06.088] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:24:06.088] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:24:06.088] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:24:08.128] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:24:08.128] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:24:08.128] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:24:08.128] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:24:08.128] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:24:09.906] [debug] [ENEMY_UNCOUPLE_EVENT] id=32 reason=wallContact alreadyUncouple=0 timerBeforeReset=0.000 movedLastFrame=0.008 pos=(113.47,297.27) headingBefore=2.356 desiredHeading=2.356 leader=32 preMode=0
+[2026-04-02 20:24:10.169] [debug] [ENEMY_UNCOUPLE] entries=1 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=1}
+[2026-04-02 20:24:10.169] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:24:10.169] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:24:10.169] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:24:10.169] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:24:12.210] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:24:12.210] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:24:12.210] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:24:12.210] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:24:12.211] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:24:12.824] [info] RAYLIB: TEXTURE: [ID 20] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:24:12.825] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:24:12.825] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:24:12.826] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:24:13.025] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:24:13.025] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:24:13.025] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:24:13.027] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:24:13.263] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:24:13.263] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:24:13.263] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:24:13.265] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:24:13.484] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:24:13.485] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:24:13.485] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:24:13.486] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:24:14.149] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:24:14.149] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:24:14.149] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:24:14.150] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:24:14.256] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:24:14.256] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:24:14.256] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:24:14.256] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:24:14.257] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:24:14.389] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:24:14.389] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:24:14.389] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:24:14.390] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:24:14.593] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:24:14.593] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:24:14.593] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:24:14.594] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:24:14.606] [debug] [ENEMY_UNCOUPLE_EVENT] id=46 reason=wallContact alreadyUncouple=0 timerBeforeReset=0.000 movedLastFrame=0.017 pos=(113.13,294.87) headingBefore=0.785 desiredHeading=0.785 leader=46 preMode=0
+[2026-04-02 20:24:14.806] [debug] [NAV] BaseDistanceField rebuild 60x60 cells in 9.784 ms
+[2026-04-02 20:24:14.810] [debug] [NAV] BaseFlowField rebuild 60x60 cells in 4.122 ms
+[2026-04-02 20:24:14.813] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:24:16.415] [debug] [ENEMY_UNCOUPLE] entries=1 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=1}
+[2026-04-02 20:24:16.416] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:24:16.416] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:24:16.416] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:24:16.416] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=1 wallContact=0}
+[2026-04-02 20:24:18.618] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:24:18.618] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:24:18.618] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:24:18.618] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:24:18.618] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=1 wallContact=0}
+[2026-04-02 20:24:20.792] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:24:20.792] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:24:20.792] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:24:20.792] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:24:20.792] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=2 wallContact=0}
+[2026-04-02 20:24:22.854] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:24:22.854] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:24:22.854] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:24:22.854] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:24:22.854] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:24:24.894] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:24:24.894] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:24:24.894] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:24:24.895] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:24:24.895] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:24:26.963] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:24:26.963] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:24:26.963] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:24:26.963] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:24:26.963] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=1 wallContact=0}
+[2026-04-02 20:24:29.011] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:24:29.011] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:24:29.011] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:24:29.011] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:24:29.011] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:24:31.055] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:24:31.055] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:24:31.055] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:24:31.055] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:24:31.055] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:24:33.340] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:24:33.340] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:24:33.341] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:24:33.341] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:24:33.341] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=2 wallContact=0}
+[2026-04-02 20:24:35.451] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:24:35.451] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:24:35.452] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:24:35.452] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:24:35.452] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:24:37.803] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:24:37.803] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:24:37.803] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:24:37.803] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:24:37.804] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=2 wallContact=0}
+[2026-04-02 20:24:40.201] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:24:40.201] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:24:40.201] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:24:40.201] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:24:40.202] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=2 wallContact=0}
+[2026-04-02 20:24:41.901] [debug] [FLOW] Respawn: invisibility=0 hasFlowConsumers=0 shouldHaveFlowActive=0
+[2026-04-02 20:24:41.915] [debug] [FLOW] OnPlayerCellChanged: skip (cacheActive=false) cell=6,52
+[2026-04-02 20:24:41.932] [debug] [FLOW] OnPlayerCellChanged: skip (cacheActive=false) cell=6,52
+[2026-04-02 20:24:41.936] [debug] [ENEMY_UNCOUPLE_EVENT] id=29 reason=separation alreadyUncouple=1 timerBeforeReset=0.983 movedLastFrame=-1.000 pos=(50.56,288.83) headingBefore=2.356 desiredHeading=2.356 leader=39 preMode=0
+[2026-04-02 20:24:41.936] [debug] [ENEMY_UNCOUPLE_EVENT] id=39 reason=separation alreadyUncouple=1 timerBeforeReset=0.983 movedLastFrame=-1.000 pos=(49.91,287.71) headingBefore=5.498 desiredHeading=5.498 leader=29 preMode=1
+[2026-04-02 20:24:41.949] [debug] [FLOW] OnPlayerCellChanged: skip (cacheActive=false) cell=6,52
+[2026-04-02 20:24:41.953] [debug] [ENEMY_UNCOUPLE_EVENT] id=29 reason=separation alreadyUncouple=1 timerBeforeReset=0.967 movedLastFrame=-1.000 pos=(50.58,288.84) headingBefore=2.356 desiredHeading=2.356 leader=39 preMode=0
+[2026-04-02 20:24:41.953] [debug] [ENEMY_UNCOUPLE_EVENT] id=39 reason=separation alreadyUncouple=1 timerBeforeReset=0.967 movedLastFrame=-1.000 pos=(49.89,287.70) headingBefore=5.498 desiredHeading=5.498 leader=29 preMode=1
+[2026-04-02 20:24:41.969] [debug] [ENEMY_UNCOUPLE_EVENT] id=29 reason=separation alreadyUncouple=1 timerBeforeReset=0.950 movedLastFrame=-1.000 pos=(50.59,288.85) headingBefore=2.356 desiredHeading=2.356 leader=39 preMode=0
+[2026-04-02 20:24:41.969] [debug] [ENEMY_UNCOUPLE_EVENT] id=39 reason=separation alreadyUncouple=1 timerBeforeReset=0.950 movedLastFrame=-1.000 pos=(49.88,287.69) headingBefore=5.498 desiredHeading=5.498 leader=29 preMode=1
+[2026-04-02 20:24:41.987] [debug] [ENEMY_UNCOUPLE_EVENT] id=29 reason=separation alreadyUncouple=1 timerBeforeReset=0.933 movedLastFrame=-1.000 pos=(50.60,288.86) headingBefore=2.356 desiredHeading=2.356 leader=39 preMode=0
+[2026-04-02 20:24:41.987] [debug] [ENEMY_UNCOUPLE_EVENT] id=39 reason=separation alreadyUncouple=1 timerBeforeReset=0.933 movedLastFrame=-1.000 pos=(49.87,287.67) headingBefore=5.498 desiredHeading=5.498 leader=29 preMode=1
+[2026-04-02 20:24:42.005] [debug] [ENEMY_UNCOUPLE_EVENT] id=29 reason=separation alreadyUncouple=1 timerBeforeReset=0.917 movedLastFrame=-1.000 pos=(50.61,288.87) headingBefore=2.356 desiredHeading=2.356 leader=39 preMode=0
+[2026-04-02 20:24:42.005] [debug] [ENEMY_UNCOUPLE_EVENT] id=39 reason=separation alreadyUncouple=1 timerBeforeReset=0.917 movedLastFrame=-1.000 pos=(49.86,287.66) headingBefore=5.498 desiredHeading=5.498 leader=29 preMode=1
+[2026-04-02 20:24:42.021] [debug] [ENEMY_UNCOUPLE_EVENT] id=29 reason=separation alreadyUncouple=1 timerBeforeReset=0.900 movedLastFrame=-1.000 pos=(50.62,288.88) headingBefore=2.356 desiredHeading=2.356 leader=39 preMode=0
+[2026-04-02 20:24:42.021] [debug] [ENEMY_UNCOUPLE_EVENT] id=39 reason=separation alreadyUncouple=1 timerBeforeReset=0.900 movedLastFrame=-1.000 pos=(49.85,287.65) headingBefore=5.498 desiredHeading=5.498 leader=29 preMode=1
+[2026-04-02 20:24:42.037] [debug] [ENEMY_UNCOUPLE_EVENT] id=29 reason=separation alreadyUncouple=1 timerBeforeReset=0.883 movedLastFrame=-1.000 pos=(50.63,288.90) headingBefore=2.356 desiredHeading=2.356 leader=39 preMode=0
+[2026-04-02 20:24:42.037] [debug] [ENEMY_UNCOUPLE_EVENT] id=39 reason=separation alreadyUncouple=1 timerBeforeReset=0.883 movedLastFrame=-1.000 pos=(49.84,287.64) headingBefore=5.498 desiredHeading=5.498 leader=29 preMode=1
+[2026-04-02 20:24:42.250] [debug] [ENEMY_UNCOUPLE] entries=16 reentryResets=14(87.5%) reason{frontal=0 separation=16 wallContact=0}
+[2026-04-02 20:24:42.251] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:24:42.251] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:24:42.251] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:24:42.251] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:24:44.296] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:24:44.296] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:24:44.296] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:24:44.296] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:24:44.297] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:24:46.338] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:24:46.338] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:24:46.339] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:24:46.339] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:24:46.339] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:24:48.384] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:24:48.384] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:24:48.384] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:24:48.384] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:24:48.384] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:24:50.426] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:24:50.427] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:24:50.427] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:24:50.427] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:24:50.427] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:24:52.559] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:24:52.559] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:24:52.559] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:24:52.559] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:24:52.560] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=3 wallContact=0}
+[2026-04-02 20:24:54.718] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:24:54.719] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:24:54.719] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:24:54.719] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:24:54.719] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:24:56.721] [debug] [ENEMY_UNCOUPLE_EVENT] id=117 reason=wallContact alreadyUncouple=0 timerBeforeReset=0.000 movedLastFrame=0.008 pos=(54.53,261.77) headingBefore=3.927 desiredHeading=3.927 leader=117 preMode=0
+[2026-04-02 20:24:56.930] [debug] [ENEMY_UNCOUPLE] entries=1 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=1}
+[2026-04-02 20:24:56.930] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:24:56.930] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:24:56.930] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:24:56.931] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=1 wallContact=0}
+[2026-04-02 20:24:57.505] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:24:57.505] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:24:57.506] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:24:59.500] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:24:59.500] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:24:59.500] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:24:59.500] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:24:59.501] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=3 wallContact=0}
+[2026-04-02 20:24:59.656] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:24:59.657] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:24:59.657] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:24:59.658] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:25:00.549] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:25:00.549] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:25:00.549] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:25:00.550] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:25:00.876] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:25:00.876] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:25:00.876] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:25:00.877] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:25:01.714] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:25:01.714] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:25:01.714] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:25:01.715] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:25:01.787] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:25:01.788] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:25:01.788] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:25:01.788] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:25:01.788] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:25:01.963] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:25:01.963] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:25:01.963] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:25:01.964] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:25:02.235] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:25:02.235] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:25:02.235] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:25:02.237] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:25:02.508] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:25:02.508] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:25:02.508] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:25:02.509] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:25:02.739] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:25:02.740] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:25:02.740] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:25:02.741] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:25:02.963] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:25:02.963] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:25:02.963] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:25:02.964] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:25:03.199] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:25:03.200] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:25:03.200] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:25:03.201] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:25:03.920] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:25:03.920] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:25:03.920] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:25:03.920] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:25:03.920] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=1 wallContact=0}
+[2026-04-02 20:25:04.540] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:25:04.540] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:25:04.540] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:25:04.541] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:25:04.790] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:25:04.790] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:25:04.790] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:25:04.791] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:25:05.048] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:25:05.049] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:25:05.049] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:25:05.049] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:25:05.280] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:25:05.280] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:25:05.280] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:25:05.281] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:25:06.112] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:25:06.112] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:25:06.112] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:25:06.112] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:25:06.113] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:25:06.453] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:25:06.453] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:25:06.453] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:25:06.454] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:25:07.143] [debug] [NAV] BaseDistanceField rebuild 60x60 cells in 10.065 ms
+[2026-04-02 20:25:07.148] [debug] [NAV] BaseFlowField rebuild 60x60 cells in 4.198 ms
+[2026-04-02 20:25:07.151] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:25:08.235] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:25:08.235] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:25:08.235] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:25:08.236] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:25:08.236] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:25:10.378] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:25:10.378] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:25:10.378] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:25:10.378] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:25:10.378] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:25:12.422] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:25:12.422] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:25:12.422] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:25:12.422] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:25:12.423] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:25:14.472] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:25:14.472] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:25:14.472] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:25:14.472] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:25:14.473] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:25:16.623] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:25:16.623] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:25:16.623] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:25:16.623] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:25:16.623] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=1 wallContact=0}
+[2026-04-02 20:25:18.750] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:25:18.750] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:25:18.750] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:25:18.750] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:25:18.751] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=1 wallContact=0}
+[2026-04-02 20:25:19.941] [debug] [ENEMY_UNCOUPLE_EVENT] id=22 reason=wallContact alreadyUncouple=0 timerBeforeReset=0.000 movedLastFrame=0.008 pos=(71.99,239.87) headingBefore=0.262 desiredHeading=0.000 leader=22 preMode=0
+[2026-04-02 20:25:20.875] [debug] [ENEMY_UNCOUPLE] entries=1 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=1}
+[2026-04-02 20:25:20.875] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:25:20.875] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:25:20.875] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:25:20.876] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:25:23.190] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:25:23.190] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:25:23.190] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:25:23.190] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:25:23.190] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=2 wallContact=0}
+[2026-04-02 20:25:25.247] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:25:25.247] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:25:25.247] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:25:25.247] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:25:25.247] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:25:27.288] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:25:27.289] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:25:27.289] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:25:27.289] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:25:27.289] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:25:29.338] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:25:29.338] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:25:29.338] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:25:29.338] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:25:29.339] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:25:31.396] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:25:31.396] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:25:31.396] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:25:31.396] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:25:31.396] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=1 wallContact=0}
+[2026-04-02 20:25:33.494] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:25:33.494] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:25:33.494] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:25:33.494] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:25:33.494] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:25:33.539] [debug] [FLOW] Respawn: invisibility=0 hasFlowConsumers=0 shouldHaveFlowActive=0
+[2026-04-02 20:25:33.553] [debug] [FLOW] OnPlayerCellChanged: skip (cacheActive=false) cell=24,35
+[2026-04-02 20:25:33.570] [debug] [FLOW] OnPlayerCellChanged: skip (cacheActive=false) cell=24,35
+[2026-04-02 20:25:33.587] [debug] [FLOW] OnPlayerCellChanged: skip (cacheActive=false) cell=24,35
+[2026-04-02 20:25:35.538] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:25:35.538] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:25:35.538] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:25:35.538] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:25:35.538] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:25:37.580] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:25:37.580] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:25:37.580] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:25:37.580] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:25:37.580] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:25:39.628] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:25:39.628] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:25:39.628] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:25:39.628] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:25:39.628] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:25:41.759] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:25:41.759] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:25:41.759] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:25:41.759] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:25:41.760] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=2 wallContact=0}
+[2026-04-02 20:25:43.855] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:25:43.855] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:25:43.855] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:25:43.855] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:25:43.856] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:25:46.575] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:25:46.575] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:25:46.575] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:25:46.575] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:25:46.576] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=2 wallContact=0}
+[2026-04-02 20:25:47.507] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:25:47.507] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:25:47.508] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:25:47.734] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:25:47.734] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:25:47.734] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:25:47.736] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:25:49.094] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:25:49.094] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:25:49.094] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:25:49.095] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:25:49.095] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=3 wallContact=0}
+[2026-04-02 20:25:49.763] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:25:49.764] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:25:49.764] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:25:49.765] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:25:51.128] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:25:51.128] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:25:51.128] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:25:51.129] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:25:51.376] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:25:51.376] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:25:51.377] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:25:51.378] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:25:51.558] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:25:51.558] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:25:51.559] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:25:51.559] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:25:51.559] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=2 wallContact=0}
+[2026-04-02 20:25:51.969] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:25:51.969] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:25:51.969] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:25:51.970] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:25:53.760] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:25:53.760] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:25:53.760] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:25:53.760] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:25:53.761] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=1 wallContact=0}
+[2026-04-02 20:25:54.199] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:25:54.199] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:25:54.199] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:25:54.200] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:25:55.981] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:25:55.981] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:25:55.981] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:25:55.981] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:25:55.981] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:25:56.409] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:25:56.409] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:25:56.409] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:25:56.410] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:25:56.638] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:25:56.638] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:25:56.638] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:25:56.639] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:25:56.910] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:25:56.910] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:25:56.910] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:25:56.911] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:25:57.108] [debug] [ENEMY_UNCOUPLE_EVENT] id=36 reason=wallContact alreadyUncouple=0 timerBeforeReset=0.000 movedLastFrame=0.008 pos=(166.95,119.99) headingBefore=3.142 desiredHeading=3.142 leader=36 preMode=0
+[2026-04-02 20:25:57.185] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:25:57.185] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:25:57.185] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:25:57.186] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:25:57.422] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:25:57.422] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:25:57.422] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:25:57.423] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:25:58.103] [debug] [ENEMY_UNCOUPLE] entries=1 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=1}
+[2026-04-02 20:25:58.103] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:25:58.103] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:25:58.103] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:25:58.104] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:26:00.473] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:26:00.473] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:26:00.473] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:26:00.473] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:26:00.474] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=1 wallContact=0}
+[2026-04-02 20:26:01.423] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:26:02.849] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:26:02.849] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:26:02.849] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:26:02.850] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:26:02.850] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=1 wallContact=0}
+[2026-04-02 20:26:05.194] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:26:05.194] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:26:05.194] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:26:05.194] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:26:05.194] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=1 wallContact=0}
+[2026-04-02 20:26:07.439] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:26:07.439] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:26:07.439] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:26:07.439] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:26:07.439] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:26:09.693] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:26:09.694] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:26:09.694] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:26:09.694] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:26:09.694] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=1 wallContact=0}
+[2026-04-02 20:26:11.824] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:26:11.824] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:26:11.824] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:26:11.824] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:26:11.824] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:26:13.868] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:26:13.868] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:26:13.868] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:26:13.868] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:26:13.869] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:26:15.911] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:26:15.911] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:26:15.912] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:26:15.912] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:26:15.912] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:26:17.956] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:26:17.956] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:26:17.956] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:26:17.956] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:26:17.956] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:26:20.057] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:26:20.057] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:26:20.057] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:26:20.057] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:26:20.058] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=1 wallContact=0}
+[2026-04-02 20:26:22.105] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:26:22.105] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:26:22.106] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:26:22.106] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:26:22.106] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:26:24.155] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:26:24.155] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:26:24.155] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:26:24.155] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:26:24.155] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:26:26.200] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:26:26.200] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:26:26.200] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:26:26.200] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:26:26.201] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:26:27.271] [debug] [FLOW] Respawn: invisibility=0 hasFlowConsumers=0 shouldHaveFlowActive=0
+[2026-04-02 20:26:27.285] [debug] [FLOW] OnPlayerCellChanged: skip (cacheActive=false) cell=22,7
+[2026-04-02 20:26:27.302] [debug] [FLOW] OnPlayerCellChanged: skip (cacheActive=false) cell=22,7
+[2026-04-02 20:26:27.319] [debug] [FLOW] OnPlayerCellChanged: skip (cacheActive=false) cell=22,7
+[2026-04-02 20:26:28.248] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:26:28.248] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:26:28.248] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:26:28.248] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:26:28.248] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:26:30.290] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:26:30.290] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:26:30.290] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:26:30.290] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:26:30.290] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:26:32.330] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:26:32.330] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:26:32.330] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:26:32.330] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:26:32.330] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:26:34.371] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:26:34.372] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:26:34.372] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:26:34.372] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:26:34.372] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:26:36.413] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:26:36.413] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:26:36.413] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:26:36.413] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:26:36.413] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:26:38.454] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:26:38.454] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:26:38.454] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:26:38.454] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:26:38.454] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:26:40.497] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:26:40.497] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:26:40.497] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:26:40.497] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:26:40.498] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:26:42.543] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:26:42.543] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:26:42.543] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:26:42.543] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:26:42.544] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=1 wallContact=0}
+[2026-04-02 20:26:43.493] [debug] [ENEMY_UNCOUPLE_EVENT] id=89 reason=separation alreadyUncouple=1 timerBeforeReset=0.717 movedLastFrame=-1.000 pos=(262.74,8.56) headingBefore=5.236 desiredHeading=5.498 leader=4 preMode=8
+[2026-04-02 20:26:43.499] [debug] [ENEMY_UNCOUPLE_EVENT] id=4 reason=separation alreadyUncouple=1 timerBeforeReset=0.983 movedLastFrame=-1.000 pos=(263.97,8.97) headingBefore=4.636 desiredHeading=1.571 leader=89 preMode=8
+[2026-04-02 20:26:43.499] [debug] [ENEMY_UNCOUPLE_EVENT] id=89 reason=separation alreadyUncouple=1 timerBeforeReset=0.700 movedLastFrame=-1.000 pos=(262.65,8.51) headingBefore=5.269 desiredHeading=5.498 leader=4 preMode=8
+[2026-04-02 20:26:43.513] [debug] [ENEMY_UNCOUPLE_EVENT] id=4 reason=separation alreadyUncouple=1 timerBeforeReset=0.967 movedLastFrame=-1.000 pos=(263.97,8.97) headingBefore=4.602 desiredHeading=1.571 leader=89 preMode=8
+[2026-04-02 20:26:43.513] [debug] [ENEMY_UNCOUPLE_EVENT] id=89 reason=separation alreadyUncouple=1 timerBeforeReset=0.683 movedLastFrame=-1.000 pos=(262.57,8.45) headingBefore=5.303 desiredHeading=5.498 leader=4 preMode=8
+[2026-04-02 20:26:44.618] [debug] [ENEMY_UNCOUPLE] entries=8 reentryResets=5(62.5%) reason{frontal=0 separation=8 wallContact=0}
+[2026-04-02 20:26:44.618] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:26:44.618] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:26:44.618] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:26:44.619] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:26:46.662] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:26:46.662] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:26:46.663] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:26:46.663] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:26:46.663] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:26:48.705] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:26:48.705] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:26:48.706] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:26:48.706] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:26:48.706] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:26:50.791] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:26:50.791] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:26:50.791] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:26:50.791] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:26:50.792] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=1 wallContact=0}
+[2026-04-02 20:26:52.879] [debug] [ENEMY_UNCOUPLE_EVENT] id=17 reason=wallContact alreadyUncouple=0 timerBeforeReset=0.000 movedLastFrame=0.017 pos=(287.00,18.01) headingBefore=1.571 desiredHeading=1.571 leader=17 preMode=0
+[2026-04-02 20:26:52.906] [debug] [ENEMY_UNCOUPLE_EVENT] id=17 reason=wallContact alreadyUncouple=1 timerBeforeReset=0.983 movedLastFrame=0.017 pos=(287.00,18.01) headingBefore=1.571 desiredHeading=1.571 leader=17 preMode=0
+[2026-04-02 20:26:52.911] [debug] [ENEMY_UNCOUPLE_EVENT] id=17 reason=wallContact alreadyUncouple=1 timerBeforeReset=0.967 movedLastFrame=0.017 pos=(287.00,18.01) headingBefore=1.571 desiredHeading=1.571 leader=17 preMode=0
+[2026-04-02 20:26:52.941] [debug] [ENEMY_UNCOUPLE_EVENT] id=17 reason=wallContact alreadyUncouple=1 timerBeforeReset=0.950 movedLastFrame=0.017 pos=(287.00,18.01) headingBefore=1.571 desiredHeading=1.571 leader=17 preMode=0
+[2026-04-02 20:26:52.954] [debug] [ENEMY_UNCOUPLE_EVENT] id=17 reason=wallContact alreadyUncouple=1 timerBeforeReset=0.933 movedLastFrame=0.017 pos=(287.00,18.01) headingBefore=1.571 desiredHeading=1.571 leader=17 preMode=0
+[2026-04-02 20:26:52.976] [debug] [ENEMY_UNCOUPLE_EVENT] id=17 reason=wallContact alreadyUncouple=1 timerBeforeReset=0.917 movedLastFrame=0.017 pos=(287.00,18.01) headingBefore=1.571 desiredHeading=1.571 leader=17 preMode=0
+[2026-04-02 20:26:52.982] [debug] [ENEMY_UNCOUPLE_EVENT] id=17 reason=wallContact alreadyUncouple=1 timerBeforeReset=0.900 movedLastFrame=0.017 pos=(287.00,18.01) headingBefore=1.571 desiredHeading=1.571 leader=17 preMode=0
+[2026-04-02 20:26:52.986] [debug] [ENEMY_UNCOUPLE_EVENT] id=17 reason=wallContact alreadyUncouple=1 timerBeforeReset=0.883 movedLastFrame=0.017 pos=(287.00,18.01) headingBefore=1.571 desiredHeading=1.571 leader=17 preMode=0
+[2026-04-02 20:26:53.009] [debug] [ENEMY_UNCOUPLE_EVENT] id=17 reason=wallContact alreadyUncouple=1 timerBeforeReset=0.867 movedLastFrame=0.017 pos=(287.00,18.01) headingBefore=1.571 desiredHeading=1.571 leader=17 preMode=0
+[2026-04-02 20:26:53.014] [debug] [ENEMY_UNCOUPLE_EVENT] id=17 reason=wallContact alreadyUncouple=1 timerBeforeReset=0.850 movedLastFrame=0.017 pos=(287.00,18.01) headingBefore=1.571 desiredHeading=1.571 leader=17 preMode=0
+[2026-04-02 20:26:53.044] [debug] [ENEMY_UNCOUPLE_EVENT] id=17 reason=wallContact alreadyUncouple=1 timerBeforeReset=0.833 movedLastFrame=0.017 pos=(287.00,18.01) headingBefore=1.571 desiredHeading=1.571 leader=17 preMode=0
+[2026-04-02 20:26:53.049] [debug] [ENEMY_UNCOUPLE_EVENT] id=17 reason=wallContact alreadyUncouple=1 timerBeforeReset=0.817 movedLastFrame=0.017 pos=(287.00,18.01) headingBefore=1.571 desiredHeading=1.571 leader=17 preMode=0
+[2026-04-02 20:26:53.061] [debug] [ENEMY_UNCOUPLE_EVENT] id=17 reason=wallContact alreadyUncouple=1 timerBeforeReset=0.800 movedLastFrame=0.017 pos=(287.00,18.01) headingBefore=1.571 desiredHeading=1.571 leader=17 preMode=0
+[2026-04-02 20:26:53.079] [debug] [ENEMY_UNCOUPLE_EVENT] id=17 reason=wallContact alreadyUncouple=1 timerBeforeReset=0.783 movedLastFrame=0.017 pos=(287.00,18.01) headingBefore=1.571 desiredHeading=1.571 leader=17 preMode=0
+[2026-04-02 20:26:53.111] [debug] [ENEMY_UNCOUPLE_EVENT] id=17 reason=wallContact alreadyUncouple=1 timerBeforeReset=0.767 movedLastFrame=0.017 pos=(287.00,18.01) headingBefore=1.571 desiredHeading=1.571 leader=17 preMode=0
+[2026-04-02 20:26:53.118] [debug] [ENEMY_UNCOUPLE_EVENT] id=17 reason=wallContact alreadyUncouple=1 timerBeforeReset=0.750 movedLastFrame=0.017 pos=(287.00,18.01) headingBefore=1.571 desiredHeading=1.571 leader=17 preMode=0
+[2026-04-02 20:26:54.032] [debug] [ENEMY_UNCOUPLE] entries=69 reentryResets=67(97.1%) reason{frontal=0 separation=0 wallContact=69}
+[2026-04-02 20:26:54.032] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:26:54.033] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:26:54.033] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:26:54.033] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=5 wallContact=0}
+[2026-04-02 20:26:54.035] [debug] [ENEMY_UNCOUPLE_EVENT] id=17 reason=wallContact alreadyUncouple=1 timerBeforeReset=0.867 movedLastFrame=0.017 pos=(287.00,18.01) headingBefore=1.571 desiredHeading=1.571 leader=17 preMode=0
+[2026-04-02 20:26:54.067] [debug] [ENEMY_UNCOUPLE_EVENT] id=17 reason=wallContact alreadyUncouple=1 timerBeforeReset=0.850 movedLastFrame=0.017 pos=(287.00,18.01) headingBefore=1.571 desiredHeading=1.571 leader=17 preMode=0
+[2026-04-02 20:26:54.072] [debug] [ENEMY_UNCOUPLE_EVENT] id=17 reason=wallContact alreadyUncouple=1 timerBeforeReset=0.833 movedLastFrame=0.017 pos=(287.00,18.01) headingBefore=1.571 desiredHeading=1.571 leader=17 preMode=0
+[2026-04-02 20:26:54.079] [debug] [ENEMY_UNCOUPLE_EVENT] id=17 reason=wallContact alreadyUncouple=1 timerBeforeReset=0.817 movedLastFrame=0.017 pos=(287.00,18.01) headingBefore=1.571 desiredHeading=1.571 leader=17 preMode=0
+[2026-04-02 20:26:54.098] [debug] [ENEMY_UNCOUPLE_EVENT] id=17 reason=wallContact alreadyUncouple=1 timerBeforeReset=0.800 movedLastFrame=0.017 pos=(287.00,18.01) headingBefore=1.571 desiredHeading=1.571 leader=17 preMode=0
+[2026-04-02 20:26:54.111] [debug] [ENEMY_UNCOUPLE_EVENT] id=17 reason=wallContact alreadyUncouple=1 timerBeforeReset=0.783 movedLastFrame=0.017 pos=(287.00,18.01) headingBefore=1.571 desiredHeading=1.571 leader=17 preMode=0
+[2026-04-02 20:26:54.128] [debug] [ENEMY_UNCOUPLE_EVENT] id=17 reason=wallContact alreadyUncouple=1 timerBeforeReset=0.767 movedLastFrame=0.017 pos=(287.00,18.01) headingBefore=1.571 desiredHeading=1.571 leader=17 preMode=0
+[2026-04-02 20:26:54.146] [debug] [ENEMY_UNCOUPLE_EVENT] id=17 reason=wallContact alreadyUncouple=1 timerBeforeReset=0.750 movedLastFrame=0.017 pos=(287.00,18.01) headingBefore=1.571 desiredHeading=1.571 leader=17 preMode=0
+[2026-04-02 20:26:54.152] [debug] [ENEMY_UNCOUPLE_EVENT] id=17 reason=wallContact alreadyUncouple=1 timerBeforeReset=0.733 movedLastFrame=0.017 pos=(287.00,18.01) headingBefore=1.571 desiredHeading=1.571 leader=17 preMode=0
+[2026-04-02 20:26:54.160] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:26:54.160] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:26:54.162] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:26:54.169] [debug] [ENEMY_UNCOUPLE_EVENT] id=17 reason=wallContact alreadyUncouple=1 timerBeforeReset=0.717 movedLastFrame=0.017 pos=(287.00,18.01) headingBefore=1.571 desiredHeading=1.571 leader=17 preMode=0
+[2026-04-02 20:26:54.203] [debug] [ENEMY_UNCOUPLE_EVENT] id=17 reason=wallContact alreadyUncouple=1 timerBeforeReset=0.700 movedLastFrame=0.017 pos=(287.00,18.01) headingBefore=1.571 desiredHeading=1.571 leader=17 preMode=0
+[2026-04-02 20:26:54.208] [debug] [ENEMY_UNCOUPLE_EVENT] id=17 reason=wallContact alreadyUncouple=1 timerBeforeReset=0.683 movedLastFrame=0.017 pos=(287.00,18.01) headingBefore=1.571 desiredHeading=1.571 leader=17 preMode=0
+[2026-04-02 20:26:54.221] [debug] [ENEMY_UNCOUPLE_EVENT] id=17 reason=wallContact alreadyUncouple=1 timerBeforeReset=0.667 movedLastFrame=0.017 pos=(287.00,18.01) headingBefore=1.571 desiredHeading=1.571 leader=17 preMode=0
+[2026-04-02 20:26:54.237] [debug] [ENEMY_UNCOUPLE_EVENT] id=17 reason=wallContact alreadyUncouple=1 timerBeforeReset=0.650 movedLastFrame=0.017 pos=(287.00,18.01) headingBefore=1.571 desiredHeading=1.571 leader=17 preMode=0
+[2026-04-02 20:26:54.254] [debug] [ENEMY_UNCOUPLE_EVENT] id=17 reason=wallContact alreadyUncouple=1 timerBeforeReset=0.633 movedLastFrame=0.017 pos=(287.00,18.01) headingBefore=1.571 desiredHeading=1.571 leader=17 preMode=0
+[2026-04-02 20:26:54.271] [debug] [ENEMY_UNCOUPLE_EVENT] id=17 reason=wallContact alreadyUncouple=1 timerBeforeReset=0.617 movedLastFrame=0.017 pos=(287.00,18.01) headingBefore=1.571 desiredHeading=1.571 leader=17 preMode=0
+[2026-04-02 20:26:55.047] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:26:55.047] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:26:55.047] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:26:55.048] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:26:55.947] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:26:55.947] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:26:55.947] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:26:55.949] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:26:56.180] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:26:56.180] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:26:56.180] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:26:56.182] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:26:56.483] [debug] [ENEMY_UNCOUPLE] entries=62 reentryResets=61(98.4%) reason{frontal=0 separation=0 wallContact=62}
+[2026-04-02 20:26:56.483] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:26:56.483] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:26:56.483] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:26:56.484] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=1 wallContact=0}
+[2026-04-02 20:26:58.977] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:26:58.977] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:26:58.977] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:26:58.977] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:26:58.977] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=1 wallContact=0}
+[2026-04-02 20:26:59.020] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:26:59.020] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:26:59.021] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:26:59.022] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:26:59.719] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:26:59.719] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:26:59.719] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:26:59.720] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:26:59.950] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:26:59.950] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:26:59.951] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:26:59.952] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:27:00.875] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:27:00.875] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:27:00.875] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:27:00.876] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:27:01.078] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:27:01.078] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:27:01.079] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:27:01.080] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:27:01.310] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:27:01.310] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:27:01.310] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:27:01.311] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:27:01.586] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:27:01.586] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:27:01.586] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:27:01.586] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:27:01.587] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=1 wallContact=0}
+[2026-04-02 20:27:02.719] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:27:02.719] [info] RAYLIB: FBO: [ID 4] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:27:02.719] [info] RAYLIB: TEXTURE: [ID 19] Pixel data retrieved successfully
+[2026-04-02 20:27:02.720] [info] RAYLIB: TEXTURE: [ID 21] Texture loaded successfully (48x48 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 20:27:02.988] [debug] [NAV] BaseDistanceField rebuild 60x60 cells in 10.107 ms
+[2026-04-02 20:27:02.992] [debug] [NAV] BaseFlowField rebuild 60x60 cells in 4.219 ms
+[2026-04-02 20:27:02.996] [info] RAYLIB: TEXTURE: [ID 21] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:27:04.125] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:27:04.125] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:27:04.126] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:27:04.126] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:27:04.126] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=2 wallContact=0}
+[2026-04-02 20:27:06.492] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:27:06.492] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:27:06.492] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:27:06.492] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:27:06.492] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=1 wallContact=0}
+[2026-04-02 20:27:08.576] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:27:08.576] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:27:08.576] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:27:08.576] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:27:08.576] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:27:10.620] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:27:10.620] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:27:10.620] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:27:10.620] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:27:10.621] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:27:12.833] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:27:12.833] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:27:12.833] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:27:12.833] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:27:12.834] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=1 wallContact=0}
+[2026-04-02 20:27:15.118] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:27:15.118] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:27:15.119] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:27:15.119] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:27:15.119] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:27:17.165] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:27:17.165] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:27:17.165] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:27:17.165] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:27:17.166] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:27:17.959] [debug] [ENEMY_UNCOUPLE_EVENT] id=51 reason=wallContact alreadyUncouple=0 timerBeforeReset=0.000 movedLastFrame=0.017 pos=(307.01,18.04) headingBefore=4.712 desiredHeading=4.712 leader=51 preMode=0
+[2026-04-02 20:27:19.232] [debug] [ENEMY_UNCOUPLE] entries=3 reentryResets=0(0.0%) reason{frontal=0 separation=2 wallContact=1}
+[2026-04-02 20:27:19.233] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:27:19.233] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:27:19.233] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:27:19.233] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:27:21.369] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:27:21.369] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:27:21.369] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:27:21.370] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:27:21.370] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:27:23.580] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:27:23.580] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:27:23.580] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:27:23.580] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:27:23.580] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=3 wallContact=0}
+[2026-04-02 20:27:25.714] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:27:25.714] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:27:25.714] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:27:25.714] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:27:25.714] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:27:27.759] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:27:27.759] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:27:27.760] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:27:27.760] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:27:27.760] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:27:29.802] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:27:29.802] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:27:29.803] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:27:29.803] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:27:29.803] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:27:31.864] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:27:31.864] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:27:31.864] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:27:31.864] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:27:31.864] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=2 wallContact=0}
+[2026-04-02 20:27:33.964] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:27:33.964] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:27:33.964] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:27:33.964] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:27:33.964] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:27:36.005] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:27:36.005] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:27:36.006] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:27:36.006] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:27:36.006] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:27:38.048] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:27:38.048] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:27:38.048] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:27:38.048] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:27:38.048] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:27:40.090] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:27:40.090] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:27:40.090] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:27:40.090] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:27:40.091] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:27:42.132] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:27:42.132] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:27:42.132] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:27:42.132] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:27:42.133] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:27:44.181] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:27:44.182] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:27:44.182] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:27:44.182] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:27:44.182] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=1 wallContact=0}
+[2026-04-02 20:27:46.233] [debug] [ENEMY_UNCOUPLE] entries=0 reentryResets=0(0.0%) reason{frontal=0 separation=0 wallContact=0}
+[2026-04-02 20:27:46.233] [debug] [ENEMY_KILL_DEBUG] enemyEnemy{events=0 frontal=0 separation=0 reenterEither=0 reenterBoth=0 wallContact=0 dist[min=0.000 avg=0.000 max=0.000]}
+[2026-04-02 20:27:46.233] [debug] [ENEMY_ASSASSIN_CHEAP_RECOVERY] failByStage{s0=0 s1=0 s2=0} recoverByStage{s0=0 s1=0 s2=0} emergency{attempt=0 success=0} noFlowSkips=0
+[2026-04-02 20:27:46.233] [debug] [ENEMY_ASSASSIN_WALL_ENTRIES] byPhase{cheap=0 uncouple=0 full=0}
+[2026-04-02 20:27:46.233] [debug] [ENEMY_KILL_DEBUG_COLLISION] projectile{kills=0 wallContact=0}
+[2026-04-02 20:27:51.819] [info] RAYLIB: TEXTURE: [ID 10] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:27:51.819] [info] RAYLIB: TEXTURE: [ID 8] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:27:51.819] [info] RAYLIB: TEXTURE: [ID 9] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:27:51.819] [info] RAYLIB: FBO: [ID 1] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:27:51.819] [info] RAYLIB: FBO: [ID 2] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:27:51.819] [info] RAYLIB: FBO: [ID 3] Unloaded framebuffer from VRAM (GPU)
+[2026-04-02 20:27:51.819] [info] RAYLIB: TEXTURE: [ID 14] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:27:51.819] [info] RAYLIB: TEXTURE: [ID 15] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:27:51.819] [info] RAYLIB: TEXTURE: [ID 16] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:27:51.819] [info] RAYLIB: TEXTURE: [ID 17] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:27:51.819] [info] RAYLIB: TEXTURE: [ID 18] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:27:51.819] [info] RAYLIB: TEXTURE: [ID 3] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:27:51.819] [info] RAYLIB: TEXTURE: [ID 4] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:27:51.820] [info] RAYLIB: TEXTURE: [ID 5] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:27:51.820] [info] RAYLIB: TEXTURE: [ID 6] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:27:51.820] [info] RAYLIB: TEXTURE: [ID 7] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:27:51.820] [info] RAYLIB: TEXTURE: [ID 19] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:27:51.820] [info] RAYLIB: TEXTURE: [ID 20] Unloaded texture data from VRAM (GPU)
+[2026-04-02 20:27:51.820] [info] RAYLIB: STREAM: Unloaded audio stream data from RAM
+[2026-04-02 20:27:51.820] [info] RAYLIB: STREAM: Unloaded audio stream data from RAM
+[2026-04-02 20:27:51.834] [info] RAYLIB: AUDIO: Device closed successfully

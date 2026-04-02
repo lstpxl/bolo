@@ -1,0 +1,86 @@
+[2026-04-02 18:50:17.763] [info] RAYLIB: Initializing raylib 5.6-dev
+[2026-04-02 18:50:17.763] [info] RAYLIB: Platform backend: DESKTOP (SDL)
+[2026-04-02 18:50:17.763] [info] RAYLIB: Supported raylib modules:
+[2026-04-02 18:50:17.763] [info] RAYLIB:     > rcore:..... loaded (mandatory)
+[2026-04-02 18:50:17.763] [info] RAYLIB:     > rlgl:...... loaded (mandatory)
+[2026-04-02 18:50:17.763] [info] RAYLIB:     > rshapes:... loaded (optional)
+[2026-04-02 18:50:17.763] [info] RAYLIB:     > rtextures:. loaded (optional)
+[2026-04-02 18:50:17.763] [info] RAYLIB:     > rtext:..... loaded (optional)
+[2026-04-02 18:50:17.763] [info] RAYLIB:     > rmodels:... loaded (optional)
+[2026-04-02 18:50:17.763] [info] RAYLIB:     > raudio:.... loaded (optional)
+[2026-04-02 18:50:17.980] [info] RAYLIB: DISPLAY: Device initialized successfully
+[2026-04-02 18:50:17.980] [info] RAYLIB:     > Display size: 640 x 480
+[2026-04-02 18:50:17.980] [info] RAYLIB:     > Screen size:  640 x 480
+[2026-04-02 18:50:17.980] [info] RAYLIB:     > Render size:  640 x 480
+[2026-04-02 18:50:17.980] [info] RAYLIB:     > Viewport offsets: 0, 0
+[2026-04-02 18:50:17.981] [info] RAYLIB: GLAD: OpenGL ES 2.0 loaded successfully
+[2026-04-02 18:50:17.981] [info] RAYLIB: GL: Supported extensions count: 99
+[2026-04-02 18:50:17.982] [info] RAYLIB: GL: OpenGL device information:
+[2026-04-02 18:50:17.982] [info] RAYLIB:     > Vendor:   ARM
+[2026-04-02 18:50:17.982] [info] RAYLIB:     > Renderer: Mali-G52
+[2026-04-02 18:50:17.982] [info] RAYLIB:     > Version:  OpenGL ES 3.2 v1.g13p0-01eac0.fdf91928d758c45c1787782175b35c6a
+[2026-04-02 18:50:17.982] [info] RAYLIB:     > GLSL:     OpenGL ES GLSL ES 3.20
+[2026-04-02 18:50:17.982] [info] RAYLIB: GL: VAO extension detected, VAO functions loaded successfully
+[2026-04-02 18:50:17.982] [info] RAYLIB: GL: NPOT textures extension detected, full NPOT textures supported
+[2026-04-02 18:50:17.982] [info] RAYLIB: GL: ETC1 compressed textures supported
+[2026-04-02 18:50:17.982] [info] RAYLIB: GL: ASTC compressed textures supported
+[2026-04-02 18:50:17.983] [info] RAYLIB: PLATFORM: DESKTOP (SDL2): Initialized successfully
+[2026-04-02 18:50:17.983] [info] RAYLIB: TEXTURE: [ID 1] Texture loaded successfully (1x1 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 18:50:17.983] [info] RAYLIB: TEXTURE: [ID 1] Default texture loaded successfully
+[2026-04-02 18:50:17.985] [info] RAYLIB: SHADER: [ID 1] Vertex shader compiled successfully
+[2026-04-02 18:50:17.986] [info] RAYLIB: SHADER: [ID 2] Fragment shader compiled successfully
+[2026-04-02 18:50:18.002] [info] RAYLIB: SHADER: [ID 3] Program shader loaded successfully
+[2026-04-02 18:50:18.002] [info] RAYLIB: SHADER: [ID 3] Default shader loaded successfully
+[2026-04-02 18:50:18.012] [info] RAYLIB: RLGL: Render batch vertex buffers loaded successfully in RAM (CPU)
+[2026-04-02 18:50:18.012] [info] RAYLIB: RLGL: Render batch vertex buffers loaded successfully in VRAM (GPU)
+[2026-04-02 18:50:18.014] [info] RAYLIB: RLGL: Default OpenGL state initialized successfully
+[2026-04-02 18:50:18.016] [info] RAYLIB: TEXTURE: [ID 2] Texture loaded successfully (128x128 | GRAY_ALPHA | 1 mipmaps)
+[2026-04-02 18:50:18.017] [info] RAYLIB: FONT: Default font loaded successfully (224 glyphs)
+[2026-04-02 18:50:18.017] [info] RAYLIB: SYSTEM: Working Directory: /roms2/ports/bolt
+[2026-04-02 18:50:18.017] [info] RAYLIB: TIMER: Target time per frame: 16.667 milliseconds
+[2026-04-02 18:50:18.017] [info] RAYLIB: FILEIO: [resources/textures/sprites.png] File loaded successfully
+[2026-04-02 18:50:18.018] [info] RAYLIB: IMAGE: Data loaded successfully (18x63 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 18:50:18.019] [info] RAYLIB: TEXTURE: [ID 3] Texture loaded successfully (72x9 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 18:50:18.023] [info] RAYLIB: TEXTURE: [ID 4] Texture loaded successfully (72x36 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 18:50:18.023] [info] RAYLIB: FILEIO: [resources/textures/explosion-1.png] File loaded successfully
+[2026-04-02 18:50:18.028] [info] RAYLIB: IMAGE: Data loaded successfully (192x32 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 18:50:18.028] [info] RAYLIB: TEXTURE: [ID 5] Texture loaded successfully (192x32 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 18:50:18.028] [info] RAYLIB: FILEIO: [resources/textures/explosion-2.png] File loaded successfully
+[2026-04-02 18:50:18.034] [info] RAYLIB: IMAGE: Data loaded successfully (192x32 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 18:50:18.035] [info] RAYLIB: TEXTURE: [ID 6] Texture loaded successfully (192x32 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 18:50:18.035] [info] RAYLIB: FILEIO: [resources/textures/explosion-3-large.png] File loaded successfully
+[2026-04-02 18:50:18.053] [info] RAYLIB: IMAGE: Data loaded successfully (384x64 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 18:50:18.053] [info] RAYLIB: TEXTURE: [ID 7] Texture loaded successfully (384x64 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 18:50:18.056] [info] RAYLIB: FILEIO: [resources/fonts/absolute_10.png] File loaded successfully
+[2026-04-02 18:50:18.100] [info] RAYLIB: IMAGE: Data loaded successfully (416x176 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 18:50:18.101] [info] RAYLIB: TEXTURE: [ID 8] Texture loaded successfully (416x176 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 18:50:18.102] [info] RAYLIB: FILEIO: [resources/fonts/pixuf.ttf] File loaded successfully
+[2026-04-02 18:50:18.123] [info] RAYLIB: TEXTURE: [ID 9] Texture loaded successfully (256x256 | GRAY_ALPHA | 1 mipmaps)
+[2026-04-02 18:50:18.124] [info] RAYLIB: FONT: Data loaded successfully (16 pixel size | 95 glyphs)
+[2026-04-02 18:50:18.124] [info] RAYLIB: FILEIO: [resources/textures/density-hatch.png] File loaded successfully
+[2026-04-02 18:50:18.125] [info] RAYLIB: IMAGE: Data loaded successfully (80x16 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 18:50:18.125] [info] RAYLIB: TEXTURE: [ID 10] Texture loaded successfully (80x16 | R8G8B8A8 | 1 mipmaps)
+[2026-04-02 18:50:18.204] [info] RAYLIB: AUDIO: Device initialized successfully
+[2026-04-02 18:50:18.204] [info] RAYLIB:     > Backend:       miniaudio | ALSA
+[2026-04-02 18:50:18.204] [info] RAYLIB:     > Format:        32-bit IEEE Floating Point -> 32-bit IEEE Floating Point
+[2026-04-02 18:50:18.204] [info] RAYLIB:     > Channels:      2 -> 2
+[2026-04-02 18:50:18.204] [info] RAYLIB:     > Sample rate:   44100 -> 44100
+[2026-04-02 18:50:18.204] [info] RAYLIB:     > Periods size:  3072
+[2026-04-02 18:50:18.204] [info] RAYLIB: FILEIO: [resources/audio/ui-pass.wav] File loaded successfully
+[2026-04-02 18:50:18.204] [info] RAYLIB: WAVE: Data loaded successfully (48000 Hz, 16 bit, 1 channels)
+[2026-04-02 18:50:18.220] [info] AUDIO: menu click sound loaded from: resources/audio/ui-pass.wav
+[2026-04-02 18:50:18.220] [info] RAYLIB: FILEIO: [resources/audio/positive-select.wav] File loaded successfully
+[2026-04-02 18:50:18.220] [info] RAYLIB: WAVE: Data loaded successfully (48000 Hz, 16 bit, 1 channels)
+[2026-04-02 18:50:18.242] [info] AUDIO: menu select-on-button sound loaded from: resources/audio/positive-select.wav
+[2026-04-02 18:50:18.243] [info] RAYLIB: FILEIO: [resources/audio/power-up-digital.wav] File loaded successfully
+[2026-04-02 18:50:18.243] [info] RAYLIB: WAVE: Data loaded successfully (48000 Hz, 16 bit, 1 channels)
+[2026-04-02 18:50:18.512] [info] AUDIO: power-up (start mode) sound loaded from: resources/audio/power-up-digital.wav
+[2026-04-02 18:50:18.512] [info] RAYLIB: FILEIO: [resources/audio/player-shot.wav] File loaded successfully
+[2026-04-02 18:50:18.512] [info] RAYLIB: WAVE: Data loaded successfully (48000 Hz, 16 bit, 1 channels)
+[2026-04-02 18:50:18.562] [info] AUDIO: player-shot sound loaded from: resources/audio/player-shot.wav
+[2026-04-02 18:50:18.562] [info] RAYLIB: FILEIO: [resources/audio/enemy-shot.wav] File loaded successfully
+[2026-04-02 18:50:18.562] [info] RAYLIB: WAVE: Data loaded successfully (48000 Hz, 16 bit, 1 channels)
+[2026-04-02 18:50:18.627] [info] AUDIO: enemy-shot sound loaded from: resources/audio/enemy-shot.wav
+[2026-04-02 18:50:18.628] [info] RAYLIB: FILEIO: [resources/audio/enemy-spawning.wav] File loaded successfully
+[2026-04-02 18:50:18.628] [info] RAYLIB: WAVE: Data loaded successfully (48000 Hz, 16 bit, 1 channels)
+[2026-04-02 18:50:18.734] [info] AUDIO: enemy-s

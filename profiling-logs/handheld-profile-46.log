@@ -1,0 +1,16 @@
+Failed to create secure directory (/run/user/1000//pulse): No such file or directory
+thread 5229 panic: addition of unsigned offset to 0x7f940043c0 overflowed to 0x7f940043bc
+Unwind error at address `:0x1b310f8` (error.InvalidRegister), trace may be incomplete
+
+/opt/homebrew/Cellar/zig/0.15.2/lib/zig/libcxx/include/__vector/vector.h:404:12: 0x11fccfb in operator[] (/Users/ip/Projects/bolt/src/game/navigation/BaseDistanceField.cpp)
+/Users/ip/Projects/bolt/src/game/navigation/PlayerFlowField.cpp:97:5: 0x1209877 in Rebuild (/Users/ip/Projects/bolt/src/game/navigation/PlayerFlowField.cpp)
+/Users/ip/Projects/bolt/src/game/navigation/PlayerFlowField.cpp:239:21: 0x120de7b in operator() (/Users/ip/Projects/bolt/src/game/navigation/PlayerFlowField.cpp)
+/opt/homebrew/Cellar/zig/0.15.2/lib/zig/libcxx/include/__type_traits/invoke.h:179:25: 0x120dc6b in __invoke<(lambda at /Users/ip/Projects/bolt/src/game/navigation/PlayerFlowField.cpp:235:9)> (/Users/ip/Projects/bolt/src/game/navigation/PlayerFlowField.cpp)
+/opt/homebrew/Cellar/zig/0.15.2/lib/zig/libcxx/include/future:1858:12: 0x120dc0f in __execute<> (/Users/ip/Projects/bolt/src/game/navigation/PlayerFlowField.cpp)
+/opt/homebrew/Cellar/zig/0.15.2/lib/zig/libcxx/include/future:1852:12: 0x120db3f in operator() (/Users/ip/Projects/bolt/src/game/navigation/PlayerFlowField.cpp)
+/opt/homebrew/Cellar/zig/0.15.2/lib/zig/libcxx/include/future:894:5: 0x120d75f in __execute (/Users/ip/Projects/bolt/src/game/navigation/PlayerFlowField.cpp)
+/opt/homebrew/Cellar/zig/0.15.2/lib/zig/libcxx/include/__type_traits/invoke.h:147:25: 0x120e957 in __invoke<void (std::__1::__async_assoc_state<void, std::__1::__async_func<(lambda at /Users/ip/Projects/bolt/src/game/navigation/PlayerFlowField.cpp:235:9)> >::*)(), std::__1::__async_assoc_state<void, std::__1::__async_func<(lambda at /Users/ip/Projects/bolt/src/game/navigation/PlayerFlowField.cpp:235:9)> > *, void> (/Users/ip/Projects/bolt/src/game/navigation/PlayerFlowField.cpp)
+/opt/homebrew/Cellar/zig/0.15.2/lib/zig/libcxx/include/__thread/thread.h:199:3: 0x120e8a7 in __thread_execute<std::__1::unique_ptr<std::__1::__thread_struct, std::__1::default_delete<std::__1::__thread_struct> >, void (std::__1::__async_assoc_state<void, std::__1::__async_func<(lambda at /Users/ip/Projects/bolt/src/game/navigation/PlayerFlowField.cpp:235:9)> >::*)(), std::__1::__async_assoc_state<void, std::__1::__async_func<(lambda at /Users/ip/Projects/bolt/src/game/navigation/PlayerFlowField.cpp:235:9)> > *, 2UL> (/Users/ip/Projects/bolt/src/game/navigation/PlayerFlowField.cpp)
+/opt/homebrew/Cellar/zig/0.15.2/lib/zig/libcxx/include/__thread/thread.h:208:3: 0x120e1ef in __thread_proxy<std::__1::tuple<std::__1::unique_ptr<std::__1::__thread_struct, std::__1::default_delete<std::__1::__thread_struct> >, void (std::__1::__async_assoc_state<void, std::__1::__async_func<(lambda at /Users/ip/Projects/bolt/src/game/navigation/PlayerFlowField.cpp:235:9)> >::*)(), std::__1::__async_assoc_state<void, std::__1::__async_func<(lambda at /Users/ip/Projects/bolt/src/game/navigation/PlayerFlowField.cpp:235:9)> > *> > (/Users/ip/Projects/bolt/src/game/navigation/PlayerFlowField.cpp)
+???:?:?: 0x7fb1db5ef7 in ??? (libc.so.6)
+???:?:?: 0x7fb1e1db9b in ??? (libc.so.6)
