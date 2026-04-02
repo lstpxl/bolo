@@ -66,7 +66,6 @@ Algorithm and constraints:
 3. Validate maze before acceptance:
    - all cells reachable (`IsMazeFullyAccessible`)
    - neighbor wall consistency (`IsMazeWallTopologyValid`)
-   - both horizontal and vertical walls present across all quadrants (`IsWallDistributionValid`)
 4. Place exactly 6 enemy bases on unique cells.
 5. Place player on cell centers using `BaseDistanceField` (maze cardinal distance to nearest alive base):
    - initial spawn distance bounds: `8..20` cells from nearest base

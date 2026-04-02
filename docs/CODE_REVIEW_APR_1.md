@@ -53,12 +53,7 @@ With 144 enemies: 144² = 20 736 `bool` bits (~2.6 KB), allocated every fixed st
 
 ---
 
-**M-2 · `IsWallDistributionValid` referenced in `GAME_DESIGN.md` is not implemented**
-
-- **File:** `src/game/systems/MazeSystem.cpp` line 441–445
-- **Evidence:** The do-while validation loop only checks `IsMazeFullyAccessible` and `IsMazeWallTopologyValid`. `GAME_DESIGN.md` also requires `IsWallDistributionValid` (both horizontal and vertical walls present across all quadrants). Neither the function nor its call exists anywhere in the codebase.
-- **Impact:** Mazes may occasionally have poor structural quality (all openings in one area/quadrant), which could degrade gameplay variety and navigation fairness. The check is listed as a hard acceptance criterion in the design doc.
-- **Recommended fix:** Either implement `IsWallDistributionValid` and add it to the validation loop, or remove the requirement from `GAME_DESIGN.md` if intentionally dropped.
+**M-2 · Removed
 
 ---
 
@@ -253,7 +248,7 @@ All review blocks complete. Here's a summary of what was found across all nine a
 
 **2 High findings** — both are hot-path heap allocation violations: per-frame vectors in `UpdateEnemySystem` and the O(n²) `pairVisited` allocation in the broad-phase. These are the most impactful items given the existing performance constraints.
 
-**7 Medium findings** — ranging from a correctness bug (chain-kill explosions never spawning VFX, contradicting the design doc), a missing maze validation function (`IsWallDistributionValid`), a wrong drone spawn interval, an undocumented firing rule, a resource leak in sprite loading, and a duplicated utility function.
+**7 Medium findings** — ranging from a correctness bug (chain-kill explosions never spawning VFX, contradicting the design doc), a wrong drone spawn interval, an undocumented firing rule, a resource leak in sprite loading, and a duplicated utility function.
 
 **9 Low findings** — mostly doc/code inconsistencies, misleading code patterns, or minor semantic issues with no runtime impact.
 
