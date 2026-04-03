@@ -22,7 +22,7 @@ private:
     void ReportWindowIfDue(std::uint64_t frameIndex);
     void ResetWindowStats();
 
-    static constexpr std::uint32_t kSampleBufferSamples = 1024;
+    static constexpr std::uint32_t kSampleBufferSamples = 4096;
     // Uploads taking longer than this are logged immediately to bolt.log.
     static constexpr std::uint64_t kSlowUploadThresholdUs = 5000;
 
