@@ -3,6 +3,7 @@
 #include "core/Profiling.h"
 
 bool RaylibRenderer::LoadResources() {
+    hudPanel_.PreloadHudResources();
     return renderer2D_.LoadResources();
 }
 

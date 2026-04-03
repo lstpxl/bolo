@@ -12,6 +12,7 @@ struct GameState;
 class HudPanel {
 public:
     void ReleaseResources();
+    void PreloadHudResources() const;
     void ResetTransientState() const;
     void PrepareRenderTargets(const GameState& state, const AppConfig& config, const FrameInput& input) const;
     void DrawPrepared(const GameState& state, const AppConfig& config, const FrameInput& input) const;
@@ -22,33 +23,45 @@ private:
     static constexpr std::uint64_t kMinimapEnemyUpdateIntervalFrames = 1;
     static constexpr std::uint64_t kBasesRadarUpdateIntervalFrames = 1;
     static constexpr int kMinimapTrackedBaseCount = 6;
-    static constexpr int kLivesIconSizePixels = 36;
-    static constexpr int kLivesIconGapPixels = 1;
+    static constexpr int kLifeHudIconSizePixels = 20;
+    static constexpr int kLifeHudInnerExtraHeightPx = 8;
+    static constexpr int kLifeHudInnerPaddingHPx = 8;
+    static constexpr int kLifeHudMaxSlots = GameplayConstants::kStartingLives;
+    static constexpr int kLivesIconGapPixels = 8;
 
     struct HudLayout {
         int panelX = 0;
         int contentX = 0;
         int contentWidth = 0;
         int scoreY = 0;
+        int logoY = 0;
         int livesY = 0;
         int fuelY = 0;
-        int speedY = 0;
-        int mapX = 0;
-        int mapY = 0;
-        int mapSize = 0;
+        int velocityY = 0;
+        int flexTop = 0;
+        int flexBottom = 0;
+        int mapOuterX = 0;
+        int mapOuterY = 0;
+        int mapOuterW = 0;
+        int mapOuterH = 0;
+        int mapInnerW = 0;
+        int mapInnerH = 0;
         int blocksY = 0;
         int leftBlockSize = 0;
-        int compassX = 0;
+        int leftBlockOuterX = 0;
+        int compassOuterX = 0;
     };
 
-    static HudLayout BuildHudLayout(int panelX, int hudWidth, int screenHeight);
+    static HudLayout BuildHudLayout(int panelX, int hudWidth, int screenHeight, int mazeWidthCells, int mazeHeightCells);
     void EnsureBoltMetrics(int contentWidth) const;
+    void EnsureBoltLogoTexture() const;
     void EnsureStaticLayerTarget(int hudWidth, int screenHeight) const;
-    void EnsureMinimapMarkersTarget(int mapSize) const;
+    void EnsureMinimapMarkersTarget(int mapWidthPixels, int mapHeightPixels) const;
     void EnsureBasesRadarTarget(int blockSize) const;
-    void EnsureLivesIconTexture() const;
+    void EnsureLifeHudIconTextures() const;
+    void EnsureHudScoreFont() const;
     void EnsureEnemyCountIconTextures() const;
-    void RebuildStaticLayer(const AppConfig& config) const;
+    void RebuildStaticLayer(const AppConfig& config, int mazeWidthCells, int mazeHeightCells) const;
     void ResetMinimapMarkersLayer() const;
     void UpdateOneMinimapEntityMarker(const GameState& state) const;
     void UpdateBasesRadarLayer(int blockSize, int highlightedQuadrant) const;
@@ -79,7 +92,10 @@ private:
     mutable bool minimapMarkersDirty_ = true;
     mutable RenderTexture2D minimapMarkersTarget_{};
     mutable bool minimapMarkersTargetLoaded_ = false;
-    mutable int minimapMarkersSize_ = 0;
+    mutable int minimapMarkersW_ = 0;
+    mutable int minimapMarkersH_ = 0;
+    mutable int cachedLayoutMazeW_ = 0;
+    mutable int cachedLayoutMazeH_ = 0;
     mutable std::uint64_t lastMinimapEnemyUpdateFrame_ = 0;
     mutable int minimapEntityCursorIndex_ = -kMinimapTrackedBaseCount;
     mutable std::array<int, GameplayConstants::kMaxAliveEnemies + kMinimapTrackedBaseCount> minimapEntityCellX_{};
@@ -93,10 +109,19 @@ private:
     mutable std::uint64_t lastBasesRadarUpdateFrame_ = 0;
     mutable int cachedBasesRadarQuadrant_ = -2;
 
-    mutable bool livesIconTextureLoadAttempted_ = false;
-    mutable Texture2D livesIconTexture_{};
-    mutable bool livesIconTextureLoaded_ = false;
+    mutable bool lifeHudIconLoadAttempted_ = false;
+    mutable Texture2D lifeHudIconActiveTexture_{};
+    mutable Texture2D lifeHudIconSpentTexture_{};
+    mutable bool lifeHudIconsLoaded_ = false;
     mutable bool enemyCountIconTexturesLoadAttempted_ = false;
     mutable std::array<Texture2D, 4> enemyCountIconTextures_{};
     mutable std::array<bool, 4> enemyCountIconTexturesLoaded_{};
+
+    mutable bool boltLogoTextureLoadAttempted_ = false;
+    mutable Texture2D boltLogoTexture_{};
+    mutable bool boltLogoTextureLoaded_ = false;
+
+    mutable bool hudScoreFontLoadAttempted_ = false;
+    mutable Font hudScoreFont_{};
+    mutable bool hudScoreFontLoaded_ = false;
 };

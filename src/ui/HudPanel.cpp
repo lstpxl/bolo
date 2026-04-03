@@ -11,25 +11,36 @@
 #include "raylib.h"
 
 namespace {
+constexpr int kHudLeftAccentPx = 2;
 constexpr int kContentPadding = 10;
+constexpr int kHudStackGap = 12;
+constexpr int kHudRadarPairGap = 10;
+constexpr int kFuelBarInnerHeightPx = 4;
+// Same font as main menu "Beta Version" (MenuScreen: pixuf.ttf, base 16, DrawTextEx size 16).
+constexpr int kHudScoreFontBaseSize = 16;
+constexpr float kHudScoreFontRenderSize = 16.0F;
+constexpr int kScoreFrameOuterHeightPx = 36;
 constexpr int kBoltFontSize = 50;
-constexpr int kLivesBlockTopPadding = 12;
-constexpr int kMinimapLogicalSizePixels = 60;
-constexpr int kMinimapDisplayScale = 2;
-constexpr int kMinimapDisplaySizePixels = kMinimapLogicalSizePixels * kMinimapDisplayScale;
+constexpr int kBoltLogoNativeWidth = 140;
+constexpr int kBoltLogoNativeHeight = 54;
+constexpr int kFrameBorderTotalPx = 8;  // 2px accent + 2px black per side
+
+constexpr Color kHudSurface{27, 31, 40, 255};     // #1b1f28
+constexpr Color kHudAccent{64, 69, 79, 255};      // #40454f
+constexpr Color kDarkGreen{19, 60, 26, 255};      // #133c1a
+constexpr Color kTraceGreen{33, 73, 38, 255};     // #214926
+constexpr Color kBrightGreen{3, 199, 3, 255};     // #03c703
+constexpr Color kBrandYellow{223, 206, 4, 255};   // #dfce04
 
 constexpr Color kDroneMapColor{66, 190, 143, 255};      // #42BE8F
 constexpr Color kTorpedoMapColor{164, 173, 67, 255};    // #A4AD43
 constexpr Color kHunterMapColor{221, 145, 67, 255};     // #DD9143
 constexpr Color kAssassinMapColor{221, 145, 67, 255};   // #DD9143
-constexpr Color kPlayerMapColor{3, 199, 3, 255};        // rgb(3, 199, 3)
+constexpr Color kPlayerMapColor = kBrightGreen;
 constexpr Color kBaseMapColor{255, 0, 255, 255};        // #FF00FF
 constexpr Color kDestroyedBaseMapColor{96, 96, 96, 255};    // #606060
-constexpr Color kPanelColor{27, 31, 39, 255};
-constexpr Color kPanelDividerColor{58, 66, 80, 255};
-constexpr Color kCompassBackgroundColor{18, 60, 26, 255};   // #123C1A
-constexpr Color kQuadrantDimColor{18, 60, 26, 255};
-constexpr Color kQuadrantBrightColor{160, 255, 120, 255};
+constexpr Color kQuadrantInactiveColor = kDarkGreen;
+constexpr Color kQuadrantActiveColor = kBrightGreen;
 
 constexpr int kSpriteSheetColumns = 2;
 constexpr int kSpriteSheetRows = 7;
@@ -38,15 +49,6 @@ constexpr int kPlayerBodyRowIndex = 0;
 constexpr int kPlayerBarrelRowIndex = 1;
 constexpr int kEnemySpriteFirstRowIndex = 3;
 constexpr int kEnemyCountIconSizePixels = 10;
-
-constexpr Color ColorFromHexRGB(std::uint32_t hex) {
-    return Color{
-        static_cast<unsigned char>((hex >> 16U) & 0xFFU),
-        static_cast<unsigned char>((hex >> 8U) & 0xFFU),
-        static_cast<unsigned char>(hex & 0xFFU),
-        255,
-    };
-}
 
 bool TryLoadImageAtPath(Image& image, const char* path) {
     if (!FileExists(path)) {
@@ -125,31 +127,43 @@ Color EnemyMapColor(EnemyType type) {
 }
 
 void DrawBasesRadarQuadrantsAt(int originX, int originY, int blockSize, int highlightedQuadrant) {
-    const int quadrantCell = blockSize / 2;
+    constexpr int kOuterMargin = 0;
+    constexpr int kQuadGap = 2;
+    const int innerW = blockSize - 2 * kOuterMargin;
+    const int innerH = blockSize - 2 * kOuterMargin;
+    if (innerW < kQuadGap + 2 || innerH < kQuadGap + 2) {
+        return;
+    }
+    const int qW0 = (innerW - kQuadGap) / 2;
+    const int qW1 = innerW - kQuadGap - qW0;
+    const int qH0 = (innerH - kQuadGap) / 2;
+    const int qH1 = innerH - kQuadGap - qH0;
+    const int x0 = originX + kOuterMargin;
+    const int y0 = originY + kOuterMargin;
+    DrawRectangle(x0, y0, qW0, qH0, highlightedQuadrant == 0 ? kQuadrantActiveColor : kQuadrantInactiveColor);
+    DrawRectangle(x0 + qW0 + kQuadGap, y0, qW1, qH0, highlightedQuadrant == 1 ? kQuadrantActiveColor : kQuadrantInactiveColor);
+    DrawRectangle(x0, y0 + qH0 + kQuadGap, qW0, qH1, highlightedQuadrant == 2 ? kQuadrantActiveColor : kQuadrantInactiveColor);
     DrawRectangle(
-        originX + 2,
-        originY + 2,
-        quadrantCell - 3,
-        quadrantCell - 3,
-        highlightedQuadrant == 0 ? kQuadrantBrightColor : kQuadrantDimColor);
-    DrawRectangle(
-        originX + quadrantCell + 1,
-        originY + 2,
-        quadrantCell - 3,
-        quadrantCell - 3,
-        highlightedQuadrant == 1 ? kQuadrantBrightColor : kQuadrantDimColor);
-    DrawRectangle(
-        originX + 2,
-        originY + quadrantCell + 1,
-        quadrantCell - 3,
-        quadrantCell - 3,
-        highlightedQuadrant == 2 ? kQuadrantBrightColor : kQuadrantDimColor);
-    DrawRectangle(
-        originX + quadrantCell + 1,
-        originY + quadrantCell + 1,
-        quadrantCell - 3,
-        quadrantCell - 3,
-        highlightedQuadrant == 3 ? kQuadrantBrightColor : kQuadrantDimColor);
+        x0 + qW0 + kQuadGap,
+        y0 + qH0 + kQuadGap,
+        qW1,
+        qH1,
+        highlightedQuadrant == 3 ? kQuadrantActiveColor : kQuadrantInactiveColor);
+}
+
+void DrawHudDoubleFrame(int ox, int oy, int ow, int oh, Color innerFill) {
+    if (ow < kFrameBorderTotalPx || oh < kFrameBorderTotalPx) {
+        return;
+    }
+    DrawRectangle(ox + 4, oy + 4, ow - 8, oh - 8, innerFill);
+    DrawRectangle(ox, oy, ow, 2, kHudAccent);
+    DrawRectangle(ox, oy + oh - 2, ow, 2, kHudAccent);
+    DrawRectangle(ox, oy + 2, 2, oh - 4, kHudAccent);
+    DrawRectangle(ox + ow - 2, oy + 2, 2, oh - 4, kHudAccent);
+    DrawRectangle(ox + 2, oy + 2, ow - 4, 2, BLACK);
+    DrawRectangle(ox + 2, oy + oh - 4, ow - 4, 2, BLACK);
+    DrawRectangle(ox + 2, oy + 4, 2, oh - 8, BLACK);
+    DrawRectangle(ox + ow - 4, oy + 4, 2, oh - 8, BLACK);
 }
 }  // namespace
 
@@ -169,10 +183,26 @@ void HudPanel::ReleaseResources() {
         basesRadarTarget_ = RenderTexture2D{};
         basesRadarTargetLoaded_ = false;
     }
-    if (livesIconTextureLoaded_) {
-        UnloadTexture(livesIconTexture_);
-        livesIconTexture_ = Texture2D{};
-        livesIconTextureLoaded_ = false;
+    if (lifeHudIconsLoaded_) {
+        if (lifeHudIconActiveTexture_.id != 0) {
+            UnloadTexture(lifeHudIconActiveTexture_);
+            lifeHudIconActiveTexture_ = Texture2D{};
+        }
+        if (lifeHudIconSpentTexture_.id != 0) {
+            UnloadTexture(lifeHudIconSpentTexture_);
+            lifeHudIconSpentTexture_ = Texture2D{};
+        }
+        lifeHudIconsLoaded_ = false;
+    }
+    if (boltLogoTextureLoaded_) {
+        UnloadTexture(boltLogoTexture_);
+        boltLogoTexture_ = Texture2D{};
+        boltLogoTextureLoaded_ = false;
+    }
+    if (hudScoreFontLoaded_) {
+        UnloadFont(hudScoreFont_);
+        hudScoreFont_ = Font{};
+        hudScoreFontLoaded_ = false;
     }
     for (std::size_t i = 0; i < enemyCountIconTextures_.size(); ++i) {
         if (!enemyCountIconTexturesLoaded_[i]) {
@@ -183,11 +213,16 @@ void HudPanel::ReleaseResources() {
         enemyCountIconTexturesLoaded_[i] = false;
     }
 
-    livesIconTextureLoadAttempted_ = false;
+    lifeHudIconLoadAttempted_ = false;
+    boltLogoTextureLoadAttempted_ = false;
+    hudScoreFontLoadAttempted_ = false;
     enemyCountIconTexturesLoadAttempted_ = false;
     staticLayerWidth_ = 0;
     staticLayerHeight_ = 0;
-    minimapMarkersSize_ = 0;
+    minimapMarkersW_ = 0;
+    minimapMarkersH_ = 0;
+    cachedLayoutMazeW_ = 0;
+    cachedLayoutMazeH_ = 0;
     basesRadarSize_ = 0;
     staticLayerDirty_ = true;
     minimapMarkersDirty_ = true;
@@ -226,29 +261,64 @@ void HudPanel::ResetTransientState() const {
     cachedBasesRadarQuadrant_ = -2;
 }
 
-HudPanel::HudLayout HudPanel::BuildHudLayout(int panelX, int hudWidth, int screenHeight) {
+HudPanel::HudLayout HudPanel::BuildHudLayout(
+    int panelX, int hudWidth, int screenHeight, int mazeWidthCells, int mazeHeightCells) {
     HudLayout layout{};
     layout.panelX = panelX;
-    layout.contentX = panelX + kContentPadding;
-    layout.contentWidth = hudWidth - (kContentPadding * 2);
+    layout.contentX = panelX + kHudLeftAccentPx + kContentPadding;
+    layout.contentWidth = hudWidth - kHudLeftAccentPx - (kContentPadding * 2);
 
-    int cursorY = 8;
-    cursorY += 56;
-    layout.scoreY = cursorY;
-    cursorY += 44;
-    layout.livesY = cursorY;
-    cursorY += kLivesIconSizePixels + kLivesBlockTopPadding;
-    layout.fuelY = cursorY;
-    cursorY += 20;
-    layout.speedY = cursorY;
+    const int mazeW = std::max(1, mazeWidthCells);
+    const int mazeH = std::max(1, mazeHeightCells);
+    layout.mapInnerW = mazeW * 2;
+    layout.mapInnerH = mazeH * 2;
+    layout.mapOuterW = layout.mapInnerW + kFrameBorderTotalPx;
+    layout.mapOuterH = layout.mapInnerH + kFrameBorderTotalPx;
 
-    layout.mapSize = std::min(layout.contentWidth, kMinimapDisplaySizePixels);
-    const int mapMargin = std::max(0, (layout.contentWidth - layout.mapSize) / 2);
-    layout.mapX = layout.contentX + mapMargin;
-    layout.mapY = screenHeight - mapMargin - layout.mapSize;
-    layout.leftBlockSize = (layout.contentWidth - 8) / 2;
-    layout.blocksY = layout.mapY - layout.leftBlockSize - mapMargin;
-    layout.compassX = layout.contentX + layout.leftBlockSize + 8;
+    const int sideAndBottomMargin = std::max(0, (hudWidth - layout.mapOuterW) / 2);
+    layout.mapOuterX = panelX + sideAndBottomMargin;
+    layout.mapOuterY = screenHeight - sideAndBottomMargin - layout.mapOuterH;
+
+    constexpr int kTopMargin = 8;
+    constexpr int kMinFlexForCounters = 24;
+    constexpr int scoreOuterH = kScoreFrameOuterHeightPx;
+    const int boltLogoDrawW = std::min(kBoltLogoNativeWidth, layout.contentWidth);
+    const int logoH = std::max(1, (kBoltLogoNativeHeight * boltLogoDrawW) / kBoltLogoNativeWidth);
+    constexpr int livesOuterH = kLifeHudIconSizePixels + kLifeHudInnerExtraHeightPx + kFrameBorderTotalPx;
+    constexpr int fuelOuterH = kFuelBarInnerHeightPx + kFrameBorderTotalPx;
+    constexpr int velocityOuterH = 12 + kFrameBorderTotalPx;
+
+    layout.scoreY = kTopMargin;
+    layout.logoY = layout.scoreY + scoreOuterH + kHudStackGap;
+    layout.livesY = layout.logoY + logoH + kHudStackGap;
+    layout.fuelY = layout.livesY + livesOuterH + kHudStackGap;
+
+    const int topStackEnd = layout.fuelY + fuelOuterH;
+    layout.flexTop = topStackEnd + kHudStackGap;
+
+    int blockOuter = (layout.mapOuterW - kHudRadarPairGap) / 2;
+    int innerB = std::max(8, blockOuter - kFrameBorderTotalPx);
+    blockOuter = innerB + kFrameBorderTotalPx;
+
+    const int minimalVelocityTop = layout.flexTop + kMinFlexForCounters;
+    const int maxBlockOuterByHeight =
+        layout.mapOuterY - kHudStackGap - velocityOuterH - kHudStackGap - minimalVelocityTop;
+    if (blockOuter > maxBlockOuterByHeight && maxBlockOuterByHeight >= 24) {
+        blockOuter = maxBlockOuterByHeight;
+        innerB = std::max(8, blockOuter - kFrameBorderTotalPx);
+        blockOuter = innerB + kFrameBorderTotalPx;
+    }
+
+    const int radarRowOuterW = 2 * blockOuter + kHudRadarPairGap;
+    const int radarRowPadX = std::max(0, layout.mapOuterW - radarRowOuterW) / 2;
+
+    layout.leftBlockSize = innerB;
+    layout.blocksY = layout.mapOuterY - kHudStackGap - blockOuter;
+    layout.velocityY = layout.blocksY - kHudStackGap - velocityOuterH;
+    layout.flexBottom = layout.velocityY - kHudStackGap;
+
+    layout.leftBlockOuterX = layout.mapOuterX + radarRowPadX;
+    layout.compassOuterX = layout.leftBlockOuterX + blockOuter + kHudRadarPairGap;
     return layout;
 }
 
@@ -261,6 +331,26 @@ void HudPanel::EnsureBoltMetrics(int contentWidth) const {
     boltBaseWidth_ = MeasureText("BOLT", kBoltFontSize);
     boltSpacing_ = std::max(1.0F, (static_cast<float>(contentWidth) - static_cast<float>(boltBaseWidth_)) / 3.0F) +
         4.0F;
+    staticLayerDirty_ = true;
+}
+
+void HudPanel::EnsureBoltLogoTexture() const {
+    if (boltLogoTextureLoaded_ || boltLogoTextureLoadAttempted_) {
+        return;
+    }
+    boltLogoTextureLoadAttempted_ = true;
+
+    Image image{};
+    if (!TryLoadImageFromTextureDirectory(image, "bolt-logo-140px.png")) {
+        return;
+    }
+    boltLogoTexture_ = LoadTextureFromImage(image);
+    UnloadImage(image);
+    if (boltLogoTexture_.id == 0) {
+        return;
+    }
+    SetTextureFilter(boltLogoTexture_, TEXTURE_FILTER_POINT);
+    boltLogoTextureLoaded_ = true;
     staticLayerDirty_ = true;
 }
 
@@ -294,30 +384,33 @@ void HudPanel::EnsureStaticLayerTarget(int hudWidth, int screenHeight) const {
     staticLayerDirty_ = true;
 }
 
-void HudPanel::EnsureMinimapMarkersTarget(int mapSize) const {
-    if (mapSize <= 0) {
+void HudPanel::EnsureMinimapMarkersTarget(int mapWidthPixels, int mapHeightPixels) const {
+    if (mapWidthPixels <= 0 || mapHeightPixels <= 0) {
         return;
     }
 
-    const bool sizeChanged = minimapMarkersTargetLoaded_ && minimapMarkersSize_ != mapSize;
+    const bool sizeChanged = minimapMarkersTargetLoaded_ &&
+        (minimapMarkersW_ != mapWidthPixels || minimapMarkersH_ != mapHeightPixels);
     if (sizeChanged) {
         UnloadRenderTexture(minimapMarkersTarget_);
         minimapMarkersTarget_ = RenderTexture2D{};
         minimapMarkersTargetLoaded_ = false;
-        minimapMarkersSize_ = 0;
+        minimapMarkersW_ = 0;
+        minimapMarkersH_ = 0;
     }
 
     if (minimapMarkersTargetLoaded_) {
         return;
     }
 
-    minimapMarkersTarget_ = LoadRenderTexture(mapSize, mapSize);
+    minimapMarkersTarget_ = LoadRenderTexture(mapWidthPixels, mapHeightPixels);
     minimapMarkersTargetLoaded_ = minimapMarkersTarget_.id != 0;
     if (!minimapMarkersTargetLoaded_) {
         return;
     }
     SetTextureFilter(minimapMarkersTarget_.texture, TEXTURE_FILTER_POINT);
-    minimapMarkersSize_ = mapSize;
+    minimapMarkersW_ = mapWidthPixels;
+    minimapMarkersH_ = mapHeightPixels;
     minimapMarkersDirty_ = true;
 }
 
@@ -351,11 +444,74 @@ void HudPanel::EnsureBasesRadarTarget(int blockSize) const {
     cachedBasesRadarQuadrant_ = -2;
 }
 
-void HudPanel::EnsureLivesIconTexture() const {
-    if (livesIconTextureLoaded_ || livesIconTextureLoadAttempted_) {
+void HudPanel::PreloadHudResources() const {
+    EnsureHudScoreFont();
+    EnsureLifeHudIconTextures();
+}
+
+void HudPanel::EnsureHudScoreFont() const {
+    if (hudScoreFontLoaded_ || hudScoreFontLoadAttempted_) {
         return;
     }
-    livesIconTextureLoadAttempted_ = true;
+    hudScoreFontLoadAttempted_ = true;
+
+    const std::string fontPath = core::resources::ResolveResourcePath("fonts", "pixuf.ttf");
+    if (fontPath.empty() || !FileExists(fontPath.c_str())) {
+        bolt::log::Warning("HUD: pixuf.ttf not found in resources/fonts (score uses default font)");
+        return;
+    }
+    hudScoreFont_ = LoadFontEx(fontPath.c_str(), kHudScoreFontBaseSize, nullptr, 0);
+    if (hudScoreFont_.texture.id == 0) {
+        bolt::log::Warning("HUD: failed to load score font from %s", fontPath.c_str());
+        hudScoreFont_ = Font{};
+        return;
+    }
+    SetTextureFilter(hudScoreFont_.texture, TEXTURE_FILTER_POINT);
+    hudScoreFontLoaded_ = true;
+}
+
+void HudPanel::EnsureLifeHudIconTextures() const {
+    if (lifeHudIconLoadAttempted_) {
+        return;
+    }
+    lifeHudIconLoadAttempted_ = true;
+
+    auto unloadPartialPngTextures = [&]() {
+        if (lifeHudIconActiveTexture_.id != 0) {
+            UnloadTexture(lifeHudIconActiveTexture_);
+            lifeHudIconActiveTexture_ = Texture2D{};
+        }
+        if (lifeHudIconSpentTexture_.id != 0) {
+            UnloadTexture(lifeHudIconSpentTexture_);
+            lifeHudIconSpentTexture_ = Texture2D{};
+        }
+    };
+
+    Image base{};
+    if (TryLoadImageFromTextureDirectory(base, "live-icon-20x20px.png") && base.data != nullptr) {
+        Image activeImg = ImageCopy(base);
+        FillOpaquePixelsColor(activeImg, kBrightGreen);
+        lifeHudIconActiveTexture_ = LoadTextureFromImage(activeImg);
+        UnloadImage(activeImg);
+
+        Image spentImg = ImageCopy(base);
+        FillOpaquePixelsColor(spentImg, kTraceGreen);
+        lifeHudIconSpentTexture_ = LoadTextureFromImage(spentImg);
+        UnloadImage(spentImg);
+        UnloadImage(base);
+
+        if (lifeHudIconActiveTexture_.id != 0 && lifeHudIconSpentTexture_.id != 0) {
+            SetTextureFilter(lifeHudIconActiveTexture_, TEXTURE_FILTER_POINT);
+            SetTextureFilter(lifeHudIconSpentTexture_, TEXTURE_FILTER_POINT);
+            lifeHudIconsLoaded_ = true;
+            return;
+        }
+        unloadPartialPngTextures();
+    } else {
+        if (base.data != nullptr) {
+            UnloadImage(base);
+        }
+    }
 
     Image sourceSheet{};
     if (!TryLoadImageFromTextureDirectory(sourceSheet, "sprites.png")) {
@@ -369,19 +525,27 @@ void HudPanel::EnsureLivesIconTexture() const {
 
     Image playerBodyUp = ExtractSpriteCell(sourceSheet, 0, kPlayerBodyRowIndex, kSpriteSheetCellSize);
     Image playerBarrelUp = ExtractSpriteCell(sourceSheet, 0, kPlayerBarrelRowIndex, kSpriteSheetCellSize);
-    const Color playerColor = ColorFromHexRGB(0x03C703U);
-    Image playerFrame = CombineCellsXor(playerBodyUp, playerBarrelUp, playerColor);
-    ImageResizeNN(&playerFrame, kLivesIconSizePixels, kLivesIconSizePixels);
-    livesIconTexture_ = LoadTextureFromImage(playerFrame);
-    livesIconTextureLoaded_ = livesIconTexture_.id != 0;
-    if (livesIconTextureLoaded_) {
-        SetTextureFilter(livesIconTexture_, TEXTURE_FILTER_POINT);
-    }
+    Image playerFrameActive = CombineCellsXor(playerBodyUp, playerBarrelUp, kBrightGreen);
+    ImageResizeNN(&playerFrameActive, kLifeHudIconSizePixels, kLifeHudIconSizePixels);
+    lifeHudIconActiveTexture_ = LoadTextureFromImage(playerFrameActive);
+    UnloadImage(playerFrameActive);
 
-    UnloadImage(playerFrame);
+    Image playerFrameSpent = CombineCellsXor(playerBodyUp, playerBarrelUp, kTraceGreen);
+    ImageResizeNN(&playerFrameSpent, kLifeHudIconSizePixels, kLifeHudIconSizePixels);
+    lifeHudIconSpentTexture_ = LoadTextureFromImage(playerFrameSpent);
+    UnloadImage(playerFrameSpent);
+
     UnloadImage(playerBarrelUp);
     UnloadImage(playerBodyUp);
     UnloadImage(sourceSheet);
+
+    if (lifeHudIconActiveTexture_.id != 0 && lifeHudIconSpentTexture_.id != 0) {
+        SetTextureFilter(lifeHudIconActiveTexture_, TEXTURE_FILTER_POINT);
+        SetTextureFilter(lifeHudIconSpentTexture_, TEXTURE_FILTER_POINT);
+        lifeHudIconsLoaded_ = true;
+    } else {
+        unloadPartialPngTextures();
+    }
 }
 
 void HudPanel::EnsureEnemyCountIconTextures() const {
@@ -416,54 +580,89 @@ void HudPanel::EnsureEnemyCountIconTextures() const {
     UnloadImage(sourceSheet);
 }
 
-void HudPanel::RebuildStaticLayer(const AppConfig& config) const {
+void HudPanel::RebuildStaticLayer(const AppConfig& config, int mazeWidthCells, int mazeHeightCells) const {
     if (!staticLayerTargetLoaded_) {
         return;
     }
 
     const int hudWidth = ComputeHudWidth(config);
-    const HudLayout layout = BuildHudLayout(0, hudWidth, config.screenHeight);
+    const HudLayout layout = BuildHudLayout(0, hudWidth, config.screenHeight, mazeWidthCells, mazeHeightCells);
 
     BeginTextureMode(staticLayerTarget_);
     ClearBackground(BLANK);
 
-    DrawRectangle(0, 0, hudWidth, config.screenHeight, kPanelColor);
-    DrawLine(0, 0, 0, config.screenHeight, kPanelDividerColor);
-    DrawTextEx(
-        GetFontDefault(),
-        "BOLT",
-        Vector2{static_cast<float>(layout.contentX), 8.0F},
-        static_cast<float>(kBoltFontSize),
-        boltSpacing_,
-        PURPLE);
+    DrawRectangle(0, 0, kHudLeftAccentPx, config.screenHeight, kHudAccent);
+    DrawRectangle(kHudLeftAccentPx, 0, hudWidth - kHudLeftAccentPx, config.screenHeight, kHudSurface);
 
-    DrawRectangle(layout.contentX, layout.scoreY, layout.contentWidth, 36, BLACK);
-    DrawRectangleLines(layout.contentX, layout.scoreY, layout.contentWidth, 36, RAYWHITE);
+    const int itemsW = layout.mapOuterW;
+    DrawHudDoubleFrame(layout.mapOuterX, layout.scoreY, itemsW, kScoreFrameOuterHeightPx, kDarkGreen);
 
-    DrawRectangle(layout.contentX, layout.fuelY, layout.contentWidth, 12, DARKGRAY);
-    DrawRectangleLines(layout.contentX, layout.fuelY, layout.contentWidth, 12, RAYWHITE);
+    if (boltLogoTextureLoaded_) {
+        const int drawW = std::min(static_cast<int>(boltLogoTexture_.width), layout.contentWidth);
+        const int drawH = std::max(
+            1,
+            static_cast<int>(boltLogoTexture_.height) * drawW / std::max(1, static_cast<int>(boltLogoTexture_.width)));
+        const float dstX = static_cast<float>(layout.contentX) +
+            (static_cast<float>(layout.contentWidth) - static_cast<float>(drawW)) * 0.5F;
+        const float dstY = static_cast<float>(layout.logoY);
+        const Rectangle source{
+            .x = 0.0F,
+            .y = 0.0F,
+            .width = static_cast<float>(boltLogoTexture_.width),
+            .height = static_cast<float>(boltLogoTexture_.height),
+        };
+        const Rectangle destination{
+            .x = dstX,
+            .y = dstY,
+            .width = static_cast<float>(drawW),
+            .height = static_cast<float>(drawH),
+        };
+        DrawTexturePro(boltLogoTexture_, source, destination, Vector2{0.0F, 0.0F}, 0.0F, WHITE);
+    } else {
+        const Vector2 boltSize =
+            MeasureTextEx(GetFontDefault(), "BOLT", static_cast<float>(kBoltFontSize), boltSpacing_);
+        const float boltX =
+            static_cast<float>(layout.contentX) +
+            (static_cast<float>(layout.contentWidth) - boltSize.x) * 0.5F;
+        DrawTextEx(
+            GetFontDefault(),
+            "BOLT",
+            Vector2{boltX, static_cast<float>(layout.logoY)},
+            static_cast<float>(kBoltFontSize),
+            boltSpacing_,
+            kBrandYellow);
+    }
 
-    DrawRectangle(layout.contentX, layout.speedY, layout.contentWidth, 12, DARKGRAY);
-    DrawRectangleLines(layout.contentX, layout.speedY, layout.contentWidth, 12, RAYWHITE);
+    DrawHudDoubleFrame(
+        layout.mapOuterX,
+        layout.livesY,
+        itemsW,
+        kLifeHudIconSizePixels + kLifeHudInnerExtraHeightPx + kFrameBorderTotalPx,
+        kDarkGreen);
 
-    DrawRectangle(layout.mapX, layout.mapY, layout.mapSize, layout.mapSize, BLACK);
-    DrawRectangleLines(layout.mapX - 1, layout.mapY - 1, layout.mapSize + 2, layout.mapSize + 2, RAYWHITE);
+    DrawHudDoubleFrame(
+        layout.mapOuterX, layout.fuelY, itemsW, kFuelBarInnerHeightPx + kFrameBorderTotalPx, DARKGRAY);
 
-    DrawRectangle(layout.contentX, layout.blocksY, layout.leftBlockSize, layout.leftBlockSize, BLACK);
-    DrawRectangleLines(layout.contentX, layout.blocksY, layout.leftBlockSize, layout.leftBlockSize, RAYWHITE);
+    DrawHudDoubleFrame(layout.mapOuterX, layout.velocityY, itemsW, 12 + kFrameBorderTotalPx, kDarkGreen);
 
-    DrawRectangle(layout.compassX, layout.blocksY, layout.leftBlockSize, layout.leftBlockSize, kCompassBackgroundColor);
-    DrawRectangleLines(layout.compassX, layout.blocksY, layout.leftBlockSize, layout.leftBlockSize, RAYWHITE);
+    DrawHudDoubleFrame(layout.mapOuterX, layout.mapOuterY, layout.mapOuterW, layout.mapOuterH, BLACK);
+
+    const int blockOuter = layout.leftBlockSize + kFrameBorderTotalPx;
+    DrawHudDoubleFrame(layout.leftBlockOuterX, layout.blocksY, blockOuter, blockOuter, BLACK);
+    DrawHudDoubleFrame(layout.compassOuterX, layout.blocksY, blockOuter, blockOuter, kDarkGreen);
+
+    const int compassInnerX = layout.compassOuterX + 4;
+    const int compassInnerY = layout.blocksY + 4;
     const int compassPadding = 4;
     DrawRectangle(
-        layout.compassX + compassPadding,
-        layout.blocksY + compassPadding,
+        compassInnerX + compassPadding,
+        compassInnerY + compassPadding,
         layout.leftBlockSize - compassPadding * 2,
         layout.leftBlockSize - compassPadding * 2,
-        kCompassBackgroundColor);
+        kDarkGreen);
     DrawCircle(
-        layout.compassX + (layout.leftBlockSize / 2),
-        layout.blocksY + (layout.leftBlockSize / 2),
+        compassInnerX + (layout.leftBlockSize / 2),
+        compassInnerY + (layout.leftBlockSize / 2),
         (static_cast<float>(layout.leftBlockSize) / 3.0F) * 1.15F,
         BLACK);
 
@@ -512,34 +711,28 @@ void HudPanel::UpdateOneMinimapEntityMarker(const GameState& state) const {
         return;
     }
 
-    auto worldToLogicalCellX = [&](float worldX) {
+    auto worldToMarkerCorner = [&](float worldX, float worldY, int& outPixelX, int& outPixelY) {
         const int mazeCellX = std::max(
             0,
             std::min(
                 mazeWidthCells - 1,
                 static_cast<int>(std::floor(worldX / static_cast<float>(mazeCellSizeUnits)))));
-        if (mazeWidthCells == 1) {
-            return 0;
-        }
-        return (mazeCellX * (kMinimapLogicalSizePixels - 1)) / (mazeWidthCells - 1);
-    };
-    auto worldToLogicalCellY = [&](float worldY) {
         const int mazeCellY = std::max(
             0,
             std::min(
                 mazeHeightCells - 1,
                 static_cast<int>(std::floor(worldY / static_cast<float>(mazeCellSizeUnits)))));
-        if (mazeHeightCells == 1) {
-            return 0;
-        }
-        return (mazeCellY * (kMinimapLogicalSizePixels - 1)) / (mazeHeightCells - 1);
+        outPixelX = mazeCellX * 2;
+        outPixelY = mazeCellY * 2;
     };
 
     BeginTextureMode(minimapMarkersTarget_);
     if (minimapEntityCellValid_[static_cast<std::size_t>(cacheIndex)]) {
-        DrawPixel(
+        DrawRectangle(
             minimapEntityCellX_[static_cast<std::size_t>(cacheIndex)],
             minimapEntityCellY_[static_cast<std::size_t>(cacheIndex)],
+            2,
+            2,
             BLACK);
     }
 
@@ -553,20 +746,18 @@ void HudPanel::UpdateOneMinimapEntityMarker(const GameState& state) const {
             const EnemyBase& base = state.world.enemyBases[static_cast<std::size_t>(baseSlot)];
             shouldDrawCurrentEntity = true;
             entityColor = base.destroyed ? kDestroyedBaseMapColor : kBaseMapColor;
-            entityCellX = worldToLogicalCellX(base.position.x);
-            entityCellY = worldToLogicalCellY(base.position.y);
+            worldToMarkerCorner(base.position.x, base.position.y, entityCellX, entityCellY);
         }
     } else if (entityIndex >= 0 && entityIndex < static_cast<int>(state.world.enemies.size())) {
         const EnemyTank& enemy = state.world.enemies[static_cast<std::size_t>(entityIndex)];
         if (enemy.alive) {
             shouldDrawCurrentEntity = true;
             entityColor = EnemyMapColor(enemy.type);
-            entityCellX = worldToLogicalCellX(enemy.position.x);
-            entityCellY = worldToLogicalCellY(enemy.position.y);
+            worldToMarkerCorner(enemy.position.x, enemy.position.y, entityCellX, entityCellY);
         }
     }
     if (shouldDrawCurrentEntity) {
-        DrawPixel(entityCellX, entityCellY, entityColor);
+        DrawRectangle(entityCellX, entityCellY, 2, 2, entityColor);
         minimapEntityCellX_[static_cast<std::size_t>(cacheIndex)] = entityCellX;
         minimapEntityCellY_[static_cast<std::size_t>(cacheIndex)] = entityCellY;
         minimapEntityCellValid_[static_cast<std::size_t>(cacheIndex)] = true;
@@ -665,17 +856,27 @@ void HudPanel::PrepareRenderTargets(const GameState& state, const AppConfig& con
 
     const int hudWidth = ComputeHudWidth(config);
     const int panelX = config.screenWidth - hudWidth;
-    const HudLayout layout = BuildHudLayout(panelX, hudWidth, config.screenHeight);
+    const int mazeW = std::max(1, state.world.maze.widthCells);
+    const int mazeH = std::max(1, state.world.maze.heightCells);
+    if (mazeW != cachedLayoutMazeW_ || mazeH != cachedLayoutMazeH_) {
+        staticLayerDirty_ = true;
+        minimapMarkersDirty_ = true;
+        cachedLayoutMazeW_ = mazeW;
+        cachedLayoutMazeH_ = mazeH;
+    }
 
+    const HudLayout layout = BuildHudLayout(panelX, hudWidth, config.screenHeight, mazeW, mazeH);
+
+    EnsureBoltLogoTexture();
     EnsureBoltMetrics(layout.contentWidth);
     EnsureStaticLayerTarget(hudWidth, config.screenHeight);
-    EnsureMinimapMarkersTarget(kMinimapLogicalSizePixels);
+    EnsureMinimapMarkersTarget(mazeW * 2, mazeH * 2);
     EnsureBasesRadarTarget(layout.leftBlockSize);
-    EnsureLivesIconTexture();
+    EnsureLifeHudIconTextures();
     EnsureEnemyCountIconTextures();
 
     if (staticLayerTargetLoaded_ && staticLayerDirty_) {
-        RebuildStaticLayer(config);
+        RebuildStaticLayer(config, mazeW, mazeH);
     }
 
     if (minimapMarkersTargetLoaded_) {
@@ -704,7 +905,9 @@ void HudPanel::PrepareRenderTargets(const GameState& state, const AppConfig& con
 void HudPanel::DrawPrepared(const GameState& state, const AppConfig& config, const FrameInput& input) const {
     const int hudWidth = ComputeHudWidth(config);
     const int panelX = config.screenWidth - hudWidth;
-    const HudLayout layout = BuildHudLayout(panelX, hudWidth, config.screenHeight);
+    const int mazeW = std::max(1, state.world.maze.widthCells);
+    const int mazeH = std::max(1, state.world.maze.heightCells);
+    const HudLayout layout = BuildHudLayout(panelX, hudWidth, config.screenHeight, mazeW, mazeH);
 
     {
         profiling::ScopedProfile staticScope(profiling::Scope::RenderHudStatic);
@@ -723,48 +926,94 @@ void HudPanel::DrawPrepared(const GameState& state, const AppConfig& config, con
             };
             DrawTexturePro(staticLayerTarget_.texture, source, destination, Vector2{0.0F, 0.0F}, 0.0F, WHITE);
         } else {
-            DrawRectangle(panelX, 0, hudWidth, config.screenHeight, kPanelColor);
-            DrawLine(panelX, 0, panelX, config.screenHeight, kPanelDividerColor);
+            DrawRectangle(panelX, 0, kHudLeftAccentPx, config.screenHeight, kHudAccent);
+            DrawRectangle(
+                panelX + kHudLeftAccentPx,
+                0,
+                hudWidth - kHudLeftAccentPx,
+                config.screenHeight,
+                kHudSurface);
         }
     }
 
     {
         profiling::ScopedProfile textScope(profiling::Scope::RenderHudText);
-        DrawText(TextFormat("SCORE %04d", state.world.score), layout.contentX + 8, layout.scoreY + 9, 20, RAYWHITE);
+        if (!hudScoreFontLoaded_) {
+            EnsureHudScoreFont();
+        }
+        char scoreText[32]{};
+        std::snprintf(scoreText, sizeof(scoreText), "SCORE %04d", state.world.score);
+        const int scoreInnerLeft = layout.mapOuterX + 4;
+        const int scoreInnerW = layout.mapOuterW - 8;
+        const float scoreInnerTop = static_cast<float>(layout.scoreY + 4);
+        const float scoreInnerH =
+            static_cast<float>(kScoreFrameOuterHeightPx - kFrameBorderTotalPx);
+        if (hudScoreFontLoaded_) {
+            const Vector2 textSize =
+                MeasureTextEx(hudScoreFont_, scoreText, kHudScoreFontRenderSize, 0.0F);
+            const float innerLeftF = static_cast<float>(scoreInnerLeft);
+            const float innerWF = static_cast<float>(scoreInnerW);
+            const float textX = innerLeftF + std::max(0.0F, (innerWF - textSize.x) * 0.5F);
+            const float textY = scoreInnerTop + std::max(0.0F, (scoreInnerH - textSize.y) * 0.5F);
+            DrawTextEx(
+                hudScoreFont_,
+                scoreText,
+                Vector2{textX, textY},
+                kHudScoreFontRenderSize,
+                0.0F,
+                kBrightGreen);
+        } else {
+            constexpr int kFallbackScoreFontPx = 20;
+            const int textW = MeasureText(scoreText, kFallbackScoreFontPx);
+            const int textX = scoreInnerLeft + std::max(0, (scoreInnerW - textW) / 2);
+            const int textY = static_cast<int>(scoreInnerTop) +
+                std::max(0, static_cast<int>(scoreInnerH) - kFallbackScoreFontPx) / 2;
+            DrawText(scoreText, textX, textY, kFallbackScoreFontPx, kBrightGreen);
+        }
     }
 
     {
         profiling::ScopedProfile livesScope(profiling::Scope::RenderHudLives);
-        const int livesToRender = std::max(0, std::min(4, state.world.player.lives));
-        const int livesStartX = layout.contentX - 2;
-        const Rectangle sourceRect{
-            .x = 0.0F,
-            .y = 0.0F,
-            .width = static_cast<float>(kLivesIconSizePixels),
-            .height = static_cast<float>(kLivesIconSizePixels),
-        };
-        for (int i = 0; i < livesToRender; ++i) {
-            if (!livesIconTextureLoaded_) continue;
-            const int iconX = livesStartX + (i * (kLivesIconSizePixels + kLivesIconGapPixels));
+        if (!lifeHudIconsLoaded_) {
+            EnsureLifeHudIconTextures();
+        }
+        const int livesRemaining =
+            std::max(0, std::min(kLifeHudMaxSlots, state.world.player.lives));
+        const int livesInnerTop = layout.livesY + 4;
+        const int livesInnerHeight = kLifeHudIconSizePixels + kLifeHudInnerExtraHeightPx;
+        const int livesStartX = layout.mapOuterX + 4 + kLifeHudInnerPaddingHPx;
+        const int iconY = livesInnerTop + (livesInnerHeight - kLifeHudIconSizePixels) / 2;
+        for (int i = 0; i < kLifeHudMaxSlots; ++i) {
+            const Texture2D& iconTex = (i < livesRemaining) ? lifeHudIconActiveTexture_ : lifeHudIconSpentTexture_;
+            if (iconTex.id == 0) {
+                continue;
+            }
+            const int iconX = livesStartX + (i * (kLifeHudIconSizePixels + kLivesIconGapPixels));
+            const Rectangle sourceRect{
+                .x = 0.0F,
+                .y = 0.0F,
+                .width = static_cast<float>(iconTex.width),
+                .height = static_cast<float>(iconTex.height),
+            };
             const Rectangle destinationRect{
                 .x = static_cast<float>(iconX),
-                .y = static_cast<float>(layout.livesY),
-                .width = static_cast<float>(kLivesIconSizePixels),
-                .height = static_cast<float>(kLivesIconSizePixels),
+                .y = static_cast<float>(iconY),
+                .width = static_cast<float>(kLifeHudIconSizePixels),
+                .height = static_cast<float>(kLifeHudIconSizePixels),
             };
-            DrawTexturePro(livesIconTexture_, sourceRect, destinationRect, Vector2{0.0F, 0.0F}, 0.0F, WHITE);
+            DrawTexturePro(iconTex, sourceRect, destinationRect, Vector2{0.0F, 0.0F}, 0.0F, WHITE);
         }
     }
 
     {
         profiling::ScopedProfile barsScope(profiling::Scope::RenderHudBars);
         const float fuelClamped = std::max(0.0F, std::min(100.0F, cachedFuel_));
-        const int barInnerX = layout.contentX + 1;
-        const int barInnerY = layout.fuelY + 1;
-        const int barInnerWidth = std::max(0, layout.contentWidth - 2);
-        const int barInnerHeight = 10;
+        const int barInnerX = layout.mapOuterX + 4;
+        const int barInnerY = layout.fuelY + 4;
+        const int barInnerWidth = std::max(0, layout.mapOuterW - 8);
+        constexpr int kVelocityBarInnerHeightPx = 12;
         const int fuelWidth = static_cast<int>((fuelClamped / 100.0F) * static_cast<float>(barInnerWidth));
-        DrawRectangle(barInnerX, barInnerY, fuelWidth, barInnerHeight, ORANGE);
+        DrawRectangle(barInnerX, barInnerY, fuelWidth, kFuelBarInnerHeightPx, kBrandYellow);
 
         const float speed = std::sqrt(
             state.world.player.velocity.x * state.world.player.velocity.x +
@@ -772,14 +1021,30 @@ void HudPanel::DrawPrepared(const GameState& state, const AppConfig& config, con
         const float speedNormalized =
             std::max(0.0F, std::min(1.0F, speed / GameplayConstants::kPlayerFullVelocity));
         const int speedWidth = static_cast<int>(speedNormalized * static_cast<float>(barInnerWidth));
-        DrawRectangle(layout.contentX + 1, layout.speedY + 1, speedWidth, barInnerHeight, SKYBLUE);
+        constexpr int kVelocityTipWidthPx = 4;
+        const int velBarY = layout.velocityY + 4;
+        if (speedWidth > 0) {
+            if (speedWidth <= kVelocityTipWidthPx) {
+                DrawRectangle(barInnerX, velBarY, speedWidth, kVelocityBarInnerHeightPx, kBrightGreen);
+            } else {
+                const int traceW = speedWidth - kVelocityTipWidthPx;
+                DrawRectangle(barInnerX, velBarY, traceW, kVelocityBarInnerHeightPx, kTraceGreen);
+                DrawRectangle(
+                    barInnerX + traceW,
+                    velBarY,
+                    kVelocityTipWidthPx,
+                    kVelocityBarInnerHeightPx,
+                    kBrightGreen);
+            }
+        }
     }
 
     {
         profiling::ScopedProfile minimapScope(profiling::Scope::RenderHudMinimap);
         constexpr int iconTextGapPixels = 4;
-        const int countersY = layout.blocksY - 16;
-        const int slotWidth = std::max(1, layout.contentWidth / 5);
+        const int flexMidY = layout.flexTop + std::max(0, (layout.flexBottom - layout.flexTop - 16) / 2);
+        const int countersY = flexMidY;
+        const int slotWidth = std::max(1, layout.mapOuterW / 5);
         const int baseIconY = countersY;
         const int enemyIconY = countersY - 1;
         char countBuffer[16]{};
@@ -798,7 +1063,7 @@ void HudPanel::DrawPrepared(const GameState& state, const AppConfig& config, con
             EnemyMapColor(EnemyType::Assassin),
         };
         for (int slotIndex = 0; slotIndex < 5; ++slotIndex) {
-            const int slotX = layout.contentX + slotIndex * slotWidth;
+            const int slotX = layout.mapOuterX + slotIndex * slotWidth;
             const int iconX = slotX;
             const int countX = iconX + kEnemyCountIconSizePixels + iconTextGapPixels;
             if (slotIndex == 0) {
@@ -826,29 +1091,31 @@ void HudPanel::DrawPrepared(const GameState& state, const AppConfig& config, con
 
         const float mazeWidth = static_cast<float>(state.world.maze.widthCells * state.world.maze.cellSizeUnits);
         const float mazeHeight = static_cast<float>(state.world.maze.heightCells * state.world.maze.cellSizeUnits);
+        const int mapInnerX = layout.mapOuterX + 4;
+        const int mapInnerY = layout.mapOuterY + 4;
         const auto mapPixelX = [&](float worldX) {
             const float normalized = mazeWidth > 0.0F ? worldX / mazeWidth : 0.5F;
-            return layout.mapX + static_cast<int>(
-                std::max(0.0F, std::min(1.0F, normalized)) * static_cast<float>(layout.mapSize - 1));
+            return mapInnerX + static_cast<int>(
+                std::max(0.0F, std::min(1.0F, normalized)) * static_cast<float>(layout.mapInnerW - 1));
         };
         const auto mapPixelY = [&](float worldY) {
             const float normalized = mazeHeight > 0.0F ? worldY / mazeHeight : 0.5F;
-            return layout.mapY + static_cast<int>(
-                std::max(0.0F, std::min(1.0F, normalized)) * static_cast<float>(layout.mapSize - 1));
+            return mapInnerY + static_cast<int>(
+                std::max(0.0F, std::min(1.0F, normalized)) * static_cast<float>(layout.mapInnerH - 1));
         };
 
         if (minimapMarkersTargetLoaded_) {
             const Rectangle source{
                 .x = 0.0F,
                 .y = 0.0F,
-                .width = static_cast<float>(minimapMarkersSize_),
-                .height = -static_cast<float>(minimapMarkersSize_),
+                .width = static_cast<float>(minimapMarkersW_),
+                .height = -static_cast<float>(minimapMarkersH_),
             };
             const Rectangle destination{
-                .x = static_cast<float>(layout.mapX),
-                .y = static_cast<float>(layout.mapY),
-                .width = static_cast<float>(layout.mapSize),
-                .height = static_cast<float>(layout.mapSize),
+                .x = static_cast<float>(mapInnerX),
+                .y = static_cast<float>(mapInnerY),
+                .width = static_cast<float>(layout.mapInnerW),
+                .height = static_cast<float>(layout.mapInnerH),
             };
             DrawTexturePro(minimapMarkersTarget_.texture, source, destination, Vector2{0.0F, 0.0F}, 0.0F, WHITE);
         } else {
@@ -872,10 +1139,10 @@ void HudPanel::DrawPrepared(const GameState& state, const AppConfig& config, con
 
         const float normalizedX = mazeWidth > 0.0F ? state.world.player.position.x / mazeWidth : 0.5F;
         const float normalizedY = mazeHeight > 0.0F ? state.world.player.position.y / mazeHeight : 0.5F;
-        const int dotX = layout.mapX + static_cast<int>(
-            std::max(0.0F, std::min(1.0F, normalizedX)) * static_cast<float>(layout.mapSize - 1));
-        const int dotY = layout.mapY + static_cast<int>(
-            std::max(0.0F, std::min(1.0F, normalizedY)) * static_cast<float>(layout.mapSize - 1));
+        const int dotX = mapInnerX + static_cast<int>(
+            std::max(0.0F, std::min(1.0F, normalizedX)) * static_cast<float>(layout.mapInnerW - 1));
+        const int dotY = mapInnerY + static_cast<int>(
+            std::max(0.0F, std::min(1.0F, normalizedY)) * static_cast<float>(layout.mapInnerH - 1));
         DrawCircle(dotX, dotY, 2.0F, kPlayerMapColor);
     }
 
@@ -907,6 +1174,11 @@ void HudPanel::DrawPrepared(const GameState& state, const AppConfig& config, con
             rightJoystickDirY = rightRawAxisY / rightRawMagnitude;
         }
 
+        const int radarInnerX = layout.leftBlockOuterX + 4;
+        const int radarInnerY = layout.blocksY + 4;
+        const int compassInnerX = layout.compassOuterX + 4;
+        const int compassInnerY = layout.blocksY + 4;
+
         if (basesRadarTargetLoaded_) {
             const Rectangle source{
                 .x = 0.0F,
@@ -915,20 +1187,20 @@ void HudPanel::DrawPrepared(const GameState& state, const AppConfig& config, con
                 .height = -static_cast<float>(basesRadarSize_),
             };
             const Rectangle destination{
-                .x = static_cast<float>(layout.contentX),
-                .y = static_cast<float>(layout.blocksY),
-                .width = static_cast<float>(basesRadarSize_),
-                .height = static_cast<float>(basesRadarSize_),
+                .x = static_cast<float>(radarInnerX),
+                .y = static_cast<float>(radarInnerY),
+                .width = static_cast<float>(layout.leftBlockSize),
+                .height = static_cast<float>(layout.leftBlockSize),
             };
             DrawTexturePro(basesRadarTarget_.texture, source, destination, Vector2{0.0F, 0.0F}, 0.0F, WHITE);
         } else {
-            DrawBasesRadarQuadrantsAt(layout.contentX, layout.blocksY, layout.leftBlockSize, highlightedQuadrant);
+            DrawBasesRadarQuadrantsAt(radarInnerX, radarInnerY, layout.leftBlockSize, highlightedQuadrant);
         }
 
         const float headingX = std::sin(state.world.player.hullHeadingRadians);
         const float headingY = -std::cos(state.world.player.hullHeadingRadians);
-        const int centerX = layout.compassX + layout.leftBlockSize / 2;
-        const int centerY = layout.blocksY + layout.leftBlockSize / 2;
+        const int centerX = compassInnerX + layout.leftBlockSize / 2;
+        const int centerY = compassInnerY + layout.leftBlockSize / 2;
         const float armLength = static_cast<float>(layout.leftBlockSize) * 0.28F;
         const int headingToX = static_cast<int>(std::lround(static_cast<float>(centerX) + headingX * armLength));
         const int headingToY = static_cast<int>(std::lround(static_cast<float>(centerY) + headingY * armLength));
@@ -947,7 +1219,7 @@ void HudPanel::DrawPrepared(const GameState& state, const AppConfig& config, con
         if (state.world.panModeActive) {
             constexpr int kPanLabelFontSize = 20;
             const int panLabelW = MeasureText("P", kPanLabelFontSize);
-            DrawText("P", centerX - panLabelW / 2, centerY - kPanLabelFontSize / 2, kPanLabelFontSize, YELLOW);
+            DrawText("P", centerX - panLabelW / 2, centerY - kPanLabelFontSize / 2, kPanLabelFontSize, kBrandYellow);
         }
 
         {
@@ -960,14 +1232,16 @@ void HudPanel::DrawPrepared(const GameState& state, const AppConfig& config, con
         if (state.menuSettings.invisibility) {
             constexpr int kInvisibilityLabelFontSize = 20;
             constexpr int kInvisibilityLabelPadding = 4;
+            const int blockOuter = layout.leftBlockSize + kFrameBorderTotalPx;
             const int invisLabelW = MeasureText("I", kInvisibilityLabelFontSize);
-            const int invisX = layout.contentX + layout.leftBlockSize - invisLabelW - kInvisibilityLabelPadding;
+            const int invisX =
+                layout.compassOuterX + blockOuter - invisLabelW - kInvisibilityLabelPadding;
             const int invisY = layout.blocksY + kInvisibilityLabelPadding;
-            DrawText("I", invisX, invisY, kInvisibilityLabelFontSize, YELLOW);
+            DrawText("I", invisX, invisY, kInvisibilityLabelFontSize, kBrandYellow);
         }
 
         if (state.world.levelCleared || state.world.levelClearMessageSeconds > 0.0F) {
-            DrawText("LEVEL CLEARED", layout.contentX + 6, layout.blocksY - 26, 20, LIME);
+            DrawText("LEVEL CLEARED", layout.mapOuterX + 6, layout.blocksY - 26, 20, kBrightGreen);
         }
     }
 }
