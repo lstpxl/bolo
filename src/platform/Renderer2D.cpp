@@ -1094,19 +1094,19 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
                                  base.bottomSegmentHealth < snapshot.bottom ||
                                  base.leftSegmentHealth < snapshot.left);
 
-                            if (healed) {
-                                if (baseDamagedTextureLoaded_[baseIndex]) {
-                                    UnloadTexture(baseDamagedTextures_[baseIndex]);
-                                    baseDamagedTextures_[baseIndex] = Texture2D{};
-                                    baseDamagedTextureLoaded_[baseIndex] = false;
-                                }
-                                baseDamageCacheDisabled_[baseIndex] = true;
+                            if (healed && baseDamagedTextureLoaded_[baseIndex]) {
+                                UnloadTexture(baseDamagedTextures_[baseIndex]);
+                                baseDamagedTextures_[baseIndex] = Texture2D{};
+                                baseDamagedTextureLoaded_[baseIndex] = false;
                             }
 
+                            // Rebuild the front/overlay texture whenever segment health changes
+                            // (damage or repair) so the alive layer stays in sync with the back layer.
+                            const bool segmentHealthChanged = healed || tookDamage;
                             const bool shouldTryCache =
                                 !baseDamageCacheDisabled_[baseIndex] &&
                                 EnsureHealthyBaseTexture(baseHealthyTexture_, baseHealthyTextureLoaded_) &&
-                                (!baseDamagedTextureLoaded_[baseIndex] || tookDamage);
+                                (!baseDamagedTextureLoaded_[baseIndex] || segmentHealthChanged);
                             if (shouldTryCache) {
                                 if (baseDamagedTextureLoaded_[baseIndex]) {
                                     UnloadTexture(baseDamagedTextures_[baseIndex]);
