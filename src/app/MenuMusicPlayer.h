@@ -22,7 +22,11 @@ private:
     void ReportWindowIfDue(std::uint64_t frameIndex);
     void ResetWindowStats();
 
-    static constexpr std::uint32_t kSampleBufferSamples = 4096;
+    // Raylib/miniaudio upload cost is per buffer; larger chunks mean fewer UpdateAudioStream calls
+    // (fewer spike opportunities) but more work per call in FillBuffer and worse worst-case stalls.
+    // Handheld profiling showed 1024 as noisy, 2048/4096 better for spike rate but heavier on CPU;
+    // 1536 is a middle ground tuned for RG353V-style targets.
+    static constexpr std::uint32_t kSampleBufferSamples = 1536;
     // Uploads taking longer than this are logged immediately to bolt.log.
     static constexpr std::uint64_t kSlowUploadThresholdUs = 5000;
 
