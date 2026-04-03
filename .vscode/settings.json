@@ -22,7 +22,6 @@
   "clangd.arguments": [
     "--compile-commands-dir=${workspaceFolder}/build/macos-debug"
   ],
-  "npm.enableScriptExplorer": true,
   "npm.scriptRunner": "npm",
   "clang-format.executable": "/opt/homebrew/bin/clang-format",
   "[cpp]": {
