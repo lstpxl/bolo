@@ -17,6 +17,8 @@
   "C_Cpp.default.cppStandard": "c++20",
   "C_Cpp.default.intelliSenseMode": "macos-clang-arm64",
   "C_Cpp.errorSquiggles": "enabled",
+  "editor.wordWrap": "wordWrapColumn",
+  "editor.wordWrapColumn": 100,
   "clangd.arguments": [
     "--compile-commands-dir=${workspaceFolder}/build/macos-debug"
   ],
