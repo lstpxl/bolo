@@ -283,14 +283,14 @@ bool EnsureTorpedoFlyPath(
 
 bool PlayerAheadForTorpedo(const EnemyTank& enemy, const Vec2f& toPlayerNormalized) {
     const Vec2f forward = core::angle::DirectionFromHeading(enemy.headingRadians);
-    const float dot = forward.x * toPlayerNormalized.x + forward.y * toPlayerNormalized.y;
-    return dot >= kCosThirtyDegrees;
+    return game::geometry::IsWithinForwardCone2D(
+        forward, toPlayerNormalized, 1.0F, kCosThirtyDegrees);
 }
 
 bool PlayerAheadForTorpedoRam(const EnemyTank& enemy, const Vec2f& toPlayerNormalized) {
     const Vec2f forward = core::angle::DirectionFromHeading(enemy.headingRadians);
-    const float dot = forward.x * toPlayerNormalized.x + forward.y * toPlayerNormalized.y;
-    return dot >= kCosTwentyDegrees;
+    return game::geometry::IsWithinForwardCone2D(
+        forward, toPlayerNormalized, 1.0F, kCosTwentyDegrees);
 }
 
 float SelectBestLongStraightHeading(const WorldState& world, const EnemyTank& enemy) {

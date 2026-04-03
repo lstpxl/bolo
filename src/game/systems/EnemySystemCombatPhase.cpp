@@ -11,11 +11,14 @@
 
 namespace {
 
-float ForwardVisionHalfAngleRadians(EnemyType type) {
+/// `cos(kTorpedoForwardVisionHalfAngleRadians)` (±45°); keep in sync if that constant changes.
+constexpr float kCosTorpedoForwardVisionHalfAngle = 0.70710677F;
+
+float ForwardVisionMinCosDot(EnemyType type) {
     if (type == EnemyType::Torpedo) {
-        return GameplayConstants::kTorpedoForwardVisionHalfAngleRadians;
+        return kCosTorpedoForwardVisionHalfAngle;
     }
-    return GameplayConstants::kEnemyForwardVisionHalfAngleRadiansDefault;
+    return 0.0F;  // cos(π/2) for kEnemyForwardVisionHalfAngleRadiansDefault
 }
 
 float EnemyVisualDetectRangeUnits(EnemyType type) {
@@ -107,9 +110,12 @@ EnemyPerception RunPerceptionPhase(
     enemy.seesPlayer = state.world.player.alive && !perception.playerObscured &&
         perception.distanceToPlayerSq <= detectRangeSq;
     if (enemy.seesPlayer && perception.distanceToPlayerSq > 1.0e-8F) {
-        const float headingToPlayer = std::atan2(perception.toPlayer.x, -perception.toPlayer.y);
-        const float relativeBearing = core::angle::AngleDistance(enemy.headingRadians, headingToPlayer);
-        if (relativeBearing > ForwardVisionHalfAngleRadians(enemy.type)) {
+        const Vec2f forward = core::angle::DirectionFromHeading(enemy.headingRadians);
+        if (!game::geometry::IsWithinForwardCone2D(
+                forward,
+                perception.toPlayer,
+                perception.distanceToPlayer,
+                ForwardVisionMinCosDot(enemy.type))) {
             enemy.seesPlayer = false;
         }
     }

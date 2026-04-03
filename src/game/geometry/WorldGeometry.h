@@ -43,4 +43,19 @@ float FreeDistanceAheadWithEnemies(const WorldState& world,
 /// Returns distance to nearest wall in any of 8 directions (for debug visualization).
 float DistanceToNearestWall(const WorldState& world, const Vec2f& point, float maxProbeDistance);
 
+/// 2D forward cone: true if the angle between unit `forwardUnit` and `toTarget` is at most the
+/// cone half-angle α (radians), i.e. dot(forwardUnit, normalize(toTarget)) ≥ cos(α). Pass
+/// `minCosHalfAngle = std::cos(α)`. Uses `distanceToTarget` as |toTarget| so callers avoid an extra
+/// normalize (and stay well-defined when a separate “normalized” vector clamps to zero).
+/// Preconditions: `forwardUnit` is unit length; `distanceToTarget` > 0 and equals |toTarget|.
+inline bool IsWithinForwardCone2D(
+    const Vec2f& forwardUnit,
+    const Vec2f& toTarget,
+    float distanceToTarget,
+    float minCosHalfAngle) {
+    const float dotForwardToTarget =
+        (forwardUnit.x * toTarget.x + forwardUnit.y * toTarget.y) / distanceToTarget;
+    return dotForwardToTarget >= minCosHalfAngle;
+}
+
 }  // namespace game::geometry
