@@ -1,6 +1,11 @@
 #pragma once
 
-#include "game/GameState.h"
+#include <cstdint>
+#include "core/Types.h"
+#include "game/GameplayView.h"
+#include "game/model/EntityTypes.h"
+
+struct GameState;
 
 void SpawnProjectile(
     GameState& state,
@@ -9,4 +14,4 @@ void SpawnProjectile(
     float headingRadians,
     float speedUnitsPerSecond,
     std::uint32_t shooterEnemySessionId = 0);
-void UpdateProjectileSystem(GameState& state, float deltaSeconds);
+void UpdateProjectileSystem(GameState& state, float deltaSeconds, const GameplayView& view);

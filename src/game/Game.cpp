@@ -351,7 +351,7 @@ void Game::RunPlayingWorldTick(
     }
     {
         profiling::ScopedProfile scope(profiling::Scope::ProjectileUpdate);
-        UpdateProjectileSystem(state_, deltaSeconds);
+        UpdateProjectileSystem(state_, deltaSeconds, view);
     }
     {
         profiling::ScopedProfile scope(profiling::Scope::PhysicsCollisionUpdate, true);

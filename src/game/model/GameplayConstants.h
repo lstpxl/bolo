@@ -177,7 +177,7 @@ struct GameplayConstants {
     static constexpr float kEnemyAvoidanceRadiusUnits =
         kEnemyEnemyClearanceUnits + kEntityRadiusUnits + kEntityRadiusUnits;  // soft radius: clearance + 2×radius
 
-    static constexpr float kProjectileLifetimeSeconds = 3.0F;          // seconds
+    static constexpr float kProjectileLifetimeSeconds = 1.5F;          // seconds
     static constexpr float kProjectileHitRadius = 0.7F;                // world-units
     static constexpr float kPlayerEnemyCollisionRadius = kEntityRadiusUnits * 2.0F;  // world-units (sum of radii)
     static constexpr float kLineOfSightSampleSpacing = 0.08F;          // world-units
