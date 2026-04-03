@@ -16,6 +16,7 @@ namespace
 constexpr float kEightDirectionStep = 3.14159265358979323846F / 4.0F;
 constexpr float kHunterPathReachedDistanceSq = 0.04F;
 constexpr float kHeadingPenaltyPerTurnStep = 0.2F;
+constexpr float kScoutHeadingSwitchHysteresisRadians = 0.12F;
 constexpr float kDiagonalAdjustRadiusUnits = 2.0F;
 constexpr float kEnemyPlanningClearanceScale = 1.5F;
 constexpr int kDirectionCount = 8;
@@ -33,6 +34,25 @@ float DirIndexToHeadingRadians(int dirIndex)
 {
     return static_cast<float>((dirIndex % kDirectionCount + kDirectionCount) % kDirectionCount) *
            kEightDirectionStep;
+}
+
+float QuantizeScoutHeadingWithHysteresis(float rawHeading, float previousHeading)
+{
+    const int previousDirIndex = HeadingRadiansToDirIndex(previousHeading);
+    const int quantizedDirIndex = HeadingRadiansToDirIndex(rawHeading);
+    if (quantizedDirIndex == previousDirIndex) {
+        return DirIndexToHeadingRadians(quantizedDirIndex);
+    }
+
+    const float previousDirHeading = DirIndexToHeadingRadians(previousDirIndex);
+    const float angleDeltaFromPrevious =
+        std::fabs(core::angle::SignedAngleDelta(previousDirHeading, rawHeading));
+    const float switchThreshold =
+        (kEightDirectionStep * 0.5F) + kScoutHeadingSwitchHysteresisRadians;
+    if (angleDeltaFromPrevious <= switchThreshold) {
+        return previousDirHeading;
+    }
+    return DirIndexToHeadingRadians(quantizedDirIndex);
 }
 
 int RelativeHeadingStepsInt(int fromDirIndex, int toDirIndex)
@@ -440,8 +460,8 @@ bool SelectHunterScoutMotion(
     }
     const float rawHeading = std::atan2(toTarget.x, -toTarget.y);
     if (snapHeadingToEightDirections) {
-        const int movementDirIndex = HeadingRadiansToDirIndex(rawHeading);
-        outHeadingRadians = DirIndexToHeadingRadians(movementDirIndex);
+        outHeadingRadians = QuantizeScoutHeadingWithHysteresis(
+            rawHeading, enemy.hunterScoutCachedHeadingRadians);
     } else {
         outHeadingRadians = core::angle::NormalizeAngle(rawHeading);
     }
