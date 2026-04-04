@@ -200,15 +200,21 @@ After per-enemy movement, full-tier enemies run one collision/separation post-pa
 
 ### Drone
 
-Modes: `Wander`, `Watch`
+Modes: `Wander`, `Watch`, `Defend`
 
-- Pursuit trigger: sees player and distance `<= kDroneDetectRangeUnits` (`18`).
-- Pursuit speed: normal drone speed scaled by `kDronePursuitSpeedFactor` (`0.5`).
-- Pursuit heading:
-  - choose nearest valid 8-way heading toward player
-  - require wall clearance for step
-  - reject steps that get within `kDronePlayerAvoidanceDistanceUnits` (`4`) of player
-  - reject steps violating preferred separation with other enemies
+- No movement pursuit mode. Drones do not translate toward player on visual contact.
+- `Defend` activation gate:
+  - player is visible (`seesPlayer`) and in drone detect range (`<= kDroneDetectRangeUnits`, `18`)
+  - drone is not currently colliding/overlapping another enemy (center distance must be `>= kEnemyMutualKillDistanceUnits`)
+  - drone is fully outside undestroyed base footprint with extra clearance (`1.0` world-unit)
+- `Defend` behavior:
+  - speed is zero (in-place mode)
+  - hull heading follows player bearing every frame
+  - drone projectiles are allowed only in `Defend`
+- Defend loss-of-contact fallback:
+  - if the activation gate fails, drone starts/continues a `2.0s` lose-sight timer
+  - if the gate recovers before timeout, timer resets to `2.0s` and `Defend` continues
+  - when timer expires, drone exits `Defend` to `Watch`
 - Wander fallback uses scout-style heading fallback; if blocked, enters `Watch`.
 - Watch:
   - speed zero

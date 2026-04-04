@@ -517,7 +517,7 @@ int EnemyTypeIndex(EnemyType type) {
 
 int EnemyTankTextureSheetRow(const EnemyTank& enemy) {
     if (enemy.type == EnemyType::Drone) {
-        return enemy.aiMode == EnemyAiMode::Watch ? 0 : 1;
+        return (enemy.aiMode == EnemyAiMode::Watch || enemy.aiMode == EnemyAiMode::Defend) ? 0 : 1;
     }
     return EnemyTypeIndex(enemy.type) + 1;
 }

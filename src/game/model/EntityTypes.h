@@ -63,6 +63,7 @@ enum class EnemySubtype {
 enum class EnemyAiMode {
     Wander,
     Watch,
+    Defend,
     Scout,
     Chase,
     Rotate,
@@ -111,6 +112,9 @@ struct EnemyTank {
     float desiredHeadingRadians = 0.0F;
     Vec2f wanderDirection{.x = 0.0F, .y = -1.0F};
     int watchRotateDirection = 1;
+    /// Drone-only: while in `Defend`, holds time remaining after losing valid player lock
+    /// before falling back to `Watch`.
+    float droneDefendLoseSightTimerSeconds = 0.0F;
     /// Full-tier DroneReset: Watch rotates toward this heading before returning to Wander.
     bool droneWatchAlignToHeading = false;
     float droneWatchAlignHeadingRadians = 0.0F;

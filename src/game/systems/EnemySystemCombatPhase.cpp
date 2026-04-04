@@ -135,7 +135,9 @@ void RunFiringPhase(
     float deltaSeconds) {
     enemy.fireCooldownSeconds -= deltaSeconds;
     bool canFireTypeSpecific = true;
-    if (enemy.type == EnemyType::Torpedo) {
+    if (enemy.type == EnemyType::Drone) {
+        canFireTypeSpecific = enemy.aiMode == EnemyAiMode::Defend;
+    } else if (enemy.type == EnemyType::Torpedo) {
         canFireTypeSpecific = (enemy.aiMode == EnemyAiMode::Ram)
             ? PlayerAheadForTorpedoRam(enemy, perception.toPlayerNormalized)
             : PlayerAheadForTorpedo(enemy, perception.toPlayerNormalized);
