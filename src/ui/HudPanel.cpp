@@ -43,11 +43,20 @@ constexpr Color kQuadrantInactiveColor = kDarkGreen;
 constexpr Color kQuadrantActiveColor = kBrightGreen;
 
 constexpr int kSpriteSheetColumns = 2;
-constexpr int kSpriteSheetRows = 7;
+constexpr int kSpriteSheetRows = 10;
 constexpr int kSpriteSheetCellSize = 9;
 constexpr int kPlayerBodyRowIndex = 0;
 constexpr int kPlayerBarrelRowIndex = 1;
 constexpr int kEnemySpriteFirstRowIndex = 3;
+/// HUD drone counter uses wander-state art (matches non-`Watch` in-world drone strip).
+constexpr int kDroneWanderSpriteRowIndex = 8;
+
+int HudEnemyIconSourceRow(int enemyTypeIndex) {
+    if (enemyTypeIndex == 0) {
+        return kDroneWanderSpriteRowIndex;
+    }
+    return kEnemySpriteFirstRowIndex + enemyTypeIndex;
+}
 constexpr int kEnemyCountIconSizePixels = 10;
 
 bool TryLoadImageAtPath(Image& image, const char* path) {
@@ -566,7 +575,7 @@ void HudPanel::EnsureEnemyCountIconTextures() const {
 
     FillOpaquePixelsColor(sourceSheet, WHITE);
     for (int typeIndex = 0; typeIndex < 4; ++typeIndex) {
-        const int sourceRow = kEnemySpriteFirstRowIndex + typeIndex;
+        const int sourceRow = HudEnemyIconSourceRow(typeIndex);
         Image iconFrame = ExtractSpriteCell(sourceSheet, 0, sourceRow, kSpriteSheetCellSize);
         ImageResizeNN(&iconFrame, kEnemyCountIconSizePixels, kEnemyCountIconSizePixels);
         enemyCountIconTextures_[static_cast<std::size_t>(typeIndex)] = LoadTextureFromImage(iconFrame);

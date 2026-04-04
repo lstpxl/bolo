@@ -19,12 +19,28 @@
 
 namespace {
 constexpr int kSpriteSheetColumns = 2;
-constexpr int kSpriteSheetRows = 7;
+constexpr int kSpriteSheetRows = 10;
 constexpr int kSpriteSheetCellSize = 9;
 constexpr int kPlayerBodyRowIndex = 0;
 constexpr int kPlayerBarrelRowIndex = 1;
 constexpr int kEnemySpriteSheetCellSize = 9;
+/// Torpedo/Hunter/Assassin source rows use `kEnemySpriteFirstRowIndex + sheetRow - 1` for sheet rows `2..4`.
 constexpr int kEnemySpriteFirstRowIndex = 3;
+constexpr int kDroneWatchSpriteRowIndex = 7;
+constexpr int kDroneWanderSpriteRowIndex = 8;
+/// Reserved for future `Tadpole` enemy type; not used by the renderer yet.
+constexpr int kTadpoleEnemySpriteRowIndex = 9;
+static_assert(kTadpoleEnemySpriteRowIndex == kSpriteSheetRows - 1);
+
+int EnemySheetSourceRow(int sheetRow) {
+    if (sheetRow == 0) {
+        return kDroneWatchSpriteRowIndex;
+    }
+    if (sheetRow == 1) {
+        return kDroneWanderSpriteRowIndex;
+    }
+    return kEnemySpriteFirstRowIndex + sheetRow - 1;
+}
 constexpr int kTankSpriteRenderScale = 2;
 constexpr int kPlayerRenderSizePx = kSpriteSheetCellSize * kTankSpriteRenderScale;
 constexpr int kEnemyRenderSizePx = kEnemySpriteSheetCellSize * kTankSpriteRenderScale;
@@ -498,6 +514,13 @@ int EnemyTypeIndex(EnemyType type) {
     }
     return 3;
 }
+
+int EnemyTankTextureSheetRow(const EnemyTank& enemy) {
+    if (enemy.type == EnemyType::Drone) {
+        return enemy.aiMode == EnemyAiMode::Watch ? 0 : 1;
+    }
+    return EnemyTypeIndex(enemy.type) + 1;
+}
 }  // namespace
 
 bool Renderer2D::LoadResources() {
@@ -600,13 +623,13 @@ bool Renderer2D::LoadResources() {
 
     Image enemySheet = GenImageColor(
         kEnemyTankDirectionCount * kEnemySpriteSheetCellSize,
-        kEnemyTankTypeCount * kEnemySpriteSheetCellSize,
+        Renderer2D::kEnemyTankSheetRowCount * kEnemySpriteSheetCellSize,
         BLANK);
     FillOpaquePixelsColor(sourceSheet, WHITE);
-    const std::array<Color, kEnemyTankTypeCount> kEnemyTypeColors{
-        kDroneColor, kTorpedoColor, kHunterColor, kAssassinColor};
-    for (int typeIndex = 0; typeIndex < kEnemyTankTypeCount; ++typeIndex) {
-        const int sourceRow = kEnemySpriteFirstRowIndex + typeIndex;
+    const std::array<Color, Renderer2D::kEnemyTankSheetRowCount> kEnemySheetRowColors{
+        kDroneColor, kDroneColor, kTorpedoColor, kHunterColor, kAssassinColor};
+    for (int sheetRow = 0; sheetRow < Renderer2D::kEnemyTankSheetRowCount; ++sheetRow) {
+        const int sourceRow = EnemySheetSourceRow(sheetRow);
         Image frame0 = ExtractSpriteCell(sourceSheet, 0, sourceRow, kEnemySpriteSheetCellSize);
         Image frame1 = ExtractSpriteCell(sourceSheet, 1, sourceRow, kEnemySpriteSheetCellSize);
         Image frame2 = ImageCopy(frame0);
@@ -622,20 +645,20 @@ bool Renderer2D::LoadResources() {
         Image frame7 = ImageCopy(frame5);
         ImageRotateCW(&frame7);
 
-        DrawSpriteCell(enemySheet, frame0, 0, typeIndex, kEnemySpriteSheetCellSize);
-        DrawSpriteCell(enemySheet, frame1, 1, typeIndex, kEnemySpriteSheetCellSize);
-        DrawSpriteCell(enemySheet, frame2, 2, typeIndex, kEnemySpriteSheetCellSize);
-        DrawSpriteCell(enemySheet, frame3, 3, typeIndex, kEnemySpriteSheetCellSize);
-        DrawSpriteCell(enemySheet, frame4, 4, typeIndex, kEnemySpriteSheetCellSize);
-        DrawSpriteCell(enemySheet, frame5, 5, typeIndex, kEnemySpriteSheetCellSize);
-        DrawSpriteCell(enemySheet, frame6, 6, typeIndex, kEnemySpriteSheetCellSize);
-        DrawSpriteCell(enemySheet, frame7, 7, typeIndex, kEnemySpriteSheetCellSize);
+        DrawSpriteCell(enemySheet, frame0, 0, sheetRow, kEnemySpriteSheetCellSize);
+        DrawSpriteCell(enemySheet, frame1, 1, sheetRow, kEnemySpriteSheetCellSize);
+        DrawSpriteCell(enemySheet, frame2, 2, sheetRow, kEnemySpriteSheetCellSize);
+        DrawSpriteCell(enemySheet, frame3, 3, sheetRow, kEnemySpriteSheetCellSize);
+        DrawSpriteCell(enemySheet, frame4, 4, sheetRow, kEnemySpriteSheetCellSize);
+        DrawSpriteCell(enemySheet, frame5, 5, sheetRow, kEnemySpriteSheetCellSize);
+        DrawSpriteCell(enemySheet, frame6, 6, sheetRow, kEnemySpriteSheetCellSize);
+        DrawSpriteCell(enemySheet, frame7, 7, sheetRow, kEnemySpriteSheetCellSize);
 
         // Pre-colorize this type's row so we can draw with WHITE tint and avoid batch flushes.
-        const Color typeColor = kEnemyTypeColors[static_cast<std::size_t>(typeIndex)];
+        const Color typeColor = kEnemySheetRowColors[static_cast<std::size_t>(sheetRow)];
         Color* sheetPixels = static_cast<Color*>(enemySheet.data);
         if (sheetPixels != nullptr) {
-            const int rowStartY = typeIndex * kEnemySpriteSheetCellSize;
+            const int rowStartY = sheetRow * kEnemySpriteSheetCellSize;
             const int rowEndY = rowStartY + kEnemySpriteSheetCellSize;
             const int sheetWidth = enemySheet.width;
             for (int py = rowStartY; py < rowEndY; ++py) {
@@ -1150,10 +1173,10 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
                 };
                 if (enemyTankSheetLoaded_) {
                     const int directionIndex = PlayerFrameIndexFromHeading(enemy.headingRadians, kEnemyTankDirectionCount);
-                    const int typeIndex = EnemyTypeIndex(enemy.type);
+                    const int sheetRow = EnemyTankTextureSheetRow(enemy);
                     const Rectangle sourceRect{
                         .x = static_cast<float>(directionIndex * kEnemyTankFrameSizePx),
-                        .y = static_cast<float>(typeIndex * kEnemyTankFrameSizePx),
+                        .y = static_cast<float>(sheetRow * kEnemyTankFrameSizePx),
                         .width = static_cast<float>(kEnemyTankFrameSizePx),
                         .height = static_cast<float>(kEnemyTankFrameSizePx),
                     };

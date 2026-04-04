@@ -16,6 +16,8 @@ public:
 private:
     static constexpr int kMaxPlayerTankFrames = 8;
     static constexpr int kEnemyTankTypeCount = 4;
+    /// GPU enemy sheet rows: drone watch, drone wander, torpedo, hunter, assassin.
+    static constexpr int kEnemyTankSheetRowCount = 5;
     static constexpr int kEnemyTankDirectionCount = 8;
     static constexpr int kEnemyTankFrameSizePx = 9;
     static constexpr int kBaseDamageCacheSlotCount = GameplayConstants::kEnemyBaseCount;
