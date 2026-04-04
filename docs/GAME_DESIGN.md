@@ -174,7 +174,7 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
   - `Advanced`: `100%` baseline speed
   - `Hunter Lord`: `125%` of hunter advanced speed
 - Assassin advanced speed has two modes: `1.5` world-units/second when not in aggro mode, and `3.0` world-units/second when `assassinInAggroMode` is true (assassin, `seesPlayer`, and distance `<= kEnemyAggroRangeUnits`).
-- Enemy projectile firing heading is quantized to the same 8-way (45-degree) directions.
+- Enemy projectile firing heading is quantized to the same 8-way (45-degree) directions, except drone shots in `Defend`, which use continuous angle toward player bearing.
 - Enemy projectile firing is gated by: `enemy.simTier == EnemySimTier::Full` (cheap-tier enemies never fire), `enemy.seesPlayer` (alive + unobstructed + in-range + inside forward cone), cooldown expired, player not obscured, within per-type fire range, plus per-type firing constraints (`Drone`: `enemy.aiMode == EnemyAiMode::Defend`; `Torpedo`: forward-cone check by Ram/non-Ram mode).
 - Enemy projectile spawn range uses per-type fire ranges (`Drone`: `kDroneDetectRangeUnits`; `Torpedo` `Ram`: `kTorpedoRamDetectRangeUnits`; `Torpedo` non-`Ram`: `kTorpedoDetectRangeUnits`; `Hunter`: `kHunterDetectRangeUnits`; `Assassin`: `kEnemyAggroRangeUnits`), not a single global range.
 - Player and enemy collision shape is treated as a disc with `9px` diameter.
@@ -274,7 +274,7 @@ Local planner for a **single step** to one of the **8 adjacent** maze cells (car
 - `Defend` behavior: speed is `0` and heading continuously tracks player bearing.
 - If defend conditions fail, drone starts/continues a `2.0s` lose-sight timer; when it expires, drone leaves `Defend` and enters `Watch`.
 - If defend conditions become valid again before timer expiry, timer is reset to `2.0s` and `Defend` continues.
-- Drone firing is allowed only while in `Defend`.
+- Drone firing is allowed only while in `Defend`; fire heading is continuous toward player bearing (no 8-way snap), and firing is blocked if another alive enemy lies on the line segment between drone and player.
 - Wander: move straight; if obstacle is within `1` unit ahead, test `±45°` and pick longer free route.
 - If neither side offers `>=3` units of clear run, switch to Watch.
 - Watch: stop and rotate in a random direction (`clockwise` or `counter-clockwise`) chosen when entering Watch.

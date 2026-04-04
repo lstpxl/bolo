@@ -53,6 +53,41 @@ float EnemyProjectileMaxRangeUnits(const EnemyTank& enemy) {
     return GameplayConstants::kDroneDetectRangeUnits;
 }
 
+bool DroneLineOfFireBlockedByEnemy(const GameState& state, const EnemyTank& drone) {
+    const Vec2f segment{
+        .x = state.world.player.position.x - drone.position.x,
+        .y = state.world.player.position.y - drone.position.y,
+    };
+    const float segmentLengthSq = segment.x * segment.x + segment.y * segment.y;
+    if (segmentLengthSq <= 1.0e-8F) {
+        return false;
+    }
+
+    constexpr float kBlockRadius = GameplayConstants::kEntityRadiusUnits;
+    const float blockRadiusSq = kBlockRadius * kBlockRadius;
+    for (const EnemyTank& other : state.world.enemies) {
+        if (&other == &drone || !other.alive) {
+            continue;
+        }
+        const Vec2f toOther{
+            .x = other.position.x - drone.position.x,
+            .y = other.position.y - drone.position.y,
+        };
+        const float t = (toOther.x * segment.x + toOther.y * segment.y) / segmentLengthSq;
+        if (t <= 0.0F || t >= 1.0F) {
+            continue;
+        }
+        const Vec2f closestPoint{
+            .x = drone.position.x + segment.x * t,
+            .y = drone.position.y + segment.y * t,
+        };
+        if (DistanceSq(other.position, closestPoint) <= blockRadiusSq) {
+            return true;
+        }
+    }
+    return false;
+}
+
 }  // namespace
 
 float EnemyFireInterval(EnemyType type) {
@@ -136,7 +171,9 @@ void RunFiringPhase(
     enemy.fireCooldownSeconds -= deltaSeconds;
     bool canFireTypeSpecific = true;
     if (enemy.type == EnemyType::Drone) {
-        canFireTypeSpecific = enemy.aiMode == EnemyAiMode::Defend;
+        canFireTypeSpecific =
+            enemy.aiMode == EnemyAiMode::Defend &&
+            !DroneLineOfFireBlockedByEnemy(state, enemy);
     } else if (enemy.type == EnemyType::Torpedo) {
         canFireTypeSpecific = (enemy.aiMode == EnemyAiMode::Ram)
             ? PlayerAheadForTorpedoRam(enemy, perception.toPlayerNormalized)
@@ -152,12 +189,14 @@ void RunFiringPhase(
         canFireTypeSpecific &&
         perception.distanceToPlayerSq <= fireRangeSq) {
         const float headingToPlayer = std::atan2(perception.toPlayer.x, -perception.toPlayer.y);
-        const float quantizedHeadingToPlayer = core::angle::QuantizeToEightDirections(headingToPlayer);
+        const float projectileHeading = (enemy.type == EnemyType::Drone)
+            ? headingToPlayer
+            : core::angle::QuantizeToEightDirections(headingToPlayer);
         SpawnProjectile(
             state,
             ProjectileOwner::Enemy,
             enemy.position,
-            quantizedHeadingToPlayer,
+            projectileHeading,
             GameplayConstants::kEnemyProjectileSpeed,
             enemy.spawnSessionId);
         enemy.fireCooldownSeconds = EnemyFireInterval(enemy.type);

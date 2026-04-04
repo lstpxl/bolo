@@ -211,6 +211,8 @@ Modes: `Wander`, `Watch`, `Defend`
   - speed is zero (in-place mode)
   - hull heading follows player bearing every frame
   - drone projectiles are allowed only in `Defend`
+  - drone fire heading is continuous toward player bearing (not 8-way snapped)
+  - drone does not fire if another alive enemy intersects the line segment from drone to player
 - Defend loss-of-contact fallback:
   - if the activation gate fails, drone starts/continues a `2.0s` lose-sight timer
   - if the gate recovers before timeout, timer resets to `2.0s` and `Defend` continues
