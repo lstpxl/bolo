@@ -13,15 +13,6 @@
 
 namespace {
 
-BaseOuterSegment SegmentForImpactPoint(const Vec2f& point, const EnemyBase& base) {
-    const float dx = point.x - base.position.x;
-    const float dy = point.y - base.position.y;
-    if (std::fabs(dx) >= std::fabs(dy)) {
-        return dx >= 0.0F ? BaseOuterSegment::Right : BaseOuterSegment::Left;
-    }
-    return dy >= 0.0F ? BaseOuterSegment::Bottom : BaseOuterSegment::Top;
-}
-
 float BaseSideInsetUnitsFromDamage(int segmentHealth) {
     constexpr float kInsetStepUnits = 3.0F / static_cast<float>(GameplayConstants::kPixelsPerUnit);
     const int clampedHealth = std::clamp(segmentHealth, 0, GameplayConstants::kBaseOuterSegmentMaxHealth);
@@ -29,26 +20,87 @@ float BaseSideInsetUnitsFromDamage(int segmentHealth) {
     return static_cast<float>(damagePoints) * kInsetStepUnits;
 }
 
-bool IsPointInsideBaseFootprint(const Vec2f& point, const EnemyBase& base, float clearanceUnits) {
+struct BaseFootprintBounds {
+    float minX = 0.0F;
+    float maxX = 0.0F;
+    float minY = 0.0F;
+    float maxY = 0.0F;
+};
+
+BaseFootprintBounds ComputeBaseFootprintBounds(const EnemyBase& base, float clearanceUnits) {
     const float halfBase = GameplayConstants::kEnemyBaseSizeUnits * 0.5F;
     const float leftInset = BaseSideInsetUnitsFromDamage(base.leftSegmentHealth);
     const float rightInset = BaseSideInsetUnitsFromDamage(base.rightSegmentHealth);
     const float topInset = BaseSideInsetUnitsFromDamage(base.topSegmentHealth);
     const float bottomInset = BaseSideInsetUnitsFromDamage(base.bottomSegmentHealth);
-    const float minX = base.position.x - halfBase + leftInset - clearanceUnits;
-    const float maxX = base.position.x + halfBase - rightInset + clearanceUnits;
-    const float minY = base.position.y - halfBase + topInset - clearanceUnits;
-    const float maxY = base.position.y + halfBase - bottomInset + clearanceUnits;
-    return point.x >= minX && point.x <= maxX && point.y >= minY && point.y <= maxY;
+    return BaseFootprintBounds{
+        .minX = base.position.x - halfBase + leftInset - clearanceUnits,
+        .maxX = base.position.x + halfBase - rightInset + clearanceUnits,
+        .minY = base.position.y - halfBase + topInset - clearanceUnits,
+        .maxY = base.position.y + halfBase - bottomInset + clearanceUnits,
+    };
 }
 
-bool IsPointInsideBaseCore(const Vec2f& point, const EnemyBase& base) {
+bool IsPointInsideBaseFootprint(const Vec2f& point, const EnemyBase& base, float clearanceUnits) {
+    const BaseFootprintBounds bounds = ComputeBaseFootprintBounds(base, clearanceUnits);
+    return point.x >= bounds.minX && point.x <= bounds.maxX &&
+        point.y >= bounds.minY && point.y <= bounds.maxY;
+}
+
+BaseOuterSegment FootprintSideHit(
+    const Vec2f& point,
+    const EnemyBase& base,
+    const BaseFootprintBounds& bounds) {
+    const float distLeft = std::fabs(point.x - bounds.minX);
+    const float distRight = std::fabs(point.x - bounds.maxX);
+    const float distTop = std::fabs(point.y - bounds.minY);
+    const float distBottom = std::fabs(point.y - bounds.maxY);
+
+    float bestDistance = distLeft;
+    BaseOuterSegment bestSide = BaseOuterSegment::Left;
+    if (distRight < bestDistance) {
+        bestDistance = distRight;
+        bestSide = BaseOuterSegment::Right;
+    }
+    if (distTop < bestDistance) {
+        bestDistance = distTop;
+        bestSide = BaseOuterSegment::Top;
+    }
+    if (distBottom < bestDistance) {
+        bestSide = BaseOuterSegment::Bottom;
+    }
+
+    // Tie-breaker for ambiguous points near corners/center: preserve previous dominant-axis behavior.
     const float dx = point.x - base.position.x;
     const float dy = point.y - base.position.y;
-    const float coreRadius = GameplayConstants::kEnemyBaseCoreRadiusUnits;
-    return dx * dx + dy * dy <= coreRadius * coreRadius;
+    if (std::fabs(dx) == std::fabs(dy)) {
+        return dx >= 0.0F ? BaseOuterSegment::Right : BaseOuterSegment::Left;
+    }
+    return bestSide;
 }
 
+bool IsCentralThirdOnHealthySide(const Vec2f& point, const EnemyBase& base, BaseOuterSegment side) {
+    const float healthySideLength = GameplayConstants::kEnemyBaseSizeUnits;
+    const float halfCentralThird = healthySideLength / 6.0F;
+    const float dx = point.x - base.position.x;
+    const float dy = point.y - base.position.y;
+    if (side == BaseOuterSegment::Top || side == BaseOuterSegment::Bottom) {
+        return std::fabs(dx) <= halfCentralThird;
+    }
+    return std::fabs(dy) <= halfCentralThird;
+}
+
+BaseOuterSegment AdjacentSideFromBrokenImpact(
+    const Vec2f& point,
+    const EnemyBase& base,
+    BaseOuterSegment brokenSide) {
+    const float dx = point.x - base.position.x;
+    const float dy = point.y - base.position.y;
+    if (brokenSide == BaseOuterSegment::Top || brokenSide == BaseOuterSegment::Bottom) {
+        return dx < 0.0F ? BaseOuterSegment::Left : BaseOuterSegment::Right;
+    }
+    return dy < 0.0F ? BaseOuterSegment::Top : BaseOuterSegment::Bottom;
+}
 
 struct EnemyCollisionDeathDebugWindowStats {
     std::uint64_t projectileKills = 0;
@@ -134,16 +186,25 @@ void UpdateCollisionSystem(GameState& state, float deltaSeconds) {
                     continue;
                 }
 
-                const BaseOuterSegment impactSegment = SegmentForImpactPoint(projectile.position, base);
-                int& impactSegmentHealth = base.SegmentHealthRef(impactSegment);
-                if (impactSegmentHealth > 0) {
-                    impactSegmentHealth -= 1;
+                const BaseFootprintBounds footprintBounds = ComputeBaseFootprintBounds(base, 0.0F);
+                const BaseOuterSegment impactSide =
+                    FootprintSideHit(projectile.position, base, footprintBounds);
+                int& impactSideHealth = base.SegmentHealthRef(impactSide);
+                if (impactSideHealth > 0) {
+                    impactSideHealth -= 1;
                     base.repairCountdownSeconds = GameplayConstants::kBaseRepairDelaySeconds;
                     projectile.alive = false;
                     break;
                 }
-
-                if (!IsPointInsideBaseCore(projectile.position, base)) {
+                if (!IsCentralThirdOnHealthySide(projectile.position, base, impactSide)) {
+                    const BaseOuterSegment adjacentSide =
+                        AdjacentSideFromBrokenImpact(projectile.position, base, impactSide);
+                    int& adjacentHealth = base.SegmentHealthRef(adjacentSide);
+                    if (adjacentHealth > 0) {
+                        adjacentHealth -= 1;
+                        base.repairCountdownSeconds = GameplayConstants::kBaseRepairDelaySeconds;
+                    }
+                    projectile.alive = false;
                     break;
                 }
 

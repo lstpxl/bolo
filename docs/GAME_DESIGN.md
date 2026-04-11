@@ -205,9 +205,12 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
 - **`kPlayerBaseHardCollisionUnits`** – player death when inside base (halfBase + entityRadius).
 - Base footprint collision model is an axis-aligned rectangle in world space with side-specific insets from armor damage: full side uses `0` inset, and each missing side-health point adds `3 px` (`3/16` world-units) inset on that side. This damaged rectangle is used for projectile-vs-base footprint checks and base obstacle/hard-collision checks (with appropriate entity-radius clearance where needed).
 - Player projectile vs base:
-  - Impact side is resolved by dominant axis from base center (`abs(dx) >= abs(dy)` => left/right, else top/bottom).
-  - If impact segment health is `> 0`, that segment takes `1` damage and projectile is consumed.
-  - Core is killed only by a projectile inside the core radius that approaches through a breached (`0` health) segment.
+  - On footprint collision, the hit side is the nearest side of the **current damaged footprint** rectangle.
+  - If that side health is `> 0`, apply `1` damage to that side and consume the projectile.
+  - If that side is already breached (`0`), split that side into thirds using the **healthy** side length:
+    - middle third => core hit (base destroyed)
+    - outer third => redirect hit to adjacent side and apply `1` damage there if it still has health
+      (`Top/Bottom` route to `Left/Right` by `dx` sign, `Left/Right` route to `Top/Bottom` by `dy` sign).
   - Base destruction occurs only on core hit; outer-layer hits alone cannot destroy a base.
 
 Enemy movement/steering code uses **`kWallClearanceForAvoidance`** (passed into geometry) and **`kEnemyWallAvoidanceUnits`** / **`kEnemyAvoidanceRadiusUnits`** for clearance queries. Wall model: finite line extruded as pill by half-thickness; bases use the same formula (halfSize + entityRadius + optional clearance).
@@ -281,7 +284,9 @@ Local planner for a **single step** to one of the **8 adjacent** maze cells (car
 - On entering Watch, drone uses `BaseDistanceField` maze graph distance (cells) to the nearest alive base; if that distance is at least `GameplayConstants::kDroneReturnToBaseMinBaseDistanceCells` (`36` world-units / `kMazeCellSizeUnits`), `return-to-base` is enabled. If the cache is not built yet, the game rebuilds `BaseDistanceField` and `BaseFlowField` first (same pipeline as maze init / base destruction).
 - After one full turn (`4s`), if `return-to-base` is enabled, evaluate candidate return headings aligned with `BaseFlowField` toward the nearest base and discard any heading with less than `6` units of obstacle-free route.
 - If candidates remain, choose return heading by weighted random: best base-aligned candidate has `60%` weight, remaining `40%` is evenly distributed across the other candidates; if no candidates remain, stay in Watch and keep rotating.
-- If `return-to-base` is not enabled, Watch exits only when clear run ahead `>3` and a heading can be selected that improves separation from nearby enemies.
+- If no valid return-to-base heading exists after the first full turn, `return-to-base` is disabled and Watch falls back to normal escape heading selection.
+- If `return-to-base` is not enabled, Watch exits when clear run ahead `>3` and a heading can be selected that improves separation from nearby enemies.
+- To prevent indefinite Watch loops in dense local clusters, if separation-based heading selection keeps failing for `>=8s` in Watch with sufficient forward clearance, drone forces `Wander` on its current Watch heading and lets normal movement collision handling resolve the jam.
 - On self-awareness timer restart, drone re-checks the same distance rule as Watch (`BaseDistanceField`, rebuilding caches if needed); if far enough, it checks relative bearing to `BaseFlowField`’s next step toward the nearest base (rebuilding caches if needed).
 - If relative bearing is `<80°`, drone keeps moving (already generally pointed toward base) and does not trigger recovery.
 - If relative bearing is `>=80°`, drone stops and runs **`DroneReset`**: score-weighted random choice among 8 directions (same structure as hunter scout scoring: exponential decay on maze run length and first-cell enemy count, `core::math::ExpDecayA1K02(turnSteps)` from current heading to candidate, `core::math::ExpDecayA1K07(flowTurnSteps)` vs `BaseFlowField`’s next cardinal step when flow exists). **Cheap tier:** snap heading to the chosen direction and `Wander`. **Full tier:** enter `Watch` with a target heading, rotate in place at the same rate as normal Watch (`4s` full turn) until aligned (within a small angle), then `Wander`.

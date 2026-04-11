@@ -797,13 +797,46 @@ void UpdateEnemySystem(
                                         enemy.returnToBase = false;
                                         enemy.aiMode = EnemyAiMode::Wander;
                                         enemy.aiModeElapsedSeconds = 0.0F;
+                                    } else {
+                                        bolt::log::Profile(
+                                            "[ENEMY_DRONE_WATCH_RETURN_HEADING_MISSING] id=%d "
+                                            "pos=(%.3f,%.3f) cell=(%d,%d) elapsed=%.3f\n",
+                                            enemyIndex,
+                                            enemy.position.x,
+                                            enemy.position.y,
+                                            enemy.cellCoord.x,
+                                            enemy.cellCoord.y,
+                                            enemy.aiModeElapsedSeconds);
+                                        // If no return heading clears obstacles, fall back to
+                                        // regular watch escape logic instead of spinning forever.
+                                        enemy.returnToBase = false;
                                     }
-                                } else if (clearDistance > GameplayConstants::kEnemyRequiredClearRunUnits) {
+                                }
+                                if (enemy.aiMode == EnemyAiMode::Watch && !enemy.returnToBase &&
+                                    clearDistance > GameplayConstants::kEnemyRequiredClearRunUnits) {
                                     float escapeHeading = movementHeading;
                                     if (SelectDroneWatchEscapeHeading(
                                             state.world, state.world.enemies, enemyIndex, deltaSeconds,
                                             escapeHeading)) {
                                         movementHeading = escapeHeading;
+                                        enemy.aiMode = EnemyAiMode::Wander;
+                                        enemy.aiModeElapsedSeconds = 0.0F;
+                                    } else if (
+                                        enemy.aiModeElapsedSeconds >=
+                                        GameplayConstants::kSlowRotateFullTurnSeconds * 2.0F) {
+                                        bolt::log::Profile(
+                                            "[ENEMY_DRONE_WATCH_ESCAPE_FALLBACK] id=%d "
+                                            "pos=(%.3f,%.3f) cell=(%d,%d) clear=%.3f elapsed=%.3f\n",
+                                            enemyIndex,
+                                            enemy.position.x,
+                                            enemy.position.y,
+                                            enemy.cellCoord.x,
+                                            enemy.cellCoord.y,
+                                            clearDistance,
+                                            enemy.aiModeElapsedSeconds);
+                                        // If separation scoring cannot find an improving heading for
+                                        // multiple turns, force wander using current heading and let
+                                        // normal movement collision handling resolve local jams.
                                         enemy.aiMode = EnemyAiMode::Wander;
                                         enemy.aiModeElapsedSeconds = 0.0F;
                                     }
