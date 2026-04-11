@@ -69,6 +69,7 @@ struct GameplayConstants {
     static constexpr int kMaxAliveEnemiesPerBase = 24;               // enemies / base
     static constexpr float kEnemyInitialFireCooldownSeconds = 0.2F;  // seconds
     static constexpr float kBaseSpawnCooldownSeconds = 0.9F;         // seconds
+    static constexpr float kBaseSpawnCoreGrowDurationSeconds = 2.0F; // seconds
     static constexpr float kEnemyPreferredSeparationUnits = 2.0F;    // center distance world-units (clearance 1.0 with r1=r2=0.5)
     static constexpr float kEnemyMutualKillDistanceUnits = 1.0F;    // world-units (r1+r2, with enemy r=0.5)
     static constexpr float kEnemyLookaheadObstacleUnits = 1.0F;      // world-units
@@ -183,9 +184,7 @@ struct GameplayConstants {
     static constexpr float kLineOfSightSampleSpacing = 0.08F;          // world-units
 
     // Fuel/rules.
-    static constexpr float kFuelDrainMovementThresholdSq = 0.01F;    // (world-units / second)^2
-    static constexpr float kFuelDrainBasePerSecond = 0.9F;           // fuel units / second
-    static constexpr float kFuelDrainThrottlePerSecond = 1.1F;       // fuel units / second @ throttle=1
+    static constexpr float kFuelDrainPercentOfMaxPerSecond = 0.75F;  // percent of kFuelMax / second
     static constexpr float kLevelClearMessageSeconds = 2.0F;         // seconds
     static constexpr float kGameplayStartingPhaseMinSeconds = 1.0F;  // seconds
     static constexpr int kEnemyScorePerLevelMultiplier = 1;          // points * level

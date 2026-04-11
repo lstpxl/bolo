@@ -92,8 +92,14 @@ constexpr int kBaseHoleHalfPx = kBaseHolePx / 2;
 constexpr int kBaseHoleOffsetPx = kBaseHalfPx - kBaseHoleHalfPx;
 constexpr int kBaseCoreDiameterPx = (kBaseHolePx - 10 > 2) ? (kBaseHolePx - 10) : 2;
 constexpr int kBaseCoreRadiusPx = kBaseCoreDiameterPx / 2;
+constexpr float kBaseCoreClearRadiusPx = static_cast<float>(kBaseHoleHalfPx);
 constexpr int kBaseOuterThicknessPx = 12;
 constexpr int kBaseThicknessStepPx = 3;
+constexpr float kBaseCoreHealingPulseCycleSeconds = 2.0F;
+constexpr float kHealingCoreRadiusPulsePx = 2.0F;
+constexpr float kSpawnCoreGrowthPx = 3.0F;
+constexpr float kPi = 3.14159265358979323846F;
+constexpr float kTwoPi = kPi * 2.0F;
 static_assert(kBaseSizePx == 48, "Enemy base sprite size must stay 48x48 px");
 static_assert(kBaseHoleOffsetPx == kBaseOuterThicknessPx, "Base outer shell must be 12 px at full health");
 static_assert(
@@ -121,6 +127,136 @@ int BaseSegmentThicknessPixels(int segmentHealth) {
 int BaseSideInsetPixelsFromDamage(int segmentHealth) {
     const int thickness = BaseSegmentThicknessPixels(segmentHealth);
     return std::clamp(kBaseOuterThicknessPx - thickness, 0, kBaseOuterThicknessPx);
+}
+
+float Clamp01(float value) {
+    return std::clamp(value, 0.0F, 1.0F);
+}
+
+float LinearFromSrgb(float srgb) {
+    const float clamped = Clamp01(srgb);
+    if (clamped <= 0.04045F) {
+        return clamped / 12.92F;
+    }
+    return std::pow((clamped + 0.055F) / 1.055F, 2.4F);
+}
+
+float SrgbFromLinear(float linear) {
+    const float clamped = Clamp01(linear);
+    if (clamped <= 0.0031308F) {
+        return clamped * 12.92F;
+    }
+    return 1.055F * std::pow(clamped, 1.0F / 2.4F) - 0.055F;
+}
+
+std::uint8_t ByteFromUnit(float value) {
+    return static_cast<std::uint8_t>(std::round(Clamp01(value) * 255.0F));
+}
+
+struct OklabColor {
+    float l = 0.0F;
+    float a = 0.0F;
+    float b = 0.0F;
+};
+
+OklabColor OklabFromColor(Color color) {
+    const float r = LinearFromSrgb(static_cast<float>(color.r) / 255.0F);
+    const float g = LinearFromSrgb(static_cast<float>(color.g) / 255.0F);
+    const float b = LinearFromSrgb(static_cast<float>(color.b) / 255.0F);
+
+    const float l = 0.4122214708F * r + 0.5363325363F * g + 0.0514459929F * b;
+    const float m = 0.2119034982F * r + 0.6806995451F * g + 0.1073969566F * b;
+    const float s = 0.0883024619F * r + 0.2817188376F * g + 0.6299787005F * b;
+
+    const float lRoot = std::cbrt(l);
+    const float mRoot = std::cbrt(m);
+    const float sRoot = std::cbrt(s);
+
+    return OklabColor{
+        .l = 0.2104542553F * lRoot + 0.7936177850F * mRoot - 0.0040720468F * sRoot,
+        .a = 1.9779984951F * lRoot - 2.4285922050F * mRoot + 0.4505937099F * sRoot,
+        .b = 0.0259040371F * lRoot + 0.7827717662F * mRoot - 0.8086757660F * sRoot,
+    };
+}
+
+Color ColorFromOklab(const OklabColor& lab, std::uint8_t alpha) {
+    const float lRoot = lab.l + 0.3963377774F * lab.a + 0.2158037573F * lab.b;
+    const float mRoot = lab.l - 0.1055613458F * lab.a - 0.0638541728F * lab.b;
+    const float sRoot = lab.l - 0.0894841775F * lab.a - 1.2914855480F * lab.b;
+
+    const float l = lRoot * lRoot * lRoot;
+    const float m = mRoot * mRoot * mRoot;
+    const float s = sRoot * sRoot * sRoot;
+
+    const float linearR = 4.0767416621F * l - 3.3077115913F * m + 0.2309699292F * s;
+    const float linearG = -1.2684380046F * l + 2.6097574011F * m - 0.3413193965F * s;
+    const float linearB = -0.0041960863F * l - 0.7034186147F * m + 1.7076147010F * s;
+
+    return Color{
+        ByteFromUnit(SrgbFromLinear(linearR)),
+        ByteFromUnit(SrgbFromLinear(linearG)),
+        ByteFromUnit(SrgbFromLinear(linearB)),
+        alpha,
+    };
+}
+
+Color ApplyOklchLightnessDelta(Color color, float deltaL) {
+    OklabColor lab = OklabFromColor(color);
+    lab.l = Clamp01(lab.l + deltaL);
+    return ColorFromOklab(lab, color.a);
+}
+
+float EaseInOut01(float value) {
+    const float t = Clamp01(value);
+    return t * t * (3.0F - 2.0F * t);
+}
+
+float Repeat01(double elapsedSeconds, double periodSeconds) {
+    if (periodSeconds <= 0.0) {
+        return 0.0F;
+    }
+    double wrapped = std::fmod(elapsedSeconds, periodSeconds);
+    if (wrapped < 0.0) {
+        wrapped += periodSeconds;
+    }
+    return static_cast<float>(wrapped / periodSeconds);
+}
+
+struct BaseCoreVisualState {
+    float radiusPixels = static_cast<float>(kBaseCoreRadiusPx);
+    Color color = kEnemyBaseColor;
+    bool animated = false;
+};
+
+BaseCoreVisualState ComputeAnimatedBaseCoreState(
+    const EnemyBase& base,
+    float spawnGrowthProgress01) {
+    BaseCoreVisualState state{};
+    float radiusOffset = 0.0F;
+    float lightnessDelta = 0.0F;
+
+    if (base.HasDamagedSegments()) {
+        const float phase = Repeat01(GetTime(), kBaseCoreHealingPulseCycleSeconds);
+        const float oscillation = std::sin((phase * kTwoPi) - (kPi * 0.5F));
+        radiusOffset += kHealingCoreRadiusPulsePx * oscillation;
+        // Smaller core -> brighter, larger core -> darker.
+        lightnessDelta += -0.15F * oscillation;
+        state.animated = true;
+    }
+
+    if (spawnGrowthProgress01 > 0.0F) {
+        const float growth = EaseInOut01(Clamp01(spawnGrowthProgress01));
+        radiusOffset += kSpawnCoreGrowthPx * growth;
+        lightnessDelta += 0.2F * growth;
+        state.animated = true;
+    }
+
+    state.radiusPixels = std::clamp(
+        static_cast<float>(kBaseCoreRadiusPx) + radiusOffset,
+        1.0F,
+        static_cast<float>(kBaseHoleHalfPx));
+    state.color = ApplyOklchLightnessDelta(kEnemyBaseColor, lightnessDelta);
+    return state;
 }
 
 bool IsBaseFullyHealthy(const EnemyBase& base) {
@@ -1155,6 +1291,17 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
                             DrawTexture(baseHealthyTexture_, topLeftX, topLeftY, WHITE);
                         }
 
+                    }
+                    const float spawnGrowthProgress01 = base.spawnPreparationActive
+                        ? 1.0F -
+                              (std::max(0.0F, base.spawnPreparationRemainingSeconds) /
+                               GameplayConstants::kBaseSpawnCoreGrowDurationSeconds)
+                        : 0.0F;
+                    const BaseCoreVisualState coreVisual =
+                        ComputeAnimatedBaseCoreState(base, spawnGrowthProgress01);
+                    if (coreVisual.animated) {
+                        DrawCircleV(baseScreenPosition, kBaseCoreClearRadiusPx, kBackgroundColor);
+                        DrawCircleV(baseScreenPosition, coreVisual.radiusPixels, coreVisual.color);
                     }
                 }
             }

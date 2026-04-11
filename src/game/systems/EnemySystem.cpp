@@ -221,6 +221,29 @@ bool IsPointInUndestroyedBase(const WorldState& world, const Vec2f& point, float
     return game::geometry::IsPointInUndestroyedBase(world, point, clearanceUnits);
 }
 
+float BaseSideInsetUnitsFromDamage(int segmentHealth)
+{
+    const int clampedHealth =
+        std::clamp(segmentHealth, 0, GameplayConstants::kBaseOuterSegmentMaxHealth);
+    const int damagePoints = GameplayConstants::kBaseOuterSegmentMaxHealth - clampedHealth;
+    constexpr float kInsetPerPointUnits = 3.0F / static_cast<float>(GameplayConstants::kPixelsPerUnit);
+    return static_cast<float>(damagePoints) * kInsetPerPointUnits;
+}
+
+bool IsPointInSpecificBaseClearance(const EnemyBase& base, const Vec2f& point, float clearanceUnits)
+{
+    const float halfBase = GameplayConstants::kEnemyBaseSizeUnits * 0.5F;
+    const float minX =
+        base.position.x - halfBase + BaseSideInsetUnitsFromDamage(base.leftSegmentHealth) - clearanceUnits;
+    const float maxX =
+        base.position.x + halfBase - BaseSideInsetUnitsFromDamage(base.rightSegmentHealth) + clearanceUnits;
+    const float minY =
+        base.position.y - halfBase + BaseSideInsetUnitsFromDamage(base.topSegmentHealth) - clearanceUnits;
+    const float maxY =
+        base.position.y + halfBase - BaseSideInsetUnitsFromDamage(base.bottomSegmentHealth) + clearanceUnits;
+    return point.x >= minX && point.x <= maxX && point.y >= minY && point.y <= maxY;
+}
+
 
 // Same world point as `Renderer2D::DrawWorld` camera target (before pixel snap).
 Vec2f ViewportCenterWorldPosition(const WorldState& world)
@@ -598,6 +621,24 @@ void UpdateEnemySystem(
             }
         }
 
+        bool enforceSpawnExitLock = false;
+        if (enemy.spawnExitLockActive) {
+            if (enemy.originBaseIndex >= 0 &&
+                enemy.originBaseIndex < static_cast<int>(state.world.enemyBases.size())) {
+                const EnemyBase& originBase =
+                    state.world.enemyBases[static_cast<std::size_t>(enemy.originBaseIndex)];
+                if (!originBase.destroyed &&
+                    IsPointInSpecificBaseClearance(
+                        originBase, enemy.position, kDroneDefendBaseExitClearanceUnits)) {
+                    enforceSpawnExitLock = true;
+                } else {
+                    enemy.spawnExitLockActive = false;
+                }
+            } else {
+                enemy.spawnExitLockActive = false;
+            }
+        }
+
         if (enemy.simTier == EnemySimTier::Cheap) {
             if (enemy.type == EnemyType::Torpedo && enemy.aiMode != EnemyAiMode::Fly) {
                 // Cheap-tier torpedo logic is fly-only; drop non-fly state immediately.
@@ -635,6 +676,42 @@ void UpdateEnemySystem(
                 }
             }
             AdvanceCheapTierTimers(state, enemy, deltaSeconds, playerInvisible, view, random);
+
+            if (enforceSpawnExitLock) {
+                switch (enemy.type) {
+                case EnemyType::Drone:
+                    enemy.aiMode = EnemyAiMode::Wander;
+                    break;
+                case EnemyType::Torpedo:
+                    enemy.aiMode = EnemyAiMode::Fly;
+                    InvalidateTorpedoFlyPath(enemy);
+                    break;
+                case EnemyType::Hunter:
+                    enemy.aiMode = EnemyAiMode::Scout;
+                    break;
+                case EnemyType::Assassin:
+                    enemy.aiMode = EnemyAiMode::Pursuit;
+                    break;
+                }
+                enemy.aiModeElapsedSeconds = 0.0F;
+                const float cheapSpeed = EnemySpeed(
+                    enemy.type, enemy.subtype, false, state.menuSettings.levelNumber);
+                const float heading = QuantizeToEightDirections(enemy.headingRadians);
+                const Vec2f dir = DirectionFromHeading(heading);
+                enemy.position = Vec2f{
+                    .x = enemy.position.x + dir.x * cheapSpeed * deltaSeconds,
+                    .y = enemy.position.y + dir.y * cheapSpeed * deltaSeconds,
+                };
+                enemy.headingRadians = heading;
+                enemy.velocity = Vec2f{
+                    .x = dir.x * cheapSpeed,
+                    .y = dir.y * cheapSpeed,
+                };
+                const game::navigation::MazeCellCoord cheapCell = cellCache.WorldToCell(enemy.position);
+                enemy.cellCoord = cheapCell;
+                occupancy.SetCell(enemyIndex, cheapCell.x, cheapCell.y);
+                continue;
+            }
 
             float cheapSpeed =
                 EnemySpeed(enemy.type, enemy.subtype, false, state.menuSettings.levelNumber);
@@ -839,6 +916,55 @@ void UpdateEnemySystem(
                                         // normal movement collision handling resolve local jams.
                                         enemy.aiMode = EnemyAiMode::Wander;
                                         enemy.aiModeElapsedSeconds = 0.0F;
+                                    }
+                                }
+                                if (enemy.aiMode == EnemyAiMode::Watch && !enemy.returnToBase &&
+                                    enemy.aiModeElapsedSeconds >=
+                                        GameplayConstants::kSlowRotateFullTurnSeconds * 2.0F) {
+                                    const bool inDefendBaseClearance = IsPointInUndestroyedBase(
+                                        state.world,
+                                        enemy.position,
+                                        kDroneDefendBaseExitClearanceUnits);
+                                    if (inDefendBaseClearance) {
+                                        const float elapsedBeforeFallback = enemy.aiModeElapsedSeconds;
+                                        const EnemyBase* nearestBase = nullptr;
+                                        float nearestBaseDistSq = std::numeric_limits<float>::infinity();
+                                        for (const EnemyBase& base : state.world.enemyBases) {
+                                            if (base.destroyed) {
+                                                continue;
+                                            }
+                                            const float baseDistSq =
+                                                DistanceSq(enemy.position, base.position);
+                                            if (baseDistSq < nearestBaseDistSq) {
+                                                nearestBaseDistSq = baseDistSq;
+                                                nearestBase = &base;
+                                            }
+                                        }
+
+                                        float leaveBaseHeading = movementHeading;
+                                        if (nearestBase != nullptr && nearestBaseDistSq > 1.0e-6F) {
+                                            leaveBaseHeading = core::angle::QuantizeToEightDirections(
+                                                std::atan2(
+                                                    enemy.position.x - nearestBase->position.x,
+                                                    -(enemy.position.y - nearestBase->position.y)));
+                                        }
+                                        movementHeading = leaveBaseHeading;
+                                        enemy.aiMode = EnemyAiMode::Wander;
+                                        enemy.aiModeElapsedSeconds = 0.0F;
+                                        enemy.droneWatchAlignToHeading = false;
+                                        enemy.returnToBase = false;
+                                        bolt::log::Profile(
+                                            "[ENEMY_DRONE_WATCH_BASE_CLEARANCE_FALLBACK] id=%d "
+                                            "pos=(%.3f,%.3f) cell=(%d,%d) clear=%.3f elapsed=%.3f "
+                                            "leaveHeading=%.3f\n",
+                                            enemyIndex,
+                                            enemy.position.x,
+                                            enemy.position.y,
+                                            enemy.cellCoord.x,
+                                            enemy.cellCoord.y,
+                                            clearDistance,
+                                            elapsedBeforeFallback,
+                                            leaveBaseHeading);
                                     }
                                 }
                             }
@@ -1140,6 +1266,35 @@ void UpdateEnemySystem(
                 }
             }
         }
+
+        if (enforceSpawnExitLock) {
+            if (enemy.aiMode == EnemyAiMode::Uncouple) {
+                RestoreFromUncoupleMode(enemy);
+            }
+            switch (enemy.type) {
+            case EnemyType::Drone:
+                enemy.aiMode = EnemyAiMode::Wander;
+                break;
+            case EnemyType::Torpedo:
+                enemy.aiMode = EnemyAiMode::Fly;
+                enemy.torpedoPlayerDetected = false;
+                enemy.torpedoRetreatMovedUnits = 0.0F;
+                InvalidateTorpedoFlyPath(enemy);
+                break;
+            case EnemyType::Hunter:
+                enemy.aiMode = EnemyAiMode::Scout;
+                break;
+            case EnemyType::Assassin:
+                enemy.aiMode = EnemyAiMode::Pursuit;
+                break;
+            }
+            enemy.aiModeElapsedSeconds = 0.0F;
+            preserveContinuousHeading = true;
+            movementHeading = enemy.headingRadians;
+            targetSpeed = EnemySpeed(
+                enemy.type, enemy.subtype, perception.assassinInAggroMode, state.menuSettings.levelNumber);
+            handledByUncoupleMovement = false;
+        }
         if (enemy.type == EnemyType::Torpedo) {
             const float torpedoSubtypeMul =
                 EnemySubtypeSpeedMultiplier(EnemyType::Torpedo, enemy.subtype);
@@ -1243,7 +1398,7 @@ void UpdateEnemySystem(
                     candidatePosition,
                     GameplayConstants::kWallClearanceForHard);
 
-            if (!torpedoFullTierPrioritizeHardWallCrash) {
+            if (!torpedoFullTierPrioritizeHardWallCrash && !enforceSpawnExitLock) {
                 // Keep enemies from overlapping: turn first, stop second.
                 {
                     profiling::ScopedProfile sepScope(
@@ -1556,6 +1711,52 @@ void UpdateEnemySystem(
 
         if (!enemy.alive) {
             continue;
+        }
+
+        if (enemy.type == EnemyType::Drone &&
+            (enemy.aiMode == EnemyAiMode::Watch || enemy.aiMode == EnemyAiMode::Uncouple)) {
+            const float movedUnits = Distance(enemy.position, previousPosition);
+            const bool barelyMoved = movedUnits <= 0.01F;
+            const int elapsedWholeSeconds = static_cast<int>(enemy.aiModeElapsedSeconds);
+            const int prevElapsedWholeSeconds =
+                static_cast<int>(std::max(0.0F, enemy.aiModeElapsedSeconds - deltaSeconds));
+            const bool crossedSecondBoundary = elapsedWholeSeconds != prevElapsedWholeSeconds;
+            const float nearestBaseDistance = NearestBaseDistance(state.world, enemy.position);
+            const bool nearBase = nearestBaseDistance <= 8.0F;
+            if (barelyMoved && crossedSecondBoundary && enemy.aiModeElapsedSeconds >= 2.0F &&
+                nearBase) {
+                const bool inBaseClearance = game::geometry::IsPointInUndestroyedBase(
+                    state.world, enemy.position, kDroneDefendBaseExitClearanceUnits);
+                const float clearAhead = game::geometry::FreeDistanceAhead(
+                    state.world,
+                    enemy.position,
+                    enemy.headingRadians,
+                    6.0F,
+                    GameplayConstants::kWallClearanceForAvoidance,
+                    kEnemyPlanningClearanceScale);
+                bolt::log::Profile(
+                    "[ENEMY_DRONE_STALL_TRACE] id=%d mode=%s tier=%s elapsed=%.2f moved=%.4f "
+                    "pos=(%.2f,%.2f) cell=(%d,%d) nearBase=%.2f inBaseClearance=%d "
+                    "returnToBase=%d watchAlign=%d uncoupleTimer=%.2f clearAhead=%.2f "
+                    "desired=%.3f heading=%.3f\n",
+                    enemyIndex,
+                    EnemyAiModeLabel(enemy.aiMode),
+                    EnemySimTierLabel(enemy.simTier),
+                    enemy.aiModeElapsedSeconds,
+                    movedUnits,
+                    enemy.position.x,
+                    enemy.position.y,
+                    enemy.cellCoord.x,
+                    enemy.cellCoord.y,
+                    nearestBaseDistance,
+                    inBaseClearance ? 1 : 0,
+                    enemy.returnToBase ? 1 : 0,
+                    enemy.droneWatchAlignToHeading ? 1 : 0,
+                    enemy.aiStateTimerSeconds,
+                    clearAhead,
+                    enemy.desiredHeadingRadians,
+                    enemy.headingRadians);
+            }
         }
 
         {

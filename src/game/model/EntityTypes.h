@@ -160,6 +160,8 @@ struct EnemyTank {
     int cheapSegmentBuildMethodStage = 0;
     bool cheapSegmentInsideWallAvoidLastFrame = false;
     bool cheapTierCrowdedSlowMode = false;  // assassins: 0.5x speed when another enemy in same cell
+    // While true, newly spawned enemy keeps exiting its origin base without AI stop/turn overrides.
+    bool spawnExitLockActive = false;
     bool seesPlayer = false;
     bool alive = true;
     /// Stable id assigned at spawn; used so enemy shells cannot instantly kill the shooter.
@@ -190,6 +192,12 @@ struct EnemyBase {
     float repairCountdownSeconds = 0.0F;
     float enemyGenerationIntervalSeconds = GameplayConstants::kBaseSpawnCooldownSeconds;
     float enemyGenerationTimerSeconds = GameplayConstants::kBaseSpawnCooldownSeconds;
+    bool spawnPreparationActive = false;
+    float spawnPreparationRemainingSeconds = 0.0F;
+    EnemyType pendingSpawnType = EnemyType::Drone;
+    EnemySubtype pendingSpawnSubtype = EnemySubtype::Advanced;
+    float pendingSpawnHeadingRadians = 0.0F;
+    Vec2f pendingSpawnPosition{.x = 0.0F, .y = 0.0F};
     int activeEnemies = 0;
 
     int SegmentHealth(BaseOuterSegment segment) const {

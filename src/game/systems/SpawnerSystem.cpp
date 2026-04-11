@@ -60,6 +60,14 @@ struct SpawnRayChoice {
     float clearDistance = 0.0F;
 };
 
+struct PendingSpawnCandidate {
+    bool found = false;
+    EnemyType type = EnemyType::Drone;
+    EnemySubtype subtype = EnemySubtype::Advanced;
+    float heading = 0.0F;
+    Vec2f position{.x = 0.0F, .y = 0.0F};
+};
+
 BaseOuterSegment MostDamagedSegment(const EnemyBase& base) {
     BaseOuterSegment mostDamaged = BaseOuterSegment::Top;
     int minHealth = base.topSegmentHealth;
@@ -114,7 +122,11 @@ bool IsDirectionBlockedByDamagedSegments(const EnemyBase& base, const Vec2f& dir
     return false;
 }
 
-SpawnRayChoice PickSpawnDirection(const WorldState& world, const EnemyBase& base, Random& random) {
+SpawnRayChoice PickSpawnDirection(
+    const WorldState& world,
+    const EnemyBase& base,
+    Random& random,
+    bool ignoreDamagedSegmentDirectionBlock) {
     constexpr std::array<float, 8> kHeadings{
         0.0F, kPi * 0.25F, kPi * 0.5F, kPi * 0.75F, kPi, kPi * 1.25F, kPi * 1.5F, kPi * 1.75F};
 
@@ -126,7 +138,7 @@ SpawnRayChoice PickSpawnDirection(const WorldState& world, const EnemyBase& base
     for (int i = 0; i < static_cast<int>(kHeadings.size()); ++i) {
         const float heading = kHeadings[static_cast<std::size_t>(i)];
         const Vec2f direction = core::angle::DirectionFromHeading(heading);
-        if (IsDirectionBlockedByDamagedSegments(base, direction)) {
+        if (!ignoreDamagedSegmentDirectionBlock && IsDirectionBlockedByDamagedSegments(base, direction)) {
             continue;
         }
         const float clearDistance = game::geometry::FreeDistanceAhead(
@@ -184,8 +196,137 @@ bool IsDiagonalDirection(const Vec2f& dir) {
     return std::fabs(dir.x) > 0.5F && std::fabs(dir.y) > 0.5F;
 }
 
+bool IsPointInsideBaseFootprint(const EnemyBase& base, const Vec2f& point) {
+    const float halfBase = GameplayConstants::kEnemyBaseSizeUnits * 0.5F;
+    const float sideInsetUnitsPerHealthPoint = 3.0F / static_cast<float>(GameplayConstants::kPixelsPerUnit);
+    const auto sideInset = [&](int health) {
+        const int clamped = std::clamp(health, 0, GameplayConstants::kBaseOuterSegmentMaxHealth);
+        return static_cast<float>(GameplayConstants::kBaseOuterSegmentMaxHealth - clamped) * sideInsetUnitsPerHealthPoint;
+    };
+    const float minX = base.position.x - halfBase + sideInset(base.leftSegmentHealth);
+    const float maxX = base.position.x + halfBase - sideInset(base.rightSegmentHealth);
+    const float minY = base.position.y - halfBase + sideInset(base.topSegmentHealth);
+    const float maxY = base.position.y + halfBase - sideInset(base.bottomSegmentHealth);
+    return point.x >= minX && point.x <= maxX && point.y >= minY && point.y <= maxY;
+}
+
+bool HasOriginEnemyInsideBaseFootprint(const GameState& state, int baseIndex, const EnemyBase& base) {
+    for (const EnemyTank& enemy : state.world.enemies) {
+        if (!enemy.alive || enemy.originBaseIndex != baseIndex) {
+            continue;
+        }
+        if (IsPointInsideBaseFootprint(base, enemy.position)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void ResetSpawnTimerAfterFailedAttempt(EnemyBase& base) {
     base.enemyGenerationTimerSeconds = base.enemyGenerationIntervalSeconds;
+}
+
+bool BuildPendingSpawnCandidate(
+    const GameState& state,
+    const EnemyBase& base,
+    Random& random,
+    PendingSpawnCandidate& outCandidate) {
+    outCandidate = PendingSpawnCandidate{};
+    const game::EnemySpawnChoice spawnedEnemy = PickSpawnEnemyForLevel(state.menuSettings.levelNumber, random);
+    SpawnRayChoice spawnDirection = PickSpawnDirection(state.world, base, random, false);
+    if (!spawnDirection.found) {
+        return false;
+    }
+
+    const Vec2f dir = core::angle::DirectionFromHeading(spawnDirection.heading);
+    const float baseHalfSizeUnits = GameplayConstants::kEnemyBaseSizeUnits * 0.5F;
+    const bool diagonalSpawn = IsDiagonalDirection(dir);
+    Vec2f noseAnchor = Vec2f{
+        .x = base.position.x + dir.x * baseHalfSizeUnits,
+        .y = base.position.y + dir.y * baseHalfSizeUnits,
+    };
+    if (diagonalSpawn) {
+        noseAnchor = Vec2f{
+            .x = base.position.x + (dir.x >= 0.0F ? baseHalfSizeUnits : -baseHalfSizeUnits),
+            .y = base.position.y + (dir.y >= 0.0F ? baseHalfSizeUnits : -baseHalfSizeUnits),
+        };
+    }
+    const float spawnBackoffUnits =
+        GameplayConstants::kEntitySizeUnits * 0.5F +
+        (diagonalSpawn ? kDiagonalSpawnCoreShiftUnits : 0.0F);
+    const Vec2f spawnPosition{
+        .x = noseAnchor.x - dir.x * spawnBackoffUnits,
+        .y = noseAnchor.y - dir.y * spawnBackoffUnits,
+    };
+    if (!IsSpawnPositionFree(state, spawnPosition)) {
+        return false;
+    }
+
+    const float forwardClearWithEnemies = game::geometry::FreeDistanceAheadWithEnemies(
+        state.world,
+        state.world.enemies,
+        -1,
+        spawnPosition,
+        spawnDirection.heading,
+        kRequiredSpawnClearUnits,
+        GameplayConstants::kWallClearanceForAvoidance);
+    if (forwardClearWithEnemies < kRequiredSpawnClearUnits) {
+        return false;
+    }
+
+    outCandidate.found = true;
+    outCandidate.type = spawnedEnemy.type;
+    outCandidate.subtype = spawnedEnemy.subtype;
+    outCandidate.heading = spawnDirection.heading;
+    outCandidate.position = spawnPosition;
+    return true;
+}
+
+void SpawnEnemyFromBasePending(GameState& state, EnemyBase& base, int baseIndex, Random& random) {
+    EnemyAiMode mode = EnemyAiMode::Wander;
+    if (base.pendingSpawnType == EnemyType::Hunter) {
+        mode = EnemyAiMode::Scout;
+    } else if (base.pendingSpawnType == EnemyType::Assassin) {
+        mode = EnemyAiMode::Pursuit;
+    } else if (base.pendingSpawnType == EnemyType::Torpedo) {
+        mode = EnemyAiMode::Fly;
+    }
+
+    const float selfAwarenessInterval = (base.pendingSpawnType == EnemyType::Drone)
+        ? random.NextFloat(
+              GameplayConstants::kDroneSelfAwarenessIntervalMinSeconds,
+              GameplayConstants::kDroneSelfAwarenessIntervalMaxSeconds)
+        : random.NextFloat(4.0F, 8.0F);
+
+    state.world.enemies.push_back(EnemyTank{
+        .position = base.pendingSpawnPosition,
+        .velocity = Vec2f{.x = 0.0F, .y = 0.0F},
+        .headingRadians = base.pendingSpawnHeadingRadians,
+        .type = base.pendingSpawnType,
+        .subtype = base.pendingSpawnSubtype,
+        .aiMode = mode,
+        .fireCooldownSeconds = GameplayConstants::kEnemyInitialFireCooldownSeconds,
+        .aiStateTimerSeconds = 0.0F,
+        .aiModeElapsedSeconds = 0.0F,
+        .selfAwarenessIntervalSeconds = selfAwarenessInterval,
+        .selfAwarenessTimerSeconds = selfAwarenessInterval,
+        .desiredHeadingRadians = 0.0F,
+        .wanderDirection = Vec2f{.x = 0.0F, .y = -1.0F},
+        .originBaseIndex = baseIndex,
+        .pathWaypoints = {},
+        .pathWaypointCount = 0,
+        .pathWaypointIndex = 0,
+        .spawnExitLockActive = true,
+        .alive = true,
+        .spawnSessionId = state.world.nextEnemySpawnSessionId++,
+    });
+    state.world.gameplayEvents.Push(GameplayEvent{
+        .type = GameplayEventType::EnemySpawned,
+        .position = base.pendingSpawnPosition,
+        .enemyType = base.pendingSpawnType,
+        .enemySubtype = base.pendingSpawnSubtype,
+        .baseIndex = baseIndex,
+    });
 }
 }  // namespace
 
@@ -212,6 +353,8 @@ void UpdateSpawnerSystem(GameState& state, float deltaSeconds, Random& random) {
         if (base.destroyed) {
             base.activeEnemies = 0;
             base.repairCountdownSeconds = 0.0F;
+            base.spawnPreparationActive = false;
+            base.spawnPreparationRemainingSeconds = 0.0F;
             continue;
         }
 
@@ -222,100 +365,40 @@ void UpdateSpawnerSystem(GameState& state, float deltaSeconds, Random& random) {
         }
         base.enemyGenerationTimerSeconds -= deltaSeconds;
         const int maxPerBase = (state.menuSettings.levelNumber == 9) ? 6 : GameplayConstants::kMaxAliveEnemiesPerBase;
+        if (base.spawnPreparationActive) {
+            base.spawnPreparationRemainingSeconds -= deltaSeconds;
+            if (base.spawnPreparationRemainingSeconds > 0.0F) {
+                continue;
+            }
+            base.spawnPreparationActive = false;
+            base.spawnPreparationRemainingSeconds = 0.0F;
+            SpawnEnemyFromBasePending(state, base, baseIndex, random);
+            base.activeEnemies += 1;
+            base.enemyGenerationTimerSeconds = std::max(
+                0.0F,
+                base.enemyGenerationIntervalSeconds - GameplayConstants::kBaseSpawnCoreGrowDurationSeconds);
+            ++aliveEnemies;
+            continue;
+        }
+
         if (aliveEnemies >= GameplayConstants::kMaxAliveEnemies ||
             base.enemyGenerationTimerSeconds > 0.0F ||
-            base.activeEnemies >= maxPerBase) {
+            base.activeEnemies >= maxPerBase ||
+            HasOriginEnemyInsideBaseFootprint(state, baseIndex, base)) {
             continue;
         }
 
-        const game::EnemySpawnChoice spawnedEnemy = PickSpawnEnemyForLevel(state.menuSettings.levelNumber, random);
-        const SpawnRayChoice spawnDirection = PickSpawnDirection(state.world, base, random);
-        if (!spawnDirection.found) {
-            // Failed attempt: wait a full interval before retrying.
-            ResetSpawnTimerAfterFailedAttempt(base);
-            continue;
-        }
-        const Vec2f dir = core::angle::DirectionFromHeading(spawnDirection.heading);
-        const float baseHalfSizeUnits = GameplayConstants::kEnemyBaseSizeUnits * 0.5F;
-        const bool diagonalSpawn = IsDiagonalDirection(dir);
-        Vec2f noseAnchor = Vec2f{
-            .x = base.position.x + dir.x * baseHalfSizeUnits,
-            .y = base.position.y + dir.y * baseHalfSizeUnits,
-        };
-        if (diagonalSpawn) {
-            noseAnchor = Vec2f{
-                .x = base.position.x + (dir.x >= 0.0F ? baseHalfSizeUnits : -baseHalfSizeUnits),
-                .y = base.position.y + (dir.y >= 0.0F ? baseHalfSizeUnits : -baseHalfSizeUnits),
-            };
-        }
-        const float spawnBackoffUnits =
-            GameplayConstants::kEntitySizeUnits * 0.5F +
-            (diagonalSpawn ? kDiagonalSpawnCoreShiftUnits : 0.0F);
-        Vec2f spawnPosition{
-            .x = noseAnchor.x - dir.x * spawnBackoffUnits,
-            .y = noseAnchor.y - dir.y * spawnBackoffUnits,
-        };
-        if (!IsSpawnPositionFree(state, spawnPosition)) {
-            ResetSpawnTimerAfterFailedAttempt(base);
-            continue;
-        }
-        const float forwardClearWithEnemies = game::geometry::FreeDistanceAheadWithEnemies(
-            state.world,
-            state.world.enemies,
-            -1,
-            spawnPosition,
-            spawnDirection.heading,
-            kRequiredSpawnClearUnits,
-            GameplayConstants::kWallClearanceForAvoidance);
-        if (forwardClearWithEnemies < kRequiredSpawnClearUnits) {
-            // Failed attempt: wait a full interval before retrying.
+        PendingSpawnCandidate candidate{};
+        if (!BuildPendingSpawnCandidate(state, base, random, candidate)) {
             ResetSpawnTimerAfterFailedAttempt(base);
             continue;
         }
 
-        EnemyAiMode mode = EnemyAiMode::Wander;
-        if (spawnedEnemy.type == EnemyType::Hunter) {
-            mode = EnemyAiMode::Scout;
-        } else if (spawnedEnemy.type == EnemyType::Assassin) {
-            mode = EnemyAiMode::Pursuit;
-        } else if (spawnedEnemy.type == EnemyType::Torpedo) {
-            mode = EnemyAiMode::Fly;
-        }
-        const float selfAwarenessInterval = (spawnedEnemy.type == EnemyType::Drone)
-            ? random.NextFloat(
-                  GameplayConstants::kDroneSelfAwarenessIntervalMinSeconds,
-                  GameplayConstants::kDroneSelfAwarenessIntervalMaxSeconds)
-            : random.NextFloat(4.0F, 8.0F);
-        state.world.enemies.push_back(EnemyTank{
-            .position = spawnPosition,
-            .velocity = Vec2f{.x = 0.0F, .y = 0.0F},
-            .headingRadians = spawnDirection.heading,
-            .type = spawnedEnemy.type,
-            .subtype = spawnedEnemy.subtype,
-            .aiMode = mode,
-            .fireCooldownSeconds = GameplayConstants::kEnemyInitialFireCooldownSeconds,
-            .aiStateTimerSeconds = 0.0F,
-            .aiModeElapsedSeconds = 0.0F,
-            .selfAwarenessIntervalSeconds = selfAwarenessInterval,
-            .selfAwarenessTimerSeconds = selfAwarenessInterval,
-            .desiredHeadingRadians = 0.0F,
-            .wanderDirection = Vec2f{.x = 0.0F, .y = -1.0F},
-            .originBaseIndex = baseIndex,
-            .pathWaypoints = {},
-            .pathWaypointCount = 0,
-            .pathWaypointIndex = 0,
-            .alive = true,
-            .spawnSessionId = state.world.nextEnemySpawnSessionId++,
-        });
-        state.world.gameplayEvents.Push(GameplayEvent{
-            .type = GameplayEventType::EnemySpawned,
-            .position = spawnPosition,
-            .enemyType = spawnedEnemy.type,
-            .enemySubtype = spawnedEnemy.subtype,
-            .baseIndex = baseIndex,
-        });
-        base.activeEnemies += 1;
-        base.enemyGenerationTimerSeconds = base.enemyGenerationIntervalSeconds;
-        ++aliveEnemies;
+        base.pendingSpawnType = candidate.type;
+        base.pendingSpawnSubtype = candidate.subtype;
+        base.pendingSpawnHeadingRadians = candidate.heading;
+        base.pendingSpawnPosition = candidate.position;
+        base.spawnPreparationActive = true;
+        base.spawnPreparationRemainingSeconds = GameplayConstants::kBaseSpawnCoreGrowDurationSeconds;
     }
 }

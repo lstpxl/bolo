@@ -1,6 +1,7 @@
 #include "game/Game.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include "core/Log.h"
 #include "game/EnemyAppearance.h"
@@ -304,8 +305,6 @@ void Game::RunPlayingWorldTick(
         if (state_.world.startModeRemainingSeconds <= 0.0F) {
             state_.world.startModeReason = StartModeReason::Unknown;
         }
-    } else if (state_.world.player.fuel < GameplayConstants::kFuelMax && !state_.world.playerTurnLostPending) {
-        state_.world.player.fuel = GameplayConstants::kFuelMax;
     }
 
     if (state_.world.deathModeRemainingSeconds > 0.0F) {
@@ -376,10 +375,14 @@ void Game::RunPlayingWorldTick(
     // Fuel/rules.
     const float speedSq = state_.world.player.velocity.x * state_.world.player.velocity.x +
         state_.world.player.velocity.y * state_.world.player.velocity.y;
-    if (allowFuelDeath && !playerLocked && speedSq > GameplayConstants::kFuelDrainMovementThresholdSq) {
-        state_.world.player.fuel -= deltaSeconds * (
-            GameplayConstants::kFuelDrainBasePerSecond +
-            state_.world.player.throttleNormalized * GameplayConstants::kFuelDrainThrottlePerSecond);
+    if (allowFuelDeath && !playerLocked) {
+        const float speed = std::sqrt(speedSq);
+        const float speedRatio = speed / GameplayConstants::kPlayerFullVelocity;
+        const float drainScale = 1.0F + speedRatio;
+        const float drainPerSecond =
+            (GameplayConstants::kFuelDrainPercentOfMaxPerSecond / 100.0F) *
+            GameplayConstants::kFuelMax * drainScale;
+        state_.world.player.fuel -= deltaSeconds * drainPerSecond;
         if (state_.world.player.fuel <= 0.0F) {
             state_.world.player.fuel = 0.0F;
             beginDeathMode();
