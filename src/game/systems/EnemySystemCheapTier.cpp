@@ -6,7 +6,6 @@
 #include "core/AngleMath.h"
 #include "core/Log.h"
 #include "core/Profiling.h"
-#include "game/GameState.h"
 #include "game/geometry/WorldGeometry.h"
 #include "game/model/GameplayConstants.h"
 #include "game/systems/EnemyAssassin.h"
@@ -135,6 +134,54 @@ void BuildOffscreenSegment(WorldState& world, EnemyTank& enemy, float segmentLen
     gEnemyRuntimeWindowStats.segmentsBuiltByType[static_cast<std::size_t>(typeIdx)] += 1;
     gEnemyRuntimeWindowStats.segmentLengthSumByType[static_cast<std::size_t>(typeIdx)] += targetDistance;
 }
+
+bool TryBuildAlarmFlowSegment(
+    const WorldState& world,
+    const game::navigation::CellCoordCache& cellCache,
+    const game::navigation::PlayerFlowField& flowField,
+    EnemyTank& enemy,
+    float segmentLengthUnits) {
+    if (!flowField.HasBuild() || cellCache.WidthCells() <= 0) {
+        return false;
+    }
+    const game::navigation::MazeCellCoord enemyCell = cellCache.WorldToCell(enemy.position);
+    if (!cellCache.IsValidCell(enemyCell.x, enemyCell.y)) {
+        return false;
+    }
+    const int enemyCellHash = cellCache.CellHash(enemyCell.x, enemyCell.y);
+    const int nextCellHash = flowField.NextCellHash(enemyCellHash);
+    if (nextCellHash < 0 || nextCellHash == enemyCellHash) {
+        return false;
+    }
+    const int nextCellX = nextCellHash % cellCache.WidthCells();
+    const int nextCellY = nextCellHash / cellCache.WidthCells();
+    const int dx = nextCellX - enemyCell.x;
+    const int dy = nextCellY - enemyCell.y;
+    if (std::abs(dx) + std::abs(dy) != 1) {
+        return false;
+    }
+    const float flowHeading = core::angle::QuantizeToEightDirections(
+        std::atan2(static_cast<float>(dx), -static_cast<float>(dy)));
+    const float clearDistance = game::geometry::FreeDistanceAheadGridWallsOnly(
+        world,
+        enemy.position,
+        flowHeading,
+        kSegmentBuildProbeMaxUnits,
+        GameplayConstants::kWallClearanceForAvoidance,
+        1.0F);
+    const float maxSegmentLength = std::min(segmentLengthUnits, clearDistance - kSegmentBuildSafetyReduceUnits);
+    if (maxSegmentLength < kSegmentBuildMinLengthUnits) {
+        return false;
+    }
+    const Vec2f direction = DirectionFromHeading(flowHeading);
+    enemy.offscreenCachedHeadingRadians = flowHeading;
+    enemy.offscreenSegmentEnd = Vec2f{
+        .x = enemy.position.x + direction.x * maxSegmentLength,
+        .y = enemy.position.y + direction.y * maxSegmentLength,
+    };
+    enemy.offscreenSegmentActive = true;
+    return true;
+}
 }  // namespace
 
 void AdvanceCheapTierTimers(
@@ -194,6 +241,7 @@ void ApplyCheapTierMovement(
     int enemyIndex,
     float deltaSeconds,
     float speed,
+    bool alarmFlowBiasEligible,
     Random& random) {
     const Vec2f cheapStartPosition = enemy.position;
     bool lastInsideWallAvoid = enemy.cheapSegmentInsideWallAvoidLastFrame;
@@ -277,6 +325,15 @@ void ApplyCheapTierMovement(
     float segmentLength = kOffscreenSegmentLengthUnits;
     if (enemy.type == EnemyType::Torpedo) {
         segmentLength = kOffscreenTorpedoSegmentLengthUnits;
+    }
+    bool forceAlarmFlowSegment = false;
+    if (alarmFlowBiasEligible &&
+        enemy.type != EnemyType::Assassin &&
+        enemy.aiMode != EnemyAiMode::Retreat &&
+        enemy.aiMode != EnemyAiMode::Targeting &&
+        enemy.aiMode != EnemyAiMode::Rotate) {
+        forceAlarmFlowSegment = TryBuildAlarmFlowSegment(
+            state.world, cellCache, flowField, enemy, segmentLength);
     }
 
     if (enemy.type == EnemyType::Assassin) {
@@ -374,7 +431,7 @@ void ApplyCheapTierMovement(
                 enemy.cheapSegmentBuildMethodStage = 0;
             }
         }
-    } else if (enemy.type == EnemyType::Torpedo && enemy.aiMode == EnemyAiMode::Fly) {
+    } else if (!forceAlarmFlowSegment && enemy.type == EnemyType::Torpedo && enemy.aiMode == EnemyAiMode::Fly) {
         if (SelectTorpedoFlyMotion(
                 state.world,
                 cellCache,
@@ -387,7 +444,7 @@ void ApplyCheapTierMovement(
         } else {
             InvalidateTorpedoFlyPath(enemy);
         }
-    } else if (enemy.type == EnemyType::Hunter && enemy.aiMode == EnemyAiMode::Scout) {
+    } else if (!forceAlarmFlowSegment && enemy.type == EnemyType::Hunter && enemy.aiMode == EnemyAiMode::Scout) {
         if (SelectHunterScoutMotion(
                 state.world,
                 cellCache,

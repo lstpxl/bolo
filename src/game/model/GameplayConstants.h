@@ -52,6 +52,8 @@ struct GameplayConstants {
     static constexpr float kEnemyHunterFireInterval = 1.5F;          // seconds
     static constexpr float kEnemyAssassinFireInterval = 1.0F;        // seconds
     static constexpr float kEnemyVisualContactMusicHoldSeconds = 4.0F; // seconds
+    static constexpr float kEnemyAlarmClearDelaySeconds = 5.0F;        // seconds without drone visual contact
+    static constexpr int kEnemyAlarmInfluenceRangeCells = 24;          // maze cells from player
     static constexpr float kEnemyProjectileSpeed = 7.0F;             // world-units / second
     static constexpr float kEnemyAggroRangeUnits = 15.0F;           // world-units
     /// Half-angle (radians) from hull forward for `seesPlayer`: visible if bearing to player

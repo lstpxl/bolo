@@ -12,6 +12,7 @@
 #include "core/Log.h"
 #include "core/Profiling.h"
 #include "core/Random.h"
+#include "game/EnemyAppearance.h"
 #include "game/geometry/WorldGeometry.h"
 #include "game/model/WorldState.h"
 #include "game/navigation/CellCoordCache.h"
@@ -281,7 +282,7 @@ bool CanTraverseMazeCardinal(const MazeState& maze, int fromX, int fromY, int to
     return false;
 }
 
-void BuildEscapePlayerDistanceField(
+void BuildPlayerDistanceField(
     const WorldState& world,
     const game::navigation::CellCoordCache& cellCache,
     std::vector<int>& outDistanceField) {
@@ -690,11 +691,57 @@ void UpdateEnemySystem(
     std::vector<float>& uncoupleEscapeScores = enemyScratch.uncoupleEscapeScores;
     uncoupleEscapeScores.assign(state.world.enemies.size(), -1000.0F);
     std::vector<int>& escapePlayerDistanceField = enemyScratch.escapePlayerDistanceField;
+    std::vector<int>& alarmPlayerDistanceField = enemyScratch.alarmPlayerDistanceField;
+    BuildPlayerDistanceField(state.world, cellCache, alarmPlayerDistanceField);
     if (state.world.evacObjectiveActive) {
-        BuildEscapePlayerDistanceField(state.world, cellCache, escapePlayerDistanceField);
+        BuildPlayerDistanceField(state.world, cellCache, escapePlayerDistanceField);
     } else {
         escapePlayerDistanceField.clear();
     }
+    bool droneSeesPlayerThisFrame = false;
+    bool alarmActiveThisFrame = state.world.enemyAlarmActive;
+    float alarmNoDroneSightSeconds = state.world.enemyAlarmSecondsSinceDroneSight;
+    const auto enemyAlarmEligible = [&](const EnemyTank& enemy, bool enemySeesPlayer) {
+        if (!alarmActiveThisFrame ||
+            enemySeesPlayer ||
+            enemy.type == EnemyType::Assassin) {
+            return false;
+        }
+        if (enemy.type != EnemyType::Drone &&
+            enemy.type != EnemyType::Torpedo &&
+            enemy.type != EnemyType::Hunter) {
+            return false;
+        }
+        const int width = state.world.maze.widthCells;
+        const int height = state.world.maze.heightCells;
+        const int totalCells = width * height;
+        if (width <= 0 || height <= 0 ||
+            static_cast<int>(alarmPlayerDistanceField.size()) != totalCells) {
+            return false;
+        }
+        if (!cellCache.IsValidCell(enemy.cellCoord.x, enemy.cellCoord.y)) {
+            return false;
+        }
+        const int hash = enemy.cellCoord.y * width + enemy.cellCoord.x;
+        if (hash < 0 || hash >= totalCells) {
+            return false;
+        }
+        const int dist = alarmPlayerDistanceField[static_cast<std::size_t>(hash)];
+        return dist != std::numeric_limits<int>::max() &&
+            dist <= GameplayConstants::kEnemyAlarmInfluenceRangeCells;
+    };
+    const auto activateAlarm = [&]() {
+        if (alarmActiveThisFrame) {
+            return;
+        }
+        alarmActiveThisFrame = true;
+        alarmNoDroneSightSeconds = 0.0F;
+        if (!playerInvisible) {
+            playerFlowField.SetCacheActive(true);
+            playerFlowField.Invalidate();
+            navigationCache.flowFieldInvalidationGeneration += 1;
+        }
+    };
     for (int enemyIndex = 0; enemyIndex < static_cast<int>(state.world.enemies.size());
         ++enemyIndex) {
         uncoupleEscapeScores[static_cast<std::size_t>(enemyIndex)] = ComputeUncoupleEscapeScore(
@@ -901,8 +948,10 @@ void UpdateEnemySystem(
                 enemy.aiMode == EnemyAiMode::Rotate) {
                 cheapSpeed = 0.0F;
             }
+            const bool alarmFlowBiasEligible = enemyAlarmEligible(enemy, false);
             ApplyCheapTierMovement(
                 state, cellCache, playerFlowField, enemy, enemyIndex, deltaSeconds, cheapSpeed,
+                alarmFlowBiasEligible,
                 random);
             const game::navigation::MazeCellCoord cheapCell = cellCache.WorldToCell(enemy.position);
             enemy.cellCoord = cheapCell;
@@ -967,6 +1016,11 @@ void UpdateEnemySystem(
             profiling::ScopedProfile phaseScope(profiling::Scope::EnemyAiPerception, true);
             perception = RunPerceptionPhase(state, enemy, deltaSeconds, playerInvisible, random);
         }
+        if (enemy.type == EnemyType::Drone && enemy.seesPlayer) {
+            droneSeesPlayerThisFrame = true;
+            activateAlarm();
+        }
+        const bool alarmFlowBiasEligible = enemyAlarmEligible(enemy, enemy.seesPlayer);
 
         float movementHeading = QuantizeToEightDirections(enemy.headingRadians);
         float speed = EnemySpeed(
@@ -1526,6 +1580,22 @@ void UpdateEnemySystem(
                 enemy.type, enemy.subtype, perception.assassinInAggroMode, state.menuSettings.levelNumber);
             handledByUncoupleMovement = false;
         }
+        if (alarmFlowBiasEligible &&
+            !handledByUncoupleMovement &&
+            !enforceSpawnExitLock &&
+            enemy.aiMode != EnemyAiMode::Defend &&
+            enemy.aiMode != EnemyAiMode::Ram &&
+            enemy.aiMode != EnemyAiMode::Retreat &&
+            enemy.aiMode != EnemyAiMode::Targeting &&
+            enemy.aiMode != EnemyAiMode::Rotate) {
+            float alarmFlowHeading = movementHeading;
+            if (TryGetAssassinFlowHeading(cellCache, playerFlowField, enemy, alarmFlowHeading)) {
+                movementHeading = alarmFlowHeading;
+                if (enemy.type == EnemyType::Torpedo || enemy.type == EnemyType::Drone) {
+                    preserveContinuousHeading = true;
+                }
+            }
+        }
         if (enemy.type == EnemyType::Torpedo) {
             const float torpedoSubtypeMul =
                 EnemySubtypeSpeedMultiplier(EnemyType::Torpedo, enemy.subtype);
@@ -1998,6 +2068,34 @@ void UpdateEnemySystem(
         const game::navigation::MazeCellCoord fullCell = cellCache.WorldToCell(enemy.position);
         enemy.cellCoord = fullCell;
         occupancy.SetCell(enemyIndex, fullCell.x, fullCell.y);
+    }
+
+    if (!state.world.player.alive) {
+        alarmActiveThisFrame = false;
+        alarmNoDroneSightSeconds = 0.0F;
+    } else if (droneSeesPlayerThisFrame) {
+        alarmActiveThisFrame = true;
+        alarmNoDroneSightSeconds = 0.0F;
+    } else if (alarmActiveThisFrame) {
+        alarmNoDroneSightSeconds += deltaSeconds;
+        if (alarmNoDroneSightSeconds >= GameplayConstants::kEnemyAlarmClearDelaySeconds) {
+            alarmActiveThisFrame = false;
+        }
+    } else {
+        alarmNoDroneSightSeconds = 0.0F;
+    }
+    const bool alarmDeactivatedThisFrame = state.world.enemyAlarmActive && !alarmActiveThisFrame;
+    state.world.enemyAlarmActive = alarmActiveThisFrame;
+    state.world.enemyAlarmSecondsSinceDroneSight = alarmNoDroneSightSeconds;
+    const bool baselineFlowEnabled =
+        (game::LevelHasFlowConsumers(state.menuSettings.levelNumber) || state.menuSettings.debugInfo) &&
+        !playerInvisible;
+    if (alarmActiveThisFrame && !playerInvisible) {
+        playerFlowField.SetCacheActive(true);
+    } else if (alarmDeactivatedThisFrame && !baselineFlowEnabled) {
+        playerFlowField.SetCacheActive(false);
+        playerFlowField.Invalidate();
+        navigationCache.flowFieldInvalidationGeneration += 1;
     }
 
     std::vector<std::uint8_t>& fullTierMask = enemyScratch.fullTierMask;

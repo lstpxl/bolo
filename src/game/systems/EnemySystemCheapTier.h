@@ -23,4 +23,5 @@ void ApplyCheapTierMovement(
     int enemyIndex,
     float deltaSeconds,
     float speed,
+    bool alarmFlowBiasEligible,
     Random& random);

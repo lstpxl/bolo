@@ -39,6 +39,7 @@ struct EnemySystemScratch {
     std::vector<std::uint32_t> pairVisitedMarks{};
     std::uint32_t pairVisitedEpoch = 1U;
     std::vector<int> escapePlayerDistanceField{};
+    std::vector<int> alarmPlayerDistanceField{};
 };
 
 struct WorldState {
@@ -64,6 +65,8 @@ struct WorldState {
     int score = 0;
     bool playerTurnLostPending = false;
     float enemyVisualContactMusicTimerSeconds = 0.0F;
+    bool enemyAlarmActive = false;
+    float enemyAlarmSecondsSinceDroneSight = 0.0F;
     float startModeRemainingSeconds = 0.0F;
     StartModeReason startModeReason = StartModeReason::Unknown;
     float deathModeRemainingSeconds = 0.0F;

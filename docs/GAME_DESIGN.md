@@ -355,10 +355,25 @@ Local planner for a **single step** to one of the **8 adjacent** maze cells (car
 - Each assassin computes and caches only the next flow-field step heading per current cell; cached heading is reused until the assassin leaves that cell.
 - Avoids ramming by stopping/adjusting when player distance is under `3` units.
 
+### Alarm Mode
+
+- Alarm is triggered immediately when any **Drone** has `seesPlayer == true`.
+- Alarm auto-clears only after a continuous `5.0s` window where no Drone sees the player.
+- Alarm also auto-clears immediately when the player dies.
+- Alarm eligibility for behavior changes requires all of:
+  - alarm active,
+  - enemy type is `Drone`, `Torpedo`, or `Hunter`,
+  - enemy does **not** currently see the player,
+  - maze-graph distance to player is `<= 24` cells.
+- Alarm does not hard-replace per-type AI modes. Instead, eligible enemies receive a flow-field heading bias so movement tends toward player-directed flow while preserving existing per-type mode rules.
+- During alarm, cheap-tier Drone/Torpedo/Hunter movement also uses player-flow segment bias so offscreen behavior remains aligned with onscreen behavior.
+- Alarm-triggered pursuit respects invisibility mode: if invisibility is enabled, alarm does not force player-flow activation.
+- On alarm activation (while invisibility is off), player-flow cache is forced active and invalidated so a fresh rebuild is scheduled immediately.
+
 ### Player-Directed Flow-field
 
 - Flow-field build treats cells occupied by undestroyed bases as blocking (non-traversable).
-- Flow-field is *active* when invisibility is off and either (a) the level can spawn assassins/hunters (levels 5+) or (b) menu `Debug info` is on. This keeps player-directed flow overlays available in debug mode on lower levels. Toggling invisibility (I key) always invalidates the current flow cache: invisibility on clears stale flow immediately; invisibility off activates flow rebuild toward the player.
+- Flow-field is *active* when invisibility is off and either (a) the level can spawn assassins/hunters (levels 5+), (b) menu `Debug info` is on, or (c) alarm mode is active. This keeps player-directed flow overlays available in debug mode on lower levels and allows alarm-driven pursuit on lower levels. Toggling invisibility (I key) always invalidates the current flow cache: invisibility on clears stale flow immediately; invisibility off activates flow rebuild toward the player.
 - Flow-field initial build is requested at level init (InitializeMazeWorld), not during enemy processing. This ensures assassins never wait for a build; the field is ready when the first assassin spawns.
 - Player respawn invalidates the flow field so it is rebuilt for the new player position; any in-flight background rebuild for the old position is discarded.
 - Enemy steering does not require player-cell-version freshness; cached flow-field data remains valid until scheduled cache refresh.
@@ -449,6 +464,7 @@ World rendering is in `src/platform/Renderer2D.cpp`.
 - Compile-time presentation scaling: macOS builds use `2x` point-scaled presentation (logical `640x480` framebuffer upscaled to `1280x960` in the window). Handheld and other non-macOS builds keep `1x` (`640x480` window).
 - Default logical resolution is `640x480` on all platforms; macOS matches the handheld visible maze area (`1 unit = 16 px`) at doubled pixel size.
 - HUD direction radar draws three lines: hull heading (white), move joystick vector from gamepad axes `0/1` (sky blue), and fire joystick vector from gamepad axes `2/3` (red). Joystick direction uses `(axisX, axisY)` and amplitude is normalized by raw max magnitude `32768`.
+- HUD shows a red `!` indicator while alarm mode is active.
 - Nearest-base radar points to the nearest alive base during regular play; during Evac Objective phase, it points to the evac zone instead.
 - When player is not alive (including Game Over), HUD suppresses player-dependent indicators: fuel fill, heading/joystick radar arrows, and nearest-base highlighted quadrant (radar quadrants stay unhighlighted).
 - HUD lives indicators use the same sprite source and color as the in-world player tank sprite, rendered at `36x36` (4x of the `9x9` source cell).
