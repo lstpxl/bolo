@@ -1126,6 +1126,37 @@ void Renderer2D::DrawWorld(
         DrawVerticalWallPixels(borderTopRight, borderBottomRight, wallThicknessPixels, kWallsColor);
     }
 
+    if (state.world.evacObjectiveActive) {
+        const float flickerPhase =
+            std::fmod(GetTime(), GameplayConstants::kEvacZoneFlickerCycleSeconds);
+        if (flickerPhase < (GameplayConstants::kEvacZoneFlickerCycleSeconds * 0.5F)) {
+            const float halfSize = GameplayConstants::kEvacZoneSizeUnits * 0.5F;
+            const Vector2 topLeft = GetWorldToScreen2D(
+                Vector2{
+                    state.world.evacZoneCenter.x - halfSize,
+                    state.world.evacZoneCenter.y - halfSize},
+                camera);
+            const Vector2 bottomRight = GetWorldToScreen2D(
+                Vector2{
+                    state.world.evacZoneCenter.x + halfSize,
+                    state.world.evacZoneCenter.y + halfSize},
+                camera);
+            const float left = std::min(topLeft.x, bottomRight.x);
+            const float right = std::max(topLeft.x, bottomRight.x);
+            const float top = std::min(topLeft.y, bottomRight.y);
+            const float bottom = std::max(topLeft.y, bottomRight.y);
+            DrawRectangleLinesEx(
+                Rectangle{
+                    .x = left,
+                    .y = top,
+                    .width = right - left,
+                    .height = bottom - top,
+                },
+                2.0F,
+                GREEN);
+        }
+    }
+
     const bool showFlowField =
         state.menuSettings.debugInfo && state.world.navigationCache.playerFlowField.HasBuild();
     const bool showBaseDistanceField =

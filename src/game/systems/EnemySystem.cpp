@@ -181,6 +181,8 @@ const char* EnemyAiModeLabel(EnemyAiMode mode)
             return "Retreat";
         case EnemyAiMode::Targeting:
             return "Targeting";
+        case EnemyAiMode::Escape:
+            return "Escape";
     }
     return "Unknown";
 }
@@ -257,6 +259,129 @@ int FullTierRadiusCellsFromView(const GameplayView& view, int cellSizeUnits)
     const int dvw = static_cast<int>(std::ceil(view.viewportWidthUnits / cs));
     const int dvh = static_cast<int>(std::ceil(view.viewportHeightUnits / cs));
     return static_cast<int>(std::ceil(static_cast<double>(std::max(dvw, dvh)) + 0.5));
+}
+
+bool CanTraverseMazeCardinal(const MazeState& maze, int fromX, int fromY, int toX, int toY) {
+    if (toX < 0 || toY < 0 || toX >= maze.widthCells || toY >= maze.heightCells) {
+        return false;
+    }
+    const MazeCell& from = maze.cells[static_cast<std::size_t>(fromY * maze.widthCells + fromX)];
+    if (toX == fromX + 1) {
+        return !from.eastWall;
+    }
+    if (toX == fromX - 1) {
+        return !from.westWall;
+    }
+    if (toY == fromY + 1) {
+        return !from.southWall;
+    }
+    if (toY == fromY - 1) {
+        return !from.northWall;
+    }
+    return false;
+}
+
+void BuildEscapePlayerDistanceField(
+    const WorldState& world,
+    const game::navigation::CellCoordCache& cellCache,
+    std::vector<int>& outDistanceField) {
+    const int width = world.maze.widthCells;
+    const int height = world.maze.heightCells;
+    const int total = width * height;
+    outDistanceField.assign(static_cast<std::size_t>(total), std::numeric_limits<int>::max());
+    if (total <= 0 || !world.player.alive) {
+        return;
+    }
+    const game::navigation::MazeCellCoord playerCell = cellCache.WorldToCell(world.player.position);
+    if (!cellCache.IsValidCell(playerCell.x, playerCell.y)) {
+        return;
+    }
+    const int startHash = playerCell.y * width + playerCell.x;
+    outDistanceField[static_cast<std::size_t>(startHash)] = 0;
+    std::vector<int> queue{};
+    queue.reserve(static_cast<std::size_t>(total));
+    queue.push_back(startHash);
+    std::size_t head = 0;
+    constexpr std::array<int, 4> kDx{1, -1, 0, 0};
+    constexpr std::array<int, 4> kDy{0, 0, 1, -1};
+    while (head < queue.size()) {
+        const int hash = queue[head++];
+        const int cx = hash % width;
+        const int cy = hash / width;
+        const int currentDistance = outDistanceField[static_cast<std::size_t>(hash)];
+        for (int i = 0; i < 4; ++i) {
+            const int nx = cx + kDx[static_cast<std::size_t>(i)];
+            const int ny = cy + kDy[static_cast<std::size_t>(i)];
+            if (!cellCache.IsValidCell(nx, ny)) {
+                continue;
+            }
+            if (!CanTraverseMazeCardinal(world.maze, cx, cy, nx, ny)) {
+                continue;
+            }
+            const int neighborHash = ny * width + nx;
+            if (outDistanceField[static_cast<std::size_t>(neighborHash)] <= currentDistance + 1) {
+                continue;
+            }
+            outDistanceField[static_cast<std::size_t>(neighborHash)] = currentDistance + 1;
+            queue.push_back(neighborHash);
+        }
+    }
+}
+
+float SelectEscapeHeading(
+    const EnemyTank& enemy,
+    const WorldState& world,
+    const game::navigation::CellCoordCache& cellCache,
+    const std::vector<int>& distanceField,
+    bool& outHasFartherCell) {
+    outHasFartherCell = false;
+    const int width = world.maze.widthCells;
+    const int total = width * world.maze.heightCells;
+    if (width <= 0 || static_cast<int>(distanceField.size()) != total) {
+        return enemy.headingRadians;
+    }
+    const game::navigation::MazeCellCoord enemyCell = cellCache.WorldToCell(enemy.position);
+    if (!cellCache.IsValidCell(enemyCell.x, enemyCell.y)) {
+        return enemy.headingRadians;
+    }
+    const int currentHash = enemyCell.y * width + enemyCell.x;
+    const int currentDistance = distanceField[static_cast<std::size_t>(currentHash)];
+    if (currentDistance == std::numeric_limits<int>::max()) {
+        return enemy.headingRadians;
+    }
+    constexpr std::array<int, 4> kDx{1, -1, 0, 0};
+    constexpr std::array<int, 4> kDy{0, 0, 1, -1};
+    constexpr std::array<float, 4> kHeading{
+        kPi * 0.5F,       // east
+        -kPi * 0.5F,      // west
+        kPi,              // south
+        0.0F,             // north
+    };
+
+    int bestDistance = currentDistance;
+    float bestHeading = enemy.headingRadians;
+    for (int i = 0; i < 4; ++i) {
+        const int nx = enemyCell.x + kDx[static_cast<std::size_t>(i)];
+        const int ny = enemyCell.y + kDy[static_cast<std::size_t>(i)];
+        if (!cellCache.IsValidCell(nx, ny)) {
+            continue;
+        }
+        if (!CanTraverseMazeCardinal(world.maze, enemyCell.x, enemyCell.y, nx, ny)) {
+            continue;
+        }
+        const int neighborHash = ny * width + nx;
+        const int neighborDistance = distanceField[static_cast<std::size_t>(neighborHash)];
+        if (neighborDistance <= bestDistance || neighborDistance == std::numeric_limits<int>::max()) {
+            continue;
+        }
+        bestDistance = neighborDistance;
+        bestHeading = kHeading[static_cast<std::size_t>(i)];
+    }
+    if (bestDistance > currentDistance) {
+        outHasFartherCell = true;
+        return bestHeading;
+    }
+    return enemy.headingRadians;
 }
 
 EnemySimTier DetermineEnemySimTier(
@@ -564,6 +689,12 @@ void UpdateEnemySystem(
     reenteredFullTierMask.assign(state.world.enemies.size(), 0U);
     std::vector<float>& uncoupleEscapeScores = enemyScratch.uncoupleEscapeScores;
     uncoupleEscapeScores.assign(state.world.enemies.size(), -1000.0F);
+    std::vector<int>& escapePlayerDistanceField = enemyScratch.escapePlayerDistanceField;
+    if (state.world.evacObjectiveActive) {
+        BuildEscapePlayerDistanceField(state.world, cellCache, escapePlayerDistanceField);
+    } else {
+        escapePlayerDistanceField.clear();
+    }
     for (int enemyIndex = 0; enemyIndex < static_cast<int>(state.world.enemies.size());
         ++enemyIndex) {
         uncoupleEscapeScores[static_cast<std::size_t>(enemyIndex)] = ComputeUncoupleEscapeScore(
@@ -640,6 +771,56 @@ void UpdateEnemySystem(
         }
 
         if (enemy.simTier == EnemySimTier::Cheap) {
+            if (state.world.evacObjectiveActive) {
+                AdvanceCheapTierTimers(state, enemy, deltaSeconds, playerInvisible, view, random);
+                enemy.aiMode = EnemyAiMode::Escape;
+                bool hasFartherCell = false;
+                const float escapeHeading = SelectEscapeHeading(
+                    enemy,
+                    state.world,
+                    cellCache,
+                    escapePlayerDistanceField,
+                    hasFartherCell);
+                const float escapeSpeed = EnemySpeed(
+                    enemy.type, enemy.subtype, false, state.menuSettings.levelNumber);
+                const Vec2f direction = DirectionFromHeading(escapeHeading);
+                const Vec2f candidatePosition{
+                    .x = enemy.position.x + direction.x * escapeSpeed * deltaSeconds,
+                    .y = enemy.position.y + direction.y * escapeSpeed * deltaSeconds,
+                };
+                const bool wallHit = game::geometry::SegmentIntersectsWall(
+                    state.world,
+                    enemy.position,
+                    candidatePosition,
+                    GameplayConstants::kWallClearanceForHard);
+                if (wallHit) {
+                    state.world.gameplayEvents.Push(GameplayEvent{
+                        .type = GameplayEventType::EnemyDestroyed,
+                        .position = enemy.position,
+                        .enemyType = enemy.type,
+                        .enemySubtype = enemy.subtype,
+                    });
+                    enemy.alive = false;
+                    enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
+                    DecrementOriginBaseAliveCount(state.world, enemy);
+                    occupancy.Remove(enemyIndex);
+                    continue;
+                }
+                enemy.position = candidatePosition;
+                enemy.headingRadians = escapeHeading;
+                enemy.velocity = Vec2f{
+                    .x = direction.x * escapeSpeed,
+                    .y = direction.y * escapeSpeed,
+                };
+                if (!hasFartherCell) {
+                    // No farther graph cell exists; keep running in current heading until collision.
+                    enemy.headingRadians = escapeHeading;
+                }
+                const game::navigation::MazeCellCoord cheapCell = cellCache.WorldToCell(enemy.position);
+                enemy.cellCoord = cheapCell;
+                occupancy.SetCell(enemyIndex, cheapCell.x, cheapCell.y);
+                continue;
+            }
             if (enemy.type == EnemyType::Torpedo && enemy.aiMode != EnemyAiMode::Fly) {
                 // Cheap-tier torpedo logic is fly-only; drop non-fly state immediately.
                 enemy.aiMode = EnemyAiMode::Fly;
@@ -730,6 +911,56 @@ void UpdateEnemySystem(
         }
 
         // Cheap tier can't get here
+        if (state.world.evacObjectiveActive) {
+            enemy.aiMode = EnemyAiMode::Escape;
+            enemy.aiModeElapsedSeconds += deltaSeconds;
+            bool hasFartherCell = false;
+            const float escapeHeading = SelectEscapeHeading(
+                enemy,
+                state.world,
+                cellCache,
+                escapePlayerDistanceField,
+                hasFartherCell);
+            const float escapeSpeed = EnemySpeed(
+                enemy.type, enemy.subtype, false, state.menuSettings.levelNumber);
+            const Vec2f direction = DirectionFromHeading(escapeHeading);
+            const Vec2f candidatePosition{
+                .x = enemy.position.x + direction.x * escapeSpeed * deltaSeconds,
+                .y = enemy.position.y + direction.y * escapeSpeed * deltaSeconds,
+            };
+            const bool wallHit = game::geometry::SegmentIntersectsWall(
+                state.world,
+                enemy.position,
+                candidatePosition,
+                GameplayConstants::kWallClearanceForHard);
+            if (wallHit) {
+                state.world.gameplayEvents.Push(GameplayEvent{
+                    .type = GameplayEventType::EnemyDestroyed,
+                    .position = enemy.position,
+                    .enemyType = enemy.type,
+                    .enemySubtype = enemy.subtype,
+                });
+                enemy.alive = false;
+                enemy.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
+                DecrementOriginBaseAliveCount(state.world, enemy);
+                occupancy.Remove(enemyIndex);
+                continue;
+            }
+            enemy.position = candidatePosition;
+            enemy.headingRadians = escapeHeading;
+            enemy.velocity = Vec2f{
+                .x = direction.x * escapeSpeed,
+                .y = direction.y * escapeSpeed,
+            };
+            if (!hasFartherCell) {
+                // No farther graph cell exists; continue in current heading until collision.
+                enemy.headingRadians = escapeHeading;
+            }
+            const game::navigation::MazeCellCoord fullCell = cellCache.WorldToCell(enemy.position);
+            enemy.cellCoord = fullCell;
+            occupancy.SetCell(enemyIndex, fullCell.x, fullCell.y);
+            continue;
+        }
 
         EnemyPerception perception{};
         {

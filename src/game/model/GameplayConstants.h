@@ -137,6 +137,10 @@ struct GameplayConstants {
     static constexpr float kDeathModeDurationSeconds = 3.0F;         // seconds
     static constexpr float kDeathExplosionDurationSeconds = 3.0F;    // seconds
     static constexpr float kVictoryPhaseDurationSeconds = 3.0F;      // seconds
+    static constexpr int kEvacZoneMinDistanceFromPlayerCells = 3;     // maze cells
+    static constexpr int kEvacZoneMaxDistanceFromPlayerCells = 6;     // maze cells
+    static constexpr float kEvacZoneSizeUnits = 3.0F;                 // world-units
+    static constexpr float kEvacZoneFlickerCycleSeconds = 1.0F;       // seconds
 
     // Projectiles and collisions.
     // Clearance constants (expansion beyond wall half-thickness or base half-size).

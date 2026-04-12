@@ -166,6 +166,7 @@ int GameApp::Run() {
                             const GameplayPhase gameplayPhase = game_.State().gameplayPhase;
                             const bool canOpenGameplayPauseDialog =
                                 gameplayPhase == GameplayPhase::Active ||
+                                gameplayPhase == GameplayPhase::EvacObjective ||
                                 gameplayPhase == GameplayPhase::GameOver ||
                                 gameplayPhase == GameplayPhase::Victory;
                             if (canOpenGameplayPauseDialog && input.gameplayPausePressed && !gameplayPauseDialogOpen_) {
@@ -408,12 +409,15 @@ bool GameApp::Render(const FrameInput& input) {
                 DrawText(overlayText, std::max(0, textX), textY, overlayFontSize, YELLOW);
             } else {
                 game_.Render(renderer_, config_, input);
-                if (state.gameplayPhase == GameplayPhase::GameOver ||
+                if (state.gameplayPhase == GameplayPhase::EvacObjective ||
+                    state.gameplayPhase == GameplayPhase::GameOver ||
                     (state.gameplayPhase == GameplayPhase::Victory &&
                      state.victoryPhaseRemainingSeconds > 0.0F)) {
                     const int overlayFontSize = 40;
                     const char* overlayText =
-                        state.gameplayPhase == GameplayPhase::Victory ? "Congratulations" : "GAME OVER";
+                        state.gameplayPhase == GameplayPhase::EvacObjective
+                            ? "Proceed to the evac zone"
+                            : (state.gameplayPhase == GameplayPhase::Victory ? "Congratulations" : "GAME OVER");
                     const int textWidth = MeasureText(overlayText, overlayFontSize);
                     const int textX = (worldWidth - textWidth) / 2;
                     const int textY = (config_.screenHeight / 2) - (overlayFontSize / 2);

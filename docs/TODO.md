@@ -2,6 +2,8 @@
 
 ## Fixes
 
+- Use a more appropriate sound for a projectile hitting a wall
+
 ## Visuals
 
 - Make Explosions sprites 1 bit

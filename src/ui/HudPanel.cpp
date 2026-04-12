@@ -800,6 +800,22 @@ int HudPanel::ComputeHighlightedQuadrant(const GameState& state) {
     if (!state.world.player.alive) {
         return -1;
     }
+    if (state.world.evacObjectiveActive) {
+        const float dx = state.world.evacZoneCenter.x - state.world.player.position.x;
+        const float dy = state.world.evacZoneCenter.y - state.world.player.position.y;
+        const bool right = dx >= 0.0F;
+        const bool down = dy >= 0.0F;
+        if (!right && !down) {
+            return 0;  // top-left
+        }
+        if (right && !down) {
+            return 1;  // top-right
+        }
+        if (!right && down) {
+            return 2;  // bottom-left
+        }
+        return 3;  // bottom-right
+    }
     int highlightedQuadrant = -1;
     float nearestDistanceSq = 0.0F;
     for (const EnemyBase& base : state.world.enemyBases) {
@@ -858,11 +874,9 @@ void HudPanel::PrepareRenderTargets(const GameState& state, const AppConfig& con
         lastEnemySnapshotSeconds_ = nowSeconds;
     }
 
-    const bool inInitialStartFuelling =
-        state.world.startModeRemainingSeconds > 0.0F &&
-        state.world.startModeReason == StartModeReason::NewGame;
+    const bool inAnyStartFuelling = state.world.startModeRemainingSeconds > 0.0F;
     const bool needFuelSnapshot =
-        !cacheInitialized_ || inInitialStartFuelling ||
+        !cacheInitialized_ || inAnyStartFuelling ||
         (nowSeconds - lastFuelSnapshotSeconds_) >= kFuelSnapshotIntervalSeconds;
     if (needFuelSnapshot) {
         cachedFuel_ = state.world.player.fuel;

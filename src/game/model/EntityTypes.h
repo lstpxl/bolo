@@ -15,6 +15,7 @@ enum class GameMode {
 enum class GameplayPhase {
     Starting,
     Active,
+    EvacObjective,
     GameOver,
     Victory,
 };
@@ -75,6 +76,7 @@ enum class EnemyAiMode {
     Ram,
     Retreat,
     Targeting,
+    Escape,
 };
 
 enum class EnemySimTier {

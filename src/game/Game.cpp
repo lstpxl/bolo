@@ -1,8 +1,12 @@
 #include "game/Game.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdint>
+#include <deque>
+#include <limits>
+#include <vector>
 #include "core/Log.h"
 #include "game/EnemyAppearance.h"
 #include "game/model/GameplayEvents.h"
@@ -27,6 +31,44 @@ float DistanceSqExplosion(const Vec2f& a, const Vec2f& b) {
     const float dx = a.x - b.x;
     const float dy = a.y - b.y;
     return dx * dx + dy * dy;
+}
+
+bool CanTraverseMazeCardinal(const MazeState& maze, int fromX, int fromY, int toX, int toY) {
+    if (toX < 0 || toY < 0 || toX >= maze.widthCells || toY >= maze.heightCells) {
+        return false;
+    }
+    const MazeCell& from = maze.cells[static_cast<std::size_t>(fromY * maze.widthCells + fromX)];
+    if (toX == fromX + 1) {
+        return !from.eastWall;
+    }
+    if (toX == fromX - 1) {
+        return !from.westWall;
+    }
+    if (toY == fromY + 1) {
+        return !from.southWall;
+    }
+    if (toY == fromY - 1) {
+        return !from.northWall;
+    }
+    return false;
+}
+
+int MazeCellHash(int cellX, int cellY, int widthCells) {
+    return cellY * widthCells + cellX;
+}
+
+bool IsPlayerInsideEvacZone(const WorldState& world) {
+    if (!world.evacObjectiveActive || !world.player.alive) {
+        return false;
+    }
+    const float halfZone = GameplayConstants::kEvacZoneSizeUnits * 0.5F;
+    const float innerHalf = halfZone - GameplayConstants::kEntityRadiusUnits;
+    if (innerHalf <= 0.0F) {
+        return false;
+    }
+    const float dx = std::fabs(world.player.position.x - world.evacZoneCenter.x);
+    const float dy = std::fabs(world.player.position.y - world.evacZoneCenter.y);
+    return dx <= innerHalf && dy <= innerHalf;
 }
 
 
@@ -121,6 +163,9 @@ void Game::Update(const FrameInput& input, float deltaSeconds, const GameplayVie
     case GameplayPhase::Active:
         UpdateActivePhase(input, deltaSeconds, view);
         return;
+    case GameplayPhase::EvacObjective:
+        UpdateEvacObjectivePhase(input, deltaSeconds, view);
+        return;
     case GameplayPhase::GameOver:
         UpdateGameOverPhase(input, deltaSeconds, view);
         return;
@@ -169,6 +214,141 @@ void Game::UpdateActivePhase(const FrameInput& input, float deltaSeconds, const 
         true,
         true,
         true);
+}
+
+void Game::UpdateEvacObjectivePhase(
+    const FrameInput& input,
+    float deltaSeconds,
+    const GameplayView& view) {
+    RunPlayingWorldTick(
+        input,
+        deltaSeconds,
+        view,
+        true,
+        true,
+        true,
+        true,
+        false);
+    CheckEvacZoneCompletion();
+}
+
+bool Game::TrySelectEvacZoneCell(int& outCellX, int& outCellY) {
+    const MazeState& maze = state_.world.maze;
+    const game::navigation::CellCoordCache& cellCache = state_.world.navigationCache.cellCoords;
+    if (maze.widthCells <= 0 || maze.heightCells <= 0 || maze.cells.empty()) {
+        return false;
+    }
+    const game::navigation::MazeCellCoord playerCell = cellCache.WorldToCell(state_.world.player.position);
+    if (!cellCache.IsValidCell(playerCell.x, playerCell.y)) {
+        return false;
+    }
+
+    const int totalCells = maze.widthCells * maze.heightCells;
+    std::vector<int> distance(static_cast<std::size_t>(totalCells), std::numeric_limits<int>::max());
+    std::vector<std::uint8_t> ruined(static_cast<std::size_t>(totalCells), 0U);
+    for (const EnemyBase& base : state_.world.enemyBases) {
+        if (!base.destroyed) {
+            continue;
+        }
+        const game::navigation::MazeCellCoord baseCell = cellCache.WorldToCell(base.position);
+        if (!cellCache.IsValidCell(baseCell.x, baseCell.y)) {
+            continue;
+        }
+        const int baseHash = MazeCellHash(baseCell.x, baseCell.y, maze.widthCells);
+        ruined[static_cast<std::size_t>(baseHash)] = 1U;
+    }
+
+    const int startHash = MazeCellHash(playerCell.x, playerCell.y, maze.widthCells);
+    distance[static_cast<std::size_t>(startHash)] = 0;
+    std::deque<int> queue{};
+    queue.push_back(startHash);
+    constexpr std::array<int, 4> kDx{1, -1, 0, 0};
+    constexpr std::array<int, 4> kDy{0, 0, 1, -1};
+    while (!queue.empty()) {
+        const int currentHash = queue.front();
+        queue.pop_front();
+        const int cx = currentHash % maze.widthCells;
+        const int cy = currentHash / maze.widthCells;
+        const int currentDistance = distance[static_cast<std::size_t>(currentHash)];
+        for (int i = 0; i < 4; ++i) {
+            const int nx = cx + kDx[static_cast<std::size_t>(i)];
+            const int ny = cy + kDy[static_cast<std::size_t>(i)];
+            if (!cellCache.IsValidCell(nx, ny)) {
+                continue;
+            }
+            if (!CanTraverseMazeCardinal(maze, cx, cy, nx, ny)) {
+                continue;
+            }
+            const int nextHash = MazeCellHash(nx, ny, maze.widthCells);
+            if (distance[static_cast<std::size_t>(nextHash)] <= currentDistance + 1) {
+                continue;
+            }
+            distance[static_cast<std::size_t>(nextHash)] = currentDistance + 1;
+            queue.push_back(nextHash);
+        }
+    }
+
+    std::vector<int> candidates{};
+    candidates.reserve(static_cast<std::size_t>(totalCells));
+    for (int hash = 0; hash < totalCells; ++hash) {
+        const int dist = distance[static_cast<std::size_t>(hash)];
+        if (dist == std::numeric_limits<int>::max() || ruined[static_cast<std::size_t>(hash)] != 0U) {
+            continue;
+        }
+        if (dist >= GameplayConstants::kEvacZoneMinDistanceFromPlayerCells &&
+            dist <= GameplayConstants::kEvacZoneMaxDistanceFromPlayerCells) {
+            candidates.push_back(hash);
+        }
+    }
+
+    if (candidates.empty()) {
+        return false;
+    }
+    const int index = random_.NextInt(0, static_cast<int>(candidates.size()) - 1);
+    const int selectedHash = candidates[static_cast<std::size_t>(index)];
+    outCellX = selectedHash % maze.widthCells;
+    outCellY = selectedHash / maze.widthCells;
+    return true;
+}
+
+void Game::StartEvacObjectivePhase() {
+    flowWorker_.Drain();
+    state_.world.enemyVisualContactMusicTimerSeconds = 0.0F;
+    state_.world.levelCleared = false;
+    state_.world.levelClearMessageSeconds = 0.0F;
+    state_.world.playerTurnLostPending = false;
+
+    int evacCellX = -1;
+    int evacCellY = -1;
+    if (!TrySelectEvacZoneCell(evacCellX, evacCellY)) {
+        bolt::log::Warning(
+            "[FLOW] Evac objective fallback: no valid zone cell in %d..%d cells; entering Victory",
+            GameplayConstants::kEvacZoneMinDistanceFromPlayerCells,
+            GameplayConstants::kEvacZoneMaxDistanceFromPlayerCells);
+        state_.gameplayPhase = GameplayPhase::Victory;
+        state_.victoryPhaseRemainingSeconds = GameplayConstants::kVictoryPhaseDurationSeconds;
+        state_.victoryAwaitInputClear = true;
+        return;
+    }
+    state_.world.evacObjectiveActive = true;
+    state_.world.evacZoneCellX = evacCellX;
+    state_.world.evacZoneCellY = evacCellY;
+    state_.world.evacZoneCenter = state_.world.navigationCache.cellCoords.CellCenter(evacCellX, evacCellY);
+    state_.gameplayPhase = GameplayPhase::EvacObjective;
+}
+
+void Game::CheckEvacZoneCompletion() {
+    if (!IsPlayerInsideEvacZone(state_.world)) {
+        return;
+    }
+    state_.world.evacObjectiveActive = false;
+    state_.world.player.alive = false;
+    state_.world.player.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
+    state_.world.player.throttleNormalized = 0.0F;
+    state_.world.playerTurnLostPending = false;
+    state_.gameplayPhase = GameplayPhase::Victory;
+    state_.victoryPhaseRemainingSeconds = GameplayConstants::kVictoryPhaseDurationSeconds;
+    state_.victoryAwaitInputClear = true;
 }
 
 void Game::UpdateGameOverPhase(const FrameInput& input, float deltaSeconds, const GameplayView& view) {
@@ -549,7 +729,7 @@ void Game::RunPlayingWorldTick(
         });
     }
 
-    // Victory handling (all bases destroyed).
+    // Evac objective handling (all bases destroyed).
     int aliveBases = 0;
     for (const EnemyBase& base : state_.world.enemyBases) {
         if (!base.destroyed) {
@@ -557,15 +737,8 @@ void Game::RunPlayingWorldTick(
         }
     }
     if (allowLevelComplete && aliveBases == 0) {
-        bolt::log::Debug("[FLOW] Victory: all bases destroyed, entering Victory phase");
-        flowWorker_.Drain();
-        state_.world.enemyVisualContactMusicTimerSeconds = 0.0F;
-        state_.world.levelCleared = false;
-        state_.world.levelClearMessageSeconds = 0.0F;
-        state_.gameplayPhase = GameplayPhase::Victory;
-        state_.victoryPhaseRemainingSeconds = GameplayConstants::kVictoryPhaseDurationSeconds;
-        state_.victoryAwaitInputClear = true;
-        state_.world.playerTurnLostPending = false;
+        bolt::log::Debug("[FLOW] All bases destroyed, entering evac objective phase");
+        StartEvacObjectivePhase();
         return;
     }
 }

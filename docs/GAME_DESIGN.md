@@ -24,15 +24,18 @@ This file describes the current BOLT implementation in this repository:
 4. During **Starting phase**, the first fixed step arms a `1.0s` timer (`kGameplayStartingPhaseMinSeconds`) and shows `STARTING...`. The next fixed step runs `InitializeMazeWorld` (maze generation, base placement, base distance/flow rebuild, initial player spawn, navigation cache setup) while that timer counts down. Subsequent steps only wait until the timer reaches zero; there is no other gameplay simulation during Starting.
 5. Starting phase transitions into active gameplay.
 6. Player navigates the maze and interacts with enemy bases/tanks (expanded combat rules are still in progress).
-7. If the player destroys the last base, gameplay enters **Victory phase**.
-8. During Victory phase, enemies/projectiles/world simulation continues; player movement/fire stays disabled; UI shows `Congratulations` for `3.0s`.
-9. After the Victory message window, Victory phase ends when player presses any input, then the game transitions back to main menu.
-10. If the player loses the last life, gameplay enters **Game Over phase**.
-11. During Game Over phase, enemies/projectiles/world simulation continues; player movement/fire stays disabled; UI shows `GAME OVER`.
-12. Game Over phase ends when player presses any input, then the game transitions back to main menu.
-13. Player can return to menu during gameplay with START/Enter.
-14. Any transition from gameplay back to main menu resets active world runtime state (enemies, projectiles, bases, minimap markers, and navigation/collision runtime caches) so the next run starts from a clean world.
-15. On that transition, the app suppresses menu **Start**, **Select**/Enter, navigation, and fire bindings until no interaction input remains held (`FrameInput::anyInteractionDown` is false), so the same key that dismissed Game Over, dismissed Victory, or exited pause cannot immediately start a new run.
+7. If the player destroys the last base, gameplay enters **Evac Objective phase**.
+8. During Evac Objective phase, all alive enemies switch to `Escape` mode, stop firing, and run away from the player using a player-distance flow field. If an escaping enemy has no farther cell to run to, it keeps current heading and can crash into a wall; escape wall contact destroys the enemy.
+9. During Evac Objective phase, UI shows `Proceed to the evac zone`, nearest-base radar points to the evac zone, and a flickering `3x3` world-unit green evac rectangle marks the target.
+10. Evac zone placement uses a random maze cell that is reachable and between `3..6` maze cells from the player (wall-respecting path distance), and not on a cell containing destroyed base ruins.
+11. When the player fully enters the evac zone (player center at least player-radius inside zone edges), gameplay enters **Victory phase**: player is removed from the maze (hyperspace) and UI shows `Congratulations` for `3.0s`.
+12. After the Victory message window, Victory phase ends when player presses any input, then the game transitions back to main menu.
+13. If the player loses the last life, gameplay enters **Game Over phase**.
+14. During Game Over phase, enemies/projectiles/world simulation continues; player movement/fire stays disabled; UI shows `GAME OVER`.
+15. Game Over phase ends when player presses any input, then the game transitions back to main menu.
+16. Player can return to menu during gameplay with START/Enter.
+17. Any transition from gameplay back to main menu resets active world runtime state (enemies, projectiles, bases, minimap markers, and navigation/collision runtime caches) so the next run starts from a clean world.
+18. On that transition, the app suppresses menu **Start**, **Select**/Enter, navigation, and fire bindings until no interaction input remains held (`FrameInput::anyInteractionDown` is false), so the same key that dismissed Game Over, dismissed Victory, or exited pause cannot immediately start a new run.
 
 ## World and Unit System
 
@@ -194,7 +197,8 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
 - On successful player core-hit destruction of an enemy base, player fuel is immediately restored to `kFuelMax`.
 - Death mode: when player dies, player enters a `3s` lock with movement/fire disabled and a simple explosion animation before life loss + respawn resolution. `RunPlayingWorldTick` may arm death mode twice in one tick: once after collision and again after explosion blast damage, so kills from blast AoE still get the full lock before life decrement + respawn.
 - Game Over phase (`GameplayPhase::GameOver`): after last-life loss, the world keeps simulating until player input ends the phase and returns to menu.
-- Victory phase (`GameplayPhase::Victory`): after the last base is destroyed, the world keeps simulating with player driving disabled; `Congratulations` is shown for `3.0s`, then player input returns to menu (same input-clear/press gating as Game Over).
+- Evac Objective phase (`GameplayPhase::EvacObjective`): after the last base is destroyed, player movement/fire remains active while the objective is to reach evac. Alive enemies enter `Escape` mode, do not fire, and move away from the player by maximizing maze-graph distance from the player each step. If no farther cell exists, they keep heading; escape wall contact destroys the enemy.
+- Victory phase (`GameplayPhase::Victory`): entered only after successful evac-zone entry; the world keeps simulating with player driving disabled and player removed from maze rendering, `Congratulations` is shown for `3.0s`, then player input returns to menu (same input-clear/press gating as Game Over).
 - Respawn safety uses `BaseDistanceField` with bounds `12..24` cells from nearest alive base.
 - Respawn additionally requires no alive enemies within Manhattan distance `<= 3` cells.
 - If random respawn placement fails, fallback first picks the farthest strict-valid cell by base-distance; if no strict candidate exists, fallback relaxes base-distance bounds but still enforces enemy-clearance.
@@ -445,6 +449,7 @@ World rendering is in `src/platform/Renderer2D.cpp`.
 - Compile-time presentation scaling: macOS builds use `2x` point-scaled presentation (logical `640x480` framebuffer upscaled to `1280x960` in the window). Handheld and other non-macOS builds keep `1x` (`640x480` window).
 - Default logical resolution is `640x480` on all platforms; macOS matches the handheld visible maze area (`1 unit = 16 px`) at doubled pixel size.
 - HUD direction radar draws three lines: hull heading (white), move joystick vector from gamepad axes `0/1` (sky blue), and fire joystick vector from gamepad axes `2/3` (red). Joystick direction uses `(axisX, axisY)` and amplitude is normalized by raw max magnitude `32768`.
+- Nearest-base radar points to the nearest alive base during regular play; during Evac Objective phase, it points to the evac zone instead.
 - When player is not alive (including Game Over), HUD suppresses player-dependent indicators: fuel fill, heading/joystick radar arrows, and nearest-base highlighted quadrant (radar quadrants stay unhighlighted).
 - HUD lives indicators use the same sprite source and color as the in-world player tank sprite, rendered at `36x36` (4x of the `9x9` source cell).
 - HUD lives indicators are left-aligned in the lives row; as lives decrease, icons disappear from the right.
@@ -458,7 +463,7 @@ World rendering is in `src/platform/Renderer2D.cpp`.
 - HUD runtime sampling cadence:
   - enemy/base minimap texture updates incrementally (`1` entity index per frame): enemy indices `0..N-1`, base indices `-6..-1`
   - minimap texture update erases previous cached cell coordinate (draw black), then draws current colored point and stores new cached cell coordinate
-  - fuel bar value refreshes every `0.5s`, except during initial new-game fuelling (`StartModeReason::NewGame`) where it refreshes every frame
+  - fuel bar value refreshes every `0.5s`, except during any start-mode fuelling process (`startModeRemainingSeconds > 0`, including new game and respawn) where it refreshes every frame
   - nearest-base radar uses a persistent texture layer; content is rebuilt every frame, then the layer is blitted every frame
   - joystick direction vectors on compass refresh every frame
 

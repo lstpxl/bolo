@@ -168,6 +168,10 @@ void RunFiringPhase(
     EnemyTank& enemy,
     const EnemyPerception& perception,
     float deltaSeconds) {
+    if (enemy.aiMode == EnemyAiMode::Escape) {
+        enemy.fireCooldownSeconds = std::max(0.0F, enemy.fireCooldownSeconds - deltaSeconds);
+        return;
+    }
     enemy.fireCooldownSeconds -= deltaSeconds;
     bool canFireTypeSpecific = true;
     if (enemy.type == EnemyType::Drone) {

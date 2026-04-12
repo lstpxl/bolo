@@ -30,8 +30,12 @@ public:
 private:
     void UpdateStartingPhase(float deltaSeconds, const GameplayView& view);
     void UpdateActivePhase(const FrameInput& input, float deltaSeconds, const GameplayView& view);
+    void UpdateEvacObjectivePhase(const FrameInput& input, float deltaSeconds, const GameplayView& view);
     void UpdateGameOverPhase(const FrameInput& input, float deltaSeconds, const GameplayView& view);
     void UpdateVictoryPhase(const FrameInput& input, float deltaSeconds, const GameplayView& view);
+    bool TrySelectEvacZoneCell(int& outCellX, int& outCellY);
+    void StartEvacObjectivePhase();
+    void CheckEvacZoneCompletion();
     void RunPlayingWorldTick(
         const FrameInput& input,
         float deltaSeconds,

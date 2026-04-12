@@ -38,6 +38,7 @@ struct EnemySystemScratch {
     std::uint32_t raySeenEpoch = 1U;
     std::vector<std::uint32_t> pairVisitedMarks{};
     std::uint32_t pairVisitedEpoch = 1U;
+    std::vector<int> escapePlayerDistanceField{};
 };
 
 struct WorldState {
@@ -74,6 +75,10 @@ struct WorldState {
     bool levelCleared = false;
     bool gameOver = false;
     float levelClearMessageSeconds = 0.0F;
+    bool evacObjectiveActive = false;
+    Vec2f evacZoneCenter{.x = 0.0F, .y = 0.0F};
+    int evacZoneCellX = -1;
+    int evacZoneCellY = -1;
     NavigationRuntimeCache navigationCache{};
     CollisionRuntimeCache collisionCache{};
     EnemySystemScratch enemySystemScratch{};
