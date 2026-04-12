@@ -89,6 +89,7 @@ int GameApp::Run() {
     if (!menuScreen_.LoadResources()) {
         bolt::log::Warning("MENU: Failed to load one or more menu resources");
     }
+    menuBackgroundSimulation_.Initialize();
     int activePresentationScale = 1;
     if (kPresentationScale > 1) {
         presentationTarget_ = LoadRenderTexture(config_.screenWidth, config_.screenHeight);
@@ -201,6 +202,11 @@ int GameApp::Run() {
                                         });
                                 }
                             }
+                        } else if (game_.Mode() == GameMode::Menu) {
+                            if (!menuBackgroundSimulation_.IsInitialized()) {
+                                menuBackgroundSimulation_.Initialize();
+                            }
+                            menuBackgroundSimulation_.Update(fixedStepTimer_.StepSeconds());
                         }
                         fixedStepTimer_.ConsumeStep();
                         ++fixedStepsThisFrame;
@@ -212,6 +218,7 @@ int GameApp::Run() {
                         suppressMenuInteractionUntilRelease_ = true;
                         gameplayPauseDialogOpen_ = false;
                         renderer_.ResetTransientState();
+                        menuBackgroundSimulation_.Initialize();
                     }
                     if (modeBeforeRender == GameMode::Menu && suppressMenuInteractionUntilRelease_) {
                         if (!input.anyInteractionDown) {
@@ -358,6 +365,10 @@ bool GameApp::Render(const FrameInput& input) {
         ClearBackground(BLACK);
 
         if (game_.Mode() == GameMode::Menu) {
+            if (menuBackgroundSimulation_.IsInitialized()) {
+                renderer_.RenderMenuBackground(menuBackgroundSimulation_, config_);
+                DrawRectangle(0, 0, config_.screenWidth, config_.screenHeight, Color{0, 0, 0, 160});
+            }
             const MenuSettings previousSettings = game_.CurrentMenuSettings();
             const MenuScreenResult result = menuScreen_.Render(game_.CurrentMenuSettings(), config_, input);
             game_.SetMenuSettings(result.menuSettings);
@@ -377,6 +388,7 @@ bool GameApp::Render(const FrameInput& input) {
             if (result.startGameRequested) {
                 gameplayPauseDialogOpen_ = false;
                 inputPollState_ = {};
+                menuBackgroundSimulation_.Reset();
                 game_.StartGame(config_, BuildGameplayView(config_));
             }
             if (result.quitRequested) {

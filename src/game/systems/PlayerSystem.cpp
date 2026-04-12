@@ -144,6 +144,12 @@ void UpdatePlayerSystem(GameState& state, const FrameInput& input, float deltaSe
         state.world.player.velocity.y * state.world.player.velocity.y);
     state.world.player.hullHeadingRadians = QuantizeToEightDirections(state.world.player.hullHeadingRadians);
 
+    if (state.world.player.fuel <= 0.0F) {
+        const float depletedFuelMaxSpeed =
+            GameplayConstants::kPlayerFullVelocity * GameplayConstants::kFuelEmptySpeedFactor;
+        speed = std::min(speed, depletedFuelMaxSpeed);
+    }
+
     speed = std::max(0.0F, speed);
     if (speed <= 0.001F) {
         state.world.player.velocity = Vec2f{.x = 0.0F, .y = 0.0F};

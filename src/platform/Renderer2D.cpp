@@ -968,9 +968,13 @@ void Renderer2D::UnloadResources() {
     }
 }
 
-void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
+void Renderer2D::DrawWorld(
+    const GameState& state,
+    const AppConfig& config,
+    bool reserveHudViewport) {
     profiling::ScopedProfile worldScope(profiling::Scope::RenderWorld, true);
-    const int worldWidth = config.screenWidth - ComputeHudWidth(config);
+    const int worldWidth =
+        reserveHudViewport ? (config.screenWidth - ComputeHudWidth(config)) : config.screenWidth;
     const Rectangle worldViewport = {
         .x = 0.0F,
         .y = 0.0F,
@@ -1577,4 +1581,20 @@ void Renderer2D::DrawWorld(const GameState& state, const AppConfig& config) {
     }
 
     EndScissorMode();
+}
+
+void Renderer2D::DrawMenuBackground(
+    const MazeState& maze,
+    const std::vector<EnemyTank>& enemies,
+    const Vec2f& cameraTarget,
+    const AppConfig& config) {
+    GameState state{};
+    state.gameplayPhase = GameplayPhase::Active;
+    state.world.maze = maze;
+    state.world.enemies = enemies;
+    state.world.player.alive = false;
+    state.world.panModeActive = true;
+    state.world.panTarget = cameraTarget;
+    state.menuSettings.debugInfo = false;
+    DrawWorld(state, config, false);
 }

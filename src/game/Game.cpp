@@ -383,10 +383,7 @@ void Game::RunPlayingWorldTick(
             (GameplayConstants::kFuelDrainPercentOfMaxPerSecond / 100.0F) *
             GameplayConstants::kFuelMax * drainScale;
         state_.world.player.fuel -= deltaSeconds * drainPerSecond;
-        if (state_.world.player.fuel <= 0.0F) {
-            state_.world.player.fuel = 0.0F;
-            beginDeathMode();
-        }
+        state_.world.player.fuel = std::max(0.0F, state_.world.player.fuel);
     }
 
     // Spawn explosions for projectiles that hit walls (same sprite/radius as enemy death).

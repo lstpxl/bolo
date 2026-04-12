@@ -125,6 +125,7 @@ add_executable(
     src/ui/BoltMenuSlider.cpp
     src/ui/ConfirmationDialog.cpp
     src/ui/HudPanel.cpp
+    src/ui/MenuBackgroundSimulation.cpp
     src/ui/MenuScreen.cpp
     src/ui/UiPrimitives.cpp
     src/ui/RayguiContext.cpp

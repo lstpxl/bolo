@@ -188,9 +188,11 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
 - Enemy wall movement keeps additional margin: enemy disc edge stays at least `2px` away from maze walls.
 - Starting phase (`GameplayPhase::Starting`): after `StartGame`, the first fixed step starts the `1.0s` overlay timer (`kGameplayStartingPhaseMinSeconds`); the second runs `InitializeMazeWorld` while the timer counts down; when the timer expires, gameplay becomes active.
 - Start mode: player enters a `1.6s` refuel lock (`kStartModeDurationSeconds`) where fuel fills from `0` to max on HUD. A fuelling bar in `Renderer2D.cpp` uses raylib primitives only (`DrawRectangleLinesEx` + left-anchored `DrawRectangleRec` fill; no unfilled track): horizontally centered in the maze viewport, half the previous bar height, bottom inset from the viewport equals the horizontal side inset `(viewportWidth - barWidth) / 2` with `barWidth = min(520, 82% viewport width)`. Color: semi-transparent `rgb(224, 206, 4)` at alpha `200`. During this lock (new game and respawn), hull/turret rotation remains enabled while movement/fire stay disabled.
-- Fuel drain runs every fixed-step when gameplay allows fuel death and player controls are not lock-disabled. Drain rate is `0.25% * kFuelMax * (1 + speed / kPlayerFullVelocity)` per second (`speed` = current player velocity magnitude in world-units/second), integrated by fixed-step `dt`.
+- Fuel drain runs every fixed-step when gameplay allows fuel rules and player controls are not lock-disabled. Drain rate is `kFuelDrainPercentOfMaxPerSecond% * kFuelMax * (1 + speed / kPlayerFullVelocity)` per second (`speed` = current player velocity magnitude in world-units/second), integrated by fixed-step `dt`.
+- Fuel depletion does not trigger death mode. At `fuel == 0`, player movement stays active but speed is capped to `10%` of `kPlayerFullVelocity`.
+- Low fuel warning: when fuel is below `20%`, HUD fuel bar enters a `1.0s` warning cycle (`0.5s` hidden, `0.5s` red bar). This warning is suppressed during initial new-game fuelling (`StartModeReason::NewGame`).
 - On successful player core-hit destruction of an enemy base, player fuel is immediately restored to `kFuelMax`.
-- Death mode: when player dies, player enters a `3s` lock with movement/fire disabled and a simple explosion animation before life loss + respawn resolution. `RunPlayingWorldTick` may arm death mode twice in one tick: once after collision/fuel and again after explosion blast damage, so kills from blast AoE still get the full lock before life decrement + respawn.
+- Death mode: when player dies, player enters a `3s` lock with movement/fire disabled and a simple explosion animation before life loss + respawn resolution. `RunPlayingWorldTick` may arm death mode twice in one tick: once after collision and again after explosion blast damage, so kills from blast AoE still get the full lock before life decrement + respawn.
 - Game Over phase (`GameplayPhase::GameOver`): after last-life loss, the world keeps simulating until player input ends the phase and returns to menu.
 - Victory phase (`GameplayPhase::Victory`): after the last base is destroyed, the world keeps simulating with player driving disabled; `Congratulations` is shown for `3.0s`, then player input returns to menu (same input-clear/press gating as Game Over).
 - Respawn safety uses `BaseDistanceField` with bounds `12..24` cells from nearest alive base.
@@ -443,6 +445,7 @@ World rendering is in `src/platform/Renderer2D.cpp`.
 - Compile-time presentation scaling: macOS builds use `2x` point-scaled presentation (logical `640x480` framebuffer upscaled to `1280x960` in the window). Handheld and other non-macOS builds keep `1x` (`640x480` window).
 - Default logical resolution is `640x480` on all platforms; macOS matches the handheld visible maze area (`1 unit = 16 px`) at doubled pixel size.
 - HUD direction radar draws three lines: hull heading (white), move joystick vector from gamepad axes `0/1` (sky blue), and fire joystick vector from gamepad axes `2/3` (red). Joystick direction uses `(axisX, axisY)` and amplitude is normalized by raw max magnitude `32768`.
+- When player is not alive (including Game Over), HUD suppresses player-dependent indicators: fuel fill, heading/joystick radar arrows, and nearest-base highlighted quadrant (radar quadrants stay unhighlighted).
 - HUD lives indicators use the same sprite source and color as the in-world player tank sprite, rendered at `36x36` (4x of the `9x9` source cell).
 - HUD lives indicators are left-aligned in the lives row; as lives decrease, icons disappear from the right.
 - Gameplay view draws top-left debug text (axes/perf/profiling) only when menu `Debug info` is enabled.
@@ -455,7 +458,7 @@ World rendering is in `src/platform/Renderer2D.cpp`.
 - HUD runtime sampling cadence:
   - enemy/base minimap texture updates incrementally (`1` entity index per frame): enemy indices `0..N-1`, base indices `-6..-1`
   - minimap texture update erases previous cached cell coordinate (draw black), then draws current colored point and stores new cached cell coordinate
-  - fuel bar value refreshes every `0.5s`
+  - fuel bar value refreshes every `0.5s`, except during initial new-game fuelling (`StartModeReason::NewGame`) where it refreshes every frame
   - nearest-base radar uses a persistent texture layer; content is rebuilt every frame, then the layer is blitted every frame
   - joystick direction vectors on compass refresh every frame
 
@@ -471,7 +474,7 @@ World rendering is in `src/platform/Renderer2D.cpp`.
 
 - `resources/audio/power-up-digital.wav`: played when fueling start mode begins (new game and respawn after life loss).
 - `resources/audio/player-shot.wav`: played when player projectile count increases (player fires).
-- `resources/audio/player-explosion.wav`: played when the player enters death mode (explosion at `deathExplosionPosition`: projectile hit, ram/collision, base collision, or fuel empty). Uses the same distance attenuation as other gameplay sounds.
+- `resources/audio/player-explosion.wav`: played when the player enters death mode (explosion at `deathExplosionPosition`: projectile hit, ram/collision, or base collision). Uses the same distance attenuation as other gameplay sounds.
 - `resources/audio/enemy-shot.wav`: played when enemy projectile count increases (enemy fires).
 - `resources/audio/enemy-spawning.wav`: played when alive enemy count increases (enemy spawned).
 - `resources/audio/match-fire.wav`: played when alive enemy count decreases (enemy destroyed / explosion).
@@ -504,6 +507,14 @@ Menu rendering is in `src/ui/MenuScreen.cpp`.
 - Level slider reveal and density hatch preview both use a **1** s wall-clock window (`kMenuRevealRowDurationSeconds` in `MenuScreen.cpp`, backed by `levelSliderRevealUntilTime_` and `densitySpritesRevealUntilTime_`).
 - Five `16x16` hatch sprites are loaded from `resources/textures/density-hatch.png` as a single row (`80x16`) or column (`16x80`) strip; every pixel with non-zero alpha is recolored to `#0D8152` (transparency preserved). They are drawn centered on the same horizontal band as the `Density` text (vertically centered in `kMenuQuitButtonHeight` from `densityLabelY`), at `2x` scale (`32x32` on screen) with `16` px gaps, only while `GetTime() < densitySpritesRevealUntilTime_`. Defocusing Density does **not** clear that timer; text returns only when the timer expires (quit dialog still clears it). If the texture is missing, placeholder tiles are used during that same window. When sprites are hidden, the Quit-sized frame rings the row; when shown and Density is focused (or a sprite is hovered), per-sprite rings apply.
 - While the menu is visible, a low-volume generated 8-bit/chiptune loop plays in the background.
+- While the menu is visible, a background simulation runs behind menu controls:
+  - maze is generated at `30x30` cells with density `3` and no bases/player/projectiles.
+  - enemy count is initialized and maintained at `30` with mixed enemy types (`Drone`, `Torpedo`, `Hunter`, `Assassin`).
+  - enemy movement speed uses each type's gameplay velocity constants (`kEnemyDroneSpeed`, `kEnemyTorpedoSpeed`, `kEnemyHunterSpeed`, `kEnemyAssassinSpeed`).
+  - enemy-to-enemy separation reuses gameplay collision helpers (`ResolveEnemyCollisionsSinglePass` / uncouple gating rules), then applies a local separation pass to keep preferred spacing and avoid persistent overlaps.
+  - each enemy picks a random destination cell, builds an A* path to it (8-neighbor), and advances one cell step at a time; per-step movement uses `AdjacentCellSegmentPlanner` so diagonal transitions use the same one- or two-segment geometry as gameplay torpedo fly pathing.
+  - camera has its own moving target point that traverses an A*-generated path between random maze cells (no collision checks against entities; maze-wall topology is respected), and world render is locked to this camera path.
+  - menu background world uses the full viewport width (no HUD-right cutout) and is dimmed by a semi-transparent black overlay so menu controls remain readable.
 - Quit opens confirmation dialog.
 - Keyboard/mouse focus selection frames use `#A28905` (`DrawFocusRing` in `src/ui/UiPrimitives.cpp`, also used for quit confirmation button focus). Level uses the same unified frame as `Debug`/`Start`/`Quit` while the text row is shown; during slider preview, the ring tracks the slider. Density uses the same unified frame as `Debug`/`Start`/`Quit` while the text row is shown; during sprite preview, per-sprite rings when Density is focused or a sprite is hovered. For `Debug info`, `Start`, and `Quit`, the focus rectangle shares one size: width = `MeasureText("Debug info: Off", 20) + 40` px, height = `kMenuQuitButtonHeight` (same as the Start/Quit `GuiButton` row height in `MenuScreen.cpp`), centered in the viewport on each row (button hit areas stay full-width for raygui). The debug line text is drawn with the same vertical centering as raygui uses for button labels: `debugInfoY + (kMenuQuitButtonHeight - 20) / 2`.
 

@@ -1,6 +1,7 @@
 #include "platform/RaylibRenderer.h"
 
 #include "core/Profiling.h"
+#include "ui/MenuBackgroundSimulation.h"
 
 bool RaylibRenderer::LoadResources() {
     hudPanel_.PreloadHudResources();
@@ -18,6 +19,16 @@ void RaylibRenderer::ResetTransientState() {
 
 void RaylibRenderer::PrepareGameplayRender(const GameState& state, const AppConfig& config, const FrameInput& input) {
     hudPanel_.PrepareRenderTargets(state, config, input);
+}
+
+void RaylibRenderer::RenderMenuBackground(
+    const MenuBackgroundSimulation& simulation,
+    const AppConfig& config) {
+    renderer2D_.DrawMenuBackground(
+        simulation.Maze(),
+        simulation.Enemies(),
+        simulation.CameraTarget(),
+        config);
 }
 
 void RaylibRenderer::RenderGameplay(const GameState& state, const AppConfig& config, const FrameInput& input) {

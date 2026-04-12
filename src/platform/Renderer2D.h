@@ -1,7 +1,10 @@
 #pragma once
 
 #include <array>
+#include <vector>
 #include "app/AppConfig.h"
+#include "core/Types.h"
+#include "game/model/EntityTypes.h"
 #include "game/model/GameplayConstants.h"
 #include "raylib.h"
 
@@ -11,7 +14,12 @@ class Renderer2D {
 public:
     bool LoadResources();
     void UnloadResources();
-    void DrawWorld(const GameState& state, const AppConfig& config);
+    void DrawWorld(const GameState& state, const AppConfig& config, bool reserveHudViewport = true);
+    void DrawMenuBackground(
+        const MazeState& maze,
+        const std::vector<EnemyTank>& enemies,
+        const Vec2f& cameraTarget,
+        const AppConfig& config);
 
 private:
     static constexpr int kMaxPlayerTankFrames = 8;

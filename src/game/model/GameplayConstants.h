@@ -185,6 +185,8 @@ struct GameplayConstants {
 
     // Fuel/rules.
     static constexpr float kFuelDrainPercentOfMaxPerSecond = 0.75F;  // percent of kFuelMax / second
+    static constexpr float kFuelLowWarningThreshold = 20.0F;         // fuel units
+    static constexpr float kFuelEmptySpeedFactor = 0.1F;             // max speed multiplier at zero fuel
     static constexpr float kLevelClearMessageSeconds = 2.0F;         // seconds
     static constexpr float kGameplayStartingPhaseMinSeconds = 1.0F;  // seconds
     static constexpr int kEnemyScorePerLevelMultiplier = 1;          // points * level

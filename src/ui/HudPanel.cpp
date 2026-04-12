@@ -31,6 +31,7 @@ constexpr Color kDarkGreen{19, 60, 26, 255};      // #133c1a
 constexpr Color kTraceGreen{33, 73, 38, 255};     // #214926
 constexpr Color kBrightGreen{3, 199, 3, 255};     // #03c703
 constexpr Color kBrandYellow{223, 206, 4, 255};   // #dfce04
+constexpr Color kWarningRed{220, 38, 38, 255};    // low-fuel warning
 
 constexpr Color kDroneMapColor{66, 190, 143, 255};      // #42BE8F
 constexpr Color kTorpedoMapColor{164, 173, 67, 255};    // #A4AD43
@@ -796,6 +797,9 @@ void HudPanel::UpdateBasesRadarLayer(int blockSize, int highlightedQuadrant) con
 }
 
 int HudPanel::ComputeHighlightedQuadrant(const GameState& state) {
+    if (!state.world.player.alive) {
+        return -1;
+    }
     int highlightedQuadrant = -1;
     float nearestDistanceSq = 0.0F;
     for (const EnemyBase& base : state.world.enemyBases) {
@@ -854,8 +858,12 @@ void HudPanel::PrepareRenderTargets(const GameState& state, const AppConfig& con
         lastEnemySnapshotSeconds_ = nowSeconds;
     }
 
+    const bool inInitialStartFuelling =
+        state.world.startModeRemainingSeconds > 0.0F &&
+        state.world.startModeReason == StartModeReason::NewGame;
     const bool needFuelSnapshot =
-        !cacheInitialized_ || (nowSeconds - lastFuelSnapshotSeconds_) >= kFuelSnapshotIntervalSeconds;
+        !cacheInitialized_ || inInitialStartFuelling ||
+        (nowSeconds - lastFuelSnapshotSeconds_) >= kFuelSnapshotIntervalSeconds;
     if (needFuelSnapshot) {
         cachedFuel_ = state.world.player.fuel;
         lastFuelSnapshotSeconds_ = nowSeconds;
@@ -1016,13 +1024,33 @@ void HudPanel::DrawPrepared(const GameState& state, const AppConfig& config, con
 
     {
         profiling::ScopedProfile barsScope(profiling::Scope::RenderHudBars);
+        const bool playerInMaze = state.world.player.alive;
         const float fuelClamped = std::max(0.0F, std::min(100.0F, cachedFuel_));
         const int barInnerX = layout.mapOuterX + 4;
         const int barInnerY = layout.fuelY + 4;
         const int barInnerWidth = std::max(0, layout.mapOuterW - 8);
         constexpr int kVelocityBarInnerHeightPx = 12;
         const int fuelWidth = static_cast<int>((fuelClamped / 100.0F) * static_cast<float>(barInnerWidth));
-        DrawRectangle(barInnerX, barInnerY, fuelWidth, kFuelBarInnerHeightPx, kBrandYellow);
+        if (playerInMaze) {
+            const bool suppressFuelWarningInInitialStartFuelling =
+                state.world.startModeRemainingSeconds > 0.0F &&
+                state.world.startModeReason == StartModeReason::NewGame;
+            const bool fuelDepleted = fuelClamped <= 0.0F;
+            const bool lowFuelWarning =
+                !fuelDepleted &&
+                !suppressFuelWarningInInitialStartFuelling &&
+                fuelClamped < GameplayConstants::kFuelLowWarningThreshold;
+            if (fuelDepleted || lowFuelWarning) {
+                const float warningPhase = static_cast<float>(std::fmod(GetTime(), 1.0));
+                const bool showWarningBar = warningPhase >= 0.5F;
+                if (showWarningBar) {
+                    const Color warningColor = fuelDepleted ? kBrandYellow : kWarningRed;
+                    DrawRectangle(barInnerX, barInnerY, fuelWidth, kFuelBarInnerHeightPx, warningColor);
+                }
+            } else {
+                DrawRectangle(barInnerX, barInnerY, fuelWidth, kFuelBarInnerHeightPx, kBrandYellow);
+            }
+        }
 
         const float speed = std::sqrt(
             state.world.player.velocity.x * state.world.player.velocity.x +
@@ -1157,6 +1185,7 @@ void HudPanel::DrawPrepared(const GameState& state, const AppConfig& config, con
 
     {
         profiling::ScopedProfile compassScope(profiling::Scope::RenderHudCompass);
+        const bool playerInMaze = state.world.player.alive;
         const int highlightedQuadrant =
             cachedBasesRadarQuadrant_ >= -1 ? cachedBasesRadarQuadrant_ : ComputeHighlightedQuadrant(state);
 
@@ -1187,6 +1216,8 @@ void HudPanel::DrawPrepared(const GameState& state, const AppConfig& config, con
         const int radarInnerY = layout.blocksY + 4;
         const int compassInnerX = layout.compassOuterX + 4;
         const int compassInnerY = layout.blocksY + 4;
+        const int centerX = compassInnerX + layout.leftBlockSize / 2;
+        const int centerY = compassInnerY + layout.leftBlockSize / 2;
 
         if (basesRadarTargetLoaded_) {
             const Rectangle source{
@@ -1206,24 +1237,24 @@ void HudPanel::DrawPrepared(const GameState& state, const AppConfig& config, con
             DrawBasesRadarQuadrantsAt(radarInnerX, radarInnerY, layout.leftBlockSize, highlightedQuadrant);
         }
 
-        const float headingX = std::sin(state.world.player.hullHeadingRadians);
-        const float headingY = -std::cos(state.world.player.hullHeadingRadians);
-        const int centerX = compassInnerX + layout.leftBlockSize / 2;
-        const int centerY = compassInnerY + layout.leftBlockSize / 2;
-        const float armLength = static_cast<float>(layout.leftBlockSize) * 0.28F;
-        const int headingToX = static_cast<int>(std::lround(static_cast<float>(centerX) + headingX * armLength));
-        const int headingToY = static_cast<int>(std::lround(static_cast<float>(centerY) + headingY * armLength));
-        const int leftToX = static_cast<int>(std::lround(
-            static_cast<float>(centerX) + leftJoystickDirX * armLength * leftJoystickAmplitude));
-        const int leftToY = static_cast<int>(std::lround(
-            static_cast<float>(centerY) + leftJoystickDirY * armLength * leftJoystickAmplitude));
-        const int rightToX = static_cast<int>(std::lround(
-            static_cast<float>(centerX) + rightJoystickDirX * armLength * rightJoystickAmplitude));
-        const int rightToY = static_cast<int>(std::lround(
-            static_cast<float>(centerY) + rightJoystickDirY * armLength * rightJoystickAmplitude));
-        DrawLine(centerX, centerY, headingToX, headingToY, RAYWHITE);
-        DrawLine(centerX, centerY, leftToX, leftToY, SKYBLUE);
-        DrawLine(centerX, centerY, rightToX, rightToY, RED);
+        if (playerInMaze) {
+            const float headingX = std::sin(state.world.player.hullHeadingRadians);
+            const float headingY = -std::cos(state.world.player.hullHeadingRadians);
+            const float armLength = static_cast<float>(layout.leftBlockSize) * 0.28F;
+            const int headingToX = static_cast<int>(std::lround(static_cast<float>(centerX) + headingX * armLength));
+            const int headingToY = static_cast<int>(std::lround(static_cast<float>(centerY) + headingY * armLength));
+            const int leftToX = static_cast<int>(std::lround(
+                static_cast<float>(centerX) + leftJoystickDirX * armLength * leftJoystickAmplitude));
+            const int leftToY = static_cast<int>(std::lround(
+                static_cast<float>(centerY) + leftJoystickDirY * armLength * leftJoystickAmplitude));
+            const int rightToX = static_cast<int>(std::lround(
+                static_cast<float>(centerX) + rightJoystickDirX * armLength * rightJoystickAmplitude));
+            const int rightToY = static_cast<int>(std::lround(
+                static_cast<float>(centerY) + rightJoystickDirY * armLength * rightJoystickAmplitude));
+            DrawLine(centerX, centerY, headingToX, headingToY, RAYWHITE);
+            DrawLine(centerX, centerY, leftToX, leftToY, SKYBLUE);
+            DrawLine(centerX, centerY, rightToX, rightToY, RED);
+        }
 
         if (state.world.panModeActive) {
             constexpr int kPanLabelFontSize = 20;

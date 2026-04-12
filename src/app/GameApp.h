@@ -13,6 +13,7 @@
 #include "platform/RaylibRenderer.h"
 #include "raylib.h"
 #include "ui/ConfirmationDialog.h"
+#include "ui/MenuBackgroundSimulation.h"
 #include "ui/MenuScreen.h"
 
 class GameApp {
@@ -30,6 +31,7 @@ private:
     FixedStepTimer fixedStepTimer_{config_.fixedDeltaSeconds, kMaxFixedStepsPerFrame};
     Game game_{};
     MenuScreen menuScreen_{};
+    MenuBackgroundSimulation menuBackgroundSimulation_{};
     RaylibRenderer renderer_{};
     Sound menuClickSound_{};
     Sound menuSelectOnButtonSound_{};
