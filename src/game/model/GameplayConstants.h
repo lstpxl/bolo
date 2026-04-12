@@ -188,7 +188,7 @@ struct GameplayConstants {
     static constexpr float kLineOfSightSampleSpacing = 0.08F;          // world-units
 
     // Fuel/rules.
-    static constexpr float kFuelDrainPercentOfMaxPerSecond = 0.75F;  // percent of kFuelMax / second
+    static constexpr float kFuelDrainPercentOfMaxPerSecond = 1.5F;  // percent of kFuelMax / second
     static constexpr float kFuelLowWarningThreshold = 20.0F;         // fuel units
     static constexpr float kFuelEmptySpeedFactor = 0.1F;             // max speed multiplier at zero fuel
     static constexpr float kLevelClearMessageSeconds = 2.0F;         // seconds
