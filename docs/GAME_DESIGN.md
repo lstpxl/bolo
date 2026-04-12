@@ -464,7 +464,7 @@ World rendering is in `src/platform/Renderer2D.cpp`.
 - Compile-time presentation scaling: macOS builds use `2x` point-scaled presentation (logical `640x480` framebuffer upscaled to `1280x960` in the window). Handheld and other non-macOS builds keep `1x` (`640x480` window).
 - Default logical resolution is `640x480` on all platforms; macOS matches the handheld visible maze area (`1 unit = 16 px`) at doubled pixel size.
 - HUD direction radar draws three lines: hull heading (white), move joystick vector from gamepad axes `0/1` (sky blue), and fire joystick vector from gamepad axes `2/3` (red). Joystick direction uses `(axisX, axisY)` and amplitude is normalized by raw max magnitude `32768`.
-- HUD shows a red `!` indicator while alarm mode is active.
+- Alarm indicator is drawn in the game-world viewport (left of HUD), centered horizontally at the top, as a red `!` with a red circle ring.
 - Nearest-base radar points to the nearest alive base during regular play; during Evac Objective phase, it points to the evac zone instead.
 - When player is not alive (including Game Over), HUD suppresses player-dependent indicators: fuel fill, heading/joystick radar arrows, and nearest-base highlighted quadrant (radar quadrants stay unhighlighted).
 - HUD lives indicators use the same sprite source and color as the in-world player tank sprite, rendered at `36x36` (4x of the `9x9` source cell).

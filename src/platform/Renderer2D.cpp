@@ -66,6 +66,7 @@ constexpr std::uint32_t kEnemyBaseShellHex = 0x5E6CC0;
 constexpr std::uint32_t kEnemyBaseHex = 0x8C9DF6;
 constexpr std::uint32_t kPlayerShellHex = 0xFFFFFF;
 constexpr std::uint32_t kEnemyShellHex = 0xFFB000;
+constexpr std::uint32_t kAlarmIndicatorHex = 0xDC2626;
 
 constexpr Color kBackgroundColor = ColorFromHexRGB(kBackgroundHex);
 constexpr Color kWallsColor = ColorFromHexRGB(kWallsHex);
@@ -79,6 +80,7 @@ constexpr Color kEnemyBaseShellColor = ColorFromHexRGB(kEnemyBaseShellHex);
 constexpr Color kEnemyBaseColor = ColorFromHexRGB(kEnemyBaseHex);
 constexpr Color kPlayerShellColor = ColorFromHexRGB(kPlayerShellHex);
 constexpr Color kEnemyShellColor = ColorFromHexRGB(kEnemyShellHex);
+constexpr Color kAlarmIndicatorColor = ColorFromHexRGB(kAlarmIndicatorHex);
 constexpr float kEnemyRenderCullMarginUnits = 2.0F;
 constexpr float kProjectileRenderCullMarginUnits = 1.0F;
 constexpr int kProjectileRenderSizePixels = 3;
@@ -1609,6 +1611,21 @@ void Renderer2D::DrawWorld(
 
     if (state.world.startModeRemainingSeconds > 0.0F && state.world.player.alive) {
         DrawFuellingSliderInMazeViewport(worldViewport, state.world.player.fuel, GameplayConstants::kFuelMax);
+    }
+
+    if (state.world.enemyAlarmActive) {
+        constexpr int kAlarmIndicatorFontSize = 20;
+        constexpr int kAlarmIndicatorTopInsetPx = 6;
+        constexpr float kAlarmIndicatorCircleRadiusPx = 14.0F;
+        constexpr float kAlarmIndicatorRingThicknessPx = 2.0F;
+        const int centerX = RoundToInt(worldViewport.x + worldViewport.width * 0.5F);
+        const int centerY = RoundToInt(worldViewport.y + kAlarmIndicatorCircleRadiusPx + kAlarmIndicatorTopInsetPx);
+        const int exclamationWidth = MeasureText("!", kAlarmIndicatorFontSize);
+        const int textX = centerX - exclamationWidth / 2;
+        const int textY = centerY - kAlarmIndicatorFontSize / 2;
+        DrawCircleLines(centerX, centerY, kAlarmIndicatorCircleRadiusPx, kAlarmIndicatorColor);
+        DrawCircleLines(centerX, centerY, kAlarmIndicatorCircleRadiusPx - kAlarmIndicatorRingThicknessPx, kAlarmIndicatorColor);
+        DrawText("!", textX, textY, kAlarmIndicatorFontSize, kAlarmIndicatorColor);
     }
 
     EndScissorMode();

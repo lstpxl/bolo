@@ -32,7 +32,6 @@ constexpr Color kTraceGreen{33, 73, 38, 255};     // #214926
 constexpr Color kBrightGreen{3, 199, 3, 255};     // #03c703
 constexpr Color kBrandYellow{223, 206, 4, 255};   // #dfce04
 constexpr Color kWarningRed{220, 38, 38, 255};    // low-fuel warning
-constexpr Color kAlarmRed{220, 38, 38, 255};
 
 constexpr Color kDroneMapColor{66, 190, 143, 255};      // #42BE8F
 constexpr Color kTorpedoMapColor{164, 173, 67, 255};    // #A4AD43
@@ -1275,14 +1274,6 @@ void HudPanel::DrawPrepared(const GameState& state, const AppConfig& config, con
             constexpr int kPanLabelFontSize = 20;
             const int panLabelW = MeasureText("P", kPanLabelFontSize);
             DrawText("P", centerX - panLabelW / 2, centerY - kPanLabelFontSize / 2, kPanLabelFontSize, kBrandYellow);
-        }
-
-        if (state.world.enemyAlarmActive) {
-            constexpr int kAlarmLabelFontSize = 20;
-            constexpr int kAlarmLabelPadding = 4;
-            const int alarmX = layout.leftBlockOuterX + kAlarmLabelPadding;
-            const int alarmY = layout.blocksY + kAlarmLabelPadding;
-            DrawText("!", alarmX, alarmY, kAlarmLabelFontSize, kAlarmRed);
         }
 
         {
