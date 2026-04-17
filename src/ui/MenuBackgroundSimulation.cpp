@@ -7,6 +7,8 @@
 #include <queue>
 #include <stack>
 #include <vector>
+#include "core/AngleMath.h"
+#include "game/geometry/WorldGeometry.h"
 #include "game/model/GameplayConstants.h"
 #include "game/navigation/AdjacentCellSegmentPlanner.h"
 #include "game/systems/EnemySystemCollision.h"
@@ -16,6 +18,21 @@ namespace {
 constexpr float kDestinationReachedThresholdUnits = 0.2F;
 constexpr float kCameraMoveSpeedUnitsPerSecond = 4.5F;
 constexpr float kEnemyPreferredSeparationUnits = GameplayConstants::kEnemyPreferredSeparationUnits;
+constexpr float kMenuAvoidMinCenterDistSq =
+    (kEnemyPreferredSeparationUnits + 0.05F) * (kEnemyPreferredSeparationUnits + 0.05F);
+constexpr float kMenuAvoidMaxRangeSq = 14.0F * 14.0F;
+constexpr float kMenuOncomingHeadingDot = -0.22F;
+constexpr float kMenuFrontConeMinCos = 0.4F;
+constexpr float kMenuLaneBiasStrength = 0.5F;
+constexpr float kMenuIntrusionLookahead = 10.0F;
+constexpr float kMenuIntrusionHalfWidth = 1.05F;
+constexpr float kMenuIntrusionBiasStrength = 0.7F;
+constexpr float kMenuMaxSteerRadPerSec = 1.15F;
+constexpr float kMenuWallProbeDistance = 6.0F;
+constexpr float kMenuEnemyProbeRadius = 1.5F;
+constexpr float kMenuEnemyProbeRadiusSq = kMenuEnemyProbeRadius * kMenuEnemyProbeRadius;
+constexpr float kMenuSideProbeAlong = 2.5F;
+constexpr float kMenuSideProbeAcross = 1.1F;
 
 struct CellCoord {
     int x = 0;
@@ -58,6 +75,10 @@ Vec2f VecTo(const Vec2f& from, const Vec2f& to) {
 
 float VecLength(const Vec2f& value) {
     return std::sqrt(value.x * value.x + value.y * value.y);
+}
+
+float HeadingFromDirectionUnit(const Vec2f& dir) {
+    return std::atan2(dir.x, -dir.y);
 }
 
 }  // namespace
@@ -105,7 +126,7 @@ void MenuBackgroundSimulation::Update(float deltaSeconds) {
     }
 
     for (std::size_t i = 0; i < enemies_.size() && i < enemyRuntime_.size(); ++i) {
-        UpdateEnemy(enemies_[i], enemyRuntime_[i], deltaSeconds);
+        UpdateEnemy(i, deltaSeconds);
     }
     ResolveEnemyCollisionsFromGameplay();
     UpdateCameraMover(deltaSeconds);
@@ -279,10 +300,131 @@ void MenuBackgroundSimulation::EnsureEnemyCount() {
     }
 }
 
-void MenuBackgroundSimulation::UpdateEnemy(
-    EnemyTank& enemy,
-    EnemyRuntimeState& runtime,
-    float deltaSeconds) {
+float MenuBackgroundSimulation::WallFreeAheadFrom(const Vec2f& from, float headingRadians) const {
+    return game::geometry::FreeDistanceAheadGridWallsOnly(
+        plannerWorld_,
+        from,
+        headingRadians,
+        kMenuWallProbeDistance,
+        GameplayConstants::kWallClearanceForAvoidance);
+}
+
+int MenuBackgroundSimulation::CountEnemiesNearProbe(
+    std::size_t selfIndex,
+    const Vec2f& probeCenter,
+    float radiusSq) const {
+    int count = 0;
+    for (std::size_t j = 0; j < enemies_.size(); ++j) {
+        if (j == selfIndex || !enemies_[j].alive) {
+            continue;
+        }
+        const Vec2f d = VecTo(probeCenter, frameStartPositions_[j]);
+        const float dsq = d.x * d.x + d.y * d.y;
+        if (dsq < radiusSq) {
+            ++count;
+        }
+    }
+    return count;
+}
+
+Vec2f MenuBackgroundSimulation::ComputeMenuSteeringBias(std::size_t selfIndex, const Vec2f& pathForwardUnit) const {
+    if (!enemies_[selfIndex].alive || selfIndex >= frameStartPositions_.size()) {
+        return Vec2f{.x = 0.0F, .y = 0.0F};
+    }
+    const Vec2f selfPos = frameStartPositions_[selfIndex];
+    const Vec2f pathFwd = pathForwardUnit;
+    const float pathLenSq = pathFwd.x * pathFwd.x + pathFwd.y * pathFwd.y;
+    if (pathLenSq < 1.0e-6F) {
+        return Vec2f{.x = 0.0F, .y = 0.0F};
+    }
+
+    const Vec2f right{.x = pathFwd.y, .y = -pathFwd.x};
+    Vec2f laneBias{.x = 0.0F, .y = 0.0F};
+    Vec2f intrusionBias{.x = 0.0F, .y = 0.0F};
+
+    for (std::size_t j = 0; j < enemies_.size(); ++j) {
+        if (j == selfIndex || !enemies_[j].alive) {
+            continue;
+        }
+        const Vec2f otherPos = frameStartPositions_[j];
+        const Vec2f rel = VecTo(selfPos, otherPos);
+        const float distSq = rel.x * rel.x + rel.y * rel.y;
+        if (distSq < 1.0e-5F || distSq > kMenuAvoidMaxRangeSq) {
+            continue;
+        }
+        const float dist = std::sqrt(distSq);
+        const float invDist = 1.0F / dist;
+        const Vec2f relN{.x = rel.x * invDist, .y = rel.y * invDist};
+        const float aheadDot = relN.x * pathFwd.x + relN.y * pathFwd.y;
+
+        if (distSq >= kMenuAvoidMinCenterDistSq && aheadDot >= kMenuFrontConeMinCos) {
+            const Vec2f otherFwd = core::angle::DirectionFromHeading(enemies_[j].headingRadians);
+            const float oppDot = pathFwd.x * otherFwd.x + pathFwd.y * otherFwd.y;
+            if (oppDot <= kMenuOncomingHeadingDot) {
+                const float minD = std::sqrt(kMenuAvoidMinCenterDistSq);
+                const float maxD = std::sqrt(kMenuAvoidMaxRangeSq);
+                const float t = (dist - minD) / std::max(0.0001F, maxD - minD);
+                const float falloff = std::clamp(1.0F - t, 0.0F, 1.0F) * aheadDot;
+                laneBias.x += right.x * falloff * kMenuLaneBiasStrength;
+                laneBias.y += right.y * falloff * kMenuLaneBiasStrength;
+            }
+        }
+
+        const float along = rel.x * pathFwd.x + rel.y * pathFwd.y;
+        if (along > 0.15F && along < kMenuIntrusionLookahead) {
+            const float perpSq = distSq - along * along;
+            const float perp = std::sqrt(std::max(0.0F, perpSq));
+            if (perp < kMenuIntrusionHalfWidth) {
+                const float crossZ = pathFwd.x * rel.y - pathFwd.y * rel.x;
+                const Vec2f steerRight = right;
+                const Vec2f steerLeft{.x = -right.x, .y = -right.y};
+                const float depth = 1.0F - perp / std::max(0.0001F, kMenuIntrusionHalfWidth);
+                const float alongW = 1.0F - along / kMenuIntrusionLookahead;
+                const float w = depth * alongW * kMenuIntrusionBiasStrength;
+
+                Vec2f preferred = crossZ >= 0.0F ? steerRight : steerLeft;
+                if (std::fabs(crossZ) < 0.08F) {
+                    const Vec2f probeL{
+                        .x = selfPos.x + pathFwd.x * kMenuSideProbeAlong + steerLeft.x * kMenuSideProbeAcross,
+                        .y = selfPos.y + pathFwd.y * kMenuSideProbeAlong + steerLeft.y * kMenuSideProbeAcross,
+                    };
+                    const Vec2f probeR{
+                        .x = selfPos.x + pathFwd.x * kMenuSideProbeAlong + steerRight.x * kMenuSideProbeAcross,
+                        .y = selfPos.y + pathFwd.y * kMenuSideProbeAlong + steerRight.y * kMenuSideProbeAcross,
+                    };
+                    const float hL = HeadingFromDirectionUnit(steerLeft);
+                    const float hR = HeadingFromDirectionUnit(steerRight);
+                    const float wallL = WallFreeAheadFrom(probeL, hL);
+                    const float wallR = WallFreeAheadFrom(probeR, hR);
+                    const int enL = CountEnemiesNearProbe(selfIndex, probeL, kMenuEnemyProbeRadiusSq);
+                    const int enR = CountEnemiesNearProbe(selfIndex, probeR, kMenuEnemyProbeRadiusSq);
+                    const float scoreL = wallL - static_cast<float>(enL) * 0.35F;
+                    const float scoreR = wallR - static_cast<float>(enR) * 0.35F;
+                    preferred = scoreL >= scoreR ? steerLeft : steerRight;
+                }
+                intrusionBias.x += preferred.x * w;
+                intrusionBias.y += preferred.y * w;
+            }
+        }
+    }
+
+    const float hLaneRight = HeadingFromDirectionUnit(right);
+    const float clearAlongLaneRight = WallFreeAheadFrom(selfPos, hLaneRight);
+    if (clearAlongLaneRight < 1.15F) {
+        const float scale = std::clamp(clearAlongLaneRight, 0.0F, 1.15F) / 1.15F;
+        laneBias.x *= scale;
+        laneBias.y *= scale;
+    }
+
+    return Vec2f{.x = laneBias.x + intrusionBias.x, .y = laneBias.y + intrusionBias.y};
+}
+
+void MenuBackgroundSimulation::UpdateEnemy(std::size_t selfIndex, float deltaSeconds) {
+    if (selfIndex >= enemies_.size() || selfIndex >= enemyRuntime_.size()) {
+        return;
+    }
+    EnemyTank& enemy = enemies_[selfIndex];
+    EnemyRuntimeState& runtime = enemyRuntime_[selfIndex];
     if (!enemy.alive) {
         return;
     }
@@ -331,8 +473,35 @@ void MenuBackgroundSimulation::UpdateEnemy(
     const float maxStep = speed * deltaSeconds;
     const float step = std::min(maxStep, remaining);
     if (remaining > 0.0001F) {
-        const float nx = delta.x / remaining;
-        const float ny = delta.y / remaining;
+        const float pathNx = delta.x / remaining;
+        const float pathNy = delta.y / remaining;
+        const Vec2f pathFwd{.x = pathNx, .y = pathNy};
+        const Vec2f bias = ComputeMenuSteeringBias(selfIndex, pathFwd);
+        Vec2f combined{
+            .x = pathFwd.x + bias.x,
+            .y = pathFwd.y + bias.y,
+        };
+        float clen = VecLength(combined);
+        if (clen < 1.0e-5F) {
+            combined = pathFwd;
+            clen = 1.0F;
+        } else {
+            combined.x /= clen;
+            combined.y /= clen;
+        }
+        const float maxTurn = kMenuMaxSteerRadPerSec * deltaSeconds;
+        const float sinA = pathFwd.x * combined.y - pathFwd.y * combined.x;
+        const float cosA = pathFwd.x * combined.x + pathFwd.y * combined.y;
+        float angle = std::atan2(sinA, cosA);
+        if (angle > maxTurn) {
+            angle = maxTurn;
+        } else if (angle < -maxTurn) {
+            angle = -maxTurn;
+        }
+        const float ca = std::cos(angle);
+        const float sa = std::sin(angle);
+        const float nx = pathFwd.x * ca - pathFwd.y * sa;
+        const float ny = pathFwd.x * sa + pathFwd.y * ca;
         enemy.position.x += nx * step;
         enemy.position.y += ny * step;
         enemy.headingRadians = std::atan2(nx, -ny);

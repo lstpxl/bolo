@@ -46,7 +46,13 @@ private:
     void GenerateMaze();
     void SpawnInitialEnemies();
     void EnsureEnemyCount();
-    void UpdateEnemy(EnemyTank& enemy, EnemyRuntimeState& runtime, float deltaSeconds);
+    void UpdateEnemy(std::size_t selfIndex, float deltaSeconds);
+    [[nodiscard]] Vec2f ComputeMenuSteeringBias(std::size_t selfIndex, const Vec2f& pathForwardUnit) const;
+    [[nodiscard]] int CountEnemiesNearProbe(
+        std::size_t selfIndex,
+        const Vec2f& probeCenter,
+        float radiusSq) const;
+    [[nodiscard]] float WallFreeAheadFrom(const Vec2f& from, float headingRadians) const;
     void PickNewDestinationAndPath(const EnemyTank& enemy, EnemyRuntimeState& runtime);
     bool BuildStepSegment(
         const EnemyTank& enemy,
