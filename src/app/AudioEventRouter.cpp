@@ -20,6 +20,7 @@ struct AudioRouteWindowStats {
     std::uint64_t projectileHitWallEvents = 0;
     std::uint64_t startModeStartedEvents = 0;
     std::uint64_t playerExplosionEvents = 0;
+    std::uint64_t evacZoneCompletedEvents = 0;
     std::uint64_t playerShotSounds = 0;
     std::uint64_t enemyShotSounds = 0;
     std::uint64_t enemyDestroyedSounds = 0;
@@ -28,6 +29,7 @@ struct AudioRouteWindowStats {
     std::uint64_t projectileHitWallSounds = 0;
     std::uint64_t startModeStartedSounds = 0;
     std::uint64_t playerExplosionSounds = 0;
+    std::uint64_t evacZoneCompletedSounds = 0;
     std::uint64_t maxEventsPerStep = 0;
     std::uint64_t maxSoundsPerStep = 0;
 };
@@ -160,6 +162,16 @@ void AudioEventRouter::RouteStep(
                 }
             }
             break;
+        case GameplayEventType::EvacZoneCompleted:
+            gAudioRouteWindowStats.evacZoneCompletedEvents += 1;
+            if (config.levelEvacCompleteLoaded && config.levelEvacCompleteSound != nullptr) {
+                SetSoundVolume(*config.levelEvacCompleteSound, 1.0F);
+                PlaySound(*config.levelEvacCompleteSound);
+                gAudioRouteWindowStats.evacZoneCompletedSounds += 1;
+                gAudioRouteWindowStats.soundsPlayedTotal += 1;
+                soundsPlayedThisStep += 1;
+            }
+            break;
         }
     }
     gAudioRouteWindowStats.maxSoundsPerStep =
@@ -179,8 +191,8 @@ void AudioEventRouter::RouteStep(
             : 0.0F;
         bolt::log::Profile(
             "[AUDIO_ROUTE_WINDOW] steps=%llu events=%llu sounds=%llu avg(step ev=%.2f snd=%.2f) max(step ev=%llu snd=%llu)\n"
-            "  events{shotP=%llu shotE=%llu dead=%llu spawn=%llu base=%llu wall=%llu start=%llu playerExpl=%llu}\n"
-            "  sounds{shotP=%llu shotE=%llu dead=%llu spawn=%llu base=%llu wall=%llu start=%llu playerExpl=%llu}\n",
+            "  events{shotP=%llu shotE=%llu dead=%llu spawn=%llu base=%llu wall=%llu start=%llu playerExpl=%llu evac=%llu}\n"
+            "  sounds{shotP=%llu shotE=%llu dead=%llu spawn=%llu base=%llu wall=%llu start=%llu playerExpl=%llu evac=%llu}\n",
             static_cast<unsigned long long>(gAudioRouteWindowStats.routeSteps),
             static_cast<unsigned long long>(gAudioRouteWindowStats.eventsTotal),
             static_cast<unsigned long long>(gAudioRouteWindowStats.soundsPlayedTotal),
@@ -196,6 +208,7 @@ void AudioEventRouter::RouteStep(
             static_cast<unsigned long long>(gAudioRouteWindowStats.projectileHitWallEvents),
             static_cast<unsigned long long>(gAudioRouteWindowStats.startModeStartedEvents),
             static_cast<unsigned long long>(gAudioRouteWindowStats.playerExplosionEvents),
+            static_cast<unsigned long long>(gAudioRouteWindowStats.evacZoneCompletedEvents),
             static_cast<unsigned long long>(gAudioRouteWindowStats.playerShotSounds),
             static_cast<unsigned long long>(gAudioRouteWindowStats.enemyShotSounds),
             static_cast<unsigned long long>(gAudioRouteWindowStats.enemyDestroyedSounds),
@@ -203,7 +216,8 @@ void AudioEventRouter::RouteStep(
             static_cast<unsigned long long>(gAudioRouteWindowStats.baseDestroyedSounds),
             static_cast<unsigned long long>(gAudioRouteWindowStats.projectileHitWallSounds),
             static_cast<unsigned long long>(gAudioRouteWindowStats.startModeStartedSounds),
-            static_cast<unsigned long long>(gAudioRouteWindowStats.playerExplosionSounds));
+            static_cast<unsigned long long>(gAudioRouteWindowStats.playerExplosionSounds),
+            static_cast<unsigned long long>(gAudioRouteWindowStats.evacZoneCompletedSounds));
         gAudioRouteWindowStats = AudioRouteWindowStats{};
     }
     events.Clear();

@@ -43,6 +43,7 @@ private:
     SoundPool<4> baseExplodingSound_{};
     SoundPool<4> projectileWallHitSound_{};
     SoundPool<4> playerExplosionSound_{};
+    Sound levelEvacCompleteSound_{};
     bool audioReady_ = false;
     bool menuClickSoundLoaded_ = false;
     bool menuSelectOnButtonSoundLoaded_ = false;
@@ -54,6 +55,7 @@ private:
     bool baseExplodingSoundLoaded_ = false;
     bool projectileWallHitSoundLoaded_ = false;
     bool playerExplosionSoundLoaded_ = false;
+    bool levelEvacCompleteSoundLoaded_ = false;
     bool menuMusicPlayerReady_ = false;
     bool gameplayMusicPlayerReady_ = false;
     bool exitRequested_ = false;

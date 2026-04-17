@@ -124,9 +124,11 @@ int GameApp::Run() {
         baseExplodingSoundLoaded_ =
             TryLoadSoundPoolFromKnownPaths(baseExplodingSound_, "base-exploding.wav", "base-exploding sound");
         projectileWallHitSoundLoaded_ =
-            TryLoadSoundPoolFromKnownPaths(projectileWallHitSound_, "metal-hit.wav", "projectile wall-hit sound");
+            TryLoadSoundPoolFromKnownPaths(projectileWallHitSound_, "kick-hit-1.wav", "projectile wall-hit sound");
         playerExplosionSoundLoaded_ =
             TryLoadSoundPoolFromKnownPaths(playerExplosionSound_, "player-explosion.wav", "player explosion sound");
+        levelEvacCompleteSoundLoaded_ =
+            TryLoadSoundFromKnownPaths(levelEvacCompleteSound_, "braams-2.wav", "level evac complete sound");
         if (kMenuMusicEnabled) {
             menuMusicPlayer_.SetLabel("menu");
             menuMusicPlayerReady_ = menuMusicPlayer_.Initialize(menuMelody_);
@@ -192,6 +194,7 @@ int GameApp::Run() {
                                             .baseExplodingLoaded = baseExplodingSoundLoaded_,
                                             .projectileWallHitLoaded = projectileWallHitSoundLoaded_,
                                             .playerExplosionLoaded = playerExplosionSoundLoaded_,
+                                            .levelEvacCompleteLoaded = levelEvacCompleteSoundLoaded_,
                                             .powerUpSound = &powerUpSound_,
                                             .playerShotSound = &playerShotSound_,
                                             .enemyShotSound = &enemyShotSound_,
@@ -200,6 +203,7 @@ int GameApp::Run() {
                                             .baseExplodingSound = &baseExplodingSound_,
                                             .projectileWallHitSound = &projectileWallHitSound_,
                                             .playerExplosionSound = &playerExplosionSound_,
+                                            .levelEvacCompleteSound = &levelEvacCompleteSound_,
                                         });
                                 }
                             }
@@ -295,6 +299,9 @@ int GameApp::Run() {
     }
     if (playerExplosionSoundLoaded_) {
         playerExplosionSound_.Unload();
+    }
+    if (levelEvacCompleteSoundLoaded_) {
+        UnloadSound(levelEvacCompleteSound_);
     }
     if (presentationTargetLoaded_) {
         UnloadRenderTexture(presentationTarget_);

@@ -9,7 +9,7 @@
 ## Visuals
 
 - Make Explosions sprites 1 bit
-- Make base destruction pixel-level (?) or use sprite for a broken base
+- Use sprite for a broken base
 
 ## Performance Optimization
 

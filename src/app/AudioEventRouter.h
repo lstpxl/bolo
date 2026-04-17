@@ -13,6 +13,7 @@ struct AudioEventRouterConfig {
     bool baseExplodingLoaded = false;
     bool projectileWallHitLoaded = false;
     bool playerExplosionLoaded = false;
+    bool levelEvacCompleteLoaded = false;
     SoundPool<4>* powerUpSound = nullptr;
     SoundPool<4>* playerShotSound = nullptr;
     SoundPool<4>* enemyShotSound = nullptr;
@@ -21,6 +22,7 @@ struct AudioEventRouterConfig {
     SoundPool<4>* baseExplodingSound = nullptr;
     SoundPool<4>* projectileWallHitSound = nullptr;
     SoundPool<4>* playerExplosionSound = nullptr;
+    Sound* levelEvacCompleteSound = nullptr;
 };
 
 class AudioEventRouter {

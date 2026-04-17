@@ -341,6 +341,11 @@ void Game::CheckEvacZoneCompletion() {
     if (!IsPlayerInsideEvacZone(state_.world)) {
         return;
     }
+    const Vec2f completionPos = state_.world.player.position;
+    state_.world.gameplayEvents.Push(GameplayEvent{
+        .type = GameplayEventType::EvacZoneCompleted,
+        .position = completionPos,
+    });
     state_.world.evacObjectiveActive = false;
     state_.world.player.alive = false;
     state_.world.player.velocity = Vec2f{.x = 0.0F, .y = 0.0F};

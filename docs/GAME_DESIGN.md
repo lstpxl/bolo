@@ -500,7 +500,8 @@ World rendering is in `src/platform/Renderer2D.cpp`.
 - `resources/audio/enemy-spawning.wav`: played when alive enemy count increases (enemy spawned).
 - `resources/audio/match-fire.wav`: played when alive enemy count decreases (enemy destroyed / explosion).
 - `resources/audio/base-exploding.wav`: played when alive base count decreases (base destroyed).
-- `resources/audio/metal-hit.wav`: played when any projectile’s motion segment is blocked by a wall (player or enemy shell). Uses the same distance attenuation as other gameplay sounds. Visual feedback reuses the enemy-death explosion (`explosion-1.png`, `kEnemyExplosionRenderSizePx`) at the segment midpoint.
+- `resources/audio/kick-hit-1.wav`: played when any projectile’s motion segment is blocked by a wall (player or enemy shell). Uses the same distance attenuation as other gameplay sounds. Visual feedback reuses the enemy-death explosion (`explosion-1.png`, `kEnemyExplosionRenderSizePx`) at the segment midpoint.
+- `resources/audio/braams-2.wav`: played when the player reaches the evac zone and the level completes (victory phase). Full volume (not distance-attenuated).
 - Distance attenuation for gameplay sounds:
   - If source distance `d > 10 * 6` world-units, sound is not played.
   - If `d <= 3 * 6`, full volume is used.
