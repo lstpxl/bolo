@@ -14,3 +14,18 @@
 ## Performance Optimization
 
 Monitor performance
+
+## Improvements and Features
+
+- maze generation parameters, like in my react app
+
+```typescript
+export type GeneratorParams = {
+  width: number;
+  height: number;
+  cohesion: number;
+  direction: WindDirection;
+  strength: number;
+  density: number;
+};
+```
