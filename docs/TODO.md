@@ -17,7 +17,7 @@ Monitor performance
 
 ## Improvements and Features
 
-- maze generation parameters, like in my react app
+- maze generation parameters, like in my [react app](https://github.com/lstpxl/circuit/blob/main/src/features/pattern-generation/model/types.ts)
 
 ```typescript
 export type GeneratorParams = {
