@@ -464,6 +464,7 @@ void Game::RunPlayingWorldTick(
         }
         state_.world.startModeRemainingSeconds = 0.0F;
         state_.world.startModeReason = StartModeReason::Unknown;
+        state_.world.startModeFuelRampStart = 0.0F;
         state_.world.player.alive = false;
         state_.world.player.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
         state_.world.player.throttleNormalized = 0.0F;
@@ -486,9 +487,16 @@ void Game::RunPlayingWorldTick(
             std::max(0.0F, state_.world.startModeRemainingSeconds - deltaSeconds);
         const float startProgress =
             1.0F - (state_.world.startModeRemainingSeconds / GameplayConstants::kStartModeDurationSeconds);
-        state_.world.player.fuel = GameplayConstants::kFuelMax * std::clamp(startProgress, 0.0F, 1.0F);
+        const float p = std::clamp(startProgress, 0.0F, 1.0F);
+        if (state_.world.startModeReason == StartModeReason::BaseRefuel) {
+            const float a = state_.world.startModeFuelRampStart;
+            state_.world.player.fuel = a + (GameplayConstants::kFuelMax - a) * p;
+        } else {
+            state_.world.player.fuel = GameplayConstants::kFuelMax * p;
+        }
         if (state_.world.startModeRemainingSeconds <= 0.0F) {
             state_.world.startModeReason = StartModeReason::Unknown;
+            state_.world.startModeFuelRampStart = 0.0F;
         }
     }
 
@@ -500,11 +508,6 @@ void Game::RunPlayingWorldTick(
         state_.world.deathExplosionRemainingSeconds =
             std::max(0.0F, state_.world.deathExplosionRemainingSeconds - deltaSeconds);
     }
-
-    const bool playerLocked =
-        state_.world.startModeRemainingSeconds > 0.0F ||
-        state_.world.deathModeRemainingSeconds > 0.0F ||
-        !state_.world.player.alive;
 
     // Target order: Input -> AI -> Movement -> Collision -> Combat -> Spawning -> Fuel/Rules -> Cleanup.
     {
@@ -557,16 +560,27 @@ void Game::RunPlayingWorldTick(
         beginDeathMode();
     }
 
-    // Fuel/rules.
+    // Fuel/rules (evaluate after collision so start-mode refuel from base destruction suppresses drain
+    // on the same tick refuel begins).
+    const bool fuelDrainLocked =
+        state_.world.startModeRemainingSeconds > 0.0F ||
+        state_.world.deathModeRemainingSeconds > 0.0F ||
+        !state_.world.player.alive;
     const float speedSq = state_.world.player.velocity.x * state_.world.player.velocity.x +
         state_.world.player.velocity.y * state_.world.player.velocity.y;
-    if (allowFuelDeath && !playerLocked) {
+    if (allowFuelDeath && !fuelDrainLocked) {
         const float speed = std::sqrt(speedSq);
         const float speedRatio = speed / GameplayConstants::kPlayerFullVelocity;
         const float drainScale = 1.0F + speedRatio;
+        const int mazeDensityClamped =
+            std::max(1, std::min(5, state_.menuSettings.mazeDensity));
+        const float mazeDensityDrainScale = std::max(
+            0.0F,
+            1.0F - GameplayConstants::kFuelDrainReductionPerAdditionalMazeDensity *
+                static_cast<float>(mazeDensityClamped - 1));
         const float drainPerSecond =
             (GameplayConstants::kFuelDrainPercentOfMaxPerSecond / 100.0F) *
-            GameplayConstants::kFuelMax * drainScale;
+            GameplayConstants::kFuelMax * drainScale * mazeDensityDrainScale;
         state_.world.player.fuel -= deltaSeconds * drainPerSecond;
         state_.world.player.fuel = std::max(0.0F, state_.world.player.fuel);
     }

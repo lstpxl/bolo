@@ -212,7 +212,11 @@ void UpdateCollisionSystem(GameState& state, float deltaSeconds) {
                 anyBaseDestroyed = true;
                 projectile.alive = false;
                 world.score += state.menuSettings.levelNumber * GameplayConstants::kBaseScorePerLevelMultiplier;
-                world.player.fuel = GameplayConstants::kFuelMax;
+                if (world.player.fuel < GameplayConstants::kFuelMax) {
+                    world.startModeFuelRampStart = world.player.fuel;
+                    world.startModeRemainingSeconds = GameplayConstants::kStartModeDurationSeconds;
+                    world.startModeReason = StartModeReason::BaseRefuel;
+                }
                 state.world.gameplayEvents.Push(GameplayEvent{
                     .type = GameplayEventType::BaseDestroyed,
                     .position = base.position,

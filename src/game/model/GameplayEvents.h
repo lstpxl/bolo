@@ -22,6 +22,8 @@ enum class StartModeReason : std::uint8_t {
     NewGame = 1,
     Respawn = 2,
     LevelComplete = 3,
+    /// Refuel reward after destroying an enemy base; fuel ramps from pre-hit level to `kFuelMax`.
+    BaseRefuel = 4,
 };
 
 struct GameplayEvent {

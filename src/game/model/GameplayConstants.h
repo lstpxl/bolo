@@ -191,6 +191,8 @@ struct GameplayConstants {
 
     // Fuel/rules.
     static constexpr float kFuelDrainPercentOfMaxPerSecond = 1.5F;  // percent of kFuelMax / second
+    /// Each maze density step above 1 multiplies fuel drain by `(1 - this)` (e.g. 0.15 → −15% per step).
+    static constexpr float kFuelDrainReductionPerAdditionalMazeDensity = 0.15F;
     static constexpr float kFuelLowWarningThreshold = 20.0F;         // fuel units
     static constexpr float kFuelEmptySpeedFactor = 0.1F;             // max speed multiplier at zero fuel
     static constexpr float kLevelClearMessageSeconds = 2.0F;         // seconds

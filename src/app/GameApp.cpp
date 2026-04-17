@@ -418,8 +418,7 @@ bool GameApp::Render(const FrameInput& input) {
                 game_.Render(renderer_, config_, input);
                 if (state.gameplayPhase == GameplayPhase::EvacObjective ||
                     state.gameplayPhase == GameplayPhase::GameOver ||
-                    (state.gameplayPhase == GameplayPhase::Victory &&
-                     state.victoryPhaseRemainingSeconds > 0.0F)) {
+                    state.gameplayPhase == GameplayPhase::Victory) {
                     const int overlayFontSize = 40;
                     const char* overlayText =
                         state.gameplayPhase == GameplayPhase::EvacObjective

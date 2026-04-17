@@ -69,6 +69,8 @@ struct WorldState {
     float enemyAlarmSecondsSinceDroneSight = 0.0F;
     float startModeRemainingSeconds = 0.0F;
     StartModeReason startModeReason = StartModeReason::Unknown;
+    /// Fuel value at the start of a `StartModeReason::BaseRefuel` ramp (linear lerp to `kFuelMax`).
+    float startModeFuelRampStart = 0.0F;
     float deathModeRemainingSeconds = 0.0F;
     float deathExplosionRemainingSeconds = 0.0F;
     /// Blast damage window at player death; matches `kExplosionBlastDamageDurationSeconds`.
