@@ -52,6 +52,8 @@ void UpdatePlayerSystem(GameState& state, const FrameInput& input, float deltaSe
     }
 
     const bool inStartMode = state.world.startModeRemainingSeconds > 0.0F;
+    const bool lockPlayerControlsForStartMode =
+        inStartMode && state.world.startModeReason != StartModeReason::BaseRefuel;
 
     int requestedTurnDirection = 0;
     if (input.turnInput > 0.5F) {
@@ -78,8 +80,8 @@ void UpdatePlayerSystem(GameState& state, const FrameInput& input, float deltaSe
     state.world.player.hullHeadingRadians = QuantizeToEightDirections(state.world.player.hullHeadingRadians);
     state.world.player.turretHeadingRadians +=
         input.turretTurnInput * GameplayConstants::kPlayerTurretTurnSpeedRadians * deltaSeconds;
-    if (inStartMode) {
-        // During refuel lock, allow heading/turret rotation but block movement/fire.
+    if (lockPlayerControlsForStartMode) {
+        // New-game/respawn start mode keeps the lock: heading/turret rotate, movement/fire blocked.
         state.world.player.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
         state.world.player.throttleNormalized = 0.0F;
         return;

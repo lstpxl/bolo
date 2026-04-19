@@ -420,14 +420,27 @@ bool GameApp::Render(const FrameInput& input) {
                     state.gameplayPhase == GameplayPhase::GameOver ||
                     state.gameplayPhase == GameplayPhase::Victory) {
                     const int overlayFontSize = 40;
-                    const char* overlayText =
-                        state.gameplayPhase == GameplayPhase::EvacObjective
-                            ? "Proceed to the evac zone"
-                            : (state.gameplayPhase == GameplayPhase::Victory ? "Congratulations" : "GAME OVER");
-                    const int textWidth = MeasureText(overlayText, overlayFontSize);
-                    const int textX = (worldWidth - textWidth) / 2;
-                    const int textY = (config_.screenHeight / 2) - (overlayFontSize / 2);
-                    DrawText(overlayText, std::max(0, textX), textY, overlayFontSize, YELLOW);
+                    if (state.gameplayPhase == GameplayPhase::EvacObjective) {
+                        const char* line1 = "Proceed";
+                        const char* line2 = "to the evac zone";
+                        const int lineGap = 4;
+                        const int blockHeight = overlayFontSize * 2 + lineGap;
+                        const int startY = (config_.screenHeight - blockHeight) / 2;
+                        const int w1 = MeasureText(line1, overlayFontSize);
+                        const int w2 = MeasureText(line2, overlayFontSize);
+                        const int x1 = (worldWidth - w1) / 2;
+                        const int x2 = (worldWidth - w2) / 2;
+                        DrawText(line1, std::max(0, x1), startY, overlayFontSize, YELLOW);
+                        DrawText(line2, std::max(0, x2), startY + overlayFontSize + lineGap,
+                                 overlayFontSize, YELLOW);
+                    } else {
+                        const char* overlayText =
+                            state.gameplayPhase == GameplayPhase::Victory ? "Congratulations" : "GAME OVER";
+                        const int textWidth = MeasureText(overlayText, overlayFontSize);
+                        const int textX = (worldWidth - textWidth) / 2;
+                        const int textY = (config_.screenHeight / 2) - (overlayFontSize / 2);
+                        DrawText(overlayText, std::max(0, textX), textY, overlayFontSize, YELLOW);
+                    }
                 }
             }
             if (state.gameplayPhase != GameplayPhase::Starting && game_.State().menuSettings.debugInfo) {

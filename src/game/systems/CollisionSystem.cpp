@@ -213,8 +213,16 @@ void UpdateCollisionSystem(GameState& state, float deltaSeconds) {
                 projectile.alive = false;
                 world.score += state.menuSettings.levelNumber * GameplayConstants::kBaseScorePerLevelMultiplier;
                 if (world.player.fuel < GameplayConstants::kFuelMax) {
+                    const float missingFuel =
+                        std::max(0.0F, GameplayConstants::kFuelMax - world.player.fuel);
+                    const float missingFuelRatio = std::clamp(
+                        missingFuel / GameplayConstants::kFuelMax,
+                        0.0F,
+                        1.0F);
                     world.startModeFuelRampStart = world.player.fuel;
-                    world.startModeRemainingSeconds = GameplayConstants::kStartModeDurationSeconds;
+                    world.startModeDurationSeconds =
+                        GameplayConstants::kStartModeDurationSeconds * missingFuelRatio;
+                    world.startModeRemainingSeconds = world.startModeDurationSeconds;
                     world.startModeReason = StartModeReason::BaseRefuel;
                 }
                 state.world.gameplayEvents.Push(GameplayEvent{

@@ -31,6 +31,7 @@ void GameModeController::StartGame(GameState& state, const MenuSettings& setting
     state.world.playerTurnLostPending = false;
     state.world.enemyVisualContactMusicTimerSeconds = 0.0F;
     state.world.startModeRemainingSeconds = GameplayConstants::kStartModeDurationSeconds;
+    state.world.startModeDurationSeconds = GameplayConstants::kStartModeDurationSeconds;
     state.world.startModeReason = StartModeReason::NewGame;
     state.world.deathModeRemainingSeconds = 0.0F;
     state.world.deathExplosionRemainingSeconds = 0.0F;

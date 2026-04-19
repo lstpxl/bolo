@@ -68,6 +68,8 @@ struct WorldState {
     bool enemyAlarmActive = false;
     float enemyAlarmSecondsSinceDroneSight = 0.0F;
     float startModeRemainingSeconds = 0.0F;
+    /// Duration for the active start-mode ramp; base refuel may use a scaled value.
+    float startModeDurationSeconds = 0.0F;
     StartModeReason startModeReason = StartModeReason::Unknown;
     /// Fuel value at the start of a `StartModeReason::BaseRefuel` ramp (linear lerp to `kFuelMax`).
     float startModeFuelRampStart = 0.0F;

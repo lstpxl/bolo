@@ -463,6 +463,7 @@ void Game::RunPlayingWorldTick(
             return;
         }
         state_.world.startModeRemainingSeconds = 0.0F;
+        state_.world.startModeDurationSeconds = 0.0F;
         state_.world.startModeReason = StartModeReason::Unknown;
         state_.world.startModeFuelRampStart = 0.0F;
         state_.world.player.alive = false;
@@ -485,8 +486,10 @@ void Game::RunPlayingWorldTick(
     if (state_.world.startModeRemainingSeconds > 0.0F) {
         state_.world.startModeRemainingSeconds =
             std::max(0.0F, state_.world.startModeRemainingSeconds - deltaSeconds);
+        const float startModeDuration =
+            std::max(0.0001F, state_.world.startModeDurationSeconds);
         const float startProgress =
-            1.0F - (state_.world.startModeRemainingSeconds / GameplayConstants::kStartModeDurationSeconds);
+            1.0F - (state_.world.startModeRemainingSeconds / startModeDuration);
         const float p = std::clamp(startProgress, 0.0F, 1.0F);
         if (state_.world.startModeReason == StartModeReason::BaseRefuel) {
             const float a = state_.world.startModeFuelRampStart;
@@ -495,6 +498,7 @@ void Game::RunPlayingWorldTick(
             state_.world.player.fuel = GameplayConstants::kFuelMax * p;
         }
         if (state_.world.startModeRemainingSeconds <= 0.0F) {
+            state_.world.startModeDurationSeconds = 0.0F;
             state_.world.startModeReason = StartModeReason::Unknown;
             state_.world.startModeFuelRampStart = 0.0F;
         }
@@ -724,6 +728,7 @@ void Game::RunPlayingWorldTick(
         state_.world.deathExplosionBlastRemainingSeconds = 0.0F;
         state_.world.enemyVisualContactMusicTimerSeconds = 0.0F;
         state_.world.startModeRemainingSeconds = GameplayConstants::kStartModeDurationSeconds;
+        state_.world.startModeDurationSeconds = GameplayConstants::kStartModeDurationSeconds;
         state_.world.startModeReason = StartModeReason::Respawn;
         PlacePlayerAtSafeSpawn(state_, view, random_);
 
