@@ -15,12 +15,22 @@ if(CMAKE_EXPORT_COMPILE_COMMANDS)
         file(REMOVE "${BOLT_COMPILE_COMMANDS_TARGET}")
     endif()
     if(WIN32)
-        file(COPY "${BOLT_COMPILE_COMMANDS_SOURCE}" DESTINATION "${CMAKE_SOURCE_DIR}")
+        # compile_commands.json is written at the end of configure; defer copy until then.
+        cmake_language(DEFER DIRECTORY "${CMAKE_SOURCE_DIR}" CALL _bolt_sync_compile_commands
+            "${BOLT_COMPILE_COMMANDS_SOURCE}" "${BOLT_COMPILE_COMMANDS_TARGET}")
     else()
         file(CREATE_LINK "${BOLT_COMPILE_COMMANDS_SOURCE}" "${BOLT_COMPILE_COMMANDS_TARGET}" SYMBOLIC COPY_ON_ERROR)
+        message(STATUS "compile_commands.json synced at ${BOLT_COMPILE_COMMANDS_TARGET}")
     endif()
-    message(STATUS "compile_commands.json synced at ${BOLT_COMPILE_COMMANDS_TARGET}")
 endif()
+
+function(_bolt_sync_compile_commands source target)
+    if(EXISTS "${source}")
+        get_filename_component(target_dir "${target}" DIRECTORY)
+        file(COPY "${source}" DESTINATION "${target_dir}")
+        message(STATUS "compile_commands.json synced at ${target}")
+    endif()
+endfunction()
 
 option(TARGET_RG353V "Build for RG353V handheld (Linux ARM64)" OFF)
 
