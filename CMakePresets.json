@@ -63,6 +63,10 @@
       "displayName": "Windows Debug",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/windows-debug",
+      "architecture": {
+        "value": "x64",
+        "strategy": "set"
+      },
       "condition": {
         "type": "equals",
         "lhs": "${hostSystemName}",
@@ -78,6 +82,10 @@
       "displayName": "Windows Release",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/windows-release",
+      "architecture": {
+        "value": "x64",
+        "strategy": "set"
+      },
       "condition": {
         "type": "equals",
         "lhs": "${hostSystemName}",

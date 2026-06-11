@@ -15,6 +15,8 @@
 #include <malloc/malloc.h>
 #elif defined(__linux__)
 #include <malloc.h>
+#elif defined(_MSC_VER)
+#include <malloc.h>
 #endif
 
 namespace profiling {
@@ -479,6 +481,26 @@ std::size_t AllocationSizeForPointer(void* ptr) {
 #endif
 }
 
+void* AllocateAligned(std::size_t align, std::size_t alignedSize) {
+#if defined(_MSC_VER)
+    return _aligned_malloc(alignedSize, align);
+#else
+    return std::aligned_alloc(align, alignedSize);
+#endif
+}
+
+void FreeAlignedPointer(void* ptr) {
+    if (ptr == nullptr) {
+        return;
+    }
+    profiling::RecordFree(AllocationSizeForPointer(ptr));
+#if defined(_MSC_VER)
+    _aligned_free(ptr);
+#else
+    std::free(ptr);
+#endif
+}
+
 void FreeTrackedPointer(void* ptr) {
     if (ptr == nullptr) {
         return;
@@ -554,7 +576,7 @@ void* operator new(std::size_t size, std::align_val_t alignment) {
     }
     const std::size_t align = static_cast<std::size_t>(alignment);
     const std::size_t alignedSize = AlignSizeForAllocation(size, align);
-    void* ptr = std::aligned_alloc(align, alignedSize);
+    void* ptr = AllocateAligned(align, alignedSize);
     if (ptr == nullptr) {
         throw std::bad_alloc{};
     }
@@ -567,7 +589,7 @@ void* operator new(std::size_t size, std::align_val_t alignment) {
 }
 
 void operator delete(void* ptr, std::align_val_t) noexcept {
-    FreeTrackedPointer(ptr);
+    FreeAlignedPointer(ptr);
 }
 
 void* operator new[](std::size_t size, std::align_val_t alignment) {
@@ -579,9 +601,9 @@ void operator delete[](void* ptr, std::align_val_t alignment) noexcept {
 }
 
 void operator delete(void* ptr, std::size_t, std::align_val_t) noexcept {
-    FreeTrackedPointer(ptr);
+    FreeAlignedPointer(ptr);
 }
 
 void operator delete[](void* ptr, std::size_t, std::align_val_t) noexcept {
-    FreeTrackedPointer(ptr);
+    FreeAlignedPointer(ptr);
 }
