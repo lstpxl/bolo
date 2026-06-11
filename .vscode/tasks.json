@@ -60,6 +60,32 @@
       "type": "shell",
       "command": "RG353V_DEVICE_IP=${input:rg353vDeviceIp} npm run build-and-deploy:rg353v:debug",
       "problemMatcher": []
+    },
+    {
+      "label": "BOLT: Build Windows Debug",
+      "type": "shell",
+      "command": "npm run build:windows",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "BOLT: Build Windows Release",
+      "type": "shell",
+      "command": "npm run build:windows:release",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "BOLT: Run Windows",
+      "type": "shell",
+      "command": "npm run run:windows",
+      "problemMatcher": []
+    },
+    {
+      "label": "BOLT: Build and Run Windows",
+      "type": "shell",
+      "command": "npm run build-and-run:windows",
+      "problemMatcher": []
     }
   ],
   "inputs": [

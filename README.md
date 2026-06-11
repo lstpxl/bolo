@@ -3,6 +3,7 @@
 Demo app for:
 
 - macOS local testing
+- Windows local testing
 - Anbernic RG353V (dArkOS / PortMaster flow)
 
 The project vendors `third_party/raylib` and uses SDL backend for RG353V builds.
@@ -58,6 +59,20 @@ Binary:
 
 ```bash
 ./build/rg353v-release/bolt
+```
+
+### 5) `windows-debug` / `windows-release`
+
+Windows presets are host-gated (visible only on Windows). Full setup, prerequisites, and verification checklist:
+
+**[docs/WINDOWS_BUILD.md](docs/WINDOWS_BUILD.md)**
+
+Quick start (on Windows):
+
+```powershell
+cmake --preset windows-debug
+cmake --build --preset windows-debug
+.\build\windows-debug\bolt.exe
 ```
 
 ## One-time RG353V sysroot setup
