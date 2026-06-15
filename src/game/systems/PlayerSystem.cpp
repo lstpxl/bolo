@@ -93,8 +93,24 @@ void UpdatePlayerSystem(GameState& state, const FrameInput& input, float deltaSe
         state.world.player.turretHeadingRadians = state.world.player.hullHeadingRadians + kPi;
     }
     if (input.turretAbsoluteAimActive) {
-        // Mouse-control aim overrides keyboard/gamepad turret rotation for this frame.
-        state.world.player.turretHeadingRadians = input.turretAbsoluteAimHeading;
+        // Mouse-control aim: the cursor sets a target heading, and the turret slews toward it at a
+        // fixed angular speed along the shortest direction (hull turns above still move it instantly).
+        constexpr float kPi = 3.14159265358979323846F;
+        constexpr float kMouseTurretTurnSpeedRadians =
+            GameplayConstants::kMouseTurretTurnSpeedDegreesPerSecond * (kPi / 180.0F);
+        const float target = NormalizeAngle(input.turretAbsoluteAimHeading);
+        const float current = NormalizeAngle(state.world.player.turretHeadingRadians);
+        float signedDelta = NormalizeAngle(target - current);
+        if (signedDelta > kPi) {
+            signedDelta -= 2.0F * kPi;
+        }
+        const float maxStep = kMouseTurretTurnSpeedRadians * deltaSeconds;
+        if (std::abs(signedDelta) <= maxStep) {
+            state.world.player.turretHeadingRadians = target;
+        } else {
+            state.world.player.turretHeadingRadians =
+                current + std::copysign(maxStep, signedDelta);
+        }
     }
     state.world.player.turretHeadingRadians = NormalizeAngle(state.world.player.turretHeadingRadians);
     if (lockPlayerControlsForStartMode) {
