@@ -102,6 +102,45 @@ BaseOuterSegment AdjacentSideFromBrokenImpact(
     return dy < 0.0F ? BaseOuterSegment::Top : BaseOuterSegment::Bottom;
 }
 
+/// Marks a base destroyed via a core hit and applies the shared rewards (score, base-refuel start
+/// mode, and the BaseDestroyed event). Shared by player projectile and player core-crash paths.
+void ApplyBaseCoreDestruction(GameState& state, EnemyBase& base, int baseIndex) {
+    WorldState& world = state.world;
+    base.destroyed = true;
+    world.score += state.menuSettings.levelNumber * GameplayConstants::kBaseScorePerLevelMultiplier;
+    if (world.player.fuel < GameplayConstants::kFuelMax) {
+        const float missingFuel =
+            std::max(0.0F, GameplayConstants::kFuelMax - world.player.fuel);
+        const float missingFuelRatio = std::clamp(
+            missingFuel / GameplayConstants::kFuelMax,
+            0.0F,
+            1.0F);
+        world.startModeFuelRampStart = world.player.fuel;
+        world.startModeDurationSeconds =
+            GameplayConstants::kStartModeDurationSeconds * missingFuelRatio;
+        world.startModeRemainingSeconds = world.startModeDurationSeconds;
+        world.startModeReason = StartModeReason::BaseRefuel;
+    }
+    world.gameplayEvents.Push(GameplayEvent{
+        .type = GameplayEventType::BaseDestroyed,
+        .position = base.position,
+        .baseIndex = baseIndex,
+    });
+}
+
+void RebuildBaseNavigation(WorldState& world) {
+    world.navigationCache.baseDistanceField.Invalidate();
+    world.navigationCache.baseDistanceField.Rebuild(
+        world.maze,
+        world.navigationCache.cellCoords,
+        world.enemyBases);
+    world.navigationCache.baseFlowField.Invalidate();
+    world.navigationCache.baseFlowField.Rebuild(
+        world.maze,
+        world.navigationCache.cellCoords,
+        world.navigationCache.baseDistanceField);
+}
+
 struct EnemyCollisionDeathDebugWindowStats {
     std::uint64_t projectileKills = 0;
     std::uint64_t projectileKillWallContact = 0;
@@ -208,28 +247,9 @@ void UpdateCollisionSystem(GameState& state, float deltaSeconds) {
                     break;
                 }
 
-                base.destroyed = true;
+                ApplyBaseCoreDestruction(state, base, baseIndex);
                 anyBaseDestroyed = true;
                 projectile.alive = false;
-                world.score += state.menuSettings.levelNumber * GameplayConstants::kBaseScorePerLevelMultiplier;
-                if (world.player.fuel < GameplayConstants::kFuelMax) {
-                    const float missingFuel =
-                        std::max(0.0F, GameplayConstants::kFuelMax - world.player.fuel);
-                    const float missingFuelRatio = std::clamp(
-                        missingFuel / GameplayConstants::kFuelMax,
-                        0.0F,
-                        1.0F);
-                    world.startModeFuelRampStart = world.player.fuel;
-                    world.startModeDurationSeconds =
-                        GameplayConstants::kStartModeDurationSeconds * missingFuelRatio;
-                    world.startModeRemainingSeconds = world.startModeDurationSeconds;
-                    world.startModeReason = StartModeReason::BaseRefuel;
-                }
-                state.world.gameplayEvents.Push(GameplayEvent{
-                    .type = GameplayEventType::BaseDestroyed,
-                    .position = base.position,
-                    .baseIndex = baseIndex,
-                });
                 break;
             }
         } else {
@@ -248,16 +268,7 @@ void UpdateCollisionSystem(GameState& state, float deltaSeconds) {
     }
 
     if (anyBaseDestroyed) {
-        world.navigationCache.baseDistanceField.Invalidate();
-        world.navigationCache.baseDistanceField.Rebuild(
-            world.maze,
-            world.navigationCache.cellCoords,
-            world.enemyBases);
-        world.navigationCache.baseFlowField.Invalidate();
-        world.navigationCache.baseFlowField.Rebuild(
-            world.maze,
-            world.navigationCache.cellCoords,
-            world.navigationCache.baseDistanceField);
+        RebuildBaseNavigation(world);
     }
 
     const auto& profiler = profiling::Profiler::Instance();
@@ -306,17 +317,36 @@ void UpdateCollisionSystem(GameState& state, float deltaSeconds) {
         }
     }
 
-    for (const EnemyBase& base : world.enemyBases) {
+    for (int baseIndex = 0; baseIndex < static_cast<int>(world.enemyBases.size()); ++baseIndex) {
+        EnemyBase& base = world.enemyBases[static_cast<std::size_t>(baseIndex)];
         if (base.destroyed) {
             continue;
         }
-        if (IsPointInsideBaseFootprint(
+        if (!IsPointInsideBaseFootprint(
                 world.player.position,
                 base,
                 GameplayConstants::kEntityRadiusUnits)) {
-            world.player.alive = false;
-            world.playerTurnLostPending = true;
+            continue;
+        }
+
+        const BaseFootprintBounds footprintBounds =
+            ComputeBaseFootprintBounds(base, GameplayConstants::kEntityRadiusUnits);
+        const BaseOuterSegment impactSide =
+            FootprintSideHit(world.player.position, base, footprintBounds);
+        // Crashing through a breached side into the exposed core destroys (explodes) the base; the
+        // player survives and gets the same refuel/score as a projectile core hit. Hitting intact
+        // armor (or the corners flanking a breach) still destroys the player.
+        const bool crashedOpenCore =
+            base.SegmentHealth(impactSide) <= 0 &&
+            IsCentralThirdOnHealthySide(world.player.position, base, impactSide);
+        if (crashedOpenCore) {
+            ApplyBaseCoreDestruction(state, base, baseIndex);
+            RebuildBaseNavigation(world);
             return;
         }
+
+        world.player.alive = false;
+        world.playerTurnLostPending = true;
+        return;
     }
 }
