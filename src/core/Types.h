@@ -13,4 +13,5 @@ struct MenuSettings {
     int mazeDensity;
     bool invisibility;
     bool debugInfo;
+    bool mouseControl;
 };

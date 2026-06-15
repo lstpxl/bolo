@@ -5,6 +5,11 @@ struct FrameInput {
     float moveY = 0.0F;
     float turnInput = 0.0F;
     float turretTurnInput = 0.0F;
+    bool turretResetToHeadingPressed = false;
+    bool turretResetToReverseHeadingPressed = false;
+    bool turretAbsoluteAimActive = false;
+    float turretAbsoluteAimHeading = 0.0F;
+    bool fireHeld = false;
     int gamepadAxis0Raw = 0;
     int gamepadAxis1Raw = 0;
     int gamepadAxis2Raw = 0;

@@ -65,21 +65,38 @@ void UpdatePlayerSystem(GameState& state, const FrameInput& input, float deltaSe
         state.world.player.turnHoldDirection = 0;
         state.world.player.turnHoldElapsedSeconds = 0.0F;
     } else if (requestedTurnDirection != state.world.player.turnHoldDirection) {
-        state.world.player.hullHeadingRadians +=
+        const float headingStep =
             static_cast<float>(requestedTurnDirection) * kEightDirectionStepRadians;
+        state.world.player.hullHeadingRadians += headingStep;
+        // Turret tracks the hull by default so its aim offset is preserved across hull turns.
+        state.world.player.turretHeadingRadians += headingStep;
         state.world.player.turnHoldDirection = requestedTurnDirection;
         state.world.player.turnHoldElapsedSeconds = 0.0F;
     } else {
         state.world.player.turnHoldElapsedSeconds += deltaSeconds;
         while (state.world.player.turnHoldElapsedSeconds >= kTurnRepeatIntervalSeconds) {
-            state.world.player.hullHeadingRadians +=
+            const float headingStep =
                 static_cast<float>(requestedTurnDirection) * kEightDirectionStepRadians;
+            state.world.player.hullHeadingRadians += headingStep;
+            state.world.player.turretHeadingRadians += headingStep;
             state.world.player.turnHoldElapsedSeconds -= kTurnRepeatIntervalSeconds;
         }
     }
     state.world.player.hullHeadingRadians = QuantizeToEightDirections(state.world.player.hullHeadingRadians);
     state.world.player.turretHeadingRadians +=
         input.turretTurnInput * GameplayConstants::kPlayerTurretTurnSpeedRadians * deltaSeconds;
+    if (input.turretResetToHeadingPressed) {
+        state.world.player.turretHeadingRadians = state.world.player.hullHeadingRadians;
+    }
+    if (input.turretResetToReverseHeadingPressed) {
+        constexpr float kPi = 3.14159265358979323846F;
+        state.world.player.turretHeadingRadians = state.world.player.hullHeadingRadians + kPi;
+    }
+    if (input.turretAbsoluteAimActive) {
+        // Mouse-control aim overrides keyboard/gamepad turret rotation for this frame.
+        state.world.player.turretHeadingRadians = input.turretAbsoluteAimHeading;
+    }
+    state.world.player.turretHeadingRadians = NormalizeAngle(state.world.player.turretHeadingRadians);
     if (lockPlayerControlsForStartMode) {
         // New-game/respawn start mode keeps the lock: heading/turret rotate, movement/fire blocked.
         state.world.player.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
@@ -92,8 +109,9 @@ void UpdatePlayerSystem(GameState& state, const FrameInput& input, float deltaSe
     } else if (input.reverseButtonDown && !input.forwardButtonDown) {
         state.world.player.throttleNormalized -= throttleRatePerSecond * deltaSeconds;
     }
+    // Allow negative throttle so DOWN/S accelerates the tank in reverse, not just brakes to 0.
     state.world.player.throttleNormalized =
-        std::clamp(state.world.player.throttleNormalized, 0.0F, 1.0F);
+        std::clamp(state.world.player.throttleNormalized, -1.0F, 1.0F);
 
     float speed = std::sqrt(
         state.world.player.velocity.x * state.world.player.velocity.x +
@@ -145,20 +163,26 @@ void UpdatePlayerSystem(GameState& state, const FrameInput& input, float deltaSe
         state.world.player.velocity.x * state.world.player.velocity.x +
         state.world.player.velocity.y * state.world.player.velocity.y);
     state.world.player.hullHeadingRadians = QuantizeToEightDirections(state.world.player.hullHeadingRadians);
+    const Vec2f snappedDirection = DirectionFromHeading(state.world.player.hullHeadingRadians);
+
+    // Sign the speed by whether travel aligns with the hull heading so reverse throttle keeps the
+    // tank moving backward instead of being flipped forward by the magnitude-only snap.
+    const float forwardProjection =
+        state.world.player.velocity.x * snappedDirection.x +
+        state.world.player.velocity.y * snappedDirection.y;
+    float signedSpeed = forwardProjection < 0.0F ? -speed : speed;
 
     if (state.world.player.fuel <= 0.0F) {
         const float depletedFuelMaxSpeed =
             GameplayConstants::kPlayerFullVelocity * GameplayConstants::kFuelEmptySpeedFactor;
-        speed = std::min(speed, depletedFuelMaxSpeed);
+        signedSpeed = std::clamp(signedSpeed, -depletedFuelMaxSpeed, depletedFuelMaxSpeed);
     }
 
-    speed = std::max(0.0F, speed);
-    if (speed <= 0.001F) {
+    if (std::abs(signedSpeed) <= 0.001F) {
         state.world.player.velocity = Vec2f{.x = 0.0F, .y = 0.0F};
     } else {
-        const Vec2f snappedDirection = DirectionFromHeading(state.world.player.hullHeadingRadians);
-        state.world.player.velocity.x = snappedDirection.x * speed;
-        state.world.player.velocity.y = snappedDirection.y * speed;
+        state.world.player.velocity.x = snappedDirection.x * signedSpeed;
+        state.world.player.velocity.y = snappedDirection.y * signedSpeed;
     }
     state.world.player.hullHeadingRadians = NormalizeAngle(state.world.player.hullHeadingRadians);
 
@@ -168,9 +192,11 @@ void UpdatePlayerSystem(GameState& state, const FrameInput& input, float deltaSe
     const float fireJoystickAmplitude = std::sqrt(
         fireJoystickRawX * fireJoystickRawX + fireJoystickRawY * fireJoystickRawY) / joystickAxisRawMax;
     const bool fireJoystickInclined = fireJoystickAmplitude > fireJoystickDeadzoneNormalized;
-    const bool fireRequested = input.shootPressed || fireJoystickInclined;
+    const bool fireRequested = input.shootPressed || fireJoystickInclined || input.fireHeld;
     if (fireRequested && state.world.player.fireCooldownSeconds <= 0.0F) {
-        float projectileHeading = state.world.player.hullHeadingRadians;
+        // Keyboard/space fires along the turret aim (J/L/I/K controlled); the right gamepad
+        // stick still overrides with its analog direction when inclined.
+        float projectileHeading = state.world.player.turretHeadingRadians;
         if (fireJoystickInclined) {
             projectileHeading = std::atan2(fireJoystickRawX, -fireJoystickRawY);
         }

@@ -1,6 +1,7 @@
 #include "app/GameApp.h"
 
 #include <algorithm>
+#include <cmath>
 #include <string>
 #include "core/Log.h"
 #include "core/Math.h"
@@ -155,6 +156,29 @@ int GameApp::Run() {
                 {
                     profiling::ScopedProfile inputScope(profiling::Scope::FrameInputPoll);
                     input = PollFrameInput(inputPollState_);
+                }
+                if (game_.Mode() == GameMode::Playing && game_.State().menuSettings.mouseControl) {
+                    // Mouse-control aim: point the turret from the player toward the cursor.
+                    // The world camera centers on the player (or pan target), zoom = pixels/unit.
+                    const GameState& aimState = game_.State();
+                    const int worldWidth = config_.screenWidth - ComputeHudWidth(config_);
+                    const float centerX = static_cast<float>(worldWidth) * 0.5F;
+                    const float centerY = static_cast<float>(config_.screenHeight) * 0.5F;
+                    const float zoom = static_cast<float>(GameplayConstants::kPixelsPerUnit);
+                    const Vec2f cameraTarget = aimState.world.panModeActive
+                        ? aimState.world.panTarget
+                        : aimState.world.player.position;
+                    const Vector2 mouse = GetMousePosition();
+                    const float dirX =
+                        (mouse.x - centerX) / zoom + cameraTarget.x - aimState.world.player.position.x;
+                    const float dirY =
+                        (mouse.y - centerY) / zoom + cameraTarget.y - aimState.world.player.position.y;
+                    if ((dirX * dirX) + (dirY * dirY) > 1.0e-6F) {
+                        input.turretAbsoluteAimActive = true;
+                        input.turretAbsoluteAimHeading = std::atan2(dirX, -dirY);
+                    }
+                    // Hold the primary mouse button to fire repeatedly (on cooldown) toward the cursor.
+                    input.fireHeld = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
                 }
                 if (input.quitRequested) {
                     exitRequested_ = true;
@@ -390,7 +414,8 @@ bool GameApp::Render(const FrameInput& input) {
                  result.menuSettings.levelNumber != previousSettings.levelNumber ||
                  result.menuSettings.mazeDensity != previousSettings.mazeDensity ||
                  result.menuSettings.invisibility != previousSettings.invisibility ||
-                 result.menuSettings.debugInfo != previousSettings.debugInfo)) {
+                 result.menuSettings.debugInfo != previousSettings.debugInfo ||
+                 result.menuSettings.mouseControl != previousSettings.mouseControl)) {
                 PlaySound(menuClickSound_);
             }
             if (result.startGameRequested) {

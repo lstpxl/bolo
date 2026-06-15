@@ -48,19 +48,21 @@ FrameInput PollFrameInput(InputPollState& pollState) {
             turretTurnInput += 1.0F;
         }
     }
-    if (IsKeyDown(KEY_LEFT)) {
+    // A/D mirror Left/Right so the left hand can drive the tank while the right hand uses a mouse.
+    if (IsKeyDown(KEY_LEFT) || IsKeyDown(KEY_A)) {
         turnInput -= 1.0F;
     }
-    if (IsKeyDown(KEY_RIGHT)) {
+    if (IsKeyDown(KEY_RIGHT) || IsKeyDown(KEY_D)) {
         turnInput += 1.0F;
     }
     // UP/DOWN affect throttle only (forwardButtonDown/reverseButtonDown), not moveY,
     // to avoid velocity-snap artifact when braking (interpolating toward backward then
     // snapping to hull heading produced acceleration spikes on Mac and elsewhere).
-    if (IsKeyDown(KEY_ONE)) {
+    // Turret rotate: L = clockwise, J = counter-clockwise (1/2 kept as legacy aliases).
+    if (IsKeyDown(KEY_ONE) || IsKeyDown(KEY_J)) {
         turretTurnInput -= 1.0F;
     }
-    if (IsKeyDown(KEY_TWO)) {
+    if (IsKeyDown(KEY_TWO) || IsKeyDown(KEY_L)) {
         turretTurnInput += 1.0F;
     }
 
@@ -107,12 +109,13 @@ FrameInput PollFrameInput(InputPollState& pollState) {
     const bool gamepadForwardReleased = IsGamepadButtonReleased(0, GAMEPAD_BUTTON_LEFT_FACE_UP);
     const bool gamepadReverseReleased = IsGamepadButtonReleased(0, GAMEPAD_BUTTON_LEFT_FACE_DOWN);
 
-    const bool keyForwardDown = IsKeyDown(KEY_UP);
-    const bool keyReverseDown = IsKeyDown(KEY_DOWN);
-    const bool keyForwardPressed = IsKeyPressed(KEY_UP);
-    const bool keyReversePressed = IsKeyPressed(KEY_DOWN);
-    const bool keyForwardReleased = IsKeyReleased(KEY_UP);
-    const bool keyReverseReleased = IsKeyReleased(KEY_DOWN);
+    // W/S mirror Up/Down (forward throttle / reverse throttle) for left-hand control.
+    const bool keyForwardDown = IsKeyDown(KEY_UP) || IsKeyDown(KEY_W);
+    const bool keyReverseDown = IsKeyDown(KEY_DOWN) || IsKeyDown(KEY_S);
+    const bool keyForwardPressed = IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W);
+    const bool keyReversePressed = IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S);
+    const bool keyForwardReleased = IsKeyReleased(KEY_UP) || IsKeyReleased(KEY_W);
+    const bool keyReverseReleased = IsKeyReleased(KEY_DOWN) || IsKeyReleased(KEY_S);
     const int anyKeyPressedCode = GetKeyPressed();
     const bool anyKnownKeyDown =
         IsKeyDown(KEY_LEFT) ||
@@ -123,11 +126,19 @@ FrameInput PollFrameInput(InputPollState& pollState) {
         IsKeyDown(KEY_ENTER) ||
         IsKeyDown(KEY_ESCAPE) ||
         IsKeyDown(KEY_P) ||
-        IsKeyDown(KEY_I) ||
         IsKeyDown(KEY_W) ||
         IsKeyDown(KEY_A) ||
         IsKeyDown(KEY_S) ||
         IsKeyDown(KEY_D) ||
+        IsKeyDown(KEY_T) ||
+        IsKeyDown(KEY_F) ||
+        IsKeyDown(KEY_G) ||
+        IsKeyDown(KEY_H) ||
+        IsKeyDown(KEY_I) ||
+        IsKeyDown(KEY_J) ||
+        IsKeyDown(KEY_K) ||
+        IsKeyDown(KEY_L) ||
+        IsKeyDown(KEY_Y) ||
         IsKeyDown(KEY_ONE) ||
         IsKeyDown(KEY_TWO);
     const bool anyGamepadButtonDown =
@@ -161,6 +172,8 @@ FrameInput PollFrameInput(InputPollState& pollState) {
         .moveY = moveY,
         .turnInput = turnInput,
         .turretTurnInput = turretTurnInput,
+        .turretResetToHeadingPressed = IsKeyPressed(KEY_I),
+        .turretResetToReverseHeadingPressed = IsKeyPressed(KEY_K),
         .gamepadAxis0Raw = gamepadAxis0Raw,
         .gamepadAxis1Raw = gamepadAxis1Raw,
         .gamepadAxis2Raw = gamepadAxis2Raw,
@@ -176,20 +189,20 @@ FrameInput PollFrameInput(InputPollState& pollState) {
         .gameplayPausePressed = pausePressed,
         .quitRequested = gamepadQuitComboPressed,
         .menuNavigateUpPressed =
-            IsKeyPressed(KEY_UP) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_UP),
+            IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_UP),
         .menuNavigateDownPressed =
-            IsKeyPressed(KEY_DOWN) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_DOWN),
+            IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_DOWN),
         .menuNavigateLeftPressed =
-            IsKeyPressed(KEY_LEFT) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_LEFT),
+            IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_A) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_LEFT),
         .menuNavigateRightPressed =
-            IsKeyPressed(KEY_RIGHT) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_RIGHT),
+            IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_D) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_RIGHT),
         .menuSelectPressed = IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE) || gamepadSouthPressed || gamepadEastPressed,
         .panTogglePressed = IsKeyPressed(KEY_P),
-        .invisibilityTogglePressed = IsKeyPressed(KEY_I),
-        .panNorthPressed = IsKeyDown(KEY_W),
-        .panSouthPressed = IsKeyDown(KEY_S),
-        .panWestPressed = IsKeyDown(KEY_A),
-        .panEastPressed = IsKeyDown(KEY_D),
+        .invisibilityTogglePressed = IsKeyPressed(KEY_Y),
+        .panNorthPressed = IsKeyDown(KEY_T),
+        .panSouthPressed = IsKeyDown(KEY_G),
+        .panWestPressed = IsKeyDown(KEY_F),
+        .panEastPressed = IsKeyDown(KEY_H),
         .anyInteractionPressed =
             anyKeyPressedCode != 0 ||
             keyForwardPressed ||

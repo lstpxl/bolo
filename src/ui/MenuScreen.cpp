@@ -445,6 +445,7 @@ MenuScreenResult MenuScreen::Render(
     levelNumber_ = std::clamp(currentSettings.levelNumber, kMinLevelNumber, kMaxLevelNumber);
     mazeDensity_ = std::clamp(currentSettings.mazeDensity, kMinMazeDensity, kMaxMazeDensity);
     debugInfo_ = currentSettings.debugInfo;
+    mouseControl_ = currentSettings.mouseControl;
     bool interactionOccurred = false;
     bool menuButtonActivatedViaMenuSelect = false;
 
@@ -472,7 +473,10 @@ MenuScreenResult MenuScreen::Render(
     constexpr int kDebugInfoMenuFontPx = 20;
     constexpr int kUnifiedMenuFocusExtraWidthPx = 40;
     const float unifiedMenuFocusW = static_cast<float>(
-        MeasureText("Debug info: Off", kDebugInfoMenuFontPx) + kUnifiedMenuFocusExtraWidthPx);
+        std::max(
+            MeasureText("Debug info: Off", kDebugInfoMenuFontPx),
+            MeasureText("Mouse control: Off", kDebugInfoMenuFontPx)) +
+        kUnifiedMenuFocusExtraWidthPx);
     const float unifiedMenuFocusX = panelCenterX - unifiedMenuFocusW * 0.5F;
 
     constexpr const char* kBoltWordmarkText = "Bolt";
@@ -539,9 +543,10 @@ MenuScreenResult MenuScreen::Render(
     // Single gap between Level / Density / Debug rows; double gap after Start and before Quit.
     constexpr float kMenuItemSingleGapPx = 28.0F;
     constexpr float kMenuItemDoubleGapPx = 56.0F;
-    // Top of Start through top of Quit (exclusive of Quit row): 4 rows + 2 double gaps + 2 single gaps.
+    // Top of Start through top of Quit (exclusive of Quit row): 5 rows (Start/Level/Density/Debug/
+    // Mouse control) + 2 double gaps + 3 single gaps.
     constexpr float kMenuStackStartToQuitTopPx =
-        4.0F * kMenuQuitButtonHeight + 2.0F * kMenuItemDoubleGapPx + 2.0F * kMenuItemSingleGapPx;
+        5.0F * kMenuQuitButtonHeight + 2.0F * kMenuItemDoubleGapPx + 3.0F * kMenuItemSingleGapPx;
 
     const float quitButtonY = static_cast<float>(config.screenHeight) - 38.0F - 20.0F;
     const float menuSectionAnchorY = betaLabelY + kLevelBlockOffsetFromBeta;
@@ -553,6 +558,7 @@ MenuScreenResult MenuScreen::Render(
     constexpr float kLevelRowUpPx = 20.0F;
     constexpr float kDensityRowUpPx = 40.0F;
     constexpr float kDebugRowUpPx = 60.0F;
+    constexpr float kMouseControlRowUpPx = 80.0F;
 
     const float levelLabelY = startButtonY + kMenuQuitButtonHeight + kMenuItemDoubleGapPx - kLevelRowUpPx;
     const float levelGaugeY =
@@ -565,6 +571,8 @@ MenuScreenResult MenuScreen::Render(
         (kMenuQuitButtonHeight - static_cast<float>(kDensityHatchDrawPx)) * 0.5F;
     const float debugInfoY =
         densityLabelY + kMenuQuitButtonHeight + kMenuItemSingleGapPx - (kDebugRowUpPx - kDensityRowUpPx);
+    const float mouseControlY =
+        debugInfoY + kMenuQuitButtonHeight + kMenuItemSingleGapPx - (kMouseControlRowUpPx - kDebugRowUpPx);
 
     ui::bolt_menu_slider::ApplyBoltMenuSliderRayGuiStyle(
         kMenuFocusableItemColor, ui::bolt_menu_slider::kBorderPx, ui::bolt_menu_slider::kPaddingPx);
@@ -667,6 +675,30 @@ MenuScreenResult MenuScreen::Render(
     if (!quitConfirmationOpen_ && focusedControl_ == FocusedControl::DebugInfo) {
         if (input.menuNavigateLeftPressed || input.menuNavigateRightPressed || input.menuSelectPressed) {
             debugInfoValue = !debugInfoValue;
+            interactionOccurred = true;
+        }
+    }
+
+    const Rectangle mouseControlControl = {
+        unifiedMenuFocusX,
+        mouseControlY,
+        unifiedMenuFocusW,
+        kMenuQuitButtonHeight,
+    };
+    bool mouseControlValue = mouseControl_;
+    bool mouseControlHovered = false;
+    if (!quitConfirmationOpen_) {
+        const Vector2 mouseMc = GetMousePosition();
+        mouseControlHovered = CheckCollisionPointRec(mouseMc, mouseControlControl) != 0;
+        if (mouseControlHovered && IsMouseButtonPressed(MOUSE_BUTTON_LEFT) != 0) {
+            mouseControlValue = !mouseControlValue;
+            interactionOccurred = true;
+            focusedControl_ = FocusedControl::MouseControl;
+        }
+    }
+    if (!quitConfirmationOpen_ && focusedControl_ == FocusedControl::MouseControl) {
+        if (input.menuNavigateLeftPressed || input.menuNavigateRightPressed || input.menuSelectPressed) {
+            mouseControlValue = !mouseControlValue;
             interactionOccurred = true;
         }
     }
@@ -833,6 +865,21 @@ MenuScreenResult MenuScreen::Render(
     }
     debugInfo_ = debugInfoValue;
 
+    const char* const mouseControlLine = TextFormat("Mouse control: %s", mouseControlValue ? "On" : "Off");
+    const int mouseControlDrawW = MeasureText(mouseControlLine, kDebugInfoMenuFontPx);
+    const float mouseControlTextY =
+        mouseControlY + (kMenuQuitButtonHeight - static_cast<float>(kDebugInfoMenuFontPx)) * 0.5F;
+    DrawText(
+        mouseControlLine,
+        static_cast<int>(panelCenterX) - mouseControlDrawW / 2,
+        static_cast<int>(mouseControlTextY),
+        kDebugInfoMenuFontPx,
+        kMenuFocusableItemColor);
+    if (mouseControlValue != mouseControl_) {
+        interactionOccurred = true;
+    }
+    mouseControl_ = mouseControlValue;
+
     bool quitPressed = GuiButton(quitButton, "Quit");
     if (quitConfirmationOpen_) {
         startPressed = false;
@@ -897,6 +944,10 @@ MenuScreenResult MenuScreen::Render(
         !quitConfirmationOpen_ &&
             (focusedControl_ == FocusedControl::DebugInfo || debugInfoHovered));
     ui::primitives::DrawFocusRing(
+        mouseControlControl,
+        !quitConfirmationOpen_ &&
+            (focusedControl_ == FocusedControl::MouseControl || mouseControlHovered));
+    ui::primitives::DrawFocusRing(
         startFocusFrame, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Start);
     ui::primitives::DrawFocusRing(
         quitFocusFrame, !quitConfirmationOpen_ && focusedControl_ == FocusedControl::Quit);
@@ -953,6 +1004,7 @@ MenuScreenResult MenuScreen::Render(
                 .mazeDensity = mazeDensity_,
                 .invisibility = currentSettings.invisibility,
                 .debugInfo = debugInfo_,
+                .mouseControl = mouseControl_,
             },
     };
 }

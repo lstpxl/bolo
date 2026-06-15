@@ -126,30 +126,38 @@ Input is collected in `src/platform/Input.cpp`.
 
 ### Gameplay
 
-- Turn:
-  - keyboard: Left/Right arrows
+- Turn (8-direction stepped hull rotation):
+  - keyboard: Left/Right arrows or `A`/`D`
   - gamepad: D-pad left/right
 - Move joystick: gamepad axes `0` and `1` (left stick).
 - Fire joystick: gamepad axes `2` and `3` (right stick).
 - Throttle:
-  - forward: Up arrow / D-pad up
-  - decelerate: Down arrow / D-pad down
+  - forward: Up arrow / `W` / D-pad up
+  - reverse: Down arrow / `S` / D-pad down — accelerates the tank backward (not just a brake to zero); throttle ramps from `-1` (full reverse) to `+1` (full forward).
   - These keys affect throttle only, not the move joystick target (prevents brake acceleration artifact).
-- **Mac keyboard:** Cursor keys (Up/Down/Left/Right) control tank movement and turn; WASD control camera pan when pan mode is active (P toggles)—camera moves one cell per frame while each direction key is held. Invisibility is toggled by I key during gameplay (default off).
+- Turret aim / fire direction: keyboard `Space` (and gamepad south button) fire along the **turret heading**.
+  - The turret tracks the hull heading by default (so firing follows movement), but can be aimed independently. The on-screen tank XOR-composites the turret/barrel over the hull so the barrel points along the turret heading (and overlapping green pixels cancel to transparent, keeping the turret outline readable), independent of the hull facing.
+    - `L` rotate turret clockwise, `J` rotate counter-clockwise (legacy aliases: `2` / `1`; gamepad: RB / LB).
+    - `I` reset turret aim to the hull heading.
+    - `K` reset turret aim to the reverse of the hull heading.
+  - **Mouse control** (menu option, default off): when enabled, the turret continuously aims from the player toward the mouse cursor each frame (direction computed in world space via the gameplay camera), overriding keyboard/gamepad turret rotation. Holding the **primary mouse button** fires repeatedly (on cooldown) toward the cursor; `Space` still fires too. The mouse aim is computed in `GameApp` and passed to `PlayerSystem` as an absolute turret heading (`FrameInput::turretAbsoluteAimActive` / `turretAbsoluteAimHeading`), and the held mouse button as `FrameInput::fireHeld`.
+  - If the gamepad fire joystick is inclined past the deadzone, it overrides and the player fires repeatedly on cooldown in the fire-joystick direction.
+- **Left-hand / mouse-friendly layout:** `WASD` mirror the arrow keys (movement + turn) so the left hand can drive while the right hand uses a mouse; `IJKL` aim and reset the turret. Camera pan uses `F`/`T`/`G`/`H` (west/north/south/east) when pan mode is active (`P` toggles)—camera moves one cell per frame while each direction key is held. Invisibility is toggled by the `Y` key during gameplay (default off).
 - Return to menu while playing:
   - Enter (keyboard) or Start (gamepad)
 - Exit app:
   - gamepad combo Start + Select
-- If fire joystick is inclined past deadzone, player fires repeatedly on cooldown in fire-joystick direction.
 
 ### Menu
 
-- Navigate: Up/Down (vertical order: `Start` → `Level` → `Density` → `Debug info` → `Quit`; wrap at ends)
+- Navigate: Up/Down (vertical order: `Start` → `Level` → `Density` → `Debug info` → `Mouse control` → `Quit`; wrap at ends)
 - Level slider: Left/Right when the Level control is focused
 - Density: by default only the centered `Density` + digit row is shown inside the same focus frame size as `Debug`/`Start`/`Quit` (`unifiedMenuFocusW` × `kMenuQuitButtonHeight`). Left/Right when Density is focused changes the value and, each press, hides the text for `1` second while the five hatch sprites appear on the **same vertical band** as that text (centered horizontally); the selected sprite gets the focus ring while Density stays focused. Another Left/Right during that second updates the value and restarts the `1` s timer. Mouse applies only while sprites are visible (click picks a value and extends the timer). If you move focus to another menu row while the preview is active, sprites stay until the `1` s timer ends (then the text row returns); sprite focus rings only show while Density is focused or a sprite is hovered.
 - Select: Enter/Space or gamepad south/east face button
 - `Debug info: On` / `Debug info: Off` centered text toggles via Left/Right or Select when focused, or click when the mouse is over the line.
-- Default menu values at app start are `Level = 9`, `Density = 1`, `Debug info = Off`. Invisibility defaults to off and is toggled during gameplay by I key.
+- `Mouse control: On` / `Mouse control: Off` centered text toggles via Left/Right or Select when focused, or click when the mouse is over the line. When `On`, the turret aims at the mouse cursor during gameplay (see Controls).
+- Menu navigation also accepts `WASD` as aliases for the arrow keys.
+- Default menu values at app start are `Level = 9`, `Density = 1`, `Debug info = Off`, `Mouse control = Off`. Invisibility defaults to off and is toggled during gameplay by the `Y` key.
 
 ## Movement Model
 
@@ -160,9 +168,9 @@ Player movement is handled in `src/game/systems/PlayerSystem.cpp`.
   - rate = `2.0 / kPlayerSecondsToFullVelocity` per second.
 - Forward button increases throttle.
 - Reverse/down button decreases throttle.
-- Throttle is clamped to `0..1` (no negative velocity, no reverse movement).
+- Throttle is clamped to `-1..1`. Negative throttle drives the tank in reverse along its hull heading: after the velocity is computed, speed is signed by its projection onto the hull heading (negative projection ⇒ reverse), so reverse throttle is no longer flipped forward by the heading snap.
 - Current velocity is integrated over time (not overwritten each frame).
-- Throttle contributes forward acceleration along hull heading.
+- Throttle contributes acceleration along hull heading (forward for positive, backward for negative).
 - Move joystick (`axes 0/1`) is processed in polar coordinates:
   - joystick provides normalized target velocity vector `J`
   - UP/DOWN throttle contributes an additional forward target component (`throttleNormalized` along hull heading)
@@ -459,7 +467,7 @@ World rendering is in `src/platform/Renderer2D.cpp`.
 - Enemy tanks and bases are rendered in pixel-snapped screen space (derived from world positions) to match wall stability on handheld displays.
 - Base visuals use a `3x3` unit shell with a centered core disc (`48x48` px at `16 px/unit`). Full shell thickness is `12 px` per side; each missing segment-health point removes exactly `3 px` from that side (`12, 9, 6, 3, 0` for health `4..0`). Top and bottom segments are drawn full width; left and right segments use the full sprite height so corners thin with the damaged side (same layout as the healthy baked texture and the damaged crop-from-healthy path). During `GameplayPhase::Starting`, the renderer rasterizes the healthy alive base (full segment health) and the destroyed base into CPU images, then uploads one shared texture each; there is no screen-space procedural fallback for bases during play. Per-base damaged textures are cached lazily after damage (crop from the healthy bake, transparent outside the clipped area) and dropped when healing starts (or when the base returns to healthy/destroyed state). Damaged base rendering is a 2-pass composite: destroyed texture first, then damaged cached texture. Base core overlays add runtime animation: while a base has damaged segments, the core pulses over a `2s` loop from `-2 px` to `+2 px` radius with ease-in/out and inverse lightness (`+0.15/-0.15` OKLCH `L`, brighter at small radius, darker at large); during active spawn-prep (`2.0s` one-shot), core radius grows from default to `+3 px` (ease-in/out) with up to `+0.2` OKLCH `L`, then resets at spawn commit.
 - Enemy tank visuals load from `resources/textures/sprites.png` (`18x90` px, `2x10` grid of `9x9` cells). `Drone` uses two source rows: zero-based row `7` for `Watch`/`Defend`, row `8` for all other drone modes (including `Wander`); both bake into a taller internal enemy texture (watch row then wander row, then other types). `Torpedo`, `Hunter`, and `Assassin` load from zero-based rows `4..6`. Row `9` holds a `Tadpole` sprite for a future enemy type and is not referenced by the renderer yet. Column `0` is facing 12 o'clock, column `1` is 45 degrees clockwise; the renderer precomputes all 8 directions at load time and uses the matching directional frame at draw time. Non-transparent source pixels are normalized to white during load, then tinted by enemy type color at draw time. The HUD drone alive-count icon uses the wander drone strip (row `8`).
-- Player tank visuals load from `resources/textures/sprites.png` (`2x10` grid, `9x9` cells). Row `1` is body and row `2` is barrel; each direction frame is prebuilt by XOR-combining body+barrel cells and rendered in green (`#03C703`), with 8 directions precomputed from the two source columns.
+- Player tank visuals load from `resources/textures/sprites.png` (`2x10` grid, `9x9` cells). Row `1` is body (hull) and row `2` is barrel (turret), tinted green (`#03C703`). At load time the renderer builds the 8 hull rotations and 8 turret rotations, then bakes **all 64 hull×turret combinations** into one sheet, each cell XOR-composited (a pixel is opaque only where exactly one of hull/turret is opaque, so green-over-green overlap drops to transparent and the turret outline stays visible). At draw time the cell is selected by `hullDir * 8 + turretDir` (hull frame from the hull heading, turret frame from the turret heading), so the barrel aims independently of the hull facing. Per-hull-frame pivot offsets are measured from the hull-only frames so the body stays put as the turret turns.
 - Enemy sprite rendering uses pixel-snapped screen-space placement derived from world positions with integer sprite scaling (`9x9` source cells rendered at `18x18`, i.e. exact `2x`). Player gameplay footprint remains `kEntitySizeUnits = 1.0`, and the player sprite is rendered in pixel-snapped screen space at fixed `18x18` with per-frame pivot correction to avoid heading-frame jitter.
 - Compile-time presentation scaling: macOS builds use `2x` point-scaled presentation (logical `640x480` framebuffer upscaled to `1280x960` in the window). Handheld and other non-macOS builds keep `1x` (`640x480` window).
 - Default logical resolution is `640x480` on all platforms; macOS matches the handheld visible maze area (`1 unit = 16 px`) at doubled pixel size.

@@ -22,7 +22,8 @@ public:
         Level = 1,
         Density = 2,
         DebugInfo = 3,
-        Quit = 4,
+        MouseControl = 4,
+        Quit = 5,
     };
 
     MenuScreenResult Render(
@@ -42,6 +43,7 @@ private:
     int levelNumber_ = kDefaultGameLevelNumber;
     int mazeDensity_ = 1;
     bool debugInfo_ = false;
+    bool mouseControl_ = false;
     FocusedControl focusedControl_ = FocusedControl::Start;
     bool quitConfirmationOpen_ = false;
     ConfirmationDialog quitConfirmationDialog_{};

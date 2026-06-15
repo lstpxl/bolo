@@ -108,6 +108,7 @@ struct GameState {
         .mazeDensity = 1,
         .invisibility = false,
         .debugInfo = false,
+        .mouseControl = false,
     };
     WorldState world{};
 };

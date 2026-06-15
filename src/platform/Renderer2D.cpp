@@ -616,26 +616,39 @@ void DrawSpriteCell(Image& destination, const Image& cellImage, int columnIndex,
     ImageDraw(&destination, cellImage, sourceRect, destinationRect, WHITE);
 }
 
-Image CombineCellsXor(const Image& bodyCell, const Image& barrelCell, Color color) {
+// Builds the 8 direction frames from the cardinal (up) and diagonal (45 deg) cells by rotating
+// both clockwise to cover all eight directions. Caller owns and must unload the returned images.
+std::array<Image, 8> BuildEightDirectionFrames(const Image& upCell, const Image& deg45Cell) {
+    std::array<Image, 8> frames{};
+    frames[0] = ImageCopy(upCell);
+    frames[1] = ImageCopy(deg45Cell);
+    for (std::size_t frameIndex = 2; frameIndex < frames.size(); ++frameIndex) {
+        frames[frameIndex] = ImageCopy(frames[frameIndex - 2]);
+        ImageRotateCW(&frames[frameIndex]);
+    }
+    return frames;
+}
+
+// XOR-combines two single-bit cells: a pixel is drawn (in color) only where exactly one of the
+// two cells is opaque, so green-over-green overlap becomes transparent.
+Image XorCells(const Image& cellA, const Image& cellB, Color color) {
     Image combined = GenImageColor(kSpriteSheetCellSize, kSpriteSheetCellSize, BLANK);
     Color* combinedPixels = static_cast<Color*>(combined.data);
-    const Color* bodyPixels = static_cast<const Color*>(bodyCell.data);
-    const Color* barrelPixels = static_cast<const Color*>(barrelCell.data);
-    if (combinedPixels == nullptr || bodyPixels == nullptr || barrelPixels == nullptr) {
+    const Color* pixelsA = static_cast<const Color*>(cellA.data);
+    const Color* pixelsB = static_cast<const Color*>(cellB.data);
+    if (combinedPixels == nullptr || pixelsA == nullptr || pixelsB == nullptr) {
         return combined;
     }
-
     const int pixelCount = kSpriteSheetCellSize * kSpriteSheetCellSize;
     for (int i = 0; i < pixelCount; ++i) {
-        const bool bodyOpaque = bodyPixels[i].a > 0;
-        const bool barrelOpaque = barrelPixels[i].a > 0;
-        const bool xorVisible = bodyOpaque != barrelOpaque;
-        if (!xorVisible) {
+        const bool opaqueA = pixelsA[i].a > 0;
+        const bool opaqueB = pixelsB[i].a > 0;
+        if (opaqueA == opaqueB) {
             combinedPixels[i] = BLANK;
             continue;
         }
         combinedPixels[i] = color;
-        combinedPixels[i].a = bodyOpaque ? bodyPixels[i].a : barrelPixels[i].a;
+        combinedPixels[i].a = opaqueA ? pixelsA[i].a : pixelsB[i].a;
     }
     return combined;
 }
@@ -698,66 +711,67 @@ bool Renderer2D::LoadResources() {
         return false;
     }
 
+    // Body (hull) row and barrel (turret) row are baked into a single sheet of every hull/turret
+    // rotation combination, XOR-composited so green-over-green overlap drops out (keeping the turret
+    // outline visible) while still letting the turret aim independently of the hull heading.
     Image playerBodyUp = ExtractSpriteCell(sourceSheet, 0, kPlayerBodyRowIndex, kSpriteSheetCellSize);
     Image playerBody45 = ExtractSpriteCell(sourceSheet, 1, kPlayerBodyRowIndex, kSpriteSheetCellSize);
     Image playerBarrelUp = ExtractSpriteCell(sourceSheet, 0, kPlayerBarrelRowIndex, kSpriteSheetCellSize);
     Image playerBarrel45 = ExtractSpriteCell(sourceSheet, 1, kPlayerBarrelRowIndex, kSpriteSheetCellSize);
-    Image playerFrame0 = CombineCellsXor(playerBodyUp, playerBarrelUp, kPlayerColor);
-    Image playerFrame1 = CombineCellsXor(playerBody45, playerBarrel45, kPlayerColor);
+    FillOpaquePixelsColor(playerBodyUp, kPlayerColor);
+    FillOpaquePixelsColor(playerBody45, kPlayerColor);
+    FillOpaquePixelsColor(playerBarrelUp, kPlayerColor);
+    FillOpaquePixelsColor(playerBarrel45, kPlayerColor);
+
+    const std::array<Image, 8> hullFrames = BuildEightDirectionFrames(playerBodyUp, playerBody45);
+    const std::array<Image, 8> turretFrames = BuildEightDirectionFrames(playerBarrelUp, playerBarrel45);
     UnloadImage(playerBarrel45);
     UnloadImage(playerBarrelUp);
     UnloadImage(playerBody45);
     UnloadImage(playerBodyUp);
-    Image playerFrame2 = ImageCopy(playerFrame0);
-    ImageRotateCW(&playerFrame2);
-    Image playerFrame3 = ImageCopy(playerFrame1);
-    ImageRotateCW(&playerFrame3);
-    Image playerFrame4 = ImageCopy(playerFrame2);
-    ImageRotateCW(&playerFrame4);
-    Image playerFrame5 = ImageCopy(playerFrame3);
-    ImageRotateCW(&playerFrame5);
-    Image playerFrame6 = ImageCopy(playerFrame4);
-    ImageRotateCW(&playerFrame6);
-    Image playerFrame7 = ImageCopy(playerFrame5);
-    ImageRotateCW(&playerFrame7);
 
+    const int directionCount = kEnemyTankDirectionCount;
+    // Hull-only sheet drives the per-hull-frame pivot offsets so the body stays put as the turret turns.
+    Image hullSheet = GenImageColor(directionCount * kSpriteSheetCellSize, kSpriteSheetCellSize, BLANK);
+    for (int hullDir = 0; hullDir < directionCount; ++hullDir) {
+        DrawSpriteCell(hullSheet, hullFrames[static_cast<std::size_t>(hullDir)], hullDir, 0, kSpriteSheetCellSize);
+    }
+    // Combined sheet indexed by (hullDir * directionCount + turretDir).
     Image playerSheet = GenImageColor(
-        kEnemyTankDirectionCount * kSpriteSheetCellSize,
-        kSpriteSheetCellSize,
-        BLANK);
-    DrawSpriteCell(playerSheet, playerFrame0, 0, 0, kSpriteSheetCellSize);
-    DrawSpriteCell(playerSheet, playerFrame1, 1, 0, kSpriteSheetCellSize);
-    DrawSpriteCell(playerSheet, playerFrame2, 2, 0, kSpriteSheetCellSize);
-    DrawSpriteCell(playerSheet, playerFrame3, 3, 0, kSpriteSheetCellSize);
-    DrawSpriteCell(playerSheet, playerFrame4, 4, 0, kSpriteSheetCellSize);
-    DrawSpriteCell(playerSheet, playerFrame5, 5, 0, kSpriteSheetCellSize);
-    DrawSpriteCell(playerSheet, playerFrame6, 6, 0, kSpriteSheetCellSize);
-    DrawSpriteCell(playerSheet, playerFrame7, 7, 0, kSpriteSheetCellSize);
-    UnloadImage(playerFrame7);
-    UnloadImage(playerFrame6);
-    UnloadImage(playerFrame5);
-    UnloadImage(playerFrame4);
-    UnloadImage(playerFrame3);
-    UnloadImage(playerFrame2);
-    UnloadImage(playerFrame1);
-    UnloadImage(playerFrame0);
+        directionCount * directionCount * kSpriteSheetCellSize, kSpriteSheetCellSize, BLANK);
+    for (int hullDir = 0; hullDir < directionCount; ++hullDir) {
+        for (int turretDir = 0; turretDir < directionCount; ++turretDir) {
+            Image combined = XorCells(
+                hullFrames[static_cast<std::size_t>(hullDir)],
+                turretFrames[static_cast<std::size_t>(turretDir)],
+                kPlayerColor);
+            DrawSpriteCell(playerSheet, combined, hullDir * directionCount + turretDir, 0, kSpriteSheetCellSize);
+            UnloadImage(combined);
+        }
+    }
+    for (int frameIndex = 0; frameIndex < directionCount; ++frameIndex) {
+        UnloadImage(hullFrames[static_cast<std::size_t>(frameIndex)]);
+        UnloadImage(turretFrames[static_cast<std::size_t>(frameIndex)]);
+    }
 
     playerTankSheet_ = LoadTextureFromImage(playerSheet);
     playerTankSheetLoaded_ = playerTankSheet_.id != 0;
     if (playerTankSheetLoaded_) {
         SetTextureFilter(playerTankSheet_, TEXTURE_FILTER_POINT);
         playerTankFrameSizePx_ = kSpriteSheetCellSize;
-        playerTankFrameCount_ = kEnemyTankDirectionCount;
+        playerTankFrameCount_ = directionCount;
         const int frameCountToMeasure =
             std::min(playerTankFrameCount_, static_cast<int>(playerTankFrameOffsetsPixels_.size()));
         for (int frameIndex = 0; frameIndex < frameCountToMeasure; ++frameIndex) {
             playerTankFrameOffsetsPixels_[static_cast<std::size_t>(frameIndex)] =
-                ComputeFramePivotOffsetPixels(playerSheet, frameIndex, playerTankFrameSizePx_);
+                ComputeFramePivotOffsetPixels(hullSheet, frameIndex, playerTankFrameSizePx_);
         }
     } else {
         bolt::log::Warning("RENDER: failed to create player spritesheet texture from sprites.png");
     }
+
     UnloadImage(playerSheet);
+    UnloadImage(hullSheet);
 
     Image enemySheet = GenImageColor(
         kEnemyTankDirectionCount * kEnemySpriteSheetCellSize,
@@ -1544,9 +1558,14 @@ void Renderer2D::DrawWorld(
         EndMode2D();
     }
     if (playerTankSheetLoaded_ && state.world.player.alive) {
-        const int frameIndex = PlayerFrameIndexFromHeading(state.world.player.hullHeadingRadians, playerTankFrameCount_);
+        const int hullFrameIndex =
+            PlayerFrameIndexFromHeading(state.world.player.hullHeadingRadians, playerTankFrameCount_);
+        const int turretFrameIndex =
+            PlayerFrameIndexFromHeading(state.world.player.turretHeadingRadians, playerTankFrameCount_);
+        // Combined sheet is laid out as (hullDir * directionCount + turretDir).
+        const int frameIndex = hullFrameIndex * playerTankFrameCount_ + turretFrameIndex;
         const Vector2 sourceOffsetPixels =
-            playerTankFrameOffsetsPixels_[static_cast<std::size_t>(frameIndex)];
+            playerTankFrameOffsetsPixels_[static_cast<std::size_t>(hullFrameIndex)];
         const float offsetScale =
             static_cast<float>(kPlayerRenderSizePx) / static_cast<float>(playerTankFrameSizePx_);
         const Vector2 scaledOffsetPixels{
