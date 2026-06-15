@@ -34,6 +34,11 @@ endfunction()
 
 option(TARGET_RG353V "Build for RG353V handheld (Linux ARM64)" OFF)
 
+# Windows desktop: static CRT (/MT) for redistributable-free shipping; GUI subsystem (no console).
+if(MSVC AND NOT TARGET_RG353V)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>" CACHE STRING "" FORCE)
+endif()
+
 # Keep raylib lean inside this app project.
 set(BUILD_EXAMPLES OFF CACHE BOOL "Build raylib examples" FORCE)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libraries" FORCE)
@@ -74,6 +79,16 @@ endif()
 
 add_subdirectory(third_party/raylib)
 add_subdirectory(third_party/spdlog)
+
+if(MSVC AND NOT TARGET_RG353V)
+    foreach(_bolt_static_crt_target IN ITEMS raylib spdlog)
+        if(TARGET ${_bolt_static_crt_target})
+            set_property(
+                TARGET ${_bolt_static_crt_target}
+                PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+        endif()
+    endforeach()
+endif()
 
 set(BOLT_GENERATED_DIR "${CMAKE_BINARY_DIR}/generated")
 set(BOLT_BUILD_NUMBER_FILE "${CMAKE_SOURCE_DIR}/build/build_number.txt")
@@ -159,6 +174,11 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
     target_compile_options(bolt PRIVATE -Wall -Wextra -Wpedantic)
 elseif(MSVC)
     target_compile_options(bolt PRIVATE /W4 /permissive- /utf-8)
+endif()
+
+if(WIN32 AND NOT TARGET_RG353V)
+    set_target_properties(bolt PROPERTIES WIN32_EXECUTABLE TRUE)
+    target_link_options(bolt PRIVATE "/ENTRY:mainCRTStartup")
 endif()
 
 target_link_libraries(bolt PRIVATE raylib spdlog::spdlog)
