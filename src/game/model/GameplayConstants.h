@@ -69,7 +69,7 @@ struct GameplayConstants {
     static constexpr float kEnemyAiRetargetMinSeconds = 0.7F;        // seconds
     static constexpr float kEnemyAiRetargetRandomSeconds = 0.9F;     // seconds
     static constexpr int kMaxAliveEnemies = 200;                     // enemies
-    static constexpr int kMaxAliveEnemiesPerBase = 24;               // enemies / base
+    // Per-base alive cap is level-dependent; see game::MaxEnemiesPerBaseForLevel in EnemyAppearance.h.
     static constexpr float kEnemyInitialFireCooldownSeconds = 0.2F;  // seconds
     static constexpr float kBaseSpawnCooldownSeconds = 0.9F;         // seconds
     static constexpr float kBaseSpawnCoreGrowDurationSeconds = 2.0F; // seconds

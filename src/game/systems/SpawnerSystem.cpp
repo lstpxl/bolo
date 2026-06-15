@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <limits>
 #include "core/AngleMath.h"
 #include "core/Random.h"
 #include "game/EnemyAppearance.h"
@@ -14,6 +15,27 @@ constexpr float kPi = 3.14159265358979323846F;
 constexpr float kDiagonalSpawnCoreShiftUnits = 0.5F;
 constexpr float kRequiredSpawnClearUnits = 6.0F;
 constexpr float kSpawnProbeMaxUnits = 8.0F;
+
+// Returns the index of the closest non-destroyed base to `point`, or -1 if none remain.
+// Deterministic tie-break: the lowest base index wins.
+int FindNearestAliveBaseIndex(const WorldState& world, const Vec2f& point) {
+    int bestIndex = -1;
+    float bestDistSq = std::numeric_limits<float>::infinity();
+    for (int i = 0; i < static_cast<int>(world.enemyBases.size()); ++i) {
+        const EnemyBase& base = world.enemyBases[static_cast<std::size_t>(i)];
+        if (base.destroyed) {
+            continue;
+        }
+        const float dx = base.position.x - point.x;
+        const float dy = base.position.y - point.y;
+        const float distSq = dx * dx + dy * dy;
+        if (distSq < bestDistSq) {
+            bestDistSq = distSq;
+            bestIndex = i;
+        }
+    }
+    return bestIndex;
+}
 
 game::EnemySpawnChoice PickSpawnEnemyForLevel(int level, Random& random) {
     struct LevelChoices {
@@ -334,17 +356,24 @@ void UpdateSpawnerSystem(GameState& state, float deltaSeconds, Random& random) {
     for (EnemyBase& base : state.world.enemyBases) {
         base.activeEnemies = 0;
     }
-    for (const EnemyTank& enemy : state.world.enemies) {
+    const int baseCount = static_cast<int>(state.world.enemyBases.size());
+    for (EnemyTank& enemy : state.world.enemies) {
         if (!enemy.alive) {
             continue;
         }
-        if (enemy.originBaseIndex < 0 || enemy.originBaseIndex >= static_cast<int>(state.world.enemyBases.size())) {
-            continue;
+        const bool hasAliveOrigin =
+            enemy.originBaseIndex >= 0 && enemy.originBaseIndex < baseCount &&
+            !state.world.enemyBases[static_cast<std::size_t>(enemy.originBaseIndex)].destroyed;
+        if (!hasAliveOrigin) {
+            // Origin base was destroyed (or never assigned): re-attach this orphaned enemy to
+            // the closest still-alive base so it keeps counting against that base's per-base cap.
+            // Once re-attached to an alive base it stays there until that base is also destroyed.
+            enemy.originBaseIndex = FindNearestAliveBaseIndex(state.world, enemy.position);
+            if (enemy.originBaseIndex < 0) {
+                continue;  // No alive bases remain (e.g. evac phase).
+            }
         }
-        EnemyBase& origin = state.world.enemyBases[static_cast<std::size_t>(enemy.originBaseIndex)];
-        if (!origin.destroyed) {
-            origin.activeEnemies += 1;
-        }
+        state.world.enemyBases[static_cast<std::size_t>(enemy.originBaseIndex)].activeEnemies += 1;
     }
 
     int aliveEnemies = game::queries::CountAliveEnemies(state);
@@ -364,7 +393,7 @@ void UpdateSpawnerSystem(GameState& state, float deltaSeconds, Random& random) {
             base.enemyGenerationIntervalSeconds = GameplayConstants::kBaseSpawnCooldownSeconds;
         }
         base.enemyGenerationTimerSeconds -= deltaSeconds;
-        const int maxPerBase = (state.menuSettings.levelNumber == 9) ? 6 : GameplayConstants::kMaxAliveEnemiesPerBase;
+        const int maxPerBase = game::MaxEnemiesPerBaseForLevel(state.menuSettings.levelNumber);
         if (base.spawnPreparationActive) {
             base.spawnPreparationRemainingSeconds -= deltaSeconds;
             if (base.spawnPreparationRemainingSeconds > 0.0F) {

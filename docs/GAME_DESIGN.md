@@ -97,9 +97,10 @@ Enemy spawn table behavior (`src/game/systems/SpawnerSystem.cpp`):
 
 - Spawn selection uses `game::EnemyTypesForLevel(level)` in `src/game/EnemyAppearance.h`, which returns a hardcoded list of spawnable types per level. Caller picks one at random.
 - Per-level mapping: `1–2` Drone, `3–4` Drone+Torpedo, `5–6` Drone+Torpedo+Hunter, `7` Hunter, `8` Hunter+Assassin, `9` Assassin only.
-- Global alive-enemy cap is `999`.
-- Per-base simultaneous alive cap is `24` enemies.
-- **Level 9 (debug):** Assassins only, 6 per base max, assassin speed ×4. Intended for flow-field debugging.
+- Global alive-enemy cap is `200`.
+- Per-base simultaneous alive cap is level-dependent (`game::MaxEnemiesPerBaseForLevel` in `src/game/EnemyAppearance.h`): levels `1`–`9` cap at `4, 6, 8, 10, 12, 14, 18, 16, 13` enemies per base respectively (out-of-range levels default to `10`).
+- Per-base counts are recomputed every fixed step by attributing each alive enemy to its `originBaseIndex`. When a base is destroyed its enemies are **not** killed; instead each orphaned enemy is re-attached to the closest still-alive base (straight-line distance, deterministic lowest-index tie-break) and from then on counts against that base's per-base cap. A re-attached enemy stays with its new base until that base is also destroyed. If no alive base remains (e.g. evac phase), the enemy is left unattached and counts only against the global cap.
+- **Level 9 (debug):** Assassins only, `13` per base max, assassin speed ×4. Intended for flow-field debugging.
 - On spawn, enemy position is initialized inside the base with heading-aligned symmetry through base center:
   - cardinal heading: tank nose points at the middle of the matching base side.
   - diagonal heading: tank nose points at the matching base corner, then spawn center is shifted `0.5` world-units toward base core.
